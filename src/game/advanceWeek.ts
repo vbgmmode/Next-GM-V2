@@ -50,8 +50,8 @@ export function advanceGameWeek(game: GameState): GameState {
           eventType,
           note:
             eventType === "became_stale"
-              ? `${rivalry.name} became stale after another week without a meaningful beat.`
-              : `${rivalry.name} cooled while the show moved on without it.`,
+              ? `${rivalry.name} went stale after another week without a meaningful beat.`
+              : `${rivalry.name} cooled while the broadcast spotlight moved elsewhere.`,
           heat,
           freshness,
           status,
@@ -94,7 +94,7 @@ function recoverWrestlerInjury(wrestler: Wrestler, nextWeek: number, recoveryNot
     wrestlerId: wrestler.id,
     wrestlerName: wrestler.name,
     weekNumber: nextWeek,
-    note: `${wrestler.name} has been medically cleared and is available again.`,
+    note: `${wrestler.name} cleared medical and is back on the booking board.`,
   });
 
   return {

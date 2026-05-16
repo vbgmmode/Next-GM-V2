@@ -124,18 +124,25 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Solo Career Stabilization
+Phase: Solo Career Release Candidate
 
 Goal:
-Stabilize the complete single-player offline career loop before adding infrastructure complexity.
+Keep the complete single-player offline career loop stable and release-candidate ready before adding infrastructure complexity.
 
 Current priority:
-Harden saves and migrations, playtest full seasons, polish balance/content, and keep the UI consistent across the solo career.
+Protect the RC build, fix only critical blockers or tiny polish bugs, and keep the solo career loop playable after every change.
+
+Completed stabilization passes:
+- Save Migration Hardening v1
+- UI Consistency Pass v1
+- Full-Season Playtesting v1
+- Balance & Tuning Audit v1
+- Content/Flavor Polish v1
+- Release Candidate Smoke Pass v1
 
 Upcoming Direction:
-- Full-season playtesting.
-- Balance/content polish.
-- UI consistency pass.
+- RC bug fixes only when found.
+- Small documentation or QA follow-ups.
 - Consider save slots or a data persistence upgrade later, only if explicitly requested.
 - Keep setup and draft bounded unless an active ticket asks to expand them.
 

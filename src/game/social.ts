@@ -20,6 +20,20 @@ function getRelatedRivalryIds(segment?: SegmentResult) {
   return segment?.rivalryId ? [segment.rivalryId] : [];
 }
 
+function hashString(value: string) {
+  let hash = 0;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) % 1000000007;
+  }
+
+  return hash;
+}
+
+function pickLine(seed: string, lines: string[]) {
+  return lines[hashString(seed) % lines.length];
+}
+
 function makePost(
   result: ShowResult,
   index: number,
@@ -51,13 +65,21 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
   const weakestSegment = getWeakestSegment(result);
   const momentumWrestler = findWrestlerByName(result.biggestMomentumGain.name, game.wrestlers);
   const fatigueWrestler = findWrestlerByName(result.biggestFatigueIncrease.name, game.wrestlers);
+  const bestNames = bestSegment.participantNames.join(" / ");
+  const weakestNames = weakestSegment?.participantNames.join(" / ");
+  const scoreRead =
+    result.totalScore >= 85 ? "premium" : result.totalScore >= 70 ? "solid" : result.totalScore >= 55 ? "uneven" : "cold";
   const posts: Omit<SocialPost, "id" | "weekNumber" | "seasonNumber" | "showName">[] = [];
 
   posts.push({
     category: "fan_praise",
     author: "@FrontRowFaithful",
     tone: "excited",
-    text: `${bestSegment.participantNames.join(" / ")} had the room shaking. ${bestSegment.score} for that ${bestSegment.type.toLowerCase()} feels earned.`,
+    text: pickLine(`${result.id}-fan-${bestSegment.segmentId}`, [
+      `${bestNames} had the room shaking. ${bestSegment.score} for that ${bestSegment.type.toLowerCase()} feels earned.`,
+      `${bestNames} gave the night its signature noise. That ${bestSegment.score} was the broadcast peak.`,
+      `${bestNames} owned the loudest minutes of the card. The ${bestSegment.type.toLowerCase()} hit ${bestSegment.score}.`,
+    ]),
     relatedWrestlerIds: bestSegment.participantIds,
     relatedRivalryIds: getRelatedRivalryIds(bestSegment),
     relatedChampionshipIds: getRelatedChampionshipIds(bestSegment),
@@ -67,7 +89,11 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
     category: "analyst_take",
     author: "Gorilla Position Analytics",
     tone: "analytical",
-    text: `${result.showName} landed at ${result.totalScore}. Best segment carried the broadcast, but the card still has clear pressure points.`,
+    text: pickLine(`${result.id}-analyst-${scoreRead}`, [
+      `${result.showName} graded out as ${scoreRead} at ${result.totalScore}. The strongest segment gave the card its shape.`,
+      `${result.showName} closed at ${result.totalScore}. Best segment led the night, but the card texture tells the real story.`,
+      `${result.totalScore} for ${result.showName}. The broadcast had a clear high point and a few pressure marks underneath.`,
+    ]),
     relatedWrestlerIds: bestSegment.participantIds,
     relatedRivalryIds: getRelatedRivalryIds(bestSegment),
     relatedChampionshipIds: getRelatedChampionshipIds(bestSegment),
@@ -78,7 +104,11 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
       category: "viral_moment",
       author: "@ClipMachine",
       tone: "impressed",
-      text: `${momentumWrestler.name} is the one everyone is clipping tonight. Momentum jumped +${result.biggestMomentumGain.amount}.`,
+      text: pickLine(`${result.id}-momentum-${momentumWrestler.id}`, [
+        `${momentumWrestler.name} is the one everyone is clipping tonight. Momentum jumped +${result.biggestMomentumGain.amount}.`,
+        `${momentumWrestler.name} came out of the show with the cleanest signal boost: +${result.biggestMomentumGain.amount} momentum.`,
+        `The timeline found ${momentumWrestler.name}. +${result.biggestMomentumGain.amount} momentum after the cameras cut.`,
+      ]),
       relatedWrestlerIds: [momentumWrestler.id],
     });
   }
@@ -88,7 +118,11 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
       category: "fatigue_concern",
       author: "Tape Traders Weekly",
       tone: "skeptical",
-      text: `${fatigueWrestler.name} took the biggest physical hit tonight. +${result.biggestFatigueIncrease.amount} fatigue is not nothing.`,
+      text: pickLine(`${result.id}-fatigue-${fatigueWrestler.id}`, [
+        `${fatigueWrestler.name} took the biggest physical hit tonight. +${result.biggestFatigueIncrease.amount} fatigue is not nothing.`,
+        `${fatigueWrestler.name}'s workload lit up the post-show board: +${result.biggestFatigueIncrease.amount} fatigue.`,
+        `Good night or not, ${fatigueWrestler.name} paid for it physically. +${result.biggestFatigueIncrease.amount} fatigue.`,
+      ]),
       relatedWrestlerIds: [fatigueWrestler.id],
     });
   }
@@ -98,7 +132,11 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
       category: "push_complaint",
       author: "@BookerBrain",
       tone: "angry",
-      text: `${weakestSegment.participantNames.join(" / ")} only hit ${weakestSegment.score}. That spot needed more protection or a cleaner setup.`,
+      text: pickLine(`${result.id}-weak-${weakestSegment.segmentId}`, [
+        `${weakestNames} only hit ${weakestSegment.score}. That spot needed more protection or a cleaner setup.`,
+        `${weakestNames} was the soft spot at ${weakestSegment.score}. The production board has to see that.`,
+        `${weakestNames} did not get all the way there. ${weakestSegment.score} leaves questions for next week.`,
+      ]),
       relatedWrestlerIds: weakestSegment.participantIds,
       relatedRivalryIds: getRelatedRivalryIds(weakestSegment),
       relatedChampionshipIds: getRelatedChampionshipIds(weakestSegment),
@@ -138,7 +176,11 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
       category: "ple_reaction",
       author: "IWC Event Desk",
       tone: "chaotic",
-      text: `${result.showName} felt like a major checkpoint for the brand. A ${result.totalScore} score gives the road out of the PLE plenty to argue about.`,
+      text: pickLine(`${result.id}-ple`, [
+        `${result.showName} felt like a major checkpoint for the brand. A ${result.totalScore} score gives the road out of the PLE plenty to argue about.`,
+        `${result.showName} had that major-event pressure in the walls. ${result.totalScore} is the number everyone will dissect.`,
+        `The PLE gave the brand a hard receipt: ${result.totalScore}, loud moments, and plenty to answer for on TV.`,
+      ]),
       relatedWrestlerIds: bestSegment.participantIds,
       relatedRivalryIds: getRelatedRivalryIds(bestSegment),
       relatedChampionshipIds: getRelatedChampionshipIds(bestSegment),
@@ -149,7 +191,11 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
     category: "dirt_sheet",
     author: "Backstage Wire",
     tone: "skeptical",
-    text: `The talk after ${result.showName}: ${result.biggestMomentumGain.name} has support, but ${result.biggestFatigueIncrease.name}'s workload is being watched.`,
+    text: pickLine(`${result.id}-wire`, [
+      `The talk after ${result.showName}: ${result.biggestMomentumGain.name} has support, but ${result.biggestFatigueIncrease.name}'s workload is being watched.`,
+      `Backstage read: ${result.biggestMomentumGain.name} left with heat, while ${result.biggestFatigueIncrease.name}'s workload drew side-eye.`,
+      `${result.showName} moved the room. ${result.biggestMomentumGain.name} gained allies, and ${result.biggestFatigueIncrease.name} gained a medical-board question.`,
+    ]),
     relatedWrestlerIds: [momentumWrestler?.id, fatigueWrestler?.id].filter((id): id is string => Boolean(id)),
   });
 

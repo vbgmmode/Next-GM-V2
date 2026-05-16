@@ -94,6 +94,7 @@ const INJURY_BALANCE = {
   highFatigue: 70,
   severeFatigue: 85,
   minorMoralePenalty: 1,
+  pleStageLoad: 2,
 };
 
 export function isValidSegment(segment: Segment, wrestlers: Wrestler[] = []) {
@@ -319,16 +320,17 @@ function updateWrestlerPressure(
 
   if (isBooked && wasUnderused) {
     moraleChange += FALLOUT_BALANCE.underusedReturnMoraleGain;
-    underusedBoostNote = `${wrestler.name} got back on TV after ${weeksSinceLastBooked} weeks away and responded well.`;
+    underusedBoostNote = `${wrestler.name} returned after ${weeksSinceLastBooked} weeks off TV and felt seen by the room.`;
   }
 
   if (isBooked && (wasHighlyFatigued || wasOverused)) {
     moraleChange -= FALLOUT_BALANCE.pressureBookingMoralePenalty + (wrestler.injuryStatus === "minor" ? INJURY_BALANCE.minorMoralePenalty : 0);
+    const pressureSource = wasHighlyFatigued ? "heavy fatigue" : "a long TV streak";
     fallout.overuseWarnings.push({
       wrestlerId: wrestler.id,
       wrestlerName: wrestler.name,
       moraleChange: -(FALLOUT_BALANCE.pressureBookingMoralePenalty + (wrestler.injuryStatus === "minor" ? INJURY_BALANCE.minorMoralePenalty : 0)),
-      note: `${wrestler.name} was booked through ${wasHighlyFatigued ? "heavy fatigue" : "a long TV streak"}${wrestler.injuryStatus === "minor" ? " while working hurt" : ""}.`,
+      note: `${wrestler.name} worked through ${pressureSource}${wrestler.injuryStatus === "minor" ? " while already hurt" : ""}. The locker room noticed the load.`,
     });
   }
 
@@ -338,7 +340,7 @@ function updateWrestlerPressure(
       wrestlerId: wrestler.id,
       wrestlerName: wrestler.name,
       moraleChange: -FALLOUT_BALANCE.underuseMoralePenalty,
-      note: `${wrestler.name} has gone ${weeksSinceLastBooked} weeks without TV time.`,
+      note: `${wrestler.name} has been off TV for ${weeksSinceLastBooked} weeks and is slipping from the weekly conversation.`,
     });
   }
 
@@ -349,7 +351,7 @@ function updateWrestlerPressure(
       wrestlerId: wrestler.id,
       wrestlerName: wrestler.name,
       moraleChange: nextMorale - wrestler.morale,
-      note: `${wrestler.name} lost morale from ${isBooked ? "being pushed through pressure" : "sitting out again"}.`,
+      note: `${wrestler.name} lost morale from ${isBooked ? "being pushed through pressure" : "another week without meaningful TV"}.`,
     });
   }
 
@@ -358,7 +360,7 @@ function updateWrestlerPressure(
       wrestlerId: wrestler.id,
       wrestlerName: wrestler.name,
       moraleChange: nextMorale - wrestler.morale,
-      note: underusedBoostNote || `${wrestler.name} gained morale from meaningful TV time.`,
+      note: underusedBoostNote || `${wrestler.name} gained morale from TV time that felt useful, not ornamental.`,
     });
   }
 
@@ -411,8 +413,8 @@ function evaluateInjuries(result: ShowResult, wrestlers: Wrestler[], game: GameS
         weeksRemaining,
         note:
           status === "major"
-            ? `${wrestler.name} suffered a major injury and is unavailable for ${weeksRemaining} weeks.`
-            : `${wrestler.name} picked up a minor injury and can work through it for ${weeksRemaining} week${weeksRemaining === 1 ? "" : "s"}.`,
+            ? `${wrestler.name} suffered a major injury and is unavailable for ${weeksRemaining} weeks. Medical pulled them from the board.`
+            : `${wrestler.name} picked up a minor injury and can work through it for ${weeksRemaining} week${weeksRemaining === 1 ? "" : "s"} with protection.`,
       };
     })
     .filter((item): item is InjuryFalloutItem => Boolean(item));
@@ -428,7 +430,7 @@ function getInjuryRiskScore(wrestler: Wrestler, segmentTypes: SegmentType[], res
   const physicalLoad = physicalSegments * 12;
   const repeatLoad = consecutiveWeeks * 7;
   const fatigueLoad = highestFatigue * 0.55 + (highestFatigue >= INJURY_BALANCE.severeFatigue ? 8 : highestFatigue >= INJURY_BALANCE.highFatigue ? 4 : 0);
-  const stageLoad = result.showType === "ple" ? 4 : 0;
+  const stageLoad = result.showType === "ple" ? INJURY_BALANCE.pleStageLoad : 0;
 
   return fatigueLoad + repeatLoad + physicalLoad + minorInjuryLoad + stageLoad;
 }
@@ -436,15 +438,15 @@ function getInjuryRiskScore(wrestler: Wrestler, segmentTypes: SegmentType[], res
 function getInjuryDescription(wrestler: Wrestler, status: "minor" | "major", segmentTypes: SegmentType[], riskScore: number) {
   if (status === "major") {
     return segmentTypes.includes("Open Challenge")
-      ? `${wrestler.name} was hurt during the Open Challenge chaos.`
-      : `${wrestler.name} was hurt under heavy match load.`;
+      ? `${wrestler.name} was hurt when the Open Challenge turned ugly.`
+      : `${wrestler.name} broke down under the night's physical load.`;
   }
 
   if (riskScore >= 90) {
-    return `${wrestler.name} is working through a painful knock from overuse.`;
+    return `${wrestler.name} is working through a painful knock after stacked usage.`;
   }
 
-  return `${wrestler.name} is nursing a minor knock after the show.`;
+  return `${wrestler.name} is nursing a minor knock from the show.`;
 }
 
 function applyInjuryFallout(wrestlers: Wrestler[], injuryNotes: InjuryFalloutItem[], currentWeek: number) {
@@ -586,46 +588,64 @@ function hashString(value: string) {
 
 function getSegmentRecap(segment: Segment, wrestlers: Wrestler[], score: number, isPle: boolean, isNoContest?: boolean) {
   const names = segment.participantIds.map((id) => wrestlers.find((wrestler) => wrestler.id === id)?.name ?? "Unknown");
-  const stage = isPle ? " on the major-event stage" : "";
+  const joinedNames = names.join(" / ");
+  const pairedNames = names.join(" and ");
+  const stage = isPle ? " under major-event pressure" : "";
 
   if (segment.type === "Open Challenge") {
     const [issuer, opponent] = names;
 
     if (isNoContest || !opponent) {
-      return `${issuer} issued the challenge, but nobody eligible answered. The segment was ruled a no contest.`;
+      return `${issuer} issued the challenge, but nobody eligible answered. The segment died on the runway as a no contest.`;
     }
 
     const titleIntrigue = segment.championshipId ? " The title scene picked up a little intrigue without putting the championship at stake." : "";
     const flavor =
       score >= 75
-        ? "The surprise opponent gave the crowd something to talk about."
+        ? "The answer landed like a genuine jolt."
         : score >= 55
-          ? "The challenge created momentum, even if it left some room to grow."
-          : "The answer exposed fatigue more than it sparked momentum.";
+          ? "The challenge created useful noise, even if it left room to grow."
+          : "The answer exposed fatigue more than it sparked buzz.";
     return `${issuer} issued the challenge, and ${opponent} answered the call. ${flavor}${titleIntrigue}`;
   }
 
   if (segment.type === "Match") {
+    if (score >= 85) {
+      return `${pairedNames} delivered a premium bell-to-bell statement${stage}.`;
+    }
+
     return score >= 70
-      ? `${names.join(" and ")} delivered a crisp match${stage}.`
-      : `${names.join(" and ")} got through the match, but the room wanted a cleaner gear.`;
+      ? `${pairedNames} delivered a crisp match${stage}.`
+      : `${pairedNames} got through the match, but the room wanted a cleaner gear.`;
   }
 
   if (segment.type === "Promo") {
+    if (score >= 85) {
+      return `${joinedNames} made the microphone feel like the center of the broadcast.`;
+    }
+
     return score >= 70
-      ? `${names.join(" / ")} owned the microphone and gave the broadcast a clear voice.`
-      : `${names.join(" / ")} kept the story alive, but the promo needed sharper fire.`;
+      ? `${joinedNames} owned the microphone and gave the broadcast a clear voice.`
+      : `${joinedNames} kept the story alive, but the promo needed sharper fire.`;
   }
 
   if (segment.type === "Backstage Angle") {
+    if (score >= 85) {
+      return `${joinedNames} made the backstage feed feel like surveillance with stakes.`;
+    }
+
     return score >= 70
-      ? `${names.join(" / ")} turned the backstage cameras into useful story pressure.`
-      : `${names.join(" / ")} added texture backstage, though the beat did not fully land.`;
+      ? `${joinedNames} turned the backstage cameras into useful story pressure.`
+      : `${joinedNames} added texture backstage, though the beat did not fully land.`;
+  }
+
+  if (score >= 85) {
+    return `${pairedNames} made the contract table feel like a fight waiting for paperwork to end.`;
   }
 
   return score >= 70
-    ? `${names.join(" and ")} made the contract table feel dangerous without changing the title picture.`
-    : `${names.join(" and ")} put ink on the table, but the tension needed more bite.`;
+    ? `${pairedNames} made the contract table feel dangerous without changing the title picture.`
+    : `${pairedNames} put ink on the table, but the tension needed more bite.`;
 }
 
 export function getRivalryStatus(heat: number, freshness: number): RivalryStatus {
@@ -696,22 +716,22 @@ function resolveRivalrySegment(segment: Segment, rivalries: Rivalry[], score: nu
 
   if (rivalry.status === "stale") {
     eventType = "became_stale";
-    note = `${rivalry.name} is getting stale after another beat${isPle ? " on a major stage" : " on TV"}.`;
+    note = `${rivalry.name} is losing freshness after another beat${isPle ? " on a major stage" : " on TV"}.`;
   } else if (score >= 75) {
     eventType = "heated_up";
-    note = `${rivalry.name} gained momentum and feels hotter after a strong${isPle ? " major-event" : ""} segment.`;
+    note = `${rivalry.name} caught fire after a strong${isPle ? " major-event" : ""} segment.`;
   } else if (score >= 60) {
     eventType = "advanced";
-    note = `${rivalry.name} heated up${isPle ? " under the major-event lights" : ""}, but the story lost a little freshness.`;
+    note = `${rivalry.name} moved forward${isPle ? " under the major-event lights" : ""}, though the story lost a little freshness.`;
   } else {
     eventType = "cooled";
-    note = `${rivalry.name} cooled after a flat segment.`;
+    note = `${rivalry.name} cooled after a flat beat failed to lift the room.`;
   }
 
   events.push(buildEvent(eventType, note));
 
   if (isPle) {
-    events.push(buildEvent("ple_payoff", `${rivalry.name} reached a PLE payoff beat at ${context.showName}.`));
+    events.push(buildEvent("ple_payoff", `${rivalry.name} reached a PLE checkpoint at ${context.showName}.`));
   }
 
   return { note, events };
@@ -755,7 +775,11 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
 
   if (winner.id === championId) {
     championship.defenses += 1;
-    const note = `${champion.name} retained the ${championship.name}${context.showType === "ple" ? " on a major stage" : ""}.`;
+    const defenseFrame =
+      championship.defenses >= 3
+        ? `Retained again. ${champion.name} is turning the ${championship.name} into a guarded office.`
+        : `${champion.name} retained the ${championship.name}${context.showType === "ple" ? " on a major stage" : ""}.`;
+    const note = defenseFrame;
 
     return {
       note,
@@ -780,7 +804,10 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
   championship.championIds = [winner.id];
   championship.reignStartWeek = context.weekNumber;
   championship.defenses = 0;
-  const note = `${winner.name} defeated ${champion.name} to win the ${championship.name}${context.showType === "ple" ? " at a major event" : ""}.`;
+  const note =
+    context.showType === "ple"
+      ? `${winner.name} defeated ${champion.name} to win the ${championship.name} at a major event. The title picture has a new center.`
+      : `${winner.name} defeated ${champion.name} to win the ${championship.name}. The belt moved on TV, and the room has to adjust.`;
 
   return {
     note,

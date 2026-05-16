@@ -630,34 +630,34 @@ function getGMRead(wrestler: Wrestler, game: GameState): GMRead {
 
   const risk =
     wrestler.injuryStatus === "major"
-      ? `${wrestler.name} is unavailable with a major injury.`
+      ? `${wrestler.name} is off the board with a major injury.`
       : wrestler.injuryStatus === "minor"
-        ? `${wrestler.name} is working through a minor injury and carries extra fatigue/morale risk.`
+        ? `${wrestler.name} is working hurt, so every booking needs a lighter touch.`
         : pressureTags.includes("Injury Risk")
-      ? `${wrestler.name} is at injury risk levels with ${wrestler.fatigue} fatigue.`
+      ? `${wrestler.name} is carrying ${wrestler.fatigue} fatigue, high enough to light up medical concern.`
       : pressureTags.includes("Overused")
         ? `${wrestler.name} is carrying overuse pressure from fatigue or a long TV streak.`
         : pressureTags.includes("Morale Risk")
-          ? `${wrestler.name} is a morale risk at ${wrestler.morale}.`
+          ? `${wrestler.name} is at ${wrestler.morale} morale, which makes the next usage matter.`
           : weeksSinceLastBooked >= 3
-            ? `${wrestler.name} has been off TV for ${weeksSinceLastBooked} weeks.`
+            ? `${wrestler.name} has been off TV for ${weeksSinceLastBooked} weeks and is fading from the weekly board.`
             : "No major pressure label is active right now.";
 
   const need =
     wrestler.injuryStatus === "major"
       ? "Needs recovery time before they can be booked again."
       : wrestler.injuryStatus === "minor"
-        ? "Can work, but needs lighter usage or protection."
+        ? "Can work, but needs protection instead of grind."
         : pressureTags.includes("Injury Risk") || wrestler.fatigue >= 70
       ? "Needs rest or a protected usage."
       : pressureTags.includes("Overused")
-        ? "Needs lighter TV or protection before the workload stacks higher."
+        ? "Needs lighter TV before the workload becomes the story."
         : pressureTags.includes("Underused")
-          ? "Needs TV time if you want to stop the absence becoming a locker room issue."
+          ? "Needs TV time before the absence becomes a locker room issue."
           : pressureTags.includes("Morale Risk")
             ? "Needs meaningful TV time or a stabilizing role."
             : wrestler.momentum < 45
-              ? "Needs momentum if you want them to feel valuable on the card."
+              ? "Needs a momentum spark if they are going to matter on the card."
               : "Can be used for momentum, story texture, or a steady card role.";
 
   return { usefulness, risk, need };
@@ -668,12 +668,13 @@ function buildBroadcastRecap(result: ShowResult) {
   const bestNames = bestSegment.participantNames.join(" / ");
   const titleFallout = result.titleNotes?.length ? ` Title fallout: ${result.titleNotes.join(" ")}` : "";
   const rivalryFallout = result.rivalryNotes?.length ? ` Story movement: ${result.rivalryNotes[0]}` : "";
+  const scoreTone = result.totalScore >= 85 ? "premium" : result.totalScore >= 70 ? "controlled" : result.totalScore >= 55 ? "uneven" : "cold";
   const showFrame =
     result.showType === "ple"
-      ? `${result.showName} was a major event for ${result.brandName}`
-      : `${result.brandName} posted a ${result.totalScore} (${getShowGrade(result.totalScore)})`;
+      ? `${result.showName} gave ${result.brandName} a ${scoreTone} major-event receipt`
+      : `${result.brandName} posted a ${scoreTone} ${result.totalScore} (${getShowGrade(result.totalScore)})`;
 
-  return `${showFrame} in Week ${result.week}, with ${bestNames} delivering the strongest ${bestSegment.type.toLowerCase()} of the night at ${bestSegment.score}. ${result.biggestMomentumGain.name} gained the most momentum, while ${result.biggestFatigueIncrease.name} took the biggest fatigue hit.${titleFallout}${rivalryFallout}`;
+  return `${showFrame} in Week ${result.week}. ${bestNames} delivered the strongest ${bestSegment.type.toLowerCase()} at ${bestSegment.score}. ${result.biggestMomentumGain.name} gained the most momentum, while ${result.biggestFatigueIncrease.name} took the biggest fatigue hit.${titleFallout}${rivalryFallout}`;
 }
 
 function saveSnapshot(game: GameState, screen: SavedGameState["screen"], profileState?: Pick<SavedGameState, "profileReturnScreen" | "profileWrestlerId">) {
@@ -1529,7 +1530,8 @@ function DashboardScreen({
   const lastShow = game.showHistory[game.showHistory.length - 1];
   const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers)).length;
   const averageFatigue = Math.round(game.wrestlers.reduce((sum, wrestler) => sum + wrestler.fatigue, 0) / game.wrestlers.length);
-  const nextAction = validSegments >= 2 ? "Run the show when the card feels right." : "Book at least 2 valid segments for this week's broadcast.";
+  const nextAction =
+    validSegments >= 2 ? "The rundown can go live when you are ready." : "Book at least 2 valid segments before production can roll.";
   const topChampionship = [...game.championships].sort((a, b) => b.prestige - a.prestige)[0];
   const topTitleContenders = getTopContenders(topChampionship, game.wrestlers, 2);
   const hottestRivalry = getHottestRivalry(game.rivalries);
@@ -1566,7 +1568,7 @@ function DashboardScreen({
           </div>
           <p className="lede">
             {currentShow.showName} is a {getShowTypeLabel(currentShow.showType)} stop
-            {currentShow.isGoHome ? " and the final broadcast before the next PLE." : " on the road to the next major event."}
+            {currentShow.isGoHome ? " and the last live wire before the next PLE." : " on the road to the next major event."}
           </p>
         </div>
         <button className="primary-action" onClick={() => onNavigate("booking")}>
@@ -1602,7 +1604,7 @@ function DashboardScreen({
               ))}
             </div>
           ) : (
-            <div className="empty-state compact">No card booked yet. The production board is blank.</div>
+            <div className="empty-state compact">No card booked yet. The production board is dark.</div>
           )}
         </article>
 
@@ -1626,7 +1628,7 @@ function DashboardScreen({
       <section className="status-grid" aria-label="Brand pulse">
         <Metric label="Money" value={formatMoney(game.money)} />
         <Metric label="Last Show" value={lastShow ? `${lastShow.totalScore} (${getShowGrade(lastShow.totalScore)})` : "No Result"} />
-        <Metric label="Avg Fatigue" value={`${averageFatigue}`} detail={averageFatigue >= 45 ? "Roster needs rest" : "Manageable load"} />
+        <Metric label="Avg Fatigue" value={`${averageFatigue}`} detail={averageFatigue >= 45 ? "Training room is busy" : "Load is controlled"} />
         <Metric label="Top Momentum" value={`${topMomentumTalent.momentum}`} detail={topMomentumTalent.name} />
       </section>
 
@@ -1648,16 +1650,16 @@ function DashboardScreen({
           <Metric
             label="Top Overused"
             value={topOverused ? topOverused.name : "None"}
-            detail={topOverused ? `Fat ${topOverused.fatigue} · Streak ${topOverused.consecutiveWeeksBooked ?? 0}` : "Load is stable"}
+            detail={topOverused ? `Fat ${topOverused.fatigue} · Streak ${topOverused.consecutiveWeeksBooked ?? 0}` : "No workload spike"}
           />
           <Metric
             label="Top Underused"
             value={topUnderused ? topUnderused.name : "None"}
             detail={topUnderused ? `${getWeeksSinceLastBooked(topUnderused, game.currentWeek)} weeks off TV` : "No long absences"}
           />
-          <Metric label="Morale Risk" value={`${moraleRiskCount}`} detail={moraleRiskCount ? "Needs attention" : "Room is steady"} />
-          <Metric label="Injury Risk" value={`${injuryRiskCount}`} detail={injuryRiskCount ? "Protect high fatigue" : "No red flags"} />
-          <Metric label="Minor Injuries" value={`${minorInjuryCount}`} detail={minorInjuryCount ? "Can work with warnings" : "None"} />
+          <Metric label="Morale Risk" value={`${moraleRiskCount}`} detail={moraleRiskCount ? "Room needs care" : "Room is steady"} />
+          <Metric label="Injury Risk" value={`${injuryRiskCount}`} detail={injuryRiskCount ? "Protect the load" : "No red flags"} />
+          <Metric label="Minor Injuries" value={`${minorInjuryCount}`} detail={minorInjuryCount ? "Work light" : "None"} />
           <Metric label="Unavailable" value={`${unavailableCount}`} detail={unavailableCount ? "Major injuries blocked" : "Full roster available"} />
         </div>
         {latestRecoveryNotes.length ? (
@@ -2902,7 +2904,7 @@ function WeekReviewScreen({
             Season {result.seasonNumber} · Week {result.week} Review
           </p>
           <h2>Week Review</h2>
-          <p className="lede">The broadcast is in the books. Review the actual fallout before moving the calendar forward.</p>
+          <p className="lede">The broadcast is locked. Read the actual fallout before the office moves the calendar.</p>
         </div>
         <button className="primary-action" onClick={onAdvanceWeek}>
           {result.week >= 12 ? "Season Review" : "Advance Week"}
@@ -2986,7 +2988,7 @@ function WeekReviewScreen({
           !injuryRiskWrestlers.length ? (
             <div>
               <span>Locker Room</span>
-              <p>No major roster pressure moved after this show.</p>
+              <p>No major roster pressure moved after this show. The room stays level for now.</p>
             </div>
           ) : null}
         </div>
@@ -3125,7 +3127,7 @@ function SeasonReviewScreen({
         <div>
           <p className="eyebrow">Season {game.seasonNumber} Review</p>
           <h2>Final Bell</h2>
-          <p className="lede">The 12-week road is complete. The roster, titles, rivalries, money, and histories carry forward into the next season.</p>
+          <p className="lede">The 12-week road is complete. The ledger, locker room, titles, and grudges carry into the next season.</p>
         </div>
         <button className="primary-action" onClick={onStartNextSeason}>
           Start Next Season
@@ -3192,7 +3194,7 @@ function SeasonReviewScreen({
               <article className="history-event">
                 <span>Most Defended Championship</span>
                 <p>
-                  {mostDefendedChampionship.championship.name} logged {mostDefendedChampionship.count} successful defense
+                  {mostDefendedChampionship.championship.name} survived {mostDefendedChampionship.count} defense
                   {mostDefendedChampionship.count === 1 ? "" : "s"} this season.
                 </p>
               </article>

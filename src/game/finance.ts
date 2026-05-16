@@ -11,6 +11,10 @@ function roundMoney(value: number) {
   return Math.round(value);
 }
 
+function formatTitleMatchCount(titleMatches: number) {
+  return `${titleMatches} title match${titleMatches === 1 ? "" : "es"}`;
+}
+
 export function getFinancePressureLabel(money: number, latestProfitLoss = 0) {
   if (money < 100000 || latestProfitLoss < -75000) {
     return "Critical";
@@ -47,18 +51,23 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
   const productionCost = roundMoney((isPle ? 210000 : 75000) + result.segmentResults.length * (isPle ? 12000 : 6000) + titleMatches * (isPle ? 8000 : 3000));
   const profitLoss = ticketRevenue + merchRevenue + mediaRevenue - talentCost - productionCost;
   const endingMoney = roundMoney(game.money + profitLoss);
+  const revenue = ticketRevenue + merchRevenue + mediaRevenue;
   const notes = [
     `${result.showName} drew ${attendance.toLocaleString()} fans off a ${result.totalScore} show score.`,
-    isPle ? "PLE staging raised production costs but opened a larger gate and media upside." : "TV production kept costs controlled, with revenue tied closely to show quality.",
-    titleMatches ? `${titleMatches} title match${titleMatches === 1 ? "" : "es"} helped the live business.` : "No title match premium was attached to this card.",
+    isPle
+      ? `Major-event staging pushed costs up, but the larger gate and media package brought in ${roundMoney(revenue).toLocaleString()}.`
+      : "TV production stayed lean, with revenue tied tightly to show quality and booked star power.",
+    titleMatches
+      ? `${formatTitleMatchCount(titleMatches)} gave the live business a premium hook.`
+      : "No title-match premium was attached to this card.",
   ];
 
   if (profitLoss < 0) {
-    notes.push("The show lost money and tightened brand pressure.");
+    notes.push(profitLoss < -75000 ? "The red number hit hard enough to tighten the office immediately." : "The show lost money and put a little more pressure on the office.");
   } else if (profitLoss > 100000) {
     notes.push("The show materially improved the brand's cash position.");
   } else {
-    notes.push("The show landed as a manageable business result.");
+    notes.push(profitLoss > 0 ? "The show banked a controlled win without changing the whole season." : "The show landed close to break-even, manageable but not invisible.");
   }
 
   return {
