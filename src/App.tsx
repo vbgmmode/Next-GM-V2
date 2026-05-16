@@ -1,9 +1,29 @@
 import { useMemo, useState } from "react";
 import { clearGameState, loadGameState, saveGameState } from "./gameStorage";
-import { advanceGameWeek } from "./game/advanceWeek";
-import { createDefaultChampionships, createNewGame } from "./game/seed";
-import { getBestSegment, getResultChange, getShowGrade, isValidSegment, runShow } from "./game/scoring";
-import type { Championship, GameState, Screen, Segment, SegmentType, ShowResult, Wrestler } from "./game/types";
+import { advanceGameWeek, startNextSeason } from "./game/advanceWeek";
+import { createDefaultChampionships, createDefaultRivalries, createNewGame, createSeasonCalendar } from "./game/seed";
+import {
+  getBestSegment,
+  getCurrentCalendarWeek,
+  getResultChange,
+  getRivalryStatus,
+  getShowGrade,
+  isValidSegment,
+  runShow,
+} from "./game/scoring";
+import type {
+  CalendarWeek,
+  Championship,
+  GameState,
+  Rivalry,
+  RivalryStakes,
+  Screen,
+  Segment,
+  SegmentType,
+  ShowResult,
+  ShowType,
+  Wrestler,
+} from "./game/types";
 
 type SavedGameState = {
   game: GameState;
@@ -19,6 +39,10 @@ function getSegmentRuntime(type: SegmentType) {
 
 function getSegmentRequirement(type: SegmentType) {
   return type === "Match" ? "Needs exactly 2 wrestlers" : "Needs 1 to 3 wrestlers";
+}
+
+function getShowSegmentLimit(game: GameState) {
+  return getCurrentCalendarWeek(game).showType === "ple" ? 6 : 4;
 }
 
 function getSegmentParticipants(segment: Segment, wrestlers: Wrestler[]) {
@@ -71,12 +95,73 @@ function getReignLength(championship: Championship, currentWeek: number) {
   return Math.max(1, currentWeek - championship.reignStartWeek + 1);
 }
 
+function canSegmentAttachRivalry(segment: Segment, rivalry: Rivalry) {
+  return segment.participantIds.some((id) => rivalry.participantIds.includes(id));
+}
+
+function getRivalryParticipants(rivalry: Rivalry, wrestlers: Wrestler[]) {
+  return rivalry.participantIds
+    .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
+    .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
+}
+
+function getHottestRivalry(rivalries: Rivalry[]) {
+  return [...rivalries].sort((a, b) => b.heat - a.heat)[0];
+}
+
+function getCoolingRivalry(rivalries: Rivalry[]) {
+  return rivalries.find((rivalry) => rivalry.status === "stale") ?? rivalries.find((rivalry) => rivalry.status === "cooling");
+}
+
+function hasDuplicateRivalry(rivalries: Rivalry[], wrestlerAId: string, wrestlerBId: string) {
+  const pair = [wrestlerAId, wrestlerBId].sort().join("|");
+  return rivalries.some((rivalry) => [...rivalry.participantIds].sort().join("|") === pair);
+}
+
+function formatRivalryStatus(status: Rivalry["status"]) {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function formatRivalryStakes(stakes: RivalryStakes) {
+  return stakes.charAt(0).toUpperCase() + stakes.slice(1);
+}
+
+function getInitialRivalryHeat(wrestlerA: Wrestler, wrestlerB: Wrestler) {
+  return Math.round((wrestlerA.popularity + wrestlerB.popularity + wrestlerA.momentum + wrestlerB.momentum) / 4);
+}
+
+function getShowTypeLabel(showType: ShowType) {
+  return showType === "ple" ? "PLE" : "TV";
+}
+
+function getNextPle(calendar: CalendarWeek[], currentWeek: number) {
+  return calendar.find((week) => week.showType === "ple" && week.weekNumber >= currentWeek && !week.completed);
+}
+
+function getWeeksUntilPle(nextPle: CalendarWeek | undefined, currentWeek: number) {
+  if (!nextPle) {
+    return 0;
+  }
+
+  return Math.max(0, nextPle.weekNumber - currentWeek);
+}
+
+function getBestShow(showHistory: ShowResult[], seasonNumber?: number) {
+  const results = seasonNumber ? showHistory.filter((result) => result.seasonNumber === seasonNumber) : showHistory;
+  return results.reduce<ShowResult | undefined>((best, result) => (!best || result.totalScore > best.totalScore ? result : best), undefined);
+}
+
 function buildBroadcastRecap(result: ShowResult) {
   const bestSegment = getBestSegment(result);
   const bestNames = bestSegment.participantNames.join(" / ");
   const titleFallout = result.titleNotes?.length ? ` Title fallout: ${result.titleNotes.join(" ")}` : "";
+  const rivalryFallout = result.rivalryNotes?.length ? ` Story movement: ${result.rivalryNotes[0]}` : "";
+  const showFrame =
+    result.showType === "ple"
+      ? `${result.showName} was a major event for ${result.brandName}`
+      : `${result.brandName} posted a ${result.totalScore} (${getShowGrade(result.totalScore)})`;
 
-  return `${result.brandName} posted a ${result.totalScore} (${getShowGrade(result.totalScore)}) in Week ${result.week}, with ${bestNames} delivering the strongest ${bestSegment.type.toLowerCase()} of the night at ${bestSegment.score}. ${result.biggestMomentumGain.name} gained the most momentum, while ${result.biggestFatigueIncrease.name} took the biggest fatigue hit.${titleFallout}`;
+  return `${showFrame} in Week ${result.week}, with ${bestNames} delivering the strongest ${bestSegment.type.toLowerCase()} of the night at ${bestSegment.score}. ${result.biggestMomentumGain.name} gained the most momentum, while ${result.biggestFatigueIncrease.name} took the biggest fatigue hit.${titleFallout}${rivalryFallout}`;
 }
 
 function saveSnapshot(game: GameState, screen: SavedGameState["screen"]) {
@@ -96,6 +181,9 @@ function isSavedGameState(value: unknown): value is SavedGameState {
       saved.screen === "booking" ||
       saved.screen === "roster" ||
       saved.screen === "championships" ||
+      saved.screen === "rivalries" ||
+      saved.screen === "calendar" ||
+      saved.screen === "seasonReview" ||
       saved.screen === "results") &&
     Boolean(game) &&
     typeof game?.currentWeek === "number" &&
@@ -127,6 +215,15 @@ function loadSavedGame() {
         Array.isArray(savedState.game.championships) && savedState.game.championships.length
           ? savedState.game.championships
           : createDefaultChampionships(),
+      rivalries:
+        Array.isArray(savedState.game.rivalries) && savedState.game.rivalries.length
+          ? savedState.game.rivalries
+          : createDefaultRivalries(),
+      seasonNumber: savedState.game.seasonNumber ?? 1,
+      calendar:
+        Array.isArray(savedState.game.calendar) && savedState.game.calendar.length
+          ? savedState.game.calendar
+          : createSeasonCalendar(),
     },
   };
 }
@@ -181,7 +278,7 @@ function App() {
 
   function addSegment(type: SegmentType) {
     setGame((current) => {
-      if (!current || current.currentShow.length >= 4) {
+      if (!current || current.currentShow.length >= getShowSegmentLimit(current)) {
         return current;
       }
 
@@ -232,6 +329,35 @@ function App() {
     });
   }
 
+  function setSegmentRivalry(segmentId: string, rivalryId: string) {
+    setGame((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const updatedGame = {
+        ...current,
+        currentShow: current.currentShow.map((segment) => {
+          if (segment.id !== segmentId) {
+            return segment;
+          }
+
+          const rivalry = current.rivalries.find((activeRivalry) => activeRivalry.id === rivalryId);
+
+          if (!rivalryId || !rivalry || !canSegmentAttachRivalry(segment, rivalry)) {
+            return { ...segment, rivalryId: undefined };
+          }
+
+          return { ...segment, rivalryId };
+        }),
+      };
+
+      saveSnapshot(updatedGame, "booking");
+      setSavedGame({ game: updatedGame, screen: "booking" });
+      return updatedGame;
+    });
+  }
+
   function removeSegment(id: string) {
     setGame((current) => {
       if (!current) {
@@ -266,13 +392,21 @@ function App() {
               ? [...segment.participantIds, wrestlerId]
               : segment.participantIds;
 
-          const updatedSegment = { ...segment, participantIds };
+          let updatedSegment = { ...segment, participantIds };
           const championship = updatedSegment.championshipId
             ? current.championships.find((title) => title.id === updatedSegment.championshipId)
             : undefined;
 
           if (championship && !canSegmentContestChampionship(updatedSegment, championship)) {
-            return { ...updatedSegment, championshipId: undefined };
+            updatedSegment = { ...updatedSegment, championshipId: undefined };
+          }
+
+          const rivalry = updatedSegment.rivalryId
+            ? current.rivalries.find((activeRivalry) => activeRivalry.id === updatedSegment.rivalryId)
+            : undefined;
+
+          if (rivalry && !canSegmentAttachRivalry(updatedSegment, rivalry)) {
+            updatedSegment = { ...updatedSegment, rivalryId: undefined };
           }
 
           return updatedSegment;
@@ -304,12 +438,85 @@ function App() {
       }
 
       const updatedGame = advanceGameWeek(current);
+      const nextScreen = current.currentWeek >= 12 ? "seasonReview" : "dashboard";
 
+      saveSnapshot(updatedGame, nextScreen);
+      setSavedGame({ game: updatedGame, screen: nextScreen });
+      return updatedGame;
+    });
+    setScreen(game?.currentWeek === 12 ? "seasonReview" : "dashboard");
+  }
+
+  function handleStartNextSeason() {
+    setGame((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const updatedGame = startNextSeason(current);
       saveSnapshot(updatedGame, "dashboard");
       setSavedGame({ game: updatedGame, screen: "dashboard" });
       return updatedGame;
     });
     setScreen("dashboard");
+  }
+
+  function createRivalry(wrestlerAId: string, wrestlerBId: string, stakes: RivalryStakes) {
+    setGame((current) => {
+      if (!current || wrestlerAId === wrestlerBId || hasDuplicateRivalry(current.rivalries, wrestlerAId, wrestlerBId)) {
+        return current;
+      }
+
+      const wrestlerA = current.wrestlers.find((wrestler) => wrestler.id === wrestlerAId);
+      const wrestlerB = current.wrestlers.find((wrestler) => wrestler.id === wrestlerBId);
+
+      if (!wrestlerA || !wrestlerB) {
+        return current;
+      }
+
+      const heat = getInitialRivalryHeat(wrestlerA, wrestlerB);
+      const updatedGame = {
+        ...current,
+        rivalries: [
+          ...current.rivalries,
+          {
+            id: `rivalry-${Date.now()}`,
+            name: `${wrestlerA.name} vs ${wrestlerB.name}`,
+            participantIds: [wrestlerAId, wrestlerBId],
+            heat,
+            freshness: 80,
+            weeksActive: 1,
+            lastAdvancedWeek: 0,
+            status: getRivalryStatus(heat, 80),
+            stakes,
+          },
+        ],
+      };
+
+      saveSnapshot(updatedGame, "rivalries");
+      setSavedGame({ game: updatedGame, screen: "rivalries" });
+      return updatedGame;
+    });
+  }
+
+  function endRivalry(rivalryId: string) {
+    setGame((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const updatedGame = {
+        ...current,
+        rivalries: current.rivalries.filter((rivalry) => rivalry.id !== rivalryId),
+        currentShow: current.currentShow.map((segment) =>
+          segment.rivalryId === rivalryId ? { ...segment, rivalryId: undefined } : segment,
+        ),
+      };
+
+      saveSnapshot(updatedGame, "rivalries");
+      setSavedGame({ game: updatedGame, screen: "rivalries" });
+      return updatedGame;
+    });
   }
 
   if (screen === "title" || !game) {
@@ -326,6 +533,7 @@ function App() {
         onRemoveSegment={removeSegment}
         onRunShow={handleRunShow}
         onSetSegmentChampionship={setSegmentChampionship}
+        onSetSegmentRivalry={setSegmentRivalry}
         onToggleParticipant={toggleParticipant}
       />
     );
@@ -339,8 +547,28 @@ function App() {
     return <ChampionshipsScreen game={game} latestResult={latestResult} onNavigate={navigateTo} />;
   }
 
+  if (screen === "rivalries") {
+    return (
+      <RivalriesScreen
+        game={game}
+        latestResult={latestResult}
+        onCreateRivalry={createRivalry}
+        onEndRivalry={endRivalry}
+        onNavigate={navigateTo}
+      />
+    );
+  }
+
+  if (screen === "calendar") {
+    return <CalendarScreen game={game} latestResult={latestResult} onNavigate={navigateTo} />;
+  }
+
   if (screen === "results" && latestResult) {
     return <ResultsScreen game={game} result={latestResult} onAdvanceWeek={advanceWeek} onNavigate={navigateTo} />;
+  }
+
+  if (screen === "seasonReview") {
+    return <SeasonReviewScreen game={game} onStartNextSeason={handleStartNextSeason} />;
   }
 
   return (
@@ -416,6 +644,11 @@ function DashboardScreen({
   const nextAction = validSegments >= 2 ? "Run the show when the card feels right." : "Book at least 2 valid segments for this week's broadcast.";
   const topChampionship = [...game.championships].sort((a, b) => b.prestige - a.prestige)[0];
   const topTitleContenders = getTopContenders(topChampionship, game.wrestlers, 2);
+  const hottestRivalry = getHottestRivalry(game.rivalries);
+  const coolingRivalry = getCoolingRivalry(game.rivalries);
+  const currentShow = getCurrentCalendarWeek(game);
+  const nextPle = getNextPle(game.calendar, game.currentWeek);
+  const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
 
   return (
     <main className="app-shell">
@@ -423,9 +656,12 @@ function DashboardScreen({
       <GameNav currentScreen="dashboard" hasResults={Boolean(latestResult)} onNavigate={onNavigate} />
       <section className="dashboard-hero">
         <div>
-          <p className="eyebrow">Week {game.currentWeek} Dashboard</p>
+          <p className="eyebrow">Season {game.seasonNumber} · Week {game.currentWeek} Dashboard</p>
           <h2>{game.brandName}</h2>
-          <p className="lede">The truck is live, the locker room is waiting, and tonight needs a card.</p>
+          <p className="lede">
+            {currentShow.showName} is a {getShowTypeLabel(currentShow.showType)} stop
+            {currentShow.isGoHome ? " and the final broadcast before the next PLE." : " on the road to the next major event."}
+          </p>
         </div>
         <button className="primary-action" onClick={() => onNavigate("booking")}>
           Book Show
@@ -436,7 +672,12 @@ function DashboardScreen({
         <article className="command-panel show-panel">
           <div className="section-heading">
             <p className="eyebrow">This Week's Show</p>
-            <h3>Week {game.currentWeek} Broadcast Card</h3>
+            <h3>{currentShow.showName}</h3>
+          </div>
+          <div className="show-strip">
+            <span>{getShowTypeLabel(currentShow.showType)}</span>
+            {currentShow.isGoHome ? <span>Go-Home</span> : null}
+            {nextPle ? <span>{weeksUntilPle === 0 ? "PLE Week" : `${weeksUntilPle} Week${weeksUntilPle === 1 ? "" : "s"} To ${nextPle.showName}`}</span> : null}
           </div>
           {game.currentShow.length ? (
             <div className="mini-card-list">
@@ -483,6 +724,25 @@ function DashboardScreen({
         <Metric label="Top Momentum" value={`${topMomentumTalent.momentum}`} detail={topMomentumTalent.name} />
       </section>
 
+      <section className={`command-panel calendar-spotlight ${currentShow.showType === "ple" ? "ple-panel" : ""}`}>
+        <div className="section-heading">
+          <p className="eyebrow">Road To PLE</p>
+          <h3>{nextPle ? nextPle.showName : "Season Complete"}</h3>
+        </div>
+        <div className="spotlight-grid">
+          <Metric label="Current Show" value={currentShow.showName} detail={getShowTypeLabel(currentShow.showType)} />
+          <Metric
+            label="Next PLE"
+            value={nextPle ? nextPle.showName : "None"}
+            detail={nextPle ? `${weeksUntilPle} week${weeksUntilPle === 1 ? "" : "s"} away` : "Finish season review"}
+          />
+          <Metric label="Go-Home" value={currentShow.isGoHome ? "Tonight" : "No"} detail={currentShow.isGoHome ? "Final push before PLE" : "Build the road"} />
+        </div>
+        <button className="secondary-action" onClick={() => onNavigate("calendar")}>
+          View Calendar
+        </button>
+      </section>
+
       <section className="command-panel championship-spotlight">
         <div className="section-heading">
           <p className="eyebrow">Championship Spotlight</p>
@@ -495,6 +755,29 @@ function DashboardScreen({
         </div>
         <button className="secondary-action" onClick={() => onNavigate("championships")}>
           View Championships
+        </button>
+      </section>
+
+      <section className="command-panel rivalry-spotlight">
+        <div className="section-heading">
+          <p className="eyebrow">Rivalry Spotlight</p>
+          <h3>{hottestRivalry ? hottestRivalry.name : "No Active Rivalries"}</h3>
+        </div>
+        {hottestRivalry ? (
+          <div className="spotlight-grid">
+            <Metric label="Heat" value={`${hottestRivalry.heat}`} detail={formatRivalryStatus(hottestRivalry.status)} />
+            <Metric label="Stakes" value={formatRivalryStakes(hottestRivalry.stakes)} />
+            <Metric
+              label="Warning"
+              value={coolingRivalry ? coolingRivalry.name : "Stories Holding"}
+              detail={coolingRivalry ? formatRivalryStatus(coolingRivalry.status) : "No cooling angles"}
+            />
+          </div>
+        ) : (
+          <div className="empty-state compact">No rivalries are active. Start one to give weekly TV more story context.</div>
+        )}
+        <button className="secondary-action" onClick={() => onNavigate("rivalries")}>
+          View Rivalries
         </button>
       </section>
 
@@ -574,6 +857,7 @@ function BookingScreen({
   onRemoveSegment,
   onRunShow,
   onSetSegmentChampionship,
+  onSetSegmentRivalry,
   onToggleParticipant,
 }: {
   game: GameState;
@@ -583,10 +867,13 @@ function BookingScreen({
   onRemoveSegment: (id: string) => void;
   onRunShow: () => void;
   onSetSegmentChampionship: (segmentId: string, championshipId: string) => void;
+  onSetSegmentRivalry: (segmentId: string, rivalryId: string) => void;
   onToggleParticipant: (segmentId: string, wrestlerId: string) => void;
 }) {
   const validSegments = game.currentShow.filter(isValidSegment).length;
   const canRunShow = validSegments >= 2;
+  const calendarWeek = getCurrentCalendarWeek(game);
+  const segmentLimit = getShowSegmentLimit(game);
   const bookedCounts = game.currentShow.reduce<Record<string, number>>((counts, segment) => {
     segment.participantIds.forEach((id) => {
       counts[id] = (counts[id] ?? 0) + 1;
@@ -598,13 +885,22 @@ function BookingScreen({
     <main className="app-shell">
       <Header game={game} />
       <GameNav currentScreen="booking" hasResults={Boolean(game.showHistory.length)} onNavigate={onNavigate} />
-      <section className="booking-top">
+      <section className={`booking-top ${calendarWeek.showType === "ple" ? "ple-panel" : ""}`}>
         <button className="secondary-action" onClick={onBack}>
           Dashboard
         </button>
         <div>
-          <p className="eyebrow">Week {game.currentWeek}</p>
-          <h2>Book Show</h2>
+          <p className="eyebrow">
+            Season {game.seasonNumber} · Week {game.currentWeek} · {getShowTypeLabel(calendarWeek.showType)}
+          </p>
+          <h2>{calendarWeek.showName}</h2>
+          <p className="lede">
+            {calendarWeek.showType === "ple"
+              ? "Major-event card. Six segments are available, and every title or rivalry beat lands louder."
+              : calendarWeek.isGoHome
+                ? "Go-home broadcast. Set the final tone before the next PLE."
+                : "TV production card. Build stories and protect the locker room."}
+          </p>
         </div>
         <button className="primary-action" disabled={!canRunShow} onClick={onRunShow}>
           Run Show
@@ -612,16 +908,21 @@ function BookingScreen({
       </section>
 
       <section className="booking-controls" aria-label="Booking controls">
-        <button disabled={game.currentShow.length >= 4} onClick={() => onAddSegment("Match")}>
+        <button disabled={game.currentShow.length >= segmentLimit} onClick={() => onAddSegment("Match")}>
           Add Match
         </button>
-        <button disabled={game.currentShow.length >= 4} onClick={() => onAddSegment("Promo")}>
+        <button disabled={game.currentShow.length >= segmentLimit} onClick={() => onAddSegment("Promo")}>
           Add Promo
         </button>
         <button className="secondary-action" onClick={() => onNavigate("roster")}>
           View Roster
         </button>
-        <span>{validSegments} valid segments</span>
+        <button className="secondary-action" onClick={() => onNavigate("rivalries")}>
+          View Rivalries
+        </button>
+        <span>
+          {validSegments} valid · {game.currentShow.length}/{segmentLimit} segments
+        </span>
       </section>
 
       <section className="segment-list" aria-label="Current show segments">
@@ -649,6 +950,11 @@ function BookingScreen({
                 onSetSegmentChampionship={onSetSegmentChampionship}
                 segment={segment}
                 wrestlers={game.wrestlers}
+              />
+              <RivalryControl
+                onSetSegmentRivalry={onSetSegmentRivalry}
+                rivalries={game.rivalries}
+                segment={segment}
               />
 
               <div className="participant-grid">
@@ -799,6 +1105,202 @@ function ChampionshipsScreen({
   );
 }
 
+function RivalriesScreen({
+  game,
+  latestResult,
+  onCreateRivalry,
+  onEndRivalry,
+  onNavigate,
+}: {
+  game: GameState;
+  latestResult?: ShowResult;
+  onCreateRivalry: (wrestlerAId: string, wrestlerBId: string, stakes: RivalryStakes) => void;
+  onEndRivalry: (rivalryId: string) => void;
+  onNavigate: (screen: Exclude<Screen, "title">) => void;
+}) {
+  const [wrestlerAId, setWrestlerAId] = useState(game.wrestlers[0]?.id ?? "");
+  const [wrestlerBId, setWrestlerBId] = useState(game.wrestlers[1]?.id ?? "");
+  const [stakes, setStakes] = useState<RivalryStakes>("personal");
+  const isDuplicate = hasDuplicateRivalry(game.rivalries, wrestlerAId, wrestlerBId);
+  const canCreate = wrestlerAId && wrestlerBId && wrestlerAId !== wrestlerBId && !isDuplicate;
+
+  function handleCreateRivalry() {
+    if (!canCreate) {
+      return;
+    }
+
+    onCreateRivalry(wrestlerAId, wrestlerBId, stakes);
+  }
+
+  return (
+    <main className="app-shell">
+      <Header game={game} />
+      <GameNav currentScreen="rivalries" hasResults={Boolean(latestResult)} onNavigate={onNavigate} />
+      <section className="dashboard-hero">
+        <div>
+          <p className="eyebrow">Story Room</p>
+          <h2>Rivalries</h2>
+          <p className="lede">Track the stories giving TV some bite. Hot angles deserve time, cooling angles need care, and stale ones need a clean exit.</p>
+        </div>
+        <button className="primary-action" onClick={() => onNavigate("booking")}>
+          Book Show
+        </button>
+      </section>
+
+      <section className="rivalry-form" aria-label="Create rivalry">
+        <div className="section-heading">
+          <p className="eyebrow">Start Rivalry</p>
+          <h3>Book The Spark</h3>
+        </div>
+        <label>
+          Wrestler A
+          <select value={wrestlerAId} onChange={(event) => setWrestlerAId(event.target.value)}>
+            {game.wrestlers.map((wrestler) => (
+              <option key={wrestler.id} value={wrestler.id}>
+                {wrestler.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Wrestler B
+          <select value={wrestlerBId} onChange={(event) => setWrestlerBId(event.target.value)}>
+            {game.wrestlers.map((wrestler) => (
+              <option key={wrestler.id} value={wrestler.id}>
+                {wrestler.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Stakes
+          <select value={stakes} onChange={(event) => setStakes(event.target.value as RivalryStakes)}>
+            {(["personal", "title", "respect", "revenge"] as RivalryStakes[]).map((option) => (
+              <option key={option} value={option}>
+                {formatRivalryStakes(option)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button className="primary-action" disabled={!canCreate} onClick={handleCreateRivalry}>
+          Create Rivalry
+        </button>
+        {isDuplicate ? <p className="form-warning">Duplicate active rivalry already exists.</p> : null}
+      </section>
+
+      <section className="rivalry-grid" aria-label="Active rivalries">
+        {game.rivalries.length ? (
+          game.rivalries.map((rivalry) => (
+            <article className={`rivalry-card status-${rivalry.status}`} key={rivalry.id}>
+              <div className="rivalry-head">
+                <div>
+                  <p className="eyebrow">{formatRivalryStakes(rivalry.stakes)} Stakes</p>
+                  <h3>{rivalry.name}</h3>
+                </div>
+                <strong>{formatRivalryStatus(rivalry.status)}</strong>
+              </div>
+              <div className="spotlight-grid">
+                <Metric label="Participants" value={getRivalryParticipants(rivalry, game.wrestlers).map((wrestler) => wrestler.name).join(" / ")} />
+                <Metric label="Heat" value={`${rivalry.heat}`} />
+                <Metric label="Freshness" value={`${rivalry.freshness}`} />
+                <Metric label="Weeks Active" value={`${rivalry.weeksActive}`} />
+                <Metric label="Last Advanced" value={rivalry.lastAdvancedWeek ? `Week ${rivalry.lastAdvancedWeek}` : "Not On TV Yet"} />
+                <Metric label="Stakes" value={formatRivalryStakes(rivalry.stakes)} />
+              </div>
+              <button className="danger-action" onClick={() => onEndRivalry(rivalry.id)}>
+                End Rivalry
+              </button>
+            </article>
+          ))
+        ) : (
+          <div className="empty-state">No rivalries are active. Start a two-wrestler story to give the next broadcast more context.</div>
+        )}
+      </section>
+    </main>
+  );
+}
+
+function CalendarScreen({
+  game,
+  latestResult,
+  onNavigate,
+}: {
+  game: GameState;
+  latestResult?: ShowResult;
+  onNavigate: (screen: Exclude<Screen, "title">) => void;
+}) {
+  const currentShow = getCurrentCalendarWeek(game);
+  const nextPle = getNextPle(game.calendar, game.currentWeek);
+  const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
+
+  function getWeekResult(week: CalendarWeek) {
+    return game.showHistory.find(
+      (result) =>
+        result.id === week.resultId ||
+        (result.seasonNumber === game.seasonNumber && result.week === week.weekNumber && result.showName === week.showName),
+    );
+  }
+
+  return (
+    <main className="app-shell">
+      <Header game={game} />
+      <GameNav currentScreen="calendar" hasResults={Boolean(latestResult)} onNavigate={onNavigate} />
+      <section className="dashboard-hero">
+        <div>
+          <p className="eyebrow">Season {game.seasonNumber} Calendar</p>
+          <h2>Road To PLE</h2>
+          <p className="lede">
+            Week {game.currentWeek} is {currentShow.showName}.{" "}
+            {nextPle
+              ? `${nextPle.showName} is ${weeksUntilPle === 0 ? "tonight" : `${weeksUntilPle} week${weeksUntilPle === 1 ? "" : "s"} away`}.`
+              : "The season calendar is complete."}
+          </p>
+        </div>
+        <button className="primary-action" onClick={() => onNavigate("booking")}>
+          Book Show
+        </button>
+      </section>
+
+      <section className="calendar-list" aria-label="Season calendar">
+        {game.calendar.map((week) => {
+          const result = getWeekResult(week);
+          const isCurrent = week.weekNumber === game.currentWeek && !week.completed;
+          const status = week.completed ? "Completed" : isCurrent ? "Current" : "Upcoming";
+
+          return (
+            <article className={`calendar-week ${week.showType} ${isCurrent ? "current" : ""} ${week.completed ? "completed" : ""}`} key={week.weekNumber}>
+              <div>
+                <p className="eyebrow">
+                  Week {week.weekNumber} · {status}
+                </p>
+                <h3>{week.showName}</h3>
+                <div className="show-strip">
+                  <span>{getShowTypeLabel(week.showType)}</span>
+                  {week.isGoHome ? <span>Go-Home</span> : null}
+                  {week.weekNumber === 12 ? <span>Season Finale</span> : null}
+                </div>
+              </div>
+              <div className="calendar-result">
+                {result ? (
+                  <>
+                    <strong>{result.totalScore}</strong>
+                    <span>Grade {getShowGrade(result.totalScore)}</span>
+                  </>
+                ) : (
+                  <>
+                    <strong>{week.completed ? "No Result" : "On Deck"}</strong>
+                    <span>{week.showType === "ple" ? "Major event" : "Weekly TV"}</span>
+                  </>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </section>
+    </main>
+  );
+}
+
 function ResultsScreen({
   game,
   result,
@@ -818,14 +1320,16 @@ function ResultsScreen({
       <GameNav currentScreen="results" hasResults onNavigate={onNavigate} />
       <section className="results-hero">
         <div>
-          <p className="eyebrow">Week {result.week} Results</p>
+          <p className="eyebrow">
+            Season {result.seasonNumber} · Week {result.week} · {getShowTypeLabel(result.showType)}
+          </p>
           <h2>
             {result.totalScore} <span>{getShowGrade(result.totalScore)}</span>
           </h2>
           <p className="lede">{buildBroadcastRecap(result)}</p>
         </div>
         <button className="primary-action" onClick={onAdvanceWeek}>
-          Advance Week
+          {result.week >= 12 ? "Season Review" : "Advance Week"}
         </button>
       </section>
 
@@ -848,6 +1352,18 @@ function ResultsScreen({
         </section>
       ) : null}
 
+      {result.rivalryNotes?.length ? (
+        <section className="story-fallout" aria-label="Rivalry fallout">
+          <div className="section-heading">
+            <p className="eyebrow">Story Fallout</p>
+            <h3>Rivalry Movement</h3>
+          </div>
+          {result.rivalryNotes.map((note) => (
+            <p key={note}>{note}</p>
+          ))}
+        </section>
+      ) : null}
+
       <section className="results-list" aria-label="Segment results">
         <div className="section-heading">
           <p className="eyebrow">Broadcast Breakdown</p>
@@ -864,8 +1380,78 @@ function ResultsScreen({
                 Momentum +{getResultChange(segment.momentumChanges)} · Fatigue +{getResultChange(segment.fatigueChanges)}
               </p>
               {segment.titleNote ? <p className="title-note">{segment.titleNote}</p> : null}
+              {segment.rivalryNote ? <p className="rivalry-note">{segment.rivalryNote}</p> : null}
             </div>
             <strong>{segment.score}</strong>
+          </article>
+        ))}
+      </section>
+    </main>
+  );
+}
+
+function SeasonReviewScreen({
+  game,
+  onStartNextSeason,
+}: {
+  game: GameState;
+  onStartNextSeason: () => void;
+}) {
+  const bestShow = getBestShow(game.showHistory, game.seasonNumber);
+  const topMomentum = [...game.wrestlers].sort((a, b) => b.momentum - a.momentum)[0];
+  const mostFatigued = [...game.wrestlers].sort((a, b) => b.fatigue - a.fatigue)[0];
+  const hottestRivalry = getHottestRivalry(game.rivalries);
+
+  return (
+    <main className="app-shell">
+      <Header game={game} />
+      <section className="results-hero season-review-hero">
+        <div>
+          <p className="eyebrow">Season {game.seasonNumber} Review</p>
+          <h2>Final Bell</h2>
+          <p className="lede">The 12-week road is complete. The roster, titles, rivalries, money, and histories carry forward into the next season.</p>
+        </div>
+        <button className="primary-action" onClick={onStartNextSeason}>
+          Start Next Season
+        </button>
+      </section>
+
+      <section className="status-grid" aria-label="Season review">
+        <Metric label="Final Money" value={`$${game.money.toLocaleString()}`} />
+        <Metric label="Best Show" value={bestShow ? bestShow.showName : "No Shows"} detail={bestShow ? `${bestShow.totalScore} (${getShowGrade(bestShow.totalScore)})` : undefined} />
+        <Metric label="Top Momentum" value={topMomentum.name} detail={`${topMomentum.momentum}`} />
+        <Metric label="Most Fatigued" value={mostFatigued.name} detail={`${mostFatigued.fatigue}`} />
+      </section>
+
+      <section className="command-panel rivalry-spotlight">
+        <div className="section-heading">
+          <p className="eyebrow">Hottest Rivalry</p>
+          <h3>{hottestRivalry ? hottestRivalry.name : "No Active Rivalries"}</h3>
+        </div>
+        {hottestRivalry ? (
+          <div className="spotlight-grid">
+            <Metric label="Heat" value={`${hottestRivalry.heat}`} />
+            <Metric label="Freshness" value={`${hottestRivalry.freshness}`} />
+            <Metric label="Status" value={formatRivalryStatus(hottestRivalry.status)} />
+          </div>
+        ) : null}
+      </section>
+
+      <section className="championship-grid" aria-label="Current champions">
+        {game.championships.map((championship) => (
+          <article className="championship-card" key={championship.id}>
+            <div className="championship-head">
+              <div>
+                <p className="eyebrow">{championship.division}</p>
+                <h3>{championship.name}</h3>
+              </div>
+              <strong>{getWrestlerNames(championship.championIds, game.wrestlers)}</strong>
+            </div>
+            <div className="spotlight-grid">
+              <Metric label="Prestige" value={`${championship.prestige}`} />
+              <Metric label="Defenses" value={`${championship.defenses}`} />
+              <Metric label="Reign" value={`${getReignLength(championship, game.currentWeek)} Week${getReignLength(championship, game.currentWeek) === 1 ? "" : "s"}`} />
+            </div>
           </article>
         ))}
       </section>
@@ -947,6 +1533,50 @@ function TitleMatchControl({
   );
 }
 
+function RivalryControl({
+  onSetSegmentRivalry,
+  rivalries,
+  segment,
+}: {
+  onSetSegmentRivalry: (segmentId: string, rivalryId: string) => void;
+  rivalries: Rivalry[];
+  segment: Segment;
+}) {
+  const eligibleRivalries = rivalries.filter((rivalry) => canSegmentAttachRivalry(segment, rivalry));
+  const selectedRivalry = rivalries.find((rivalry) => rivalry.id === segment.rivalryId);
+
+  return (
+    <div className="rivalry-control">
+      <div>
+        <span>Rivalry Context</span>
+        <strong>
+          {selectedRivalry
+            ? `${selectedRivalry.name} attached. Heat ${selectedRivalry.heat}, ${formatRivalryStatus(selectedRivalry.status)}.`
+            : eligibleRivalries.length
+              ? "Attach an active rivalry when this segment advances a story."
+              : "Select a rivalry participant to attach story context."}
+        </strong>
+      </div>
+      {eligibleRivalries.length ? (
+        <div className="title-buttons">
+          <button className={!segment.rivalryId ? "active-filter" : ""} onClick={() => onSetSegmentRivalry(segment.id, "")}>
+            No Rivalry
+          </button>
+          {eligibleRivalries.map((rivalry) => (
+            <button
+              className={segment.rivalryId === rivalry.id ? "active-filter" : ""}
+              key={rivalry.id}
+              onClick={() => onSetSegmentRivalry(segment.id, rivalry.id)}
+            >
+              {rivalry.name}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function GameNav({
   currentScreen,
   hasResults,
@@ -969,6 +1599,12 @@ function GameNav({
       </button>
       <button className={currentScreen === "championships" ? "active-filter" : ""} onClick={() => onNavigate("championships")}>
         Championships
+      </button>
+      <button className={currentScreen === "rivalries" ? "active-filter" : ""} onClick={() => onNavigate("rivalries")}>
+        Rivalries
+      </button>
+      <button className={currentScreen === "calendar" ? "active-filter" : ""} onClick={() => onNavigate("calendar")}>
+        Calendar
       </button>
       {hasResults ? (
         <button className={currentScreen === "results" ? "active-filter" : ""} onClick={() => onNavigate("results")}>
@@ -1037,7 +1673,9 @@ function Header({ game }: { game: GameState }) {
     <header className="top-bar">
       <strong>Next GM</strong>
       <span>{game.brandName}</span>
-      <span>Week {game.currentWeek}</span>
+      <span>
+        Season {game.seasonNumber} · Week {game.currentWeek}
+      </span>
     </header>
   );
 }

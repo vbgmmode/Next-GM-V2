@@ -1,12 +1,26 @@
 import type { GameState } from "./types";
 import { getRivalryStatus } from "./scoring";
+import { createSeasonCalendar } from "./seed";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
 export function advanceGameWeek(game: GameState): GameState {
+  const latestResult = game.showHistory[game.showHistory.length - 1];
+  const completedCalendar = game.calendar.map((week) =>
+    week.weekNumber === game.currentWeek
+      ? {
+          ...week,
+          completed: true,
+          resultId: latestResult?.id,
+        }
+      : week,
+  );
+  const isSeasonFinaleComplete = game.currentWeek >= 12;
+
   return {
     ...game,
-    currentWeek: game.currentWeek + 1,
+    currentWeek: isSeasonFinaleComplete ? game.currentWeek : game.currentWeek + 1,
+    calendar: completedCalendar,
     currentShow: [],
     wrestlers: game.wrestlers.map((wrestler) => ({
       ...wrestler,
@@ -26,5 +40,15 @@ export function advanceGameWeek(game: GameState): GameState {
         status: getRivalryStatus(heat, freshness),
       };
     }),
+  };
+}
+
+export function startNextSeason(game: GameState): GameState {
+  return {
+    ...game,
+    seasonNumber: game.seasonNumber + 1,
+    currentWeek: 1,
+    calendar: createSeasonCalendar(),
+    currentShow: [],
   };
 }

@@ -1,4 +1,4 @@
-import type { Championship, GameState, Rivalry, RivalryStatus, Segment, ShowResult, Wrestler } from "./types";
+import type { CalendarWeek, Championship, GameState, Rivalry, RivalryStatus, Segment, ShowResult, Wrestler } from "./types";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
@@ -24,8 +24,22 @@ export function scoreSegment(segment: Segment, wrestlers: Wrestler[]) {
   return Math.round(clamp(total / participants.length + chemistryBonus));
 }
 
+export function getCurrentCalendarWeek(game: GameState): CalendarWeek {
+  return (
+    game.calendar.find((week) => week.weekNumber === game.currentWeek) ?? {
+      weekNumber: game.currentWeek,
+      showName: `Week ${game.currentWeek} Broadcast`,
+      showType: "tv",
+      isGoHome: false,
+      completed: false,
+    }
+  );
+}
+
 export function runShow(game: GameState): { game: GameState; result: ShowResult } {
   const validSegments = game.currentShow.filter(isValidSegment);
+  const calendarWeek = getCurrentCalendarWeek(game);
+  const isPle = calendarWeek.showType === "ple";
   const momentumTotals: Record<string, number> = {};
   const fatigueTotals: Record<string, number> = {};
   const titleNotes: string[] = [];
@@ -34,13 +48,13 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
   const updatedRivalries = game.rivalries.map((rivalry) => ({ ...rivalry, participantIds: [...rivalry.participantIds] }));
 
   const segmentResults = validSegments.map((segment) => {
-    const score = scoreSegment(segment, game.wrestlers);
-    const momentumGain = score >= 80 ? 6 : score >= 65 ? 4 : score >= 50 ? 2 : 1;
-    const fatigueGain = segment.type === "Match" ? 8 : 3;
+    const score = clamp(scoreSegment(segment, game.wrestlers) + (isPle ? 5 : 0));
+    const momentumGain = (score >= 80 ? 6 : score >= 65 ? 4 : score >= 50 ? 2 : 1) + (isPle ? 1 : 0);
+    const fatigueGain = (segment.type === "Match" ? 8 : 3) + (isPle ? 2 : 0);
     const momentumChanges: Record<string, number> = {};
     const fatigueChanges: Record<string, number> = {};
-    const titleNote = resolveTitleMatch(segment, updatedChampionships, game.wrestlers, game.currentWeek);
-    const rivalryNote = resolveRivalrySegment(segment, updatedRivalries, score, game.currentWeek);
+    const titleNote = resolveTitleMatch(segment, updatedChampionships, game.wrestlers, game.currentWeek, isPle);
+    const rivalryNote = resolveRivalrySegment(segment, updatedRivalries, score, game.currentWeek, isPle);
 
     segment.participantIds.forEach((id) => {
       momentumChanges[id] = momentumGain;
@@ -72,9 +86,14 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
   const totalScore = Math.round(segmentResults.reduce((sum, result) => sum + result.score, 0) / segmentResults.length);
   const biggestMomentumGain = getBiggestChange(momentumTotals, game.wrestlers);
   const biggestFatigueIncrease = getBiggestChange(fatigueTotals, game.wrestlers);
+  const id = `season-${game.seasonNumber}-week-${game.currentWeek}`;
   const result: ShowResult = {
+    id,
+    seasonNumber: game.seasonNumber,
     week: game.currentWeek,
     brandName: game.brandName,
+    showName: calendarWeek.showName,
+    showType: calendarWeek.showType,
     totalScore,
     segmentResults,
     biggestMomentumGain,
@@ -118,7 +137,7 @@ export function getRivalryStatus(heat: number, freshness: number): RivalryStatus
   return "steady";
 }
 
-function resolveRivalrySegment(segment: Segment, rivalries: Rivalry[], score: number, currentWeek: number) {
+function resolveRivalrySegment(segment: Segment, rivalries: Rivalry[], score: number, currentWeek: number, isPle: boolean) {
   if (!segment.rivalryId) {
     return undefined;
   }
@@ -129,7 +148,7 @@ function resolveRivalrySegment(segment: Segment, rivalries: Rivalry[], score: nu
     return undefined;
   }
 
-  const heatDelta = score >= 75 ? 8 : score >= 60 ? 5 : -3;
+  const heatDelta = (score >= 75 ? 8 : score >= 60 ? 5 : -3) + (isPle ? 4 : 0);
   const freshnessDelta = rivalry.lastAdvancedWeek === currentWeek ? -12 : -6;
   rivalry.heat = clamp(rivalry.heat + heatDelta);
   rivalry.freshness = clamp(rivalry.freshness + freshnessDelta);
@@ -137,21 +156,21 @@ function resolveRivalrySegment(segment: Segment, rivalries: Rivalry[], score: nu
   rivalry.status = getRivalryStatus(rivalry.heat, rivalry.freshness);
 
   if (rivalry.status === "stale") {
-    return `${rivalry.name} is getting stale after another beat on TV.`;
+    return `${rivalry.name} is getting stale after another beat${isPle ? " on a major stage" : " on TV"}.`;
   }
 
   if (score >= 75) {
-    return `${rivalry.name} gained momentum and feels hotter after a strong segment.`;
+    return `${rivalry.name} gained momentum and feels hotter after a strong${isPle ? " major-event" : ""} segment.`;
   }
 
   if (score >= 60) {
-    return `${rivalry.name} heated up, but the story lost a little freshness.`;
+    return `${rivalry.name} heated up${isPle ? " under the major-event lights" : ""}, but the story lost a little freshness.`;
   }
 
   return `${rivalry.name} cooled after a flat segment.`;
 }
 
-function resolveTitleMatch(segment: Segment, championships: Championship[], wrestlers: Wrestler[], currentWeek: number) {
+function resolveTitleMatch(segment: Segment, championships: Championship[], wrestlers: Wrestler[], currentWeek: number, isPle: boolean) {
   if (!segment.championshipId || segment.type !== "Match" || segment.participantIds.length !== 2) {
     return undefined;
   }
@@ -177,13 +196,13 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
 
   if (winner.id === championId) {
     championship.defenses += 1;
-    return `${champion.name} retained the ${championship.name}.`;
+    return `${champion.name} retained the ${championship.name}${isPle ? " on a major stage" : ""}.`;
   }
 
   championship.championIds = [winner.id];
   championship.reignStartWeek = currentWeek;
   championship.defenses = 0;
-  return `${winner.name} defeated ${champion.name} to win the ${championship.name}.`;
+  return `${winner.name} defeated ${champion.name} to win the ${championship.name}${isPle ? " at a major event" : ""}.`;
 }
 
 function getSegmentWinner(segment: Segment, wrestlers: Wrestler[]) {

@@ -1,4 +1,4 @@
-import type { Championship, GameState, Rivalry, Wrestler } from "./types";
+import type { CalendarWeek, Championship, GameState, Rivalry, Wrestler } from "./types";
 
 export const roster: Wrestler[] = [
   { id: "jax-ransom", name: "Jax Ransom", popularity: 72, momentum: 58, fatigue: 18, morale: 65, ringSkill: 79, promoSkill: 61 },
@@ -56,7 +56,7 @@ export function createDefaultRivalries(): Rivalry[] {
       heat: 68,
       freshness: 78,
       weeksActive: 1,
-      lastAdvancedWeek: 1,
+      lastAdvancedWeek: 0,
       status: "rising",
       stakes: "title",
     },
@@ -67,7 +67,7 @@ export function createDefaultRivalries(): Rivalry[] {
       heat: 61,
       freshness: 72,
       weeksActive: 1,
-      lastAdvancedWeek: 1,
+      lastAdvancedWeek: 0,
       status: "steady",
       stakes: "respect",
     },
@@ -78,21 +78,40 @@ export function createDefaultRivalries(): Rivalry[] {
       heat: 58,
       freshness: 66,
       weeksActive: 1,
-      lastAdvancedWeek: 1,
+      lastAdvancedWeek: 0,
       status: "steady",
       stakes: "personal",
     },
   ];
 }
 
+export function createSeasonCalendar(): CalendarWeek[] {
+  return [
+    { weekNumber: 1, showName: "Neon Harbor TV", showType: "tv", isGoHome: false, completed: false },
+    { weekNumber: 2, showName: "Neon Harbor TV", showType: "tv", isGoHome: false, completed: false },
+    { weekNumber: 3, showName: "Collision Course Go-Home", showType: "tv", isGoHome: true, completed: false },
+    { weekNumber: 4, showName: "Collision Course", showType: "ple", isGoHome: false, completed: false },
+    { weekNumber: 5, showName: "Neon Harbor TV", showType: "tv", isGoHome: false, completed: false },
+    { weekNumber: 6, showName: "Neon Harbor TV", showType: "tv", isGoHome: false, completed: false },
+    { weekNumber: 7, showName: "Heatwave Havoc Go-Home", showType: "tv", isGoHome: true, completed: false },
+    { weekNumber: 8, showName: "Heatwave Havoc", showType: "ple", isGoHome: false, completed: false },
+    { weekNumber: 9, showName: "Neon Harbor TV", showType: "tv", isGoHome: false, completed: false },
+    { weekNumber: 10, showName: "Neon Harbor TV", showType: "tv", isGoHome: false, completed: false },
+    { weekNumber: 11, showName: "Final Bell Go-Home", showType: "tv", isGoHome: true, completed: false },
+    { weekNumber: 12, showName: "Final Bell", showType: "ple", isGoHome: false, completed: false },
+  ];
+}
+
 export function createNewGame(): GameState {
   return {
+    seasonNumber: 1,
     currentWeek: 1,
     brandName: "Neon Harbor Wrestling",
     money: 250000,
     wrestlers: roster.map((wrestler) => ({ ...wrestler })),
     championships: createDefaultChampionships(),
     rivalries: createDefaultRivalries(),
+    calendar: createSeasonCalendar(),
     currentShow: [],
     showHistory: [],
   };

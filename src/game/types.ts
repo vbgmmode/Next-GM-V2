@@ -1,6 +1,17 @@
-export type Screen = "title" | "dashboard" | "booking" | "roster" | "championships" | "rivalries" | "results";
+export type Screen =
+  | "title"
+  | "dashboard"
+  | "booking"
+  | "roster"
+  | "championships"
+  | "rivalries"
+  | "calendar"
+  | "results"
+  | "seasonReview";
 
 export type SegmentType = "Match" | "Promo";
+
+export type ShowType = "tv" | "ple";
 
 export type RivalryStatus = "rising" | "steady" | "cooling" | "stale";
 
@@ -47,6 +58,15 @@ export type Rivalry = {
   stakes: RivalryStakes;
 };
 
+export type CalendarWeek = {
+  weekNumber: number;
+  showName: string;
+  showType: ShowType;
+  isGoHome: boolean;
+  completed: boolean;
+  resultId?: string;
+};
+
 export type SegmentResult = {
   segmentId: string;
   type: SegmentType;
@@ -59,8 +79,12 @@ export type SegmentResult = {
 };
 
 export type ShowResult = {
+  id: string;
+  seasonNumber: number;
   week: number;
   brandName: string;
+  showName: string;
+  showType: ShowType;
   totalScore: number;
   segmentResults: SegmentResult[];
   biggestMomentumGain: {
@@ -76,12 +100,14 @@ export type ShowResult = {
 };
 
 export type GameState = {
+  seasonNumber: number;
   currentWeek: number;
   brandName: string;
   money: number;
   wrestlers: Wrestler[];
   championships: Championship[];
   rivalries: Rivalry[];
+  calendar: CalendarWeek[];
   currentShow: Segment[];
   showHistory: ShowResult[];
 };
