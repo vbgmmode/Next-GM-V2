@@ -20,7 +20,7 @@ import {
   getRivalryStoryline,
   safeRivalryStorylineOptions,
 } from "./game/rivalryCatalog";
-import { createNewGame, createRivalGMAssignments, defaultCareer, draftPool, getStartingBudgetAmount } from "./game/seed";
+import { createNewGame, createRivalBrandUniverse, createRivalGMAssignments, defaultCareer, draftPool, getStartingBudgetAmount } from "./game/seed";
 import {
   getBestSegment,
   getCurrentCalendarWeek,
@@ -44,6 +44,7 @@ import type {
   GMStyle,
   InjuryStatus,
   PressureLabel,
+  RivalBrandState,
   Rivalry,
   RivalryHistoryEvent,
   RivalryStakes,
@@ -520,6 +521,17 @@ function getDraftFinanceNote(readout: DraftFinanceReadout) {
     : "";
 
   return `Projected reserve only; draft picks do not spend money or restrict availability in this build.${missingValueNote}`;
+}
+
+function getRivalUniverseRead(rivalBrands: RivalBrandState[]) {
+  if (!rivalBrands.length) {
+    return "No rival brand chairs are assigned in this career setup.";
+  }
+
+  const rosterCount = rivalBrands.reduce((sum, brand) => sum + brand.rosterWrestlerIds.length, 0);
+  const activityCount = rivalBrands.reduce((sum, brand) => sum + brand.activityHistory.length, 0);
+
+  return `${rivalBrands.length} rival brand${rivalBrands.length === 1 ? "" : "s"} assigned. ${rosterCount} rival roster claim${rosterCount === 1 ? "" : "s"} and ${activityCount} activity beat${activityCount === 1 ? "" : "s"} recorded.`;
 }
 
 function formatDateTime(value: string) {

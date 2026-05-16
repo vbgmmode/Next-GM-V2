@@ -1,5 +1,20 @@
-import type { Championship, GameDifficulty, GameState, GMStyle, LockerRoomFallout, RivalGMAssignment, Rivalry, Screen, Segment, SegmentType, ShowResult, StartingBudgetTier, Wrestler } from "./types";
-import { createDefaultChampionships, createDefaultRivalries, createSeasonCalendar, defaultCareer, isPrototypeBrand } from "./seed";
+import type {
+  Championship,
+  GameDifficulty,
+  GameState,
+  GMStyle,
+  LockerRoomFallout,
+  RivalBrandState,
+  RivalGMAssignment,
+  Rivalry,
+  Screen,
+  Segment,
+  SegmentType,
+  ShowResult,
+  StartingBudgetTier,
+  Wrestler,
+} from "./types";
+import { createDefaultChampionships, createDefaultRivalries, createRivalBrandUniverse, createRivalGMAssignments, createSeasonCalendar, defaultCareer, isPrototypeBrand } from "./seed";
 import { applyChampionshipCatalogDefaults } from "./titleCatalog";
 import { applyRivalryCatalogDefaults } from "./rivalryCatalog";
 
@@ -81,6 +96,47 @@ function normalizeRivalGMAssignments(value: unknown): RivalGMAssignment[] {
   });
 
   return assignments;
+}
+
+function normalizeRivalBrands(value: unknown, fallbackAssignments: RivalGMAssignment[]): RivalBrandState[] {
+  if (!Array.isArray(value) || !value.length) {
+    return createRivalBrandUniverse(fallbackAssignments);
+  }
+
+  const seenBrands = new Set<string>();
+  const rivalBrands: RivalBrandState[] = [];
+
+  value.forEach((item) => {
+    if (!item || typeof item !== "object") {
+      return;
+    }
+
+    const candidate = item as Partial<RivalBrandState>;
+
+    if (!isPrototypeBrand(candidate.brandKey) || typeof candidate.assignedGMName !== "string" || typeof candidate.assignedGMStyle !== "string") {
+      return;
+    }
+
+    if (seenBrands.has(candidate.brandKey)) {
+      return;
+    }
+
+    seenBrands.add(candidate.brandKey);
+    rivalBrands.push({
+      id: typeof candidate.id === "string" && candidate.id.trim() ? candidate.id : `rival-brand-${candidate.brandKey.toLowerCase()}`,
+      brandKey: candidate.brandKey,
+      brandName: typeof candidate.brandName === "string" && candidate.brandName.trim() ? candidate.brandName : candidate.brandKey,
+      assignedGMId: typeof candidate.assignedGMId === "string" && candidate.assignedGMId.trim() ? candidate.assignedGMId : undefined,
+      assignedGMName: candidate.assignedGMName,
+      assignedGMStyle: candidate.assignedGMStyle as GMStyle,
+      roleLabel: typeof candidate.roleLabel === "string" && candidate.roleLabel.trim() ? candidate.roleLabel : "Rival Brand",
+      statusLabel: typeof candidate.statusLabel === "string" && candidate.statusLabel.trim() ? candidate.statusLabel : "Assigned / Watching",
+      rosterWrestlerIds: Array.isArray(candidate.rosterWrestlerIds) ? candidate.rosterWrestlerIds.filter((id): id is string => typeof id === "string") : [],
+      activityHistory: Array.isArray(candidate.activityHistory) ? candidate.activityHistory : [],
+    });
+  });
+
+  return rivalBrands.length ? rivalBrands : createRivalBrandUniverse(fallbackAssignments);
 }
 
 function isProfileReturnScreen(value: unknown): value is ProfileReturnScreen {
@@ -208,6 +264,8 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
   }
 
   const brandStyle = typeof savedGame.brandStyle === "string" ? (savedGame.brandStyle as GameState["brandStyle"]) : defaultCareer.brandStyle;
+  const rivalGMAssignments = normalizeRivalGMAssignments(savedGame.rivalGMAssignments);
+  const safeRivalGMAssignments = rivalGMAssignments.length ? rivalGMAssignments : createRivalGMAssignments(brandStyle);
 
   return {
     game: {
@@ -220,7 +278,8 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
       brandStyle,
       difficulty: isGameDifficulty(savedGame.difficulty) ? savedGame.difficulty : defaultCareer.difficulty,
       startingBudgetTier: isStartingBudgetTier(savedGame.startingBudgetTier) ? savedGame.startingBudgetTier : defaultCareer.startingBudgetTier,
-      rivalGMAssignments: normalizeRivalGMAssignments(savedGame.rivalGMAssignments),
+      rivalGMAssignments: safeRivalGMAssignments,
+      rivalBrands: normalizeRivalBrands(savedGame.rivalBrands, safeRivalGMAssignments),
       createdAt: savedGame.createdAt ?? new Date().toISOString(),
       money: savedGame.money ?? 250000,
       wrestlers,

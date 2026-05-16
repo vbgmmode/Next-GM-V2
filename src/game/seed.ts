@@ -6,6 +6,7 @@ import type {
   GameState,
   GMStyle,
   PrototypeBrand,
+  RivalBrandState,
   RivalGMAssignment,
   Rivalry,
   RivalryStakes,
@@ -62,6 +63,29 @@ export function createRivalGMAssignments(playerBrand: BrandStyle): RivalGMAssign
       brand,
       ...rivalCandidates[index],
     }));
+}
+
+function createStableId(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export function createRivalBrandUniverse(rivalGMAssignments: RivalGMAssignment[] = []): RivalBrandState[] {
+  return rivalGMAssignments.map((assignment) => ({
+    id: `rival-brand-${createStableId(assignment.brand)}`,
+    brandKey: assignment.brand,
+    brandName: assignment.brand,
+    assignedGMId: `rival-gm-${createStableId(assignment.gmName)}`,
+    assignedGMName: assignment.gmName,
+    assignedGMStyle: assignment.gmStyle,
+    roleLabel: "Rival Brand",
+    statusLabel: "Assigned / Watching",
+    rosterWrestlerIds: [],
+    activityHistory: [],
+  }));
 }
 
 export const defaultCareer: Required<Omit<NewCareerOptions, "draftedWrestlers">> = {
@@ -339,6 +363,7 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
     difficulty: career.difficulty,
     startingBudgetTier: career.startingBudgetTier,
     rivalGMAssignments: career.rivalGMAssignments,
+    rivalBrands: createRivalBrandUniverse(career.rivalGMAssignments),
     createdAt: new Date().toISOString(),
     money: startingMoney,
     wrestlers: startingRoster,

@@ -51,6 +51,27 @@ export type RivalGMAssignment = {
   gmStyle: GMStyle;
 };
 
+export type RivalBrandActivity = {
+  id: string;
+  seasonNumber: number;
+  weekNumber: number;
+  label: string;
+  note: string;
+};
+
+export type RivalBrandState = {
+  id: string;
+  brandKey: PrototypeBrand;
+  brandName: string;
+  assignedGMId?: string;
+  assignedGMName: string;
+  assignedGMStyle: GMStyle;
+  roleLabel: string;
+  statusLabel: string;
+  rosterWrestlerIds: string[];
+  activityHistory: RivalBrandActivity[];
+};
+
 export type RivalryStatus = "rising" | "steady" | "cooling" | "stale";
 
 export type RivalryStakes = "personal" | "title" | "respect" | "revenge";
@@ -334,6 +355,7 @@ export type GameState = {
   difficulty: GameDifficulty;
   startingBudgetTier: StartingBudgetTier;
   rivalGMAssignments: RivalGMAssignment[];
+  rivalBrands: RivalBrandState[];
   createdAt: string;
   money: number;
   wrestlers: Wrestler[];
