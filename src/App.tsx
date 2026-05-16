@@ -53,7 +53,7 @@ type RosterFilter = "All" | "Hot" | "Tired" | "Frustrated";
 type RosterPressureTag = "Overused" | "Underused" | "Protected Star" | "Morale Risk" | "Injury Risk" | "Minor Injury" | "Unavailable";
 type SocialFilter = "All" | "Fan Reaction" | "Dirt Sheets" | "Analyst Takes" | "Title Scene" | "Rivalries";
 type SetupStep = "contract" | "gm" | "brand" | "rules" | "preview" | "draft" | "review";
-type DraftSort = "rank" | "popularity" | "momentum" | "ringSkill" | "promoSkill";
+type DraftSort = "rank" | "starPower" | "popularity" | "momentum" | "ringSkill" | "promoSkill" | "fatigue";
 
 type TitleMode = "home" | "load";
 
@@ -94,11 +94,18 @@ const draftPickCount = 12;
 
 const draftSortOptions: { label: string; value: DraftSort }[] = [
   { label: "Top 200 Rank", value: "rank" },
+  { label: "Star Power", value: "starPower" },
   { label: "Popularity", value: "popularity" },
   { label: "Momentum", value: "momentum" },
   { label: "Ring", value: "ringSkill" },
   { label: "Promo", value: "promoSkill" },
+  { label: "Lowest Fatigue", value: "fatigue" },
 ];
+
+const draftBrandFilters = ["All Brands", "Raw", "SmackDown", "NXT", "AEW"];
+const draftRoleTierFilters = ["All Tiers", "MainEvent", "UpperCard", "Midcard", "Prospect", "Enhancement"];
+const draftAvailabilityFilters = ["All Status", "Active", "Injured", "Inactive"];
+const draftArchetypeFilters = ["All Styles", "Brawler", "HighFlyer", "Powerhouse", "RingGeneral", "Showman", "Technician"];
 
 type ChoiceOption<T extends string = string> = {
   description?: string;
@@ -469,6 +476,41 @@ function getTopUnderusedWrestler(wrestlers: Wrestler[], currentWeek: number) {
         b.momentum -
         (getWeeksSinceLastBooked(a, currentWeek) * 10 + a.popularity + a.momentum),
     )[0];
+}
+
+function getDraftSortValue(wrestler: Wrestler, sort: DraftSort) {
+  if (sort === "rank") {
+    return -(wrestler.draftRank ?? 999);
+  }
+
+  if (sort === "starPower") {
+    return wrestler.popularity + wrestler.momentum;
+  }
+
+  if (sort === "fatigue") {
+    return -wrestler.fatigue;
+  }
+
+  return wrestler[sort];
+}
+
+function getDraftSearchText(wrestler: Wrestler) {
+  return [
+    wrestler.name,
+    wrestler.sourceBrand,
+    wrestler.sourceAvailability,
+    wrestler.roleTier,
+    wrestler.alignment,
+    wrestler.archetype,
+    wrestler.division,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function getDraftTag(value: string | undefined, fallback = "Unlisted") {
+  return value?.trim() || fallback;
 }
 
 function getRosterLeader(wrestlers: Wrestler[], score: (wrestler: Wrestler) => number) {
@@ -1647,6 +1689,10 @@ function NewGameSetupScreen({
   const [draftedWrestlers, setDraftedWrestlers] = useState<Wrestler[]>([]);
   const [draftSearch, setDraftSearch] = useState("");
   const [draftSort, setDraftSort] = useState<DraftSort>("rank");
+  const [draftBrandFilter, setDraftBrandFilter] = useState(draftBrandFilters[0]);
+  const [draftRoleTierFilter, setDraftRoleTierFilter] = useState(draftRoleTierFilters[0]);
+  const [draftAvailabilityFilter, setDraftAvailabilityFilter] = useState(draftAvailabilityFilters[0]);
+  const [draftArchetypeFilter, setDraftArchetypeFilter] = useState(draftArchetypeFilters[0]);
   const selectedGmStyle = gmStyleOptions.find((option) => option.label === gmStyle) ?? gmStyleOptions[0];
   const selectedBrandStyle = brandStyleOptions.find((option) => option.label === brandStyle) ?? brandStyleOptions[0];
   const selectedDifficulty = difficultyOptions.find((option) => option.label === difficulty) ?? difficultyOptions[1];
@@ -1657,8 +1703,19 @@ function NewGameSetupScreen({
   const availableDraftCount = draftPool.length - draftedWrestlers.length;
   const availableWrestlers = draftPool
     .filter((wrestler) => !draftedIds.has(wrestler.id))
-    .filter((wrestler) => !draftSearchTerm || wrestler.name.toLowerCase().includes(draftSearchTerm))
-    .sort((a, b) => (draftSort === "rank" ? 0 : b[draftSort] - a[draftSort]));
+    .filter((wrestler) => !draftSearchTerm || getDraftSearchText(wrestler).includes(draftSearchTerm))
+    .filter((wrestler) => draftBrandFilter === "All Brands" || wrestler.sourceBrand === draftBrandFilter)
+    .filter((wrestler) => draftRoleTierFilter === "All Tiers" || wrestler.roleTier === draftRoleTierFilter)
+    .filter((wrestler) => draftAvailabilityFilter === "All Status" || wrestler.sourceAvailability === draftAvailabilityFilter)
+    .filter((wrestler) => draftArchetypeFilter === "All Styles" || wrestler.archetype === draftArchetypeFilter)
+    .sort((a, b) => getDraftSortValue(b, draftSort) - getDraftSortValue(a, draftSort));
+  const activeDraftFilters = [
+    draftBrandFilter !== "All Brands" ? draftBrandFilter : null,
+    draftRoleTierFilter !== "All Tiers" ? draftRoleTierFilter : null,
+    draftAvailabilityFilter !== "All Status" ? draftAvailabilityFilter : null,
+    draftArchetypeFilter !== "All Styles" ? draftArchetypeFilter : null,
+  ].filter(Boolean);
+  const boardLeader = availableWrestlers[0];
   const topStar = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.popularity + wrestler.momentum);
   const bestTalker = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.promoSkill);
   const bestInRing = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.ringSkill);
@@ -1691,6 +1748,15 @@ function NewGameSetupScreen({
 
   function undoLastPick() {
     setDraftedWrestlers((current) => current.slice(0, -1));
+  }
+
+  function resetDraftBoard() {
+    setDraftSearch("");
+    setDraftSort("rank");
+    setDraftBrandFilter(draftBrandFilters[0]);
+    setDraftRoleTierFilter(draftRoleTierFilters[0]);
+    setDraftAvailabilityFilter(draftAvailabilityFilters[0]);
+    setDraftArchetypeFilter(draftArchetypeFilters[0]);
   }
 
   function selectBrandStyle(choice: string) {
@@ -1886,6 +1952,12 @@ function NewGameSetupScreen({
             <p className="lede">
               Build the first 12-person locker room for {brandName.trim() || defaultCareer.brandName}. The Top 200 board is open across every source brand, and every pick is yours.
             </p>
+            <div className="draft-war-room-strip" aria-label="Draft board status">
+              <span>{draftPool.length} Top 200 Files</span>
+              <span>{availableWrestlers.length} Showing</span>
+              <span>{draftedWrestlers.length}/{draftPickCount} Signed</span>
+              <span>{activeDraftFilters.length ? activeDraftFilters.join(" / ") : "Open Board"}</span>
+            </div>
             <div className="draft-board">
               <section className="draft-column">
                 <div className="draft-head">
@@ -1910,6 +1982,57 @@ function NewGameSetupScreen({
                       ))}
                     </select>
                   </label>
+                  <label>
+                    Source Brand
+                    <select value={draftBrandFilter} onChange={(event) => setDraftBrandFilter(event.target.value)}>
+                      {draftBrandFilters.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Tier
+                    <select value={draftRoleTierFilter} onChange={(event) => setDraftRoleTierFilter(event.target.value)}>
+                      {draftRoleTierFilters.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Source Status
+                    <select value={draftAvailabilityFilter} onChange={(event) => setDraftAvailabilityFilter(event.target.value)}>
+                      {draftAvailabilityFilters.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Style
+                    <select value={draftArchetypeFilter} onChange={(event) => setDraftArchetypeFilter(event.target.value)}>
+                      {draftArchetypeFilters.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button className="secondary-action" onClick={resetDraftBoard} type="button">
+                    Reset Board
+                  </button>
+                </div>
+                <div className="draft-board-note">
+                  <strong>{boardLeader?.name ?? "No matching talent"}</strong>
+                  <span>
+                    {boardLeader
+                      ? `Best visible file · ${getDraftTag(boardLeader.sourceBrand, "Open Pool")} · ${getDraftTag(boardLeader.roleTier)} · ${getDraftTag(boardLeader.archetype)}`
+                      : "Clear a filter to reopen the board."}
+                  </span>
                 </div>
                 <div className="draft-list">
                   {availableWrestlers.length ? (
@@ -1944,6 +2067,9 @@ function NewGameSetupScreen({
                       <div className="drafted-pick" key={wrestler.id}>
                         <span>Pick {index + 1}</span>
                         <strong>{wrestler.name}</strong>
+                        <em>
+                          {getDraftTag(wrestler.sourceBrand, "Open Pool")} · {getDraftTag(wrestler.roleTier)} · {getDraftTag(wrestler.archetype)}
+                        </em>
                         <small>
                           Pop {wrestler.popularity} · Mom {wrestler.momentum} · Ring {wrestler.ringSkill} · Promo {wrestler.promoSkill} · Fat {wrestler.fatigue} · Morale {wrestler.morale}
                         </small>
@@ -2011,7 +2137,7 @@ function DraftTalentCard({
     <article className="draft-talent-card">
       <div className="draft-talent-head">
         <div>
-          <p className="eyebrow">Draft File</p>
+          <p className="eyebrow">{wrestler.draftRank ? `Top 200 #${wrestler.draftRank}` : "Draft File"}</p>
           <h3>{wrestler.name}</h3>
         </div>
         {onAction ? (
@@ -2020,6 +2146,15 @@ function DraftTalentCard({
           </button>
         ) : null}
       </div>
+      <div className="draft-card-tags" aria-label={`${wrestler.name} draft context`}>
+        <span>{getDraftTag(wrestler.sourceBrand, "Open Pool")}</span>
+        <span>{getDraftTag(wrestler.roleTier)}</span>
+        <span>{getDraftTag(wrestler.archetype)}</span>
+        <span>{getDraftTag(wrestler.sourceAvailability, "Source Status")}</span>
+      </div>
+      <p className="draft-card-read">
+        {getDraftTag(wrestler.division)} · {getDraftTag(wrestler.alignment, "Alignment Open")} · open draft availability
+      </p>
       <div className="draft-stat-grid">
         <Metric label="Popularity" value={`${wrestler.popularity}`} />
         <Metric label="Momentum" value={`${wrestler.momentum}`} />

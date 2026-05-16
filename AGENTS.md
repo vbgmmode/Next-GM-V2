@@ -36,10 +36,20 @@ The game currently supports:
 - Title screen
 - Continue/New Game/Reset Save
 - Multi-step new game setup
-- GM name and GM style selection
-- Brand name and brand style selection
+- Contract / You’re Hired setup
+- Game Rules setup with difficulty and starting budget
+- Difficulty stored and displayed as career framing; no broad gameplay difficulty tuning yet
+- Starting budget applied to initial career money
+- GM name and expanded GM style identity selection with descriptions
+- Brand selection using Raw, SmackDown, NXT, and AEW as equal major prototype brands
+- Rival GM assignments to unselected brands as setup flavor/state only
+- Top 200 open draft pool staged from data/rosters and activated through src/game/top200DraftPool.ts
+- 199 game-eligible performers available by default in Draft Night
+- Open Draft Night availability across source brands; source/current brand does not restrict draft availability
+- NXT treated as an equal major brand, not developmental by default
 - Draft night with a 12-wrestler starting roster
-- localStorage single-save persistence
+- Draft Night search and sort controls for the larger pool
+- localStorage career-save persistence
 - Save loading with fallbacks for added career fields
 - Save Migration Hardening v1 with centralized defaults for older localStorage saves
 - Dashboard
@@ -79,8 +89,9 @@ The game currently supports:
 Title
 → New Game / Continue
 → Sign Contract
+→ Game Rules
 → GM Identity
-→ Brand Fantasy
+→ Brand Selection
 → Career Preview
 → Draft Night
 → Draft Review
@@ -124,13 +135,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Solo Career RC Stable / Screen/Menu Audit Planning v1
+Phase: Solo Career RC Stable / Top 200 Open Draft Stabilization
 
 Goal:
-Keep the complete single-player offline career loop stable while auditing every screen/menu before bounded content/data expansion.
+Keep the complete single-player offline career loop stable with the expanded setup flow and active Top 200 open draft pool.
 
 Current priority:
-Protect the RC-stable build and document screen/menu data and UI/UX gaps before adding wrestlers, flavor pools, setup variants, rivalries, titles, or other content.
+Protect the RC-stable build, preserve the Top 200 open-draft rule, and avoid adding unrequested rival simulation, brand competition, contract, scouting, or restricted-draft systems.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -141,30 +152,46 @@ Completed stabilization passes:
 - Release Candidate Smoke Pass v1
 - RC Bug Sweep v1
 - RC Repo Hygiene / Prototype Artifact Packaging v1
+- Screen/Menu Audit Planning v1
+- Setup Flow Expansion v1
+- Top 200 Open Draft Activation v1
 
 Upcoming Direction:
-- Complete Screen/Menu Audit Planning v1 before content implementation.
-- Data-Expansion Planning only until a bounded content plan is accepted.
+- Keep the Top 200 open draft pool stable as the default draft experience.
+- Future restricted draft modes must be explicit, optional, and requested by an active ticket.
+- Future data expansion or systems work should remain bounded to an accepted ticket.
 - RC bug fixes only when found.
 - Small documentation or QA follow-ups.
-- Consider save slots or a data persistence upgrade later, only if explicitly requested.
+- Consider a data persistence upgrade later, only if explicitly requested.
 - Keep setup and draft bounded unless an active ticket asks to expand them.
 
 ## Current Phase Scope Rules
 These are temporary constraints for the current phase. They are not permanent bans.
 
 Unless the active ticket explicitly asks for it, do not add:
-- data expansion content before the planning phase defines boundaries
 - database
 - router
 - Tailwind
-- save slots
 - custom logos
 - modding
 - scouting
 - contract-management systems beyond the current setup framing and Contract Signing segment type
 - draft expansion beyond the current new-game draft flow
+- CPU drafting
+- rival rosters
+- rival show simulation
+- brand standings or ratings battles
+- salary or contract gameplay systems
+- brand-restricted draft modes
 - complex accounting
+
+Open Draft Rules:
+- Top 200 is the active default draft pool.
+- All game-eligible Top 200 performers are draft-available by default.
+- Source/current brand must not restrict draft availability by default.
+- Raw, SmackDown, NXT, and AEW are equal major brands.
+- NXT is not developmental by default.
+- Any future restricted draft mode must be explicit and optional.
 
 ## Permanent Scope Rules
 These should only be added when the user explicitly asks for them in the active ticket:
@@ -204,6 +231,12 @@ When relevant, also smoke-test:
 - Advance Week
 - Refresh persistence
 - Any screen touched by the ticket
+
+When sharing a local app URL:
+- Start the dev server in a persistent session, not a short-lived detached process.
+- Verify the URL returns the app HTML before reporting it.
+- Provide a URL the user can open directly, such as http://localhost:5174/.
+- If a previously shared URL fails, restart the server cleanly and re-verify before sending a replacement link.
 
 ## Completion Report Format
 When done, report:

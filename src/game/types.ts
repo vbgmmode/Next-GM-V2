@@ -86,6 +86,13 @@ export type InjuryStatus = "healthy" | "minor" | "major";
 export type Wrestler = {
   id: string;
   name: string;
+  draftRank?: number;
+  sourceBrand?: string;
+  sourceAvailability?: string;
+  roleTier?: string;
+  alignment?: string;
+  archetype?: string;
+  division?: string;
   popularity: number;
   momentum: number;
   fatigue: number;
