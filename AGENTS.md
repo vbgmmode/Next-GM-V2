@@ -214,6 +214,7 @@ These should only be added when the user explicitly asks for them in the active 
 - Do not broaden scope.
 - Do not refactor unrelated code.
 - Do not rewrite working systems.
+- For player-facing UI work, follow docs/ui-broadcast-command-center-style.md as the operational visual-system guide. It makes docs/ui-ux-doctrine.md implementation-ready without replacing the doctrine.
 - Keep localStorage persistence working unless the active ticket is specifically about replacing/upgrading persistence.
 - Keep the current playable loop working.
 - Keep TypeScript passing.

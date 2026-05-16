@@ -1,0 +1,4 @@
+difficulty_id,display_name,starting_budget_usd,draft_budget_guidance_usd,booking_reserve_guidance_usd,target_opening_roster_count,target_roster_mix,expected_budget_feel
+easy,Easy / Comfortable,4000000,2800000,1200000,20,"3-5 MainEvent, 4-5 UpperCard, 6-8 Midcard, 3-5 Prospect/Enhancement",Plenty of room for a rounded roster and several premium show choices.
+medium,Medium / Standard,2000000,1500000,500000,14,"1-2 MainEvent, 2-3 UpperCard, 5-7 Midcard, 2-4 Prospect/Enhancement",Enough for a credible roster but forces tradeoffs between star power and depth.
+hard_legend,Hard / Legend,1000000,760000,240000,10,"0-1 MainEvent, 1-2 UpperCard, 4-5 Midcard, 2-4 Prospect/Enhancement",Tight from day one; every premium signing or stipulation matters.

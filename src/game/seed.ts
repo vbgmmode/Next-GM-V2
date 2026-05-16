@@ -229,10 +229,32 @@ function createRivalryFromPair(id: string, wrestlers: Wrestler[], stakes: Rivalr
 
 export function createDefaultRivalries(wrestlers: Wrestler[] = roster): Rivalry[] {
   const ranked = byStarPower(wrestlers);
+  const usedWrestlerIds = new Set<string>();
+  const getNextSameDivisionPair = () => {
+    const available = ranked.filter((wrestler) => !usedWrestlerIds.has(wrestler.id));
+    const first = available.find((wrestler) => {
+      const division = getSeedDivisionGroup(wrestler);
+      return Boolean(division && available.some((candidate) => candidate.id !== wrestler.id && getSeedDivisionGroup(candidate) === division));
+    });
+
+    if (!first) {
+      return [];
+    }
+
+    const second = available.find((wrestler) => wrestler.id !== first.id && getSeedDivisionGroup(wrestler) === getSeedDivisionGroup(first));
+
+    if (!second) {
+      return [];
+    }
+
+    usedWrestlerIds.add(first.id);
+    usedWrestlerIds.add(second.id);
+    return [first, second];
+  };
   const rivalries = [
-    createRivalryFromPair("rivalry-opening-title", ranked.slice(0, 2), "title"),
-    createRivalryFromPair("rivalry-locker-room-respect", ranked.slice(2, 4), "respect"),
-    createRivalryFromPair("rivalry-personal-score", ranked.slice(4, 6), "personal"),
+    createRivalryFromPair("rivalry-opening-title", getNextSameDivisionPair(), "title"),
+    createRivalryFromPair("rivalry-locker-room-respect", getNextSameDivisionPair(), "respect"),
+    createRivalryFromPair("rivalry-personal-score", getNextSameDivisionPair(), "personal"),
   ].filter((rivalry): rivalry is Rivalry => Boolean(rivalry));
 
   if (rivalries.length) {

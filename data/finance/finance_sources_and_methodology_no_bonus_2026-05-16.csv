@@ -1,0 +1,7 @@
+topic,method
+Budget design,"Starting cash is selected by the player at setup: $4M easy, $2M medium, $1M hard/legend. Talent prices stay stable; difficulty is created by available cash and reserve pressure."
+Initial draft contract treatment,Initial draft cost is a one-time full-season roster-rights purchase. The selected wrestler stays on the brand for the whole configured season unless later game systems move/release them.
+Signing bonuses,Removed. There is no signing_bonus_usd field and no hiring formula includes signing bonuses.
+Midseason scouting contract treatment,"After the initial draft, hired talent uses weekly_hire_rate_usd multiplied by selected_contract_weeks. Contract length can differ by offer/tier/scouting outcome."
+Booking costs,"Matches, promos, and backstage angles retain their segment-level booking costs; those costs are separate from the initial draft full-season roster-rights cost."
+Reality vs game balance,"Financial values are game-balanced for Next GM and are not claimed as real WWE/AEW pay, contract, or accounting figures."

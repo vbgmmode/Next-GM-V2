@@ -9,6 +9,7 @@ import {
 } from "./gameStorage";
 import { advanceGameWeek, startNextSeason } from "./game/advanceWeek";
 import { getFinancePressureLabel } from "./game/finance";
+import { getRosterFinanceValueForWrestler } from "./game/financeCatalog";
 import { migrateSavedGameState } from "./game/migration";
 import {
   applyRivalryCatalogDefaults,
@@ -19,7 +20,7 @@ import {
   getRivalryStoryline,
   safeRivalryStorylineOptions,
 } from "./game/rivalryCatalog";
-import { createNewGame, createRivalGMAssignments, defaultCareer, draftPool } from "./game/seed";
+import { createNewGame, createRivalGMAssignments, defaultCareer, draftPool, getStartingBudgetAmount } from "./game/seed";
 import {
   getBestSegment,
   getCurrentCalendarWeek,
@@ -66,6 +67,7 @@ type RosterPressureTag = "Overused" | "Underused" | "Protected Star" | "Morale R
 type SocialFilter = "All" | "Fan Reaction" | "Dirt Sheets" | "Analyst Takes" | "Title Scene" | "Rivalries";
 type SetupStep = "contract" | "gm" | "brand" | "rules" | "preview" | "draft" | "review";
 type DraftSort = "rank" | "starPower" | "popularity" | "momentum" | "ringSkill" | "promoSkill" | "fatigue";
+type DraftReservePressure = "Healthy" | "Tight" | "Over Budget";
 
 type TitleMode = "home" | "load";
 
@@ -94,6 +96,15 @@ type WrestlerAppearance = {
   type: SegmentType;
   score: number;
   note?: string;
+};
+
+type DraftFinanceReadout = {
+  isUnlimitedBudget: boolean;
+  missingFinanceRows: Wrestler[];
+  pressureLabel: DraftReservePressure;
+  projectedReserve: number;
+  rosterValue: number;
+  startingBudgetAmount: number;
 };
 
 type GMRead = {
@@ -462,6 +473,53 @@ function formatMoney(amount: number) {
 
 function formatBudgetTier(tier: StartingBudgetTier) {
   return tier === "Unlimited" ? "Unlimited" : tier;
+}
+
+function formatStartingBudgetReadout(tier: StartingBudgetTier, amount: number) {
+  return tier === "Unlimited" ? "Unlimited" : formatMoney(amount);
+}
+
+function formatStartingBudgetDetail(tier: StartingBudgetTier, amount: number, description: string) {
+  return tier === "Unlimited" ? `${description} Sandbox reference: ${formatMoney(amount)}.` : `${formatBudgetTier(tier)} opening money. ${description}`;
+}
+
+function getDraftFinanceReadout(wrestlers: Wrestler[], startingBudgetTier: StartingBudgetTier, startingBudgetAmount: number): DraftFinanceReadout {
+  const financeRows = wrestlers.map((wrestler) => ({
+    financeRow: getRosterFinanceValueForWrestler(wrestler),
+    wrestler,
+  }));
+  const rosterValue = financeRows.reduce((sum, { financeRow }) => sum + (financeRow?.draftValueUsd ?? 0), 0);
+  const projectedReserve = startingBudgetAmount - rosterValue;
+  const isUnlimitedBudget = startingBudgetTier === "Unlimited";
+  const tightReserveThreshold = Math.max(250000, Math.round(startingBudgetAmount * 0.15));
+  const pressureLabel: DraftReservePressure = isUnlimitedBudget
+    ? "Healthy"
+    : projectedReserve < 0
+      ? "Over Budget"
+      : projectedReserve <= tightReserveThreshold
+        ? "Tight"
+        : "Healthy";
+
+  return {
+    isUnlimitedBudget,
+    missingFinanceRows: financeRows.filter(({ financeRow }) => !financeRow).map(({ wrestler }) => wrestler),
+    pressureLabel,
+    projectedReserve,
+    rosterValue,
+    startingBudgetAmount,
+  };
+}
+
+function formatProjectedReserve(readout: DraftFinanceReadout) {
+  return readout.isUnlimitedBudget ? "Unlimited" : formatMoney(readout.projectedReserve);
+}
+
+function getDraftFinanceNote(readout: DraftFinanceReadout) {
+  const missingValueNote = readout.missingFinanceRows.length
+    ? ` ${readout.missingFinanceRows.length} roster value${readout.missingFinanceRows.length === 1 ? "" : "s"} pending and excluded from this total.`
+    : "";
+
+  return `Projected reserve only; draft picks do not spend money or restrict availability in this build.${missingValueNote}`;
 }
 
 function formatDateTime(value: string) {
@@ -1361,8 +1419,12 @@ function getRivalryTitleRelevance(rivalry: Rivalry, championships: Championship[
   return undefined;
 }
 
-function canSegmentAttachRivalry(segment: Segment, rivalry: Rivalry) {
-  return segment.type !== "Open Challenge" && (!segment.participantIds.length || segment.participantIds.some((id) => rivalry.participantIds.includes(id)));
+function canSegmentAttachRivalry(segment: Segment, rivalry: Rivalry, wrestlers: Wrestler[] = []) {
+  return (
+    segment.type !== "Open Challenge" &&
+    !isRivalryIntergenderBlocked(rivalry, wrestlers) &&
+    (!segment.participantIds.length || segment.participantIds.some((id) => rivalry.participantIds.includes(id)))
+  );
 }
 
 function isSmartRundownAvailable(wrestler: Wrestler) {
@@ -1657,6 +1719,28 @@ function getRivalryParticipants(rivalry: Rivalry, wrestlers: Wrestler[]) {
   return rivalry.participantIds
     .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
     .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
+}
+
+function isRivalryIntergenderBlocked(rivalry: Rivalry, wrestlers: Wrestler[]) {
+  const participants = getRivalryParticipants(rivalry, wrestlers);
+
+  return participants.length > 1 && !canWrestlersShareMatch(participants);
+}
+
+function getRivalryCreationBlockReason(wrestlerAId: string, wrestlerBId: string, wrestlers: Wrestler[]) {
+  if (!wrestlerAId || !wrestlerBId || wrestlerAId === wrestlerBId) {
+    return "";
+  }
+
+  const participants = [wrestlers.find((wrestler) => wrestler.id === wrestlerAId), wrestlers.find((wrestler) => wrestler.id === wrestlerBId)].filter(
+    (wrestler): wrestler is Wrestler => Boolean(wrestler),
+  );
+
+  if (participants.length === 2 && !canWrestlersShareMatch(participants)) {
+    return "Rivalry blocked: this build follows the same no-intergender boundary as match booking. Choose wrestlers from the same division.";
+  }
+
+  return "";
 }
 
 function getHottestRivalry(rivalries: Rivalry[]) {
@@ -2307,7 +2391,7 @@ function App() {
             ? current.rivalries.find((activeRivalry) => activeRivalry.id === updatedSegment.rivalryId)
             : undefined;
 
-          if (rivalry && !canSegmentAttachRivalry(updatedSegment, rivalry)) {
+          if (rivalry && !canSegmentAttachRivalry(updatedSegment, rivalry, current.wrestlers)) {
             updatedSegment = { ...updatedSegment, rivalryId: undefined };
           }
 
@@ -2375,7 +2459,7 @@ function App() {
 
           const rivalry = current.rivalries.find((activeRivalry) => activeRivalry.id === rivalryId);
 
-          if (!rivalryId || !rivalry || !canSegmentAttachRivalry(segment, rivalry)) {
+          if (!rivalryId || !rivalry || !canSegmentAttachRivalry(segment, rivalry, current.wrestlers)) {
             return { ...segment, rivalryId: undefined };
           }
 
@@ -2440,7 +2524,7 @@ function App() {
             ? current.rivalries.find((activeRivalry) => activeRivalry.id === updatedSegment.rivalryId)
             : undefined;
 
-          if (rivalry && !canSegmentAttachRivalry(updatedSegment, rivalry)) {
+          if (rivalry && !canSegmentAttachRivalry(updatedSegment, rivalry, current.wrestlers)) {
             updatedSegment = { ...updatedSegment, rivalryId: undefined };
           }
 
@@ -2502,6 +2586,10 @@ function App() {
       const wrestlerB = current.wrestlers.find((wrestler) => wrestler.id === wrestlerBId);
 
       if (!wrestlerA || !wrestlerB) {
+        return current;
+      }
+
+      if (!canWrestlersShareMatch([wrestlerA, wrestlerB])) {
         return current;
       }
 
@@ -2880,6 +2968,9 @@ function NewGameSetupScreen({
   const selectedBrandStyle = brandStyleOptions.find((option) => option.label === brandStyle) ?? brandStyleOptions[0];
   const selectedDifficulty = difficultyOptions.find((option) => option.label === difficulty) ?? difficultyOptions[1];
   const selectedBudget = budgetOptions.find((option) => option.label === startingBudgetTier) ?? budgetOptions[1];
+  const selectedBudgetDescription = selectedBudget.description ?? "";
+  const startingBudgetAmount = getStartingBudgetAmount(startingBudgetTier);
+  const draftFinanceReadout = getDraftFinanceReadout(draftedWrestlers, startingBudgetTier, startingBudgetAmount);
   const canPreview = gmName.trim().length > 0 && brandName.trim().length > 0;
   const draftSearchTerm = draftSearch.trim().toLowerCase();
   const draftedIds = new Set(draftedWrestlers.map((wrestler) => wrestler.id));
@@ -3079,9 +3170,9 @@ function NewGameSetupScreen({
             <div className="identity-note">
               <p className="eyebrow">Selected Rules</p>
               <strong>
-                {difficulty} / {formatBudgetTier(startingBudgetTier)}
+                {difficulty} / {formatStartingBudgetReadout(startingBudgetTier, startingBudgetAmount)}
               </strong>
-              <p>{selectedDifficulty.description} {selectedBudget.description}</p>
+              <p>{selectedDifficulty.description} {formatStartingBudgetDetail(startingBudgetTier, startingBudgetAmount, selectedBudgetDescription)}</p>
             </div>
             <div className="title-actions">
               <button className="secondary-action" onClick={() => setStep("contract")}>
@@ -3102,7 +3193,11 @@ function NewGameSetupScreen({
               <Metric label="GM" value={gmName.trim() || defaultCareer.gmName} detail={gmStyle} />
               <Metric label="Selected Brand" value={brandStyle} detail={selectedBrandStyle.description} />
               <Metric label="Difficulty" value={difficulty} detail="Challenge framing; no hidden tuning yet" />
-              <Metric label="Starting Budget" value={formatBudgetTier(startingBudgetTier)} detail={selectedBudget.description} />
+              <Metric
+                label="Starting Budget"
+                value={formatStartingBudgetReadout(startingBudgetTier, startingBudgetAmount)}
+                detail={formatStartingBudgetDetail(startingBudgetTier, startingBudgetAmount, selectedBudgetDescription)}
+              />
               <Metric label="First Season" value="12 Weeks" detail="PLEs in Weeks 4, 8, and 12" />
               <Metric label="Next Step" value="Draft Night" detail="Build the first locker room" />
             </div>
@@ -3148,6 +3243,7 @@ function NewGameSetupScreen({
               <span>{draftedWrestlers.length}/{draftPickCount} Signed</span>
               <span>{activeDraftFilters.length ? activeDraftFilters.join(" / ") : "Open Board"}</span>
             </div>
+            <DraftFinanceSummary readout={draftFinanceReadout} />
             <div className="draft-board">
               <section className="draft-column">
                 <div className="draft-head">
@@ -3295,6 +3391,7 @@ function NewGameSetupScreen({
               <Metric label="Week 1 Anchor" value={weekOneAnchor?.name ?? "None"} detail={weekOneAnchor ? `Morale ${weekOneAnchor.morale} · Fat ${weekOneAnchor.fatigue}` : undefined} />
               <Metric label={draftReviewPressure.label} value={draftReviewPressure.value} detail={draftReviewPressure.detail} />
             </div>
+            <DraftFinanceSummary readout={draftFinanceReadout} />
             <section className="war-room-read" aria-label="Draft review war room read">
               <div>
                 <p className="eyebrow">War Room Read</p>
@@ -3337,6 +3434,33 @@ function NewGameSetupScreen({
         ) : null}
       </section>
     </main>
+  );
+}
+
+function DraftFinanceSummary({ readout }: { readout: DraftFinanceReadout }) {
+  const pressureClass = readout.pressureLabel.toLowerCase().replace(/\s+/g, "-");
+
+  return (
+    <section className={`draft-finance-readout reserve-${pressureClass}`} aria-label="Draft finance context">
+      <div className="draft-finance-head">
+        <div>
+          <p className="eyebrow">Draft Finance Context</p>
+          <h3>Projected Reserve</h3>
+        </div>
+        <strong>{readout.pressureLabel}</strong>
+      </div>
+      <div className="draft-finance-grid">
+        <Metric
+          label="Starting Budget"
+          value={readout.isUnlimitedBudget ? "Unlimited" : formatMoney(readout.startingBudgetAmount)}
+          detail={readout.isUnlimitedBudget ? `${formatMoney(readout.startingBudgetAmount)} sandbox reference` : "Current setup selection"}
+        />
+        <Metric label="Roster Value" value={formatMoney(readout.rosterValue)} detail="Static catalog draft value total" />
+        <Metric label="Projected Reserve" value={formatProjectedReserve(readout)} detail="If roster value were startup cost" />
+        <Metric label="Reserve Pressure" value={readout.pressureLabel} detail="Readout only; no pick is blocked" />
+      </div>
+      <p>{getDraftFinanceNote(readout)}</p>
+    </section>
   );
 }
 
@@ -3824,6 +3948,7 @@ function BookingScreen({
       rivalry?.participantIds.length === 2 &&
       range.min <= 2 &&
       range.max >= 2 &&
+      !isRivalryIntergenderBlocked(rivalry, game.wrestlers) &&
       rivalry.participantIds.every((id) => game.wrestlers.some((wrestler) => wrestler.id === id && wrestler.injuryStatus !== "major")) &&
       !hasIntergenderMatchParticipants({ ...segment, participantIds: rivalry.participantIds }, game.wrestlers);
 
@@ -4488,16 +4613,19 @@ function WrestlerProfileScreen({
                   const relationship = getRivalryRelationship(rivalry);
                   const stage = getRivalryStageContext(game, rivalry);
                   const titleRelevance = getRivalryTitleRelevance(rivalry, game.championships, game.wrestlers);
+                  const rivalryBlocked = isRivalryIntergenderBlocked(rivalry, game.wrestlers);
 
                   return (
                     <article className="profile-context-row" key={rivalry.id}>
                       <strong>{rivalry.name}</strong>
                       <span>
                         {storyline.name} · {stage.name} · {relationship.name}
-                        {titleRelevance ? ` · ${titleRelevance.label}` : ""}
+                        {rivalryBlocked ? " · Blocked Context" : titleRelevance ? ` · ${titleRelevance.label}` : ""}
                       </span>
                       <p>
-                        Heat {rivalry.heat} · Freshness {rivalry.freshness} · {formatRivalryStatus(rivalry.status)}
+                        {rivalryBlocked
+                          ? "Legacy rivalry is visible, but booking context is blocked by the no-intergender rule."
+                          : `Heat ${rivalry.heat} · Freshness ${rivalry.freshness} · ${formatRivalryStatus(rivalry.status)}`}
                       </p>
                     </article>
                   );
@@ -4677,7 +4805,8 @@ function RivalriesScreen({
   const [stakes, setStakes] = useState<RivalryStakes>("personal");
   const [storylineId, setStorylineId] = useState(getDefaultStorylineIdForStakes("personal"));
   const isDuplicate = hasDuplicateRivalry(game.rivalries, wrestlerAId, wrestlerBId);
-  const canCreate = wrestlerAId && wrestlerBId && wrestlerAId !== wrestlerBId && !isDuplicate;
+  const rivalryBlockReason = getRivalryCreationBlockReason(wrestlerAId, wrestlerBId, game.wrestlers);
+  const canCreate = wrestlerAId && wrestlerBId && wrestlerAId !== wrestlerBId && !isDuplicate && !rivalryBlockReason;
   const selectedStoryline = getRivalryStoryline({ stakes, storylineId });
 
   function handleCreateRivalry() {
@@ -4756,6 +4885,7 @@ function RivalriesScreen({
           Create Rivalry
         </button>
         {isDuplicate ? <p className="form-warning">Duplicate active rivalry already exists.</p> : null}
+        {rivalryBlockReason ? <p className="form-warning">{rivalryBlockReason}</p> : null}
       </section>
 
       <section className="rivalry-grid" aria-label="Active rivalries">
@@ -4767,6 +4897,7 @@ function RivalriesScreen({
             const relationship = getRivalryRelationship(rivalry);
             const stage = getRivalryStageContext(game, rivalry);
             const titleRelevance = getRivalryTitleRelevance(rivalry, game.championships, game.wrestlers);
+            const rivalryBlocked = isRivalryIntergenderBlocked(rivalry, game.wrestlers);
             const gmRead = getRivalryGMRead(rivalry, {
               hasPlePayoff: plePayoff,
               isGoHome: getCurrentCalendarWeek(game).isGoHome,
@@ -4781,7 +4912,7 @@ function RivalriesScreen({
                     <p className="eyebrow">{formatRivalryStakes(rivalry.stakes)} Stakes · {stage.name}</p>
                     <h3>{rivalry.name}</h3>
                   </div>
-                  <strong>{plePayoff ? "PLE Payoff" : formatRivalryStatus(rivalry.status)}</strong>
+                  <strong>{rivalryBlocked ? "Blocked Context" : plePayoff ? "PLE Payoff" : formatRivalryStatus(rivalry.status)}</strong>
                 </div>
                 <div className="rivalry-story-map">
                   <article>
@@ -4801,8 +4932,12 @@ function RivalriesScreen({
                   </article>
                   <article>
                     <span>GM Read</span>
-                    <strong>{titleRelevance?.label ?? "Creative Direction"}</strong>
-                    <p>{titleRelevance?.detail ?? gmRead}</p>
+                    <strong>{rivalryBlocked ? "Invalid Pairing" : titleRelevance?.label ?? "Creative Direction"}</strong>
+                    <p>
+                      {rivalryBlocked
+                        ? "Legacy rivalry kept for save safety, but it cannot be attached to booking under the current no-intergender rule."
+                        : titleRelevance?.detail ?? gmRead}
+                    </p>
                   </article>
                 </div>
                 <div className="spotlight-grid">
@@ -5055,8 +5190,8 @@ function FinanceScreen({
             <Metric label="Show Score" value={`${latestReport.showScore}`} />
           </div>
           <div className="finance-notes">
-            {latestReport.notes.map((note) => (
-              <p key={note}>{note}</p>
+            {latestReport.notes.map((note, index) => (
+              <p key={`${note}-${index}`}>{note}</p>
             ))}
           </div>
         </section>
@@ -5160,8 +5295,8 @@ function ResultsScreen({
             <p className="eyebrow">Broadcast Timing</p>
             <h3>{result.broadcastOverrunLevel === "major" ? "Major Overrun" : result.broadcastOverrunLevel === "moderate" ? "Overrun Pressure" : "Minor Overrun"}</h3>
           </div>
-          {result.broadcastOverrunNotes.map((note) => (
-            <p key={note}>{note}</p>
+          {result.broadcastOverrunNotes.map((note, index) => (
+            <p key={`${note}-${index}`}>{note}</p>
           ))}
         </section>
       ) : null}
@@ -5172,8 +5307,8 @@ function ResultsScreen({
             <p className="eyebrow">Title Fallout</p>
             <h3>Championship Stakes</h3>
           </div>
-          {result.titleNotes.map((note) => (
-            <p key={note}>{note}</p>
+          {result.titleNotes.map((note, index) => (
+            <p key={`${note}-${index}`}>{note}</p>
           ))}
         </section>
       ) : null}
@@ -5184,8 +5319,8 @@ function ResultsScreen({
             <p className="eyebrow">Story Fallout</p>
             <h3>Rivalry Movement</h3>
           </div>
-          {result.rivalryNotes.map((note) => (
-            <p key={note}>{note}</p>
+          {result.rivalryNotes.map((note, index) => (
+            <p key={`${note}-${index}`}>{note}</p>
           ))}
         </section>
       ) : null}
@@ -5302,8 +5437,8 @@ function WeekReviewScreen({
             <p className="eyebrow">Broadcast Fallout</p>
             <h3>Closing Block Pressure</h3>
           </div>
-          {result.broadcastOverrunNotes.map((note) => (
-            <p key={note}>{note}</p>
+          {result.broadcastOverrunNotes.map((note, index) => (
+            <p key={`${note}-${index}`}>{note}</p>
           ))}
         </section>
       ) : null}
@@ -5806,8 +5941,9 @@ function RivalryControl({
   segment: Segment;
   wrestlers: Wrestler[];
 }) {
-  const eligibleRivalries = rivalries.filter((rivalry) => canSegmentAttachRivalry(segment, rivalry));
+  const eligibleRivalries = rivalries.filter((rivalry) => canSegmentAttachRivalry(segment, rivalry, wrestlers));
   const selectedRivalry = rivalries.find((rivalry) => rivalry.id === segment.rivalryId);
+  const selectedRivalryBlocked = Boolean(selectedRivalry && isRivalryIntergenderBlocked(selectedRivalry, wrestlers));
   const selectedStoryline = selectedRivalry ? getRivalryStoryline(selectedRivalry) : undefined;
   const selectedRelationship = selectedRivalry ? getRivalryRelationship(selectedRivalry) : undefined;
   const selectedStage = selectedRivalry ? deriveRivalryStage(selectedRivalry) : undefined;
@@ -5822,20 +5958,24 @@ function RivalryControl({
         <span>Rivalry Context</span>
         <strong>
           {selectedRivalry
-            ? selectedRivalryMatchBlocked
-              ? `${selectedRivalry.name} attached for context. This rivalry works better as a promo or angle under current match rules.`
-              : `${selectedRivalry.name} attached. ${selectedStoryline?.name ?? "Rivalry"} · ${selectedStage?.name ?? formatRivalryStatus(selectedRivalry.status)}.`
+            ? selectedRivalryBlocked
+              ? `${selectedRivalry.name} is blocked by the no-intergender rivalry rule. Clear it or choose a valid rivalry.`
+              : selectedRivalryMatchBlocked
+                ? `${selectedRivalry.name} attached for context. This rivalry works better as a promo or angle under current match rules.`
+                : `${selectedRivalry.name} attached. ${selectedStoryline?.name ?? "Rivalry"} · ${selectedStage?.name ?? formatRivalryStatus(selectedRivalry.status)}.`
             : eligibleRivalries.length
               ? "Attach an active rivalry when this segment advances a story."
               : "Select a rivalry participant to attach story context."}
         </strong>
         {selectedRivalry && selectedStoryline && selectedStage && selectedRelationship ? (
           <small>
-            {selectedRelationship.name} · {selectedStoryline.commonBeats}. {selectedTitleRelevance ? selectedTitleRelevance.detail : selectedStage.notes}
+            {selectedRivalryBlocked
+              ? "Legacy context is visible for save safety, but it cannot be used for booking."
+              : `${selectedRelationship.name} · ${selectedStoryline.commonBeats}. ${selectedTitleRelevance ? selectedTitleRelevance.detail : selectedStage.notes}`}
           </small>
         ) : null}
       </div>
-      {eligibleRivalries.length ? (
+      {eligibleRivalries.length || selectedRivalryBlocked ? (
         <div className="title-buttons">
           <button className={!segment.rivalryId ? "active-filter" : ""} onClick={() => onSetSegmentRivalry(segment.id, "")}>
             No Rivalry

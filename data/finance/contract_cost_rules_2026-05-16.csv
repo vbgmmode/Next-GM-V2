@@ -1,0 +1,4 @@
+rule_id,phase,cost_formula,contract_length,signing_bonus_allowed,notes
+initial_draft_full_season,initial_draft,draft_value_usd,full_configured_season,FALSE,Used at New Game draft. No weekly multiplier at this phase.
+midseason_scouting_variable_weeks,midseason_scouting,weekly_hire_rate_usd * selected_contract_weeks,variable_weeks,FALSE,Used for post-draft hiring. Contract length can vary by offer.
+segment_booking_cost,weekly_booking,segment.weekly_tv_booking_cost_usd or segment.ple_ppv_booking_cost_usd plus title/rivalry surcharges,not_applicable,FALSE,Booking a match/promo/angle costs cash independent of roster acquisition.

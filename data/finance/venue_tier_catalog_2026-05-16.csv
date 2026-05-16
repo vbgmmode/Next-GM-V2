@@ -1,0 +1,6 @@
+venue_tier_id,display_name,capacity,base_rent_usd,production_floor_usd,average_ticket_price_usd,prestige_1_5,recommended_for
+tv_studio,TV Studio,2500,25000,30000,35,1,"Hard starts, NXT-style shows, early rebuild brands"
+small_arena,Small Arena,6500,60000,55000,45,2,Budget-conscious weekly TV
+standard_arena,Standard Arena,12000,110000,85000,60,3,Most weekly Raw/SmackDown/AEW shows
+major_arena,Major Arena,18000,180000,130000,75,4,Hot weekly shows and special TV episodes
+stadium,Stadium,55000,650000,500000,95,5,PLE/PPV only unless brand is extremely hot
