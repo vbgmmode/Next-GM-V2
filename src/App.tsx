@@ -1081,15 +1081,48 @@ function canSegmentAttachChampionship(segment: Segment, championship: Championsh
 }
 
 function getTopContenders(championship: Championship, wrestlers: Wrestler[], limit = 3) {
-  return [...wrestlers]
-    .filter((wrestler) => !championship.championIds.includes(wrestler.id))
-    .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship))
-    .sort((a, b) => b.popularity + b.momentum - (a.popularity + a.momentum))
-    .slice(0, limit);
+  return getTitleDivisionScene(championship, wrestlers).topContenders.slice(0, limit);
 }
 
-function getTitleSceneRead(championship: Championship, wrestlers: Wrestler[], currentWeek: number) {
-  const contenders = getTopContenders(championship, wrestlers, 6);
+function getTitleSceneTalentScore(wrestler: Wrestler, championship: Championship, rivalries: Rivalry[] = []) {
+  const championIds = new Set(championship.championIds);
+  const titleRivalryBonus = rivalries.some(
+    (rivalry) => rivalry.stakes === "title" && rivalry.participantIds.includes(wrestler.id) && rivalry.participantIds.some((id) => championIds.has(id)),
+  )
+    ? 18
+    : 0;
+
+  return wrestler.popularity + wrestler.momentum + titleRivalryBonus;
+}
+
+function getTitleDivisionScene(championship: Championship, wrestlers: Wrestler[], rivalries: Rivalry[] = [], currentWeek = 1) {
+  const championIds = new Set(championship.championIds);
+  const champions = championship.championIds.map((id) => wrestlers.find((wrestler) => wrestler.id === id)).filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
+  const eligibleRoster = wrestlers
+    .filter((wrestler) => !championIds.has(wrestler.id))
+    .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship))
+    .sort((a, b) => getTitleSceneTalentScore(b, championship, rivalries) - getTitleSceneTalentScore(a, championship, rivalries));
+  const topContenders = eligibleRoster.slice(0, 3);
+  const topContenderIds = new Set(topContenders.map((wrestler) => wrestler.id));
+  const risingContenders = eligibleRoster
+    .filter((wrestler) => !topContenderIds.has(wrestler.id))
+    .filter((wrestler) => wrestler.momentum >= 80 || getWeeksSinceLastBooked(wrestler, currentWeek) >= 2)
+    .sort((a, b) => b.momentum - a.momentum || b.popularity - a.popularity)
+    .slice(0, 3);
+  const outsideDivision = wrestlers.filter((wrestler) => !championIds.has(wrestler.id) && !wrestlerFitsChampionshipDivision(wrestler, championship));
+
+  return {
+    champions,
+    topContenders,
+    risingContenders,
+    eligibleRoster,
+    outsideDivision,
+  };
+}
+
+function getTitleSceneRead(championship: Championship, wrestlers: Wrestler[], currentWeek: number, rivalries: Rivalry[] = []) {
+  const scene = getTitleDivisionScene(championship, wrestlers, rivalries, currentWeek);
+  const contenders = scene.eligibleRoster;
   const defenseWindow = championship.minimumDefenseFrequencyWeeks ?? 6;
   const reignLength = getReignLength(championship, currentWeek);
 
@@ -1102,8 +1135,15 @@ function getTitleSceneRead(championship: Championship, wrestlers: Wrestler[], cu
 
   if (contenders.length < 2) {
     return {
-      label: "Thin Scene",
+      label: "Needs Contenders",
       detail: "The roster needs more same-division contenders around this championship.",
+    };
+  }
+
+  if (contenders.length < 4) {
+    return {
+      label: "Thin Scene",
+      detail: "There is a title lane, but the challenger pool is narrow.",
     };
   }
 
@@ -1114,10 +1154,79 @@ function getTitleSceneRead(championship: Championship, wrestlers: Wrestler[], cu
     };
   }
 
+  if (contenders.length > 7) {
+    return {
+      label: "Crowded Scene",
+      detail: "Plenty of eligible talent can credibly circle this title.",
+    };
+  }
+
+  if (!contenders.some((wrestler) => wrestler.momentum >= 75)) {
+    return {
+      label: "Cold Scene",
+      detail: "The division has bodies, but nobody is carrying hot momentum yet.",
+    };
+  }
+
   return {
-    label: "Active Scene",
+    label: "Strong Scene",
     detail: `${contenders.length} same-division contender${contenders.length === 1 ? "" : "s"} fit the title picture.`,
   };
+}
+
+function getTitleSceneGMRead(championship: Championship, scene: ReturnType<typeof getTitleDivisionScene>) {
+  if (championship.eligibleMatchScope === "tag_team") {
+    return "Tag title presentation is tracked, but tag booking is not part of this ruleset yet.";
+  }
+
+  if (scene.eligibleRoster.length < 2) {
+    return "Division is thin. This belt needs more eligible wrestlers before the title scene can breathe.";
+  }
+
+  const [first, second] = scene.topContenders;
+
+  if (first && second && getTitleSceneTalentScore(first, championship) - getTitleSceneTalentScore(second, championship) >= 20) {
+    return `Clear challenger emerging: ${first.name} is separating from the pack.`;
+  }
+
+  if (scene.eligibleRoster.length > 7) {
+    return "Crowded contender field. This belt can support eliminators, contender promos, or a multi-person spotlight.";
+  }
+
+  if (scene.risingContenders.length) {
+    return `${scene.risingContenders[0].name} is rising behind the front line.`;
+  }
+
+  return "Stable title lane. The champion has enough credible challengers for weekly TV.";
+}
+
+function formatTitleSceneNames(wrestlers: Wrestler[], fallback: string) {
+  return wrestlers.length ? wrestlers.map((wrestler) => wrestler.name).join(" / ") : fallback;
+}
+
+function getWrestlerTitleSceneRows(wrestler: Wrestler, game: GameState) {
+  return game.championships
+    .filter((championship) => championship.eligibleMatchScope !== "tag_team")
+    .filter((championship) => wrestlerFitsChampionshipDivision(wrestler, championship) || championship.championIds.includes(wrestler.id))
+    .map((championship) => {
+      const scene = getTitleDivisionScene(championship, game.wrestlers, game.rivalries, game.currentWeek);
+      const isChampion = championship.championIds.includes(wrestler.id);
+      const topIndex = scene.topContenders.findIndex((contender) => contender.id === wrestler.id);
+      const risingIndex = scene.risingContenders.findIndex((contender) => contender.id === wrestler.id);
+      const relevance = isChampion
+        ? "Champion"
+        : topIndex >= 0
+          ? `Top Contender ${topIndex + 1}`
+          : risingIndex >= 0
+            ? "Rising Contender"
+            : "Eligible Roster";
+
+      return {
+        championship,
+        relevance,
+        detail: `${championship.brand ?? "Brand"} · ${championship.division} · ${championship.titleLevel ?? "Title"}`,
+      };
+    });
 }
 
 function getChampionshipOfficeLine(championship: Championship) {
@@ -4157,6 +4266,7 @@ function WrestlerProfileScreen({
   const status = getWrestlerStatus(wrestler);
   const pressureTags = getRosterPressureTags(wrestler, game.currentWeek);
   const championships = getWrestlerChampionships(wrestler.id, game.championships);
+  const titleSceneRows = getWrestlerTitleSceneRows(wrestler, game);
   const activeRivalries = getWrestlerRivalries(wrestler.id, game.rivalries);
   const recentTitleHistory = getWrestlerTitleHistory(game, wrestler.id);
   const recentRivalryHistory = getWrestlerRivalryHistory(game, wrestler.id);
@@ -4261,20 +4371,20 @@ function WrestlerProfileScreen({
           <section className="profile-panel title-profile-panel" aria-label="Championship context">
             <div className="section-heading">
               <p className="eyebrow">Championship Context</p>
-              <h3>{championships.length ? "Current Champion" : "No Current Title"}</h3>
+              <h3>{championships.length ? "Current Champion" : titleSceneRows.length ? "Title Scene Fit" : "No Current Title"}</h3>
             </div>
             <div className="profile-list">
-              {championships.length ? (
-                championships.map((championship) => (
+              {titleSceneRows.length ? (
+                titleSceneRows.map(({ championship, detail, relevance }) => (
                   <article className="profile-context-row" key={championship.id}>
                     <strong>{championship.name}</strong>
                     <span>
-                      {championship.division} · Prestige {championship.prestige} · {championship.defenses} defenses
+                      {relevance} · {detail} · Prestige {championship.prestige}
                     </span>
                   </article>
                 ))
               ) : (
-                <p className="muted-copy">No championship is currently assigned to {wrestler.name}.</p>
+                <p className="muted-copy">{wrestler.name} does not currently fit an active singles title scene.</p>
               )}
             </div>
             <div className="history-list compact-history" aria-label="Recent title history">
@@ -4382,9 +4492,10 @@ function ChampionshipsScreen({
 
       <section className="championship-grid" aria-label="Championships">
         {game.championships.map((championship) => {
-          const contenders = getTopContenders(championship, game.wrestlers, 4);
+          const scene = getTitleDivisionScene(championship, game.wrestlers, game.rivalries, game.currentWeek);
           const recentHistory = getChampionshipHistory(game, championship.id);
-          const titleRead = getTitleSceneRead(championship, game.wrestlers, game.currentWeek);
+          const titleRead = getTitleSceneRead(championship, game.wrestlers, game.currentWeek, game.rivalries);
+          const gmRead = getTitleSceneGMRead(championship, scene);
 
           return (
             <article className="championship-card" key={championship.id}>
@@ -4413,9 +4524,33 @@ function ChampionshipsScreen({
                   <small>{championship.minimumDefenseFrequencyWeeks ? `Defense rhythm: about ${championship.minimumDefenseFrequencyWeeks} weeks` : "Legacy title cadence"}</small>
                 </article>
               </div>
-              <div className="contender-strip">
-                <span>Eligible Contenders</span>
-                <strong>{contenders.length ? contenders.map((wrestler) => wrestler.name).join(" / ") : "No clear same-division contenders"}</strong>
+              <div className="title-division-builder" aria-label={`${championship.name} division builder`}>
+                <article>
+                  <span>Champion</span>
+                  <strong>{formatTitleSceneNames(scene.champions, "No champion assigned")}</strong>
+                </article>
+                <article>
+                  <span>Top Contenders</span>
+                  <strong>{formatTitleSceneNames(scene.topContenders, "No clear challengers")}</strong>
+                </article>
+                <article>
+                  <span>Rising Contenders</span>
+                  <strong>{formatTitleSceneNames(scene.risingContenders, "No rising lane yet")}</strong>
+                </article>
+                <article>
+                  <span>Eligible Roster</span>
+                  <strong>{scene.eligibleRoster.length} wrestler{scene.eligibleRoster.length === 1 ? "" : "s"}</strong>
+                  <small>{formatTitleSceneNames(scene.eligibleRoster.slice(0, 5), "No eligible roster depth")}</small>
+                </article>
+                <article>
+                  <span>Outside The Division</span>
+                  <strong>{scene.outsideDivision.length} not eligible</strong>
+                  <small>{formatTitleSceneNames(scene.outsideDivision.slice(0, 4), "Everyone fits this lane")}</small>
+                </article>
+                <article>
+                  <span>GM Read</span>
+                  <strong>{gmRead}</strong>
+                </article>
               </div>
               <div className="history-list" aria-label={`${championship.name} recent history`}>
                 <span className="history-label">Recent History</span>
@@ -5414,6 +5549,10 @@ function TitleMatchControl({
   const titleContextLine = selectedChampionship
     ? `${selectedChampionship.brand ?? "Brand"} · ${selectedChampionship.division} · ${selectedChampionship.titleLevel ?? "Title"}`
     : "Title office checks champion, participants, and division before sanctioning.";
+  const titleSceneSummaries = eligibleChampionships.map((championship) => ({
+    championship,
+    contenders: getTitleDivisionScene(championship, wrestlers).topContenders,
+  }));
 
   return (
     <div className="title-match-control">
@@ -5445,6 +5584,16 @@ function TitleMatchControl({
             >
               {championship.name} · {championship.division}
             </button>
+          ))}
+        </div>
+      ) : null}
+      {titleSceneSummaries.length ? (
+        <div className="title-eligible-readout" aria-label="Eligible title challengers">
+          {titleSceneSummaries.map(({ championship, contenders }) => (
+            <article key={championship.id}>
+              <span>{championship.name}</span>
+              <strong>{formatTitleSceneNames(contenders, "No clear same-division challengers")}</strong>
+            </article>
           ))}
         </div>
       ) : null}

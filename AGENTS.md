@@ -75,7 +75,7 @@ The game currently supports:
 - Injury System v1 with deterministic minor/major injuries from fatigue and overuse, major-injury booking blocks, recovery on Advance Week, and persisted injury state
 - Roster
 - Wrestler Profiles v1 with stats, TV history, pressure labels, championship/rivalry context, social mentions, and deterministic GM Read
-- Championships
+- Championships with title catalog context, champion/contender framing, and title scene health
 - Rivalries with heat, freshness, stakes, status, create, and end controls
 - Calendar
 - 12-week season
@@ -135,13 +135,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Solo Career RC Stable / Top 200 Open Draft Stabilization
+Phase: Solo Career RC Stable / Data-Expansion Planning
 
 Goal:
-Keep the complete single-player offline career loop stable with the expanded setup flow and active Top 200 open draft pool.
+Define safe boundaries for future content growth while preserving the complete offline solo career loop, expanded setup flow, and active Top 200 open draft pool.
 
 Current priority:
-Protect the RC-stable build, preserve the Top 200 open-draft rule, and avoid adding unrequested rival simulation, brand competition, contract, scouting, or restricted-draft systems.
+Planning only. Protect the RC-stable build, preserve the Top 200 open-draft rule, and avoid adding unrequested data expansion, rival simulation, brand competition, contract, scouting, or restricted-draft systems.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -158,6 +158,8 @@ Completed stabilization passes:
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
+- Data expansion should remain planning-only until a bounded implementation ticket is accepted.
+- Before content expansion, define the data category, maximum safe content size, allowed files, migration or fallback needs, and required smoke checks.
 - Future restricted draft modes must be explicit, optional, and requested by an active ticket.
 - Future data expansion or systems work should remain bounded to an accepted ticket.
 - RC bug fixes only when found.
@@ -169,11 +171,14 @@ Upcoming Direction:
 These are temporary constraints for the current phase. They are not permanent bans.
 
 Unless the active ticket explicitly asks for it, do not add:
+- wrestlers or draft-pool expansion
+- flavor pools, recap copy pools, social posts, or finance text
 - database
 - router
 - Tailwind
 - custom logos
 - modding
+- setup variants, brand variants, or GM style variants
 - scouting
 - contract-management systems beyond the current setup framing and Contract Signing segment type
 - draft expansion beyond the current new-game draft flow
