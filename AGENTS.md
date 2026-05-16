@@ -43,6 +43,7 @@ The game currently supports:
 - GM name and expanded GM style identity selection with descriptions
 - Brand selection using Raw, SmackDown, NXT, and AEW as equal major prototype brands
 - Rival GM assignments to unselected brands as setup flavor/state only
+- Rival Brand Foundation v1 with typed persisted read-only rival brand state derived from setup assignments
 - Top 200 open draft pool staged from data/rosters and activated through src/game/top200DraftPool.ts
 - 199 game-eligible performers available by default in Draft Night
 - Open Draft Night availability across source brands; source/current brand does not restrict draft availability
@@ -146,7 +147,7 @@ Goal:
 Define safe boundaries for future content growth while preserving the complete offline solo career loop, expanded setup flow, and active Top 200 open draft pool.
 
 Current priority:
-Planning only. Protect the RC-stable build, preserve the Top 200 open-draft rule, and avoid adding unrequested data expansion, rival simulation, brand competition, contract, scouting, or restricted-draft systems.
+Protect the RC-stable build, preserve the Top 200 open-draft rule, and keep rival brand foundation work read-only unless a future ticket explicitly asks for simulation or competition systems.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -163,7 +164,9 @@ Completed stabilization passes:
 - Finance Catalog Foundation v1
 - Setup/Draft Finance Readout v1
 - Finance Report Schema v2, Legacy-Compatible
+- Post-Show Finance Formula v2, Report-Only Replacement
 - Finance Integration Checkpoint Report v1
+- Rival Brand Foundation v1
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.

@@ -3052,6 +3052,7 @@ function NewGameSetupScreen({
   const draftArchetypeCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.archetype);
   const draftDivisionCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.division);
   const draftSourceBrandCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.sourceBrand);
+  const previewRivalBrands = createRivalBrandUniverse(rivalGMAssignments);
 
   function startCareer() {
     if (!canPreview || draftedWrestlers.length !== draftPickCount) {
@@ -3252,21 +3253,7 @@ function NewGameSetupScreen({
               <Metric label="First Season" value="12 Weeks" detail="PLEs in Weeks 4, 8, and 12" />
               <Metric label="Next Step" value="Draft Night" detail="Build the first locker room" />
             </div>
-            <section className="rival-universe" aria-label="Rival GM assignments">
-              <div>
-                <p className="eyebrow">Rival GM Universe</p>
-                <h3>The Other Chairs Are Filled</h3>
-              </div>
-              <div className="rival-universe-grid">
-                {rivalGMAssignments.map((assignment) => (
-                  <article key={assignment.brand}>
-                    <span>{assignment.brand}</span>
-                    <strong>{assignment.gmName}</strong>
-                    <small>{assignment.gmStyle}</small>
-                  </article>
-                ))}
-              </div>
-            </section>
+            <RivalBrandUniversePanel rivalBrands={previewRivalBrands} title="The Other Chairs Are Filled" />
             <p className="lede">
               Week 1 opens on TV. This first campaign starts with Collision Course in Week 4, and ownership expects momentum before the road reaches Final Bell.
             </p>
@@ -3488,6 +3475,55 @@ function NewGameSetupScreen({
   );
 }
 
+function RivalBrandUniversePanel({
+  className = "",
+  rivalBrands,
+  title,
+}: {
+  className?: string;
+  rivalBrands: RivalBrandState[];
+  title: string;
+}) {
+  const rosterClaims = rivalBrands.reduce((sum, brand) => sum + brand.rosterWrestlerIds.length, 0);
+  const activityBeats = rivalBrands.reduce((sum, brand) => sum + brand.activityHistory.length, 0);
+
+  return (
+    <section className={`rival-universe ${className}`.trim()} aria-label="Rival Brand Universe">
+      <div className="rival-universe-head">
+        <div>
+          <p className="eyebrow">Rival Brand Universe</p>
+          <h3>{title}</h3>
+        </div>
+        <div className="show-strip">
+          <span>{rivalBrands.length} Chairs</span>
+          <span>{rosterClaims} Rival Picks</span>
+          <span>{activityBeats} Activity Beats</span>
+        </div>
+      </div>
+      {rivalBrands.length ? (
+        <>
+          <p className="rival-universe-read">{getRivalUniverseRead(rivalBrands)}</p>
+          <div className="rival-universe-grid">
+            {rivalBrands.map((rivalBrand) => (
+              <article key={rivalBrand.id}>
+                <span>{rivalBrand.brandName}</span>
+                <strong>{rivalBrand.assignedGMName}</strong>
+                <small>{rivalBrand.assignedGMStyle}</small>
+                <div className="rival-brand-meta">
+                  <span>{rivalBrand.roleLabel}</span>
+                  <span>{rivalBrand.statusLabel}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="empty-state compact">No rival brand chairs are assigned for this career setup.</div>
+      )}
+    </section>
+  );
+}
+
 function DraftFinanceSummary({ readout }: { readout: DraftFinanceReadout }) {
   const pressureClass = readout.pressureLabel.toLowerCase().replace(/\s+/g, "-");
 
@@ -3633,6 +3669,7 @@ function DashboardScreen({
   const minorInjuryCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus === "minor").length;
   const unavailableCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus === "major").length;
   const latestRecoveryNotes = game.injuryRecoveryNotes.filter((note) => note.weekNumber === game.currentWeek).slice(-3).reverse();
+  const rivalBrands = game.rivalBrands ?? createRivalBrandUniverse(game.rivalGMAssignments);
 
   return (
     <main className="app-shell">
@@ -3712,6 +3749,8 @@ function DashboardScreen({
         <Metric label="Avg Fatigue" value={`${averageFatigue}`} detail={averageFatigue >= 45 ? "Training room is busy" : "Load is controlled"} />
         <Metric label="Top Momentum" value={`${topMomentumTalent.momentum}`} detail={topMomentumTalent.name} />
       </section>
+
+      <RivalBrandUniversePanel className="command-panel rival-universe-dashboard" rivalBrands={rivalBrands} title="Competitive Landscape" />
 
       <section className="command-panel roster-pressure-panel">
         <div className="section-heading">
