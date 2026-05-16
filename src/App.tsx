@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { clearGameState, loadGameState, saveGameState } from "./gameStorage";
 import { advanceGameWeek, startNextSeason } from "./game/advanceWeek";
 import { getFinancePressureLabel } from "./game/finance";
-import { createDefaultChampionships, createDefaultRivalries, createNewGame, createSeasonCalendar, defaultCareer, draftPool } from "./game/seed";
+import { migrateSavedGameState } from "./game/migration";
+import { createNewGame, defaultCareer, draftPool } from "./game/seed";
 import {
   getBestSegment,
   getCurrentCalendarWeek,
@@ -16,11 +17,14 @@ import type {
   CalendarWeek,
   BrandStyle,
   Championship,
+  ChampionshipHistoryEvent,
   FinanceReport,
   GameState,
   GMStyle,
+  InjuryStatus,
   PressureLabel,
   Rivalry,
+  RivalryHistoryEvent,
   RivalryStakes,
   Screen,
   Segment,
@@ -31,19 +35,28 @@ import type {
   ShowType,
   Wrestler,
 } from "./game/types";
-
-type GameScreen = Exclude<Screen, "title" | "setup">;
-
-type SavedGameState = {
-  game: GameState;
-  screen: GameScreen;
-};
+import type { GameScreen, ProfileReturnScreen, SavedGameState } from "./game/migration";
 
 type RosterSort = "popularity" | "momentum" | "fatigue" | "morale";
 type RosterFilter = "All" | "Hot" | "Tired" | "Frustrated";
-type RosterPressureTag = "Overused" | "Underused" | "Protected Star" | "Morale Risk" | "Injury Risk";
+type RosterPressureTag = "Overused" | "Underused" | "Protected Star" | "Morale Risk" | "Injury Risk" | "Minor Injury" | "Unavailable";
 type SocialFilter = "All" | "Fan Reaction" | "Dirt Sheets" | "Analyst Takes" | "Title Scene" | "Rivalries";
 type SetupStep = "contract" | "gm" | "brand" | "preview" | "draft" | "review";
+
+type WrestlerAppearance = {
+  id: string;
+  week: number;
+  showName: string;
+  type: SegmentType;
+  score: number;
+  note?: string;
+};
+
+type GMRead = {
+  usefulness: string;
+  risk: string;
+  need: string;
+};
 
 const draftPickCount = 12;
 
@@ -137,9 +150,15 @@ function getSegmentPickerLabel(type: SegmentType) {
   return type === "Open Challenge" ? "Issuer" : "Participants";
 }
 
-function getSegmentValidationWarning(segment: Segment) {
-  if (isValidSegment(segment)) {
+function getSegmentValidationWarning(segment: Segment, wrestlers: Wrestler[] = []) {
+  if (isValidSegment(segment, wrestlers)) {
     return "";
+  }
+
+  const unavailable = getSegmentParticipants(segment, wrestlers).find((wrestler) => wrestler.injuryStatus === "major");
+
+  if (unavailable) {
+    return `${unavailable.name} is unavailable with a major injury.`;
   }
 
   if (segment.type === "Match") {
@@ -171,7 +190,32 @@ function getSegmentParticipants(segment: Segment, wrestlers: Wrestler[]) {
     .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
 }
 
+function getInjuryStatusLabel(status: InjuryStatus) {
+  if (status === "minor") {
+    return "Minor Injury";
+  }
+
+  if (status === "major") {
+    return "Major Injury";
+  }
+
+  return "Healthy";
+}
+
+function getInjuryDetail(wrestler: Wrestler) {
+  if (wrestler.injuryStatus === "healthy") {
+    return "Available";
+  }
+
+  const weeks = wrestler.injuryWeeksRemaining;
+  return `${weeks} week${weeks === 1 ? "" : "s"} remaining${wrestler.injuryDescription ? ` · ${wrestler.injuryDescription}` : ""}`;
+}
+
 function getWrestlerStatus(wrestler: Wrestler): Exclude<RosterFilter, "All"> | "Steady" {
+  if (wrestler.injuryStatus === "major") {
+    return "Tired";
+  }
+
   if (wrestler.fatigue >= 60) {
     return "Tired";
   }
@@ -200,7 +244,15 @@ function getRosterPressureTags(wrestler: Wrestler, currentWeek: number): RosterP
   const isOverused = wrestler.fatigue >= 60 || (wrestler.consecutiveWeeksBooked ?? 0) >= 3;
   const tags: RosterPressureTag[] = [];
 
-  if (wrestler.fatigue >= 75) {
+  if (wrestler.injuryStatus === "major") {
+    tags.push("Unavailable");
+  }
+
+  if (wrestler.injuryStatus === "minor") {
+    tags.push("Minor Injury");
+  }
+
+  if (wrestler.fatigue >= 75 || wrestler.injuryStatus === "minor") {
     tags.push("Injury Risk");
   }
 
@@ -289,6 +341,56 @@ function getReignLength(championship: Championship, currentWeek: number) {
   return Math.max(1, currentWeek - championship.reignStartWeek + 1);
 }
 
+function getChampionshipHistory(game: GameState, championshipId: string, limit = 5) {
+  return [...(game.championshipHistory ?? [])]
+    .filter((event) => event.championshipId === championshipId)
+    .sort((a, b) => b.seasonNumber - a.seasonNumber || b.weekNumber - a.weekNumber)
+    .slice(0, limit);
+}
+
+function getRivalryHistory(game: GameState, rivalryId: string, limit = 5) {
+  return [...(game.rivalryHistory ?? [])]
+    .filter((event) => event.rivalryId === rivalryId)
+    .sort((a, b) => b.seasonNumber - a.seasonNumber || b.weekNumber - a.weekNumber)
+    .slice(0, limit);
+}
+
+function getWrestlerTitleHistory(game: GameState, wrestlerId: string, limit = 5) {
+  return [...(game.championshipHistory ?? [])]
+    .filter((event) => event.championIds.includes(wrestlerId) || Boolean(event.previousChampionIds?.includes(wrestlerId)))
+    .sort((a, b) => b.seasonNumber - a.seasonNumber || b.weekNumber - a.weekNumber)
+    .slice(0, limit);
+}
+
+function getWrestlerRivalryHistory(game: GameState, wrestlerId: string, limit = 5) {
+  const majorEventTypes: RivalryHistoryEvent["eventType"][] = ["started", "heated_up", "became_stale", "ended", "ple_payoff"];
+
+  return [...(game.rivalryHistory ?? [])]
+    .filter((event) => event.participantIds.includes(wrestlerId) && majorEventTypes.includes(event.eventType))
+    .sort((a, b) => b.seasonNumber - a.seasonNumber || b.weekNumber - a.weekNumber)
+    .slice(0, limit);
+}
+
+function formatHistoryStamp(event: Pick<ChampionshipHistoryEvent | RivalryHistoryEvent, "seasonNumber" | "weekNumber" | "showName" | "showType">) {
+  const showLabel = event.showName ? ` · ${event.showName}${event.showType ? ` (${getShowTypeLabel(event.showType)})` : ""}` : "";
+  return `S${event.seasonNumber} W${event.weekNumber}${showLabel}`;
+}
+
+function formatChampionshipEventType(eventType: ChampionshipHistoryEvent["eventType"]) {
+  return eventType === "title_change" ? "Title Change" : "Successful Defense";
+}
+
+function formatRivalryEventType(eventType: RivalryHistoryEvent["eventType"]) {
+  return eventType
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function hasPlePayoff(game: GameState, rivalryId: string) {
+  return (game.rivalryHistory ?? []).some((event) => event.rivalryId === rivalryId && event.eventType === "ple_payoff");
+}
+
 function canSegmentAttachRivalry(segment: Segment, rivalry: Rivalry) {
   return segment.type !== "Open Challenge" && segment.participantIds.some((id) => rivalry.participantIds.includes(id));
 }
@@ -369,6 +471,61 @@ function getWorstProfitReport(reports: FinanceReport[]) {
   return reports.reduce<FinanceReport | undefined>((worst, report) => (!worst || report.profitLoss < worst.profitLoss ? report : worst), undefined);
 }
 
+function getSeasonTitleHistory(game: GameState) {
+  return (game.championshipHistory ?? []).filter((event) => event.seasonNumber === game.seasonNumber);
+}
+
+function getSeasonRivalryHistory(game: GameState) {
+  return (game.rivalryHistory ?? []).filter((event) => event.seasonNumber === game.seasonNumber);
+}
+
+function getBiggestTitleChange(game: GameState) {
+  return getSeasonTitleHistory(game)
+    .filter((event) => event.eventType === "title_change")
+    .sort((a, b) => {
+      const titleA = game.championships.find((championship) => championship.id === a.championshipId);
+      const titleB = game.championships.find((championship) => championship.id === b.championshipId);
+      return (titleB?.prestige ?? 0) - (titleA?.prestige ?? 0) || b.weekNumber - a.weekNumber;
+    })[0];
+}
+
+function getMostDefendedChampionship(game: GameState) {
+  const defenseCounts = getSeasonTitleHistory(game)
+    .filter((event) => event.eventType === "successful_defense")
+    .reduce<Record<string, number>>((counts, event) => ({ ...counts, [event.championshipId]: (counts[event.championshipId] ?? 0) + 1 }), {});
+  const [championshipId, count] = Object.entries(defenseCounts).sort((a, b) => b[1] - a[1])[0] ?? [];
+  const championship = game.championships.find((title) => title.id === championshipId);
+
+  return championship && count ? { championship, count } : undefined;
+}
+
+function getHottestRivalryStory(game: GameState) {
+  const history = getSeasonRivalryHistory(game);
+  const hottestEvent = [...history].sort((a, b) => (b.heat ?? 0) - (a.heat ?? 0))[0];
+  const activeRivalry = hottestEvent ? game.rivalries.find((rivalry) => rivalry.id === hottestEvent.rivalryId) : undefined;
+
+  if (hottestEvent) {
+    return { name: hottestEvent.rivalryName, heat: hottestEvent.heat ?? activeRivalry?.heat ?? 0, note: hottestEvent.note };
+  }
+
+  const hottestRivalry = getHottestRivalry(game.rivalries);
+  return hottestRivalry ? { name: hottestRivalry.name, heat: hottestRivalry.heat, note: "No recorded rivalry history event this season yet." } : undefined;
+}
+
+function getMostEventfulRivalry(game: GameState) {
+  const eventCounts = getSeasonRivalryHistory(game).reduce<Record<string, { name: string; count: number }>>((counts, event) => {
+    const current = counts[event.rivalryId] ?? { name: event.rivalryName, count: 0 };
+    return { ...counts, [event.rivalryId]: { ...current, count: current.count + 1 } };
+  }, {});
+  return Object.values(eventCounts).sort((a, b) => b.count - a.count)[0];
+}
+
+function getNotablePlePayoff(game: GameState) {
+  return getSeasonRivalryHistory(game)
+    .filter((event) => event.eventType === "ple_payoff")
+    .sort((a, b) => (b.heat ?? 0) - (a.heat ?? 0) || b.weekNumber - a.weekNumber)[0];
+}
+
 function formatSocialCategory(category: SocialCategory) {
   return category
     .split("_")
@@ -408,6 +565,104 @@ function getRelatedWrestlerNames(post: SocialPost, wrestlers: Wrestler[]) {
   return post.relatedWrestlerIds.map((id) => wrestlers.find((wrestler) => wrestler.id === id)?.name).filter(Boolean).join(" / ");
 }
 
+function getWrestlerChampionships(wrestlerId: string, championships: Championship[]) {
+  return championships.filter((championship) => championship.championIds.includes(wrestlerId));
+}
+
+function getWrestlerRivalries(wrestlerId: string, rivalries: Rivalry[]) {
+  return rivalries.filter((rivalry) => rivalry.participantIds.includes(wrestlerId));
+}
+
+function getRecentWrestlerAppearances(game: GameState, wrestlerId: string, limit = 5): WrestlerAppearance[] {
+  return [...game.showHistory]
+    .reverse()
+    .flatMap((result) =>
+      result.segmentResults
+        .filter((segment) => segment.participantIds.includes(wrestlerId))
+        .map((segment) => ({
+          id: `${result.id}-${segment.segmentId}`,
+          week: result.week,
+          showName: result.showName,
+          type: segment.type,
+          score: segment.score,
+          note: segment.titleNote ?? segment.rivalryNote ?? segment.recapNote,
+        })),
+    )
+    .slice(0, limit);
+}
+
+function getRecentWrestlerSocialPosts(game: GameState, wrestlerId: string, limit = 5) {
+  return game.socialPosts
+    .filter((post) => post.relatedWrestlerIds.includes(wrestlerId))
+    .slice(-limit)
+    .reverse();
+}
+
+function getPrimaryStrength(wrestler: Wrestler) {
+  if (wrestler.ringSkill >= wrestler.promoSkill + 8) {
+    return `Ring work is the strongest lever at ${wrestler.ringSkill}.`;
+  }
+
+  if (wrestler.promoSkill >= wrestler.ringSkill + 8) {
+    return `Promo work is the strongest lever at ${wrestler.promoSkill}.`;
+  }
+
+  return `Balanced ring and promo value gives you booking flexibility.`;
+}
+
+function getGMRead(wrestler: Wrestler, game: GameState): GMRead {
+  const pressureTags = getRosterPressureTags(wrestler, game.currentWeek);
+  const championships = getWrestlerChampionships(wrestler.id, game.championships);
+  const rivalries = getWrestlerRivalries(wrestler.id, game.rivalries);
+  const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, game.currentWeek);
+  const hasTitle = championships.length > 0;
+  const hasRivalry = rivalries.length > 0;
+  const usefulness =
+    hasTitle
+      ? `${wrestler.name} carries championship value as ${championships.map((championship) => championship.name).join(" / ")} holder.`
+      : hasRivalry
+        ? `${wrestler.name} has active story value in ${rivalries[0].name}.`
+        : wrestler.momentum >= 65
+          ? `${wrestler.name} is hot right now with ${wrestler.momentum} momentum.`
+          : wrestler.popularity >= 68
+            ? `${wrestler.name} has star power at ${wrestler.popularity} popularity.`
+            : getPrimaryStrength(wrestler);
+
+  const risk =
+    wrestler.injuryStatus === "major"
+      ? `${wrestler.name} is unavailable with a major injury.`
+      : wrestler.injuryStatus === "minor"
+        ? `${wrestler.name} is working through a minor injury and carries extra fatigue/morale risk.`
+        : pressureTags.includes("Injury Risk")
+      ? `${wrestler.name} is at injury risk levels with ${wrestler.fatigue} fatigue.`
+      : pressureTags.includes("Overused")
+        ? `${wrestler.name} is carrying overuse pressure from fatigue or a long TV streak.`
+        : pressureTags.includes("Morale Risk")
+          ? `${wrestler.name} is a morale risk at ${wrestler.morale}.`
+          : weeksSinceLastBooked >= 3
+            ? `${wrestler.name} has been off TV for ${weeksSinceLastBooked} weeks.`
+            : "No major pressure label is active right now.";
+
+  const need =
+    wrestler.injuryStatus === "major"
+      ? "Needs recovery time before they can be booked again."
+      : wrestler.injuryStatus === "minor"
+        ? "Can work, but needs lighter usage or protection."
+        : pressureTags.includes("Injury Risk") || wrestler.fatigue >= 70
+      ? "Needs rest or a protected usage."
+      : pressureTags.includes("Overused")
+        ? "Needs lighter TV or protection before the workload stacks higher."
+        : pressureTags.includes("Underused")
+          ? "Needs TV time if you want to stop the absence becoming a locker room issue."
+          : pressureTags.includes("Morale Risk")
+            ? "Needs meaningful TV time or a stabilizing role."
+            : wrestler.momentum < 45
+              ? "Needs momentum if you want them to feel valuable on the card."
+              : "Can be used for momentum, story texture, or a steady card role.";
+
+  return { usefulness, risk, need };
+}
+
 function buildBroadcastRecap(result: ShowResult) {
   const bestSegment = getBestSegment(result);
   const bestNames = bestSegment.participantNames.join(" / ");
@@ -421,96 +676,33 @@ function buildBroadcastRecap(result: ShowResult) {
   return `${showFrame} in Week ${result.week}, with ${bestNames} delivering the strongest ${bestSegment.type.toLowerCase()} of the night at ${bestSegment.score}. ${result.biggestMomentumGain.name} gained the most momentum, while ${result.biggestFatigueIncrease.name} took the biggest fatigue hit.${titleFallout}${rivalryFallout}`;
 }
 
-function saveSnapshot(game: GameState, screen: SavedGameState["screen"]) {
-  saveGameState({ game, screen });
-}
-
-function normalizeWrestlers(wrestlers: Wrestler[]) {
-  return wrestlers.map((wrestler) => ({
-    ...wrestler,
-    appearancesThisSeason: wrestler.appearancesThisSeason ?? 0,
-    lastBookedWeek: wrestler.lastBookedWeek ?? 0,
-    consecutiveWeeksBooked: wrestler.consecutiveWeeksBooked ?? 0,
-  }));
-}
-
-function isSavedGameState(value: unknown): value is SavedGameState {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const saved = value as Partial<SavedGameState>;
-  const game = saved.game as Partial<GameState> | undefined;
-
-  return (
-    (saved.screen === "dashboard" ||
-      saved.screen === "booking" ||
-      saved.screen === "roster" ||
-      saved.screen === "championships" ||
-      saved.screen === "rivalries" ||
-      saved.screen === "calendar" ||
-      saved.screen === "social" ||
-      saved.screen === "finance" ||
-      saved.screen === "seasonReview" ||
-      saved.screen === "weekReview" ||
-      saved.screen === "results") &&
-    Boolean(game) &&
-    typeof game?.currentWeek === "number" &&
-    typeof game.brandName === "string" &&
-    typeof game.money === "number" &&
-    Array.isArray(game.wrestlers) &&
-    Array.isArray(game.currentShow) &&
-    Array.isArray(game.showHistory)
-  );
+function saveSnapshot(game: GameState, screen: SavedGameState["screen"], profileState?: Pick<SavedGameState, "profileReturnScreen" | "profileWrestlerId">) {
+  saveGameState({ game, screen, ...profileState });
 }
 
 function loadSavedGame() {
-  const savedState = loadGameState<SavedGameState>();
+  const savedState = loadGameState();
 
   if (!savedState) {
     return null;
   }
 
-  if (!isSavedGameState(savedState)) {
+  const migratedState = migrateSavedGameState(savedState);
+
+  if (!migratedState) {
     console.warn("Saved game state is invalid.");
     return null;
   }
 
-  const wrestlers = normalizeWrestlers(savedState.game.wrestlers);
-
-  return {
-    ...savedState,
-    game: {
-      ...savedState.game,
-      wrestlers,
-      championships:
-        Array.isArray(savedState.game.championships) && savedState.game.championships.length
-          ? savedState.game.championships
-          : createDefaultChampionships(wrestlers),
-      rivalries:
-        Array.isArray(savedState.game.rivalries) && savedState.game.rivalries.length
-          ? savedState.game.rivalries
-          : createDefaultRivalries(wrestlers),
-      seasonNumber: savedState.game.seasonNumber ?? 1,
-      calendar:
-        Array.isArray(savedState.game.calendar) && savedState.game.calendar.length
-          ? savedState.game.calendar
-          : createSeasonCalendar(),
-      socialPosts: Array.isArray(savedState.game.socialPosts) ? savedState.game.socialPosts : [],
-      financeReports: Array.isArray(savedState.game.financeReports) ? savedState.game.financeReports : [],
-      seasonStartingMoney: savedState.game.seasonStartingMoney ?? savedState.game.money,
-      gmName: savedState.game.gmName ?? defaultCareer.gmName,
-      gmStyle: savedState.game.gmStyle ?? defaultCareer.gmStyle,
-      brandStyle: savedState.game.brandStyle ?? defaultCareer.brandStyle,
-      createdAt: savedState.game.createdAt ?? new Date().toISOString(),
-    },
-  };
+  return migratedState;
 }
 
 function App() {
   const [savedGame, setSavedGame] = useState<SavedGameState | null>(() => loadSavedGame());
   const [screen, setScreen] = useState<Screen>("title");
   const [game, setGame] = useState<GameState | null>(null);
+  const [profileWrestlerId, setProfileWrestlerId] = useState<string | undefined>(() => savedGame?.profileWrestlerId);
+  const [profileReturnScreen, setProfileReturnScreen] = useState<ProfileReturnScreen>(() => savedGame?.profileReturnScreen ?? "roster");
   const latestResult = game?.showHistory[game.showHistory.length - 1];
 
   function startNewGame() {
@@ -519,6 +711,8 @@ function App() {
     }
 
     setGame(null);
+    setProfileWrestlerId(undefined);
+    setProfileReturnScreen("roster");
     setScreen("setup");
   }
 
@@ -533,6 +727,8 @@ function App() {
     saveSnapshot(newGame, "dashboard");
     setSavedGame({ game: newGame, screen: "dashboard" });
     setGame(newGame);
+    setProfileWrestlerId(undefined);
+    setProfileReturnScreen("roster");
     setScreen("dashboard");
   }
 
@@ -542,6 +738,8 @@ function App() {
     }
 
     setGame(savedGame.game);
+    setProfileWrestlerId(savedGame.profileWrestlerId);
+    setProfileReturnScreen(savedGame.profileReturnScreen ?? "roster");
     setScreen(savedGame.screen);
   }
 
@@ -553,6 +751,8 @@ function App() {
     clearGameState();
     setSavedGame(null);
     setGame(null);
+    setProfileWrestlerId(undefined);
+    setProfileReturnScreen("roster");
     setScreen("title");
   }
 
@@ -563,7 +763,34 @@ function App() {
 
     saveSnapshot(game, nextScreen);
     setSavedGame({ game, screen: nextScreen });
+    setProfileWrestlerId(undefined);
+    setProfileReturnScreen(nextScreen === "booking" ? "booking" : "roster");
     setScreen(nextScreen);
+  }
+
+  function openWrestlerProfile(wrestlerId: string, returnScreen: ProfileReturnScreen) {
+    if (!game || !game.wrestlers.some((wrestler) => wrestler.id === wrestlerId)) {
+      return;
+    }
+
+    const profileState = { profileReturnScreen: returnScreen, profileWrestlerId: wrestlerId };
+    saveSnapshot(game, "profile", profileState);
+    setSavedGame({ game, screen: "profile", ...profileState });
+    setProfileWrestlerId(wrestlerId);
+    setProfileReturnScreen(returnScreen);
+    setScreen("profile");
+  }
+
+  function closeWrestlerProfile(returnScreen: ProfileReturnScreen) {
+    if (!game) {
+      return;
+    }
+
+    saveSnapshot(game, returnScreen);
+    setSavedGame({ game, screen: returnScreen });
+    setProfileWrestlerId(undefined);
+    setProfileReturnScreen(returnScreen);
+    setScreen(returnScreen);
   }
 
   function addSegment(type: SegmentType) {
@@ -675,6 +902,12 @@ function App() {
           }
 
           const isSelected = segment.participantIds.includes(wrestlerId);
+          const wrestler = current.wrestlers.find((talent) => talent.id === wrestlerId);
+
+          if (!isSelected && wrestler?.injuryStatus === "major") {
+            return segment;
+          }
+
           const participantLimit = getSegmentParticipantLimit(segment.type);
           const participantIds = isSelected
             ? segment.participantIds.filter((id) => id !== wrestlerId)
@@ -765,22 +998,35 @@ function App() {
       }
 
       const heat = getInitialRivalryHeat(wrestlerA, wrestlerB);
+      const rivalryId = `rivalry-${Date.now()}`;
+      const rivalry = {
+        id: rivalryId,
+        name: `${wrestlerA.name} vs ${wrestlerB.name}`,
+        participantIds: [wrestlerAId, wrestlerBId],
+        heat,
+        freshness: 80,
+        weeksActive: 1,
+        lastAdvancedWeek: 0,
+        status: getRivalryStatus(heat, 80),
+        stakes,
+      } satisfies Rivalry;
+      const startEvent: RivalryHistoryEvent = {
+        id: `s${current.seasonNumber}-w${current.currentWeek}-${rivalryId}-started`,
+        rivalryId,
+        rivalryName: rivalry.name,
+        participantIds: [...rivalry.participantIds],
+        weekNumber: current.currentWeek,
+        seasonNumber: current.seasonNumber,
+        eventType: "started",
+        note: `${rivalry.name} started with ${formatRivalryStakes(stakes).toLowerCase()} stakes.`,
+        heat: rivalry.heat,
+        freshness: rivalry.freshness,
+        status: rivalry.status,
+      };
       const updatedGame = {
         ...current,
-        rivalries: [
-          ...current.rivalries,
-          {
-            id: `rivalry-${Date.now()}`,
-            name: `${wrestlerA.name} vs ${wrestlerB.name}`,
-            participantIds: [wrestlerAId, wrestlerBId],
-            heat,
-            freshness: 80,
-            weeksActive: 1,
-            lastAdvancedWeek: 0,
-            status: getRivalryStatus(heat, 80),
-            stakes,
-          },
-        ],
+        rivalries: [...current.rivalries, rivalry],
+        rivalryHistory: [...(current.rivalryHistory ?? []), startEvent],
       };
 
       saveSnapshot(updatedGame, "rivalries");
@@ -795,9 +1041,26 @@ function App() {
         return current;
       }
 
+      const rivalry = current.rivalries.find((activeRivalry) => activeRivalry.id === rivalryId);
+      const endEvent: RivalryHistoryEvent | undefined = rivalry
+        ? {
+            id: `s${current.seasonNumber}-w${current.currentWeek}-${rivalryId}-ended`,
+            rivalryId,
+            rivalryName: rivalry.name,
+            participantIds: [...rivalry.participantIds],
+            weekNumber: current.currentWeek,
+            seasonNumber: current.seasonNumber,
+            eventType: "ended",
+            note: `${rivalry.name} ended at ${rivalry.heat} heat and ${rivalry.freshness} freshness.`,
+            heat: rivalry.heat,
+            freshness: rivalry.freshness,
+            status: rivalry.status,
+          }
+        : undefined;
       const updatedGame = {
         ...current,
         rivalries: current.rivalries.filter((rivalry) => rivalry.id !== rivalryId),
+        rivalryHistory: endEvent ? [...(current.rivalryHistory ?? []), endEvent] : current.rivalryHistory,
         currentShow: current.currentShow.map((segment) =>
           segment.rivalryId === rivalryId ? { ...segment, rivalryId: undefined } : segment,
         ),
@@ -826,6 +1089,7 @@ function App() {
         onNavigate={navigateTo}
         onRemoveSegment={removeSegment}
         onRunShow={handleRunShow}
+        onOpenProfile={(wrestlerId) => openWrestlerProfile(wrestlerId, "booking")}
         onSetSegmentChampionship={setSegmentChampionship}
         onSetSegmentRivalry={setSegmentRivalry}
         onToggleParticipant={toggleParticipant}
@@ -833,8 +1097,28 @@ function App() {
     );
   }
 
+  if (screen === "profile") {
+    const profileWrestler = game.wrestlers.find((wrestler) => wrestler.id === profileWrestlerId);
+
+    if (!profileWrestler) {
+      return <RosterScreen game={game} latestResult={latestResult} onNavigate={navigateTo} onOpenProfile={(wrestlerId) => openWrestlerProfile(wrestlerId, "roster")} />;
+    }
+
+    return (
+      <WrestlerProfileScreen
+        game={game}
+        latestResult={latestResult}
+        onBackToBooking={() => closeWrestlerProfile("booking")}
+        onBackToRoster={() => closeWrestlerProfile("roster")}
+        onNavigate={navigateTo}
+        returnScreen={profileReturnScreen}
+        wrestler={profileWrestler}
+      />
+    );
+  }
+
   if (screen === "roster") {
-    return <RosterScreen game={game} latestResult={latestResult} onNavigate={navigateTo} />;
+    return <RosterScreen game={game} latestResult={latestResult} onNavigate={navigateTo} onOpenProfile={(wrestlerId) => openWrestlerProfile(wrestlerId, "roster")} />;
   }
 
   if (screen === "championships") {
@@ -1243,7 +1527,7 @@ function DashboardScreen({
     [game.wrestlers],
   );
   const lastShow = game.showHistory[game.showHistory.length - 1];
-  const validSegments = game.currentShow.filter(isValidSegment).length;
+  const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers)).length;
   const averageFatigue = Math.round(game.wrestlers.reduce((sum, wrestler) => sum + wrestler.fatigue, 0) / game.wrestlers.length);
   const nextAction = validSegments >= 2 ? "Run the show when the card feels right." : "Book at least 2 valid segments for this week's broadcast.";
   const topChampionship = [...game.championships].sort((a, b) => b.prestige - a.prestige)[0];
@@ -1263,6 +1547,9 @@ function DashboardScreen({
   const protectedStarCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Protected Star")).length;
   const moraleRiskCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Morale Risk")).length;
   const injuryRiskCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk")).length;
+  const minorInjuryCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus === "minor").length;
+  const unavailableCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus === "major").length;
+  const latestRecoveryNotes = game.injuryRecoveryNotes.filter((note) => note.weekNumber === game.currentWeek).slice(-3).reverse();
 
   return (
     <main className="app-shell">
@@ -1310,7 +1597,7 @@ function DashboardScreen({
                       .map((wrestler) => wrestler.name)
                       .join(" / ") || "No participants selected"}
                   </strong>
-                  <small>{isValidSegment(segment) ? "Ready for TV" : getSegmentRequirement(segment.type)}</small>
+                  <small>{isValidSegment(segment, game.wrestlers) ? "Ready for TV" : getSegmentValidationWarning(segment, game.wrestlers)}</small>
                 </div>
               ))}
             </div>
@@ -1354,6 +1641,8 @@ function DashboardScreen({
           <span>Protected Star {protectedStarCount}</span>
           <span>Morale Risk {moraleRiskCount}</span>
           <span>Injury Risk {injuryRiskCount}</span>
+          <span>Minor Injury {minorInjuryCount}</span>
+          <span>Unavailable {unavailableCount}</span>
         </div>
         <div className="spotlight-grid">
           <Metric
@@ -1368,7 +1657,19 @@ function DashboardScreen({
           />
           <Metric label="Morale Risk" value={`${moraleRiskCount}`} detail={moraleRiskCount ? "Needs attention" : "Room is steady"} />
           <Metric label="Injury Risk" value={`${injuryRiskCount}`} detail={injuryRiskCount ? "Protect high fatigue" : "No red flags"} />
+          <Metric label="Minor Injuries" value={`${minorInjuryCount}`} detail={minorInjuryCount ? "Can work with warnings" : "None"} />
+          <Metric label="Unavailable" value={`${unavailableCount}`} detail={unavailableCount ? "Major injuries blocked" : "Full roster available"} />
         </div>
+        {latestRecoveryNotes.length ? (
+          <div className="fallout-grid compact-grid">
+            {latestRecoveryNotes.map((note) => (
+              <div key={`${note.wrestlerId}-${note.weekNumber}`}>
+                <span>Recovery</span>
+                <p>{note.note}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
         <button className="secondary-action" onClick={() => onNavigate("roster")}>
           View Roster
         </button>
@@ -1536,6 +1837,7 @@ function BookingScreen({
   onAddSegment,
   onBack,
   onNavigate,
+  onOpenProfile,
   onRemoveSegment,
   onRunShow,
   onSetSegmentChampionship,
@@ -1546,13 +1848,14 @@ function BookingScreen({
   onAddSegment: (type: SegmentType) => void;
   onBack: () => void;
   onNavigate: (screen: GameScreen) => void;
+  onOpenProfile: (wrestlerId: string) => void;
   onRemoveSegment: (id: string) => void;
   onRunShow: () => void;
   onSetSegmentChampionship: (segmentId: string, championshipId: string) => void;
   onSetSegmentRivalry: (segmentId: string, rivalryId: string) => void;
   onToggleParticipant: (segmentId: string, wrestlerId: string) => void;
 }) {
-  const validSegments = game.currentShow.filter(isValidSegment).length;
+  const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers)).length;
   const canRunShow = validSegments >= 2;
   const calendarWeek = getCurrentCalendarWeek(game);
   const segmentLimit = getShowSegmentLimit(game);
@@ -1611,7 +1914,7 @@ function BookingScreen({
           <div className="empty-state">The rundown is empty. Add a segment to start building tonight's TV card.</div>
         ) : (
           game.currentShow.map((segment, index) => (
-            <article className={`segment ${isValidSegment(segment) ? "valid" : ""}`} key={segment.id}>
+            <article className={`segment ${isValidSegment(segment, game.wrestlers) ? "valid" : ""}`} key={segment.id}>
               <div className="segment-header">
                 <div>
                   <p className="eyebrow">Segment {index + 1}</p>
@@ -1647,23 +1950,30 @@ function BookingScreen({
                 {game.wrestlers.map((wrestler) => {
                   const checked = segment.participantIds.includes(wrestler.id);
                   const limit = getSegmentParticipantLimit(segment.type);
-                  const disabled = !checked && segment.participantIds.length >= limit;
+                  const isUnavailable = wrestler.injuryStatus === "major";
+                  const disabled = (!checked && segment.participantIds.length >= limit) || (!checked && isUnavailable);
 
                   return (
-                    <label className="participant-pick" key={wrestler.id}>
-                      <input
-                        checked={checked}
-                        disabled={disabled}
-                        onChange={() => onToggleParticipant(segment.id, wrestler.id)}
-                        type="checkbox"
-                      />
-                      <span>
-                        <strong>{wrestler.name}</strong>
-                        <small>
-                          Mom {wrestler.momentum} · Fat {wrestler.fatigue}
-                        </small>
-                      </span>
-                    </label>
+                    <div className={`participant-pick ${checked ? "selected" : ""} ${isUnavailable ? "unavailable" : ""}`} key={wrestler.id}>
+                      <label>
+                        <input
+                          checked={checked}
+                          disabled={disabled}
+                          onChange={() => onToggleParticipant(segment.id, wrestler.id)}
+                          type="checkbox"
+                        />
+                        <span>
+                          <strong>{wrestler.name}</strong>
+                          <small>
+                            Mom {wrestler.momentum} · Fat {wrestler.fatigue}
+                            {wrestler.injuryStatus !== "healthy" ? ` · ${getInjuryStatusLabel(wrestler.injuryStatus)}` : ""}
+                          </small>
+                        </span>
+                      </label>
+                      <button className="inline-action" onClick={() => onOpenProfile(wrestler.id)} type="button">
+                        Profile
+                      </button>
+                    </div>
                   );
                 })}
               </div>
@@ -1679,10 +1989,12 @@ function RosterScreen({
   game,
   latestResult,
   onNavigate,
+  onOpenProfile,
 }: {
   game: GameState;
   latestResult?: ShowResult;
   onNavigate: (screen: GameScreen) => void;
+  onOpenProfile: (wrestlerId: string) => void;
 }) {
   const [sortBy, setSortBy] = useState<RosterSort>("momentum");
   const [filter, setFilter] = useState<RosterFilter>("All");
@@ -1695,6 +2007,8 @@ function RosterScreen({
   const topUnderused = getTopUnderusedWrestler(game.wrestlers, game.currentWeek);
   const moraleRiskCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Morale Risk")).length;
   const injuryRiskCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk")).length;
+  const minorInjuryCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus === "minor").length;
+  const unavailableCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus === "major").length;
 
   return (
     <main className="app-shell">
@@ -1724,6 +2038,8 @@ function RosterScreen({
         />
         <Metric label="Morale Risk" value={`${moraleRiskCount}`} detail={moraleRiskCount ? "Watch the room" : "Stable"} />
         <Metric label="Injury Risk" value={`${injuryRiskCount}`} detail={injuryRiskCount ? "Protect fatigue" : "Clear"} />
+        <Metric label="Minor Injury" value={`${minorInjuryCount}`} detail={minorInjuryCount ? "Book with warnings" : "None"} />
+        <Metric label="Unavailable" value={`${unavailableCount}`} detail={unavailableCount ? "Major injury block" : "None"} />
       </section>
 
       <section className="roster-controls" aria-label="Roster controls">
@@ -1747,10 +2063,229 @@ function RosterScreen({
 
       <section className="roster-grid" aria-label="Roster list">
         {visibleWrestlers.length ? (
-          visibleWrestlers.map((wrestler) => <WrestlerCard currentWeek={game.currentWeek} key={wrestler.id} wrestler={wrestler} />)
+          visibleWrestlers.map((wrestler) => (
+            <WrestlerCard currentWeek={game.currentWeek} key={wrestler.id} onOpenProfile={onOpenProfile} wrestler={wrestler} />
+          ))
         ) : (
           <div className="empty-state">No wrestlers match this filter.</div>
         )}
+      </section>
+    </main>
+  );
+}
+
+function WrestlerProfileScreen({
+  game,
+  latestResult,
+  onBackToBooking,
+  onBackToRoster,
+  onNavigate,
+  returnScreen,
+  wrestler,
+}: {
+  game: GameState;
+  latestResult?: ShowResult;
+  onBackToBooking: () => void;
+  onBackToRoster: () => void;
+  onNavigate: (screen: GameScreen) => void;
+  returnScreen: ProfileReturnScreen;
+  wrestler: Wrestler;
+}) {
+  const status = getWrestlerStatus(wrestler);
+  const pressureTags = getRosterPressureTags(wrestler, game.currentWeek);
+  const championships = getWrestlerChampionships(wrestler.id, game.championships);
+  const activeRivalries = getWrestlerRivalries(wrestler.id, game.rivalries);
+  const recentTitleHistory = getWrestlerTitleHistory(game, wrestler.id);
+  const recentRivalryHistory = getWrestlerRivalryHistory(game, wrestler.id);
+  const recentAppearances = getRecentWrestlerAppearances(game, wrestler.id);
+  const recentSocialPosts = getRecentWrestlerSocialPosts(game, wrestler.id);
+  const gmRead = getGMRead(wrestler, game);
+  const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, game.currentWeek);
+
+  return (
+    <main className="app-shell">
+      <Header game={game} />
+      <GameNav currentScreen="profile" hasResults={Boolean(latestResult)} onNavigate={onNavigate} />
+      <section className="profile-hero">
+        <div>
+          <p className="eyebrow">Wrestler Profile</p>
+          <h2>{wrestler.name}</h2>
+          <div className="identity-strip">
+            <span>{status}</span>
+            <span>{getInjuryStatusLabel(wrestler.injuryStatus)}</span>
+            {pressureTags.length ? pressureTags.map((tag) => <span key={tag}>{tag}</span>) : <span>Balanced</span>}
+            {championships.length ? championships.map((championship) => <span key={championship.id}>{championship.name}</span>) : null}
+          </div>
+        </div>
+        <div className="profile-actions">
+          {returnScreen === "booking" ? (
+            <button className="primary-action" onClick={onBackToBooking}>
+              Back to Booking
+            </button>
+          ) : null}
+          <button className={returnScreen === "roster" ? "primary-action" : "secondary-action"} onClick={onBackToRoster}>
+            Back to Roster
+          </button>
+        </div>
+      </section>
+
+      <section className="profile-layout" aria-label={`${wrestler.name} profile`}>
+        <div className="profile-main">
+          <section className="profile-panel" aria-label="Wrestler stats">
+            <div className="section-heading">
+              <p className="eyebrow">Current Value</p>
+              <h3>Stats And TV Load</h3>
+            </div>
+            <div className="wrestler-stats profile-stat-grid">
+              <Metric label="Popularity" value={`${wrestler.popularity}`} />
+              <Metric label="Momentum" value={`${wrestler.momentum}`} />
+              <Metric label="Fatigue" value={`${wrestler.fatigue}`} />
+              <Metric label="Morale" value={`${wrestler.morale}`} />
+              <Metric label="Ring Skill" value={`${wrestler.ringSkill}`} />
+              <Metric label="Promo Skill" value={`${wrestler.promoSkill}`} />
+              <Metric label="Injury" value={getInjuryStatusLabel(wrestler.injuryStatus)} detail={getInjuryDetail(wrestler)} />
+              <Metric label="Appearances" value={`${wrestler.appearancesThisSeason ?? 0}`} detail="This season" />
+              <Metric label="Last Booked" value={wrestler.lastBookedWeek ? `Week ${wrestler.lastBookedWeek}` : "Never"} detail={`${weeksSinceLastBooked} weeks off TV`} />
+              <Metric label="TV Streak" value={`${wrestler.consecutiveWeeksBooked ?? 0}`} detail="Consecutive weeks booked" />
+            </div>
+          </section>
+
+          <section className="profile-panel gm-read-panel" aria-label="GM read">
+            <div className="section-heading">
+              <p className="eyebrow">GM Read</p>
+              <h3>Decision Context</h3>
+            </div>
+            <div className="readout-list">
+              <p>
+                <strong>Useful:</strong> {gmRead.usefulness}
+              </p>
+              <p>
+                <strong>Risk:</strong> {gmRead.risk}
+              </p>
+              <p>
+                <strong>Need:</strong> {gmRead.need}
+              </p>
+            </div>
+          </section>
+
+          <section className="profile-panel" aria-label="Recent show history">
+            <div className="section-heading">
+              <p className="eyebrow">Recent Show History</p>
+              <h3>Last Five Appearances</h3>
+            </div>
+            <div className="profile-list">
+              {recentAppearances.length ? (
+                recentAppearances.map((appearance) => (
+                  <article className="profile-history-row" key={appearance.id}>
+                    <div>
+                      <span>
+                        Week {appearance.week} · {appearance.showName}
+                      </span>
+                      <strong>{appearance.type}</strong>
+                      {appearance.note ? <p>{appearance.note}</p> : null}
+                    </div>
+                    <b>{appearance.score}</b>
+                  </article>
+                ))
+              ) : (
+                <div className="empty-state compact">No show appearances recorded yet.</div>
+              )}
+            </div>
+          </section>
+        </div>
+
+        <aside className="profile-side">
+          <section className="profile-panel title-profile-panel" aria-label="Championship context">
+            <div className="section-heading">
+              <p className="eyebrow">Championship Context</p>
+              <h3>{championships.length ? "Current Champion" : "No Current Title"}</h3>
+            </div>
+            <div className="profile-list">
+              {championships.length ? (
+                championships.map((championship) => (
+                  <article className="profile-context-row" key={championship.id}>
+                    <strong>{championship.name}</strong>
+                    <span>
+                      {championship.division} · Prestige {championship.prestige} · {championship.defenses} defenses
+                    </span>
+                  </article>
+                ))
+              ) : (
+                <p className="muted-copy">No championship is currently assigned to {wrestler.name}.</p>
+              )}
+            </div>
+            <div className="history-list compact-history" aria-label="Recent title history">
+              {recentTitleHistory.length ? (
+                recentTitleHistory.map((event) => (
+                  <article className="history-event" key={event.id}>
+                    <span>{formatChampionshipEventType(event.eventType)} · {formatHistoryStamp(event)}</span>
+                    <p>{event.note}</p>
+                  </article>
+                ))
+              ) : (
+                <p className="muted-copy">No title history recorded for {wrestler.name} yet.</p>
+              )}
+            </div>
+          </section>
+
+          <section className="profile-panel rivalry-profile-panel" aria-label="Active rivalries">
+            <div className="section-heading">
+              <p className="eyebrow">Active Rivalries</p>
+              <h3>{activeRivalries.length ? "Story Pressure" : "No Active Rivalry"}</h3>
+            </div>
+            <div className="profile-list">
+              {activeRivalries.length ? (
+                activeRivalries.map((rivalry) => (
+                  <article className="profile-context-row" key={rivalry.id}>
+                    <strong>{rivalry.name}</strong>
+                    <span>
+                      Heat {rivalry.heat} · Freshness {rivalry.freshness} · {formatRivalryStatus(rivalry.status)} · {formatRivalryStakes(rivalry.stakes)}
+                    </span>
+                  </article>
+                ))
+              ) : (
+                <p className="muted-copy">No active rivalry currently includes {wrestler.name}.</p>
+              )}
+            </div>
+            <div className="history-list compact-history" aria-label="Major rivalry history">
+              {recentRivalryHistory.length ? (
+                recentRivalryHistory.map((event) => (
+                  <article className="history-event" key={event.id}>
+                    <span>{formatRivalryEventType(event.eventType)} · {formatHistoryStamp(event)}</span>
+                    <p>{event.note}</p>
+                  </article>
+                ))
+              ) : (
+                <p className="muted-copy">No major rivalry history recorded for {wrestler.name} yet.</p>
+              )}
+            </div>
+          </section>
+
+          <section className="profile-panel social-profile-panel" aria-label="Recent social mentions">
+            <div className="section-heading">
+              <p className="eyebrow">Social Mentions</p>
+              <h3>Recent IWC Read</h3>
+            </div>
+            <div className="profile-list">
+              {recentSocialPosts.length ? (
+                recentSocialPosts.map((post) => (
+                  <article className={`social-post compact-social tone-${post.tone}`} key={post.id}>
+                    <div className="social-post-head">
+                      <div>
+                        <span>{formatSocialCategory(post.category)}</span>
+                        <strong>{post.author}</strong>
+                      </div>
+                      <small>Week {post.weekNumber}</small>
+                    </div>
+                    <p>{post.text}</p>
+                  </article>
+                ))
+              ) : (
+                <div className="empty-state compact">No recent social posts mention {wrestler.name}.</div>
+              )}
+            </div>
+          </section>
+        </aside>
       </section>
     </main>
   );
@@ -1783,6 +2318,7 @@ function ChampionshipsScreen({
       <section className="championship-grid" aria-label="Championships">
         {game.championships.map((championship) => {
           const contenders = getTopContenders(championship, game.wrestlers);
+          const recentHistory = getChampionshipHistory(game, championship.id);
 
           return (
             <article className="championship-card" key={championship.id}>
@@ -1801,6 +2337,19 @@ function ChampionshipsScreen({
               <div className="contender-strip">
                 <span>Top Contenders</span>
                 <strong>{contenders.map((wrestler) => wrestler.name).join(" / ")}</strong>
+              </div>
+              <div className="history-list" aria-label={`${championship.name} recent history`}>
+                <span className="history-label">Recent History</span>
+                {recentHistory.length ? (
+                  recentHistory.map((event) => (
+                    <article className="history-event" key={event.id}>
+                      <span>{formatChampionshipEventType(event.eventType)} · {formatHistoryStamp(event)}</span>
+                      <p>{event.note}</p>
+                    </article>
+                  ))
+                ) : (
+                  <p className="muted-copy">No title changes or defenses recorded yet.</p>
+                )}
               </div>
             </article>
           );
@@ -1895,28 +2444,46 @@ function RivalriesScreen({
 
       <section className="rivalry-grid" aria-label="Active rivalries">
         {game.rivalries.length ? (
-          game.rivalries.map((rivalry) => (
-            <article className={`rivalry-card status-${rivalry.status}`} key={rivalry.id}>
-              <div className="rivalry-head">
-                <div>
-                  <p className="eyebrow">{formatRivalryStakes(rivalry.stakes)} Stakes</p>
-                  <h3>{rivalry.name}</h3>
+          game.rivalries.map((rivalry) => {
+            const recentHistory = getRivalryHistory(game, rivalry.id);
+            const plePayoff = hasPlePayoff(game, rivalry.id);
+
+            return (
+              <article className={`rivalry-card status-${rivalry.status}`} key={rivalry.id}>
+                <div className="rivalry-head">
+                  <div>
+                    <p className="eyebrow">{formatRivalryStakes(rivalry.stakes)} Stakes</p>
+                    <h3>{rivalry.name}</h3>
+                  </div>
+                  <strong>{plePayoff ? "PLE Payoff" : formatRivalryStatus(rivalry.status)}</strong>
                 </div>
-                <strong>{formatRivalryStatus(rivalry.status)}</strong>
-              </div>
-              <div className="spotlight-grid">
-                <Metric label="Participants" value={getRivalryParticipants(rivalry, game.wrestlers).map((wrestler) => wrestler.name).join(" / ")} />
-                <Metric label="Heat" value={`${rivalry.heat}`} />
-                <Metric label="Freshness" value={`${rivalry.freshness}`} />
-                <Metric label="Weeks Active" value={`${rivalry.weeksActive}`} />
-                <Metric label="Last Advanced" value={rivalry.lastAdvancedWeek ? `Week ${rivalry.lastAdvancedWeek}` : "Not On TV Yet"} />
-                <Metric label="Stakes" value={formatRivalryStakes(rivalry.stakes)} />
-              </div>
-              <button className="danger-action" onClick={() => onEndRivalry(rivalry.id)}>
-                End Rivalry
-              </button>
-            </article>
-          ))
+                <div className="spotlight-grid">
+                  <Metric label="Participants" value={getRivalryParticipants(rivalry, game.wrestlers).map((wrestler) => wrestler.name).join(" / ")} />
+                  <Metric label="Heat" value={`${rivalry.heat}`} />
+                  <Metric label="Freshness" value={`${rivalry.freshness}`} />
+                  <Metric label="Weeks Active" value={`${rivalry.weeksActive}`} />
+                  <Metric label="Last Advanced" value={rivalry.lastAdvancedWeek ? `Week ${rivalry.lastAdvancedWeek}` : "Not On TV Yet"} />
+                  <Metric label="Stakes" value={formatRivalryStakes(rivalry.stakes)} />
+                </div>
+                <div className="history-list" aria-label={`${rivalry.name} recent history`}>
+                  <span className="history-label">Recent History</span>
+                  {recentHistory.length ? (
+                    recentHistory.map((event) => (
+                      <article className="history-event" key={event.id}>
+                        <span>{formatRivalryEventType(event.eventType)} · {formatHistoryStamp(event)}</span>
+                        <p>{event.note}</p>
+                      </article>
+                    ))
+                  ) : (
+                    <p className="muted-copy">No rivalry history recorded yet.</p>
+                  )}
+                </div>
+                <button className="danger-action" onClick={() => onEndRivalry(rivalry.id)}>
+                  End Rivalry
+                </button>
+              </article>
+            );
+          })
         ) : (
           <div className="empty-state">No rivalries are active. Start a two-wrestler story to give the next broadcast more context.</div>
         )}
@@ -2253,6 +2820,23 @@ function ResultsScreen({
         </section>
       ) : null}
 
+      {result.lockerRoomFallout?.injuryNotes?.length ? (
+        <section className="locker-room-fallout" aria-label="Injury fallout">
+          <div className="section-heading">
+            <p className="eyebrow">Injury Fallout</p>
+            <h3>Medical Update</h3>
+          </div>
+          <div className="fallout-grid">
+            {result.lockerRoomFallout.injuryNotes.map((item) => (
+              <div key={`${item.wrestlerId}-${item.status}`}>
+                <span>{getInjuryStatusLabel(item.status)}</span>
+                <p>{item.note}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section className="results-list" aria-label="Segment results">
         <div className="section-heading">
           <p className="eyebrow">Broadcast Breakdown</p>
@@ -2302,6 +2886,8 @@ function WeekReviewScreen({
   const reviewedRivalries = rivalryIds
     .map((id) => game.rivalries.find((rivalry) => rivalry.id === id))
     .filter((rivalry): rivalry is Rivalry => Boolean(rivalry));
+  const titleHistoryEvents = result.titleHistoryEvents ?? [];
+  const rivalryHistoryEvents = result.rivalryHistoryEvents ?? [];
   const nextWeek = game.calendar.find((week) => week.weekNumber === result.week + 1);
   const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= result.week + 1 && !week.completed);
   const weeksUntilNextPle = nextPle ? Math.max(0, nextPle.weekNumber - result.week) : 0;
@@ -2372,6 +2958,16 @@ function WeekReviewScreen({
               ))}
             </div>
           ) : null}
+          {result.lockerRoomFallout?.injuryNotes?.length ? (
+            <div>
+              <span>New Injuries</span>
+              {result.lockerRoomFallout.injuryNotes.map((item) => (
+                <p key={`${item.wrestlerId}-injury`}>
+                  {item.note} {item.description}
+                </p>
+              ))}
+            </div>
+          ) : null}
           {injuryRiskWrestlers.length ? (
             <div>
               <span>Injury Risk Warnings</span>
@@ -2386,6 +2982,7 @@ function WeekReviewScreen({
           !result.lockerRoomFallout?.moraleBoosts.length &&
           !result.lockerRoomFallout?.overuseWarnings.length &&
           !result.lockerRoomFallout?.underuseWarnings.length &&
+          !result.lockerRoomFallout?.injuryNotes?.length &&
           !injuryRiskWrestlers.length ? (
             <div>
               <span>Locker Room</span>
@@ -2400,7 +2997,20 @@ function WeekReviewScreen({
           <p className="eyebrow">Championship Fallout</p>
           <h3>Title Picture</h3>
         </div>
-        {result.titleNotes.length ? result.titleNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>) : <p>No championship changes or defenses.</p>}
+        {titleHistoryEvents.length ? (
+          <div className="history-list">
+            {titleHistoryEvents.map((event) => (
+              <article className="history-event" key={event.id}>
+                <span>{formatChampionshipEventType(event.eventType)} · {event.championshipName}</span>
+                <p>{event.note}</p>
+              </article>
+            ))}
+          </div>
+        ) : result.titleNotes.length ? (
+          result.titleNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>)
+        ) : (
+          <p>No championship changes or defenses.</p>
+        )}
       </section>
 
       <section className="story-fallout" aria-label="Rivalry fallout">
@@ -2408,7 +3018,20 @@ function WeekReviewScreen({
           <p className="eyebrow">Rivalry Fallout</p>
           <h3>Story Movement</h3>
         </div>
-        {result.rivalryNotes.length ? result.rivalryNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>) : <p>No attached rivalry movement.</p>}
+        {rivalryHistoryEvents.length ? (
+          <div className="history-list">
+            {rivalryHistoryEvents.map((event) => (
+              <article className="history-event" key={event.id}>
+                <span>{formatRivalryEventType(event.eventType)} · {event.rivalryName}</span>
+                <p>{event.note}</p>
+              </article>
+            ))}
+          </div>
+        ) : result.rivalryNotes.length ? (
+          result.rivalryNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>)
+        ) : (
+          <p>No attached rivalry movement.</p>
+        )}
         {reviewedRivalries.length ? (
           <div className="spotlight-grid compact-grid">
             {reviewedRivalries.map((rivalry) => (
@@ -2489,6 +3112,11 @@ function SeasonReviewScreen({
   const seasonProfitLoss = game.money - game.seasonStartingMoney;
   const bestRevenueReport = getBestRevenueReport(seasonReports);
   const worstProfitReport = getWorstProfitReport(seasonReports);
+  const biggestTitleChange = getBiggestTitleChange(game);
+  const mostDefendedChampionship = getMostDefendedChampionship(game);
+  const hottestRivalryStory = getHottestRivalryStory(game);
+  const mostEventfulRivalry = getMostEventfulRivalry(game);
+  const notablePlePayoff = getNotablePlePayoff(game);
 
   return (
     <main className="app-shell">
@@ -2525,9 +3153,15 @@ function SeasonReviewScreen({
       <section className="command-panel rivalry-spotlight">
         <div className="section-heading">
           <p className="eyebrow">Hottest Rivalry</p>
-          <h3>{hottestRivalry ? hottestRivalry.name : "No Active Rivalries"}</h3>
+          <h3>{hottestRivalryStory ? hottestRivalryStory.name : hottestRivalry ? hottestRivalry.name : "No Rivalry History"}</h3>
         </div>
-        {hottestRivalry ? (
+        {hottestRivalryStory ? (
+          <div className="spotlight-grid">
+            <Metric label="Peak Heat" value={`${hottestRivalryStory.heat}`} />
+            <Metric label="Most Eventful" value={mostEventfulRivalry ? mostEventfulRivalry.name : "No Events"} detail={mostEventfulRivalry ? `${mostEventfulRivalry.count} events` : undefined} />
+            <Metric label="PLE Payoff" value={notablePlePayoff ? notablePlePayoff.rivalryName : "None"} detail={notablePlePayoff ? notablePlePayoff.showName : undefined} />
+          </div>
+        ) : hottestRivalry ? (
           <div className="spotlight-grid">
             <Metric label="Heat" value={`${hottestRivalry.heat}`} />
             <Metric label="Freshness" value={`${hottestRivalry.freshness}`} />
@@ -2537,6 +3171,36 @@ function SeasonReviewScreen({
       </section>
 
       <section className="championship-grid" aria-label="Current champions">
+        <article className="championship-card">
+          <div className="championship-head">
+            <div>
+              <p className="eyebrow">Season Title Story</p>
+              <h3>{biggestTitleChange ? biggestTitleChange.championshipName : "No Title Changes"}</h3>
+            </div>
+            <strong>{mostDefendedChampionship ? `${mostDefendedChampionship.count} Defenses` : "No Defenses"}</strong>
+          </div>
+          <div className="history-list">
+            {biggestTitleChange ? (
+              <article className="history-event">
+                <span>Biggest Title Change · {formatHistoryStamp(biggestTitleChange)}</span>
+                <p>{biggestTitleChange.note}</p>
+              </article>
+            ) : (
+              <p className="muted-copy">No championship changed hands this season.</p>
+            )}
+            {mostDefendedChampionship ? (
+              <article className="history-event">
+                <span>Most Defended Championship</span>
+                <p>
+                  {mostDefendedChampionship.championship.name} logged {mostDefendedChampionship.count} successful defense
+                  {mostDefendedChampionship.count === 1 ? "" : "s"} this season.
+                </p>
+              </article>
+            ) : (
+              <p className="muted-copy">No successful title defenses were recorded this season.</p>
+            )}
+          </div>
+        </article>
         {game.championships.map((championship) => (
           <article className="championship-card" key={championship.id}>
             <div className="championship-head">
@@ -2558,7 +3222,15 @@ function SeasonReviewScreen({
   );
 }
 
-function WrestlerCard({ currentWeek, wrestler }: { currentWeek: number; wrestler: Wrestler }) {
+function WrestlerCard({
+  currentWeek,
+  onOpenProfile,
+  wrestler,
+}: {
+  currentWeek: number;
+  onOpenProfile: (wrestlerId: string) => void;
+  wrestler: Wrestler;
+}) {
   const status = getWrestlerStatus(wrestler);
   const pressureTags = getRosterPressureTags(wrestler, currentWeek);
   const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, currentWeek);
@@ -2570,7 +3242,12 @@ function WrestlerCard({ currentWeek, wrestler }: { currentWeek: number; wrestler
           <p className="eyebrow">Talent File</p>
           <h3>{wrestler.name}</h3>
         </div>
-        <strong>{status}</strong>
+        <div className="wrestler-card-actions">
+          <strong>{status}</strong>
+          <button className="secondary-action" onClick={() => onOpenProfile(wrestler.id)}>
+            View Profile
+          </button>
+        </div>
       </div>
       <div className="pressure-tags">
         {pressureTags.length ? pressureTags.map((tag) => <span key={tag}>{tag}</span>) : <span>Balanced</span>}
@@ -2582,6 +3259,7 @@ function WrestlerCard({ currentWeek, wrestler }: { currentWeek: number; wrestler
         <Metric label="Morale" value={`${wrestler.morale}`} />
         <Metric label="Ring" value={`${wrestler.ringSkill}`} />
         <Metric label="Promo" value={`${wrestler.promoSkill}`} />
+        <Metric label="Injury" value={getInjuryStatusLabel(wrestler.injuryStatus)} detail={getInjuryDetail(wrestler)} />
         <Metric label="Appearances" value={`${wrestler.appearancesThisSeason ?? 0}`} detail="This season" />
         <Metric label="Last Booked" value={wrestler.lastBookedWeek ? `Week ${wrestler.lastBookedWeek}` : "Never"} detail={`${weeksSinceLastBooked} weeks off TV`} />
         <Metric label="TV Streak" value={`${wrestler.consecutiveWeeksBooked ?? 0}`} detail="Consecutive weeks" />
@@ -2763,6 +3441,14 @@ function SegmentContext({
       wrestlerWarnings.push(`${wrestler.name} is carrying heavy fatigue.`);
     }
 
+    if (wrestler.injuryStatus === "minor") {
+      wrestlerWarnings.push(`${wrestler.name} is working through a minor injury.`);
+    }
+
+    if (wrestler.injuryStatus === "major") {
+      wrestlerWarnings.push(`${wrestler.name} is unavailable with a major injury.`);
+    }
+
     if (wrestler.morale <= 45) {
       wrestlerWarnings.push(`${wrestler.name} has low morale.`);
     }
@@ -2774,11 +3460,11 @@ function SegmentContext({
     return wrestlerWarnings;
   });
 
-  if (!isValidSegment(segment)) {
-    warnings.unshift(getSegmentValidationWarning(segment));
+  if (!isValidSegment(segment, wrestlers)) {
+    warnings.unshift(getSegmentValidationWarning(segment, wrestlers));
   }
 
-  if (segment.type === "Open Challenge" && isValidSegment(segment)) {
+  if (segment.type === "Open Challenge" && isValidSegment(segment, wrestlers)) {
     warnings.push("Opponent stays unrevealed until the show runs.");
   }
 

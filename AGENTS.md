@@ -41,13 +41,16 @@ The game currently supports:
 - Draft night with a 12-wrestler starting roster
 - localStorage single-save persistence
 - Save loading with fallbacks for added career fields
+- Save Migration Hardening v1 with centralized defaults for older localStorage saves
 - Dashboard
 - Booking with Match, Promo, Backstage Angle, Contract Signing, and Open Challenge segments
+- Booking Balance Pass v1 with distinct segment scoring, lighter normal fatigue gain, deterministic Open Challenge risk, and tuned rivalry/fallout movement
 - Segment validation and minimum-card requirements
 - Deterministic Open Challenge opponent reveal at show-run time
 - Segment-specific scoring and recap notes
 - Championship context on eligible non-match segments without title changes
 - Singles title matches that can change championships
+- Title/Rivalry History v1 with lightweight title changes, defenses, rivalry movement, PLE payoffs, profile context, and season story summaries
 - Rivalry context attached to eligible segments
 - Run Show
 - Results focused on broadcast recap, segment scores, and major title/rivalry/Open Challenge notes
@@ -59,7 +62,9 @@ The game currently supports:
 - Open Challenge resolved opponents count as booked after the show
 - Roster pressure labels for overused, underused, protected star, morale risk, and injury risk states
 - Deterministic locker room fallout after shows
+- Injury System v1 with deterministic minor/major injuries from fatigue and overuse, major-injury booking blocks, recovery on Advance Week, and persisted injury state
 - Roster
+- Wrestler Profiles v1 with stats, TV history, pressure labels, championship/rivalry context, social mentions, and deterministic GM Read
 - Championships
 - Rivalries with heat, freshness, stakes, status, create, and end controls
 - Calendar
@@ -97,6 +102,8 @@ The loop must remain playable after every change.
 - Open Challenge opponents resolve deterministically at show-run time.
 - Only Match title matches can change championships.
 - Roster pressure should come from actual booking choices.
+- Injury risk can be warned about before booking, but injury outcomes are revealed only after the show.
+- Major injuries should affect booking availability.
 - Morale and fatigue fallout should be revealed after the show, not before.
 - Booking can show context and warnings, but not predicted fallout.
 - Results should focus on broadcast recap.
@@ -108,26 +115,28 @@ The loop must remain playable after every change.
 - Booking should feel like a TV production card.
 - Results should feel like a broadcast recap plus consequence screen.
 - Roster should feel like a living locker room.
+- Wrestler profiles should support GM decisions with character context, not become spreadsheet clutter.
 - Championships should feel prestigious.
 - Rivalries should feel elastic and alive.
+- Championships and rivalries should preserve meaningful history from actual gameplay.
+- History should come from resolved events, not invented offscreen story.
 - Social/IWC should react to actual outcomes.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Solo Career Core
+Phase: Solo Career Stabilization
 
 Goal:
-Build a complete single-player offline career loop before adding infrastructure complexity.
+Stabilize the complete single-player offline career loop before adding infrastructure complexity.
 
 Current priority:
-Deepen the post-draft solo career by improving booking stakes, roster pressure, consequence clarity, social/finance feedback, and season review value.
+Harden saves and migrations, playtest full seasons, polish balance/content, and keep the UI consistent across the solo career.
 
 Upcoming Direction:
-- Run a booking balance pass across segment value, fatigue, morale, and card composition.
-- Add injury system v1 when explicitly requested by an active ticket.
-- Add richer wrestler profiles.
+- Full-season playtesting.
+- Balance/content polish.
+- UI consistency pass.
 - Consider save slots or a data persistence upgrade later, only if explicitly requested.
-- Strengthen season review and next-season carryover without adding infrastructure complexity.
 - Keep setup and draft bounded unless an active ticket asks to expand them.
 
 ## Current Phase Scope Rules

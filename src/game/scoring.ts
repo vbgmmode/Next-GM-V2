@@ -1,12 +1,16 @@
 import type {
   CalendarWeek,
   Championship,
+  ChampionshipHistoryEvent,
   GameState,
+  InjuryFalloutItem,
   LockerRoomFallout,
   Rivalry,
+  RivalryHistoryEvent,
   RivalryStatus,
   Segment,
   SegmentResult,
+  SegmentType,
   ShowResult,
   Wrestler,
 } from "./types";
@@ -15,7 +19,89 @@ import { generateSocialPosts } from "./social";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
-export function isValidSegment(segment: Segment) {
+const SEGMENT_SCORE_PROFILES: Record<
+  SegmentType,
+  {
+    ringSkill: number;
+    promoSkill: number;
+    popularity: number;
+    momentum: number;
+    morale: number;
+    fatigue: number;
+  }
+> = {
+  Match: { ringSkill: 0.44, promoSkill: 0, popularity: 0.25, momentum: 0.19, morale: 0.1, fatigue: 0.15 },
+  Promo: { ringSkill: 0, promoSkill: 0.43, popularity: 0.27, momentum: 0.2, morale: 0.1, fatigue: 0.13 },
+  "Backstage Angle": { ringSkill: 0, promoSkill: 0.3, popularity: 0.18, momentum: 0.27, morale: 0.11, fatigue: 0.1 },
+  "Contract Signing": { ringSkill: 0, promoSkill: 0.31, popularity: 0.25, momentum: 0.16, morale: 0.11, fatigue: 0.1 },
+  "Open Challenge": { ringSkill: 0.38, promoSkill: 0, popularity: 0.24, momentum: 0.2, morale: 0.1, fatigue: 0.17 },
+};
+
+const SEGMENT_CHEMISTRY_BONUS: Record<SegmentType, number> = {
+  Match: 3,
+  Promo: 2,
+  "Backstage Angle": 1,
+  "Contract Signing": 1,
+  "Open Challenge": 1,
+};
+
+const CONTEXT_BONUS = {
+  rivalry: 3,
+  titleRivalry: 4,
+  matchTitle: 3,
+  storyTitle: 2,
+  contractTitle: 3,
+};
+
+const SHOW_BALANCE = {
+  pleScoreBonus: 4,
+  pleMomentumBonus: 1,
+  pleFatigueBonus: 1,
+};
+
+const SEGMENT_FATIGUE_GAIN: Record<SegmentType, number> = {
+  Match: 6,
+  Promo: 2,
+  "Backstage Angle": 3,
+  "Contract Signing": 2,
+  "Open Challenge": 7,
+};
+
+const FALLOUT_BALANCE = {
+  underuseWeeks: 3,
+  overuseConsecutiveWeeks: 3,
+  highFatigue: 60,
+  bookedMoraleGain: 1,
+  underusedReturnMoraleGain: 2,
+  pressureBookingMoralePenalty: 2,
+  underuseMoralePenalty: 1,
+};
+
+const RIVALRY_BALANCE = {
+  strongHeatGain: 6,
+  steadyHeatGain: 3,
+  flatHeatLoss: -4,
+  pleHeatBonus: 3,
+  backstageStoryBonus: 1,
+  contractStoryBonus: 2,
+  freshnessCost: -5,
+  repeatedBeatFreshnessCost: -10,
+};
+
+const INJURY_BALANCE = {
+  minorThreshold: 82,
+  majorThreshold: 94,
+  highFatigue: 70,
+  severeFatigue: 85,
+  minorMoralePenalty: 1,
+};
+
+export function isValidSegment(segment: Segment, wrestlers: Wrestler[] = []) {
+  const hasMajorInjury = segment.participantIds.some((id) => wrestlers.find((wrestler) => wrestler.id === id)?.injuryStatus === "major");
+  if (hasMajorInjury) {
+    return false;
+  }
+
   switch (segment.type) {
     case "Match":
     case "Contract Signing":
@@ -40,25 +126,25 @@ export function scoreSegment(segment: Segment, wrestlers: Wrestler[], championsh
     return 0;
   }
 
-  const total = participants.reduce((sum, wrestler) => {
-    if (segment.type === "Match" || segment.type === "Open Challenge") {
-      return sum + wrestler.ringSkill * 0.4 + wrestler.popularity * 0.28 + wrestler.momentum * 0.22 + wrestler.morale * 0.12 - wrestler.fatigue * 0.18;
-    }
+  const profile = SEGMENT_SCORE_PROFILES[segment.type];
+  // Segment formulas intentionally privilege the skill that defines the segment's fantasy,
+  // while popularity, momentum, morale, and fatigue keep booking context relevant.
+  const total = participants.reduce(
+    (sum, wrestler) =>
+      sum +
+      wrestler.ringSkill * profile.ringSkill +
+      wrestler.promoSkill * profile.promoSkill +
+      wrestler.popularity * profile.popularity +
+      wrestler.momentum * profile.momentum +
+      wrestler.morale * profile.morale -
+      wrestler.fatigue * profile.fatigue,
+    0,
+  );
 
-    if (segment.type === "Promo") {
-      return sum + wrestler.promoSkill * 0.38 + wrestler.popularity * 0.3 + wrestler.momentum * 0.22 + wrestler.morale * 0.12 - wrestler.fatigue * 0.16;
-    }
-
-    if (segment.type === "Backstage Angle") {
-      return sum + wrestler.promoSkill * 0.34 + wrestler.momentum * 0.3 + wrestler.popularity * 0.2 + wrestler.morale * 0.12 - wrestler.fatigue * 0.12;
-    }
-
-    return sum + wrestler.promoSkill * 0.36 + wrestler.popularity * 0.3 + wrestler.momentum * 0.18 + wrestler.morale * 0.12 - wrestler.fatigue * 0.13;
-  }, 0);
-
-  const chemistryBonus = segment.type === "Match" || segment.type === "Open Challenge" ? 3 : participants.length > 1 ? 2 : 0;
-  const opportunityBonus = segment.type === "Open Challenge" ? 2 : 0;
-  return Math.round(clamp(total / participants.length + chemistryBonus + opportunityBonus + getSegmentContextBonus(segment, championships, rivalries)));
+  const chemistryBonus = participants.length > 1 ? SEGMENT_CHEMISTRY_BONUS[segment.type] : 0;
+  return Math.round(
+    clamp(total / participants.length + chemistryBonus + getOpenChallengeMomentModifier(segment, participants) + getSegmentContextBonus(segment, championships, rivalries)),
+  );
 }
 
 export function getCurrentCalendarWeek(game: GameState): CalendarWeek {
@@ -74,18 +160,21 @@ export function getCurrentCalendarWeek(game: GameState): CalendarWeek {
 }
 
 export function runShow(game: GameState): { game: GameState; result: ShowResult } {
-  const validSegments = game.currentShow.filter(isValidSegment);
+  const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers));
   const calendarWeek = getCurrentCalendarWeek(game);
   const isPle = calendarWeek.showType === "ple";
   const momentumTotals: Record<string, number> = {};
   const fatigueTotals: Record<string, number> = {};
   const titleNotes: string[] = [];
   const rivalryNotes: string[] = [];
+  const titleHistoryEvents: ChampionshipHistoryEvent[] = [];
+  const rivalryHistoryEvents: RivalryHistoryEvent[] = [];
   const lockerRoomFallout: LockerRoomFallout = {
     moraleDrops: [],
     moraleBoosts: [],
     overuseWarnings: [],
     underuseWarnings: [],
+    injuryNotes: [],
   };
   const updatedChampionships = game.championships.map((championship) => ({ ...championship, championIds: [...championship.championIds] }));
   const updatedRivalries = game.rivalries.map((rivalry) => ({ ...rivalry, participantIds: [...rivalry.participantIds] }));
@@ -97,13 +186,27 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
       segment.type === "Open Challenge" ? resolveOpenChallenge(segment, game, index, resolvedBookedIds) : undefined;
     const resolvedSegment = openChallengeResolution?.segment ?? segment;
     const isNoContest = Boolean(openChallengeResolution?.isNoContest);
-    const score = isNoContest ? 0 : clamp(scoreSegment(resolvedSegment, game.wrestlers, updatedChampionships, updatedRivalries) + (isPle ? 5 : 0));
-    const momentumGain = isNoContest ? 0 : (score >= 80 ? 6 : score >= 65 ? 4 : score >= 50 ? 2 : 1) + (isPle ? 1 : 0);
-    const fatigueGain = (isNoContest ? 1 : getSegmentFatigueGain(resolvedSegment)) + (isPle && !isNoContest ? 2 : 0);
+    const score = isNoContest ? 0 : clamp(scoreSegment(resolvedSegment, game.wrestlers, updatedChampionships, updatedRivalries) + (isPle ? SHOW_BALANCE.pleScoreBonus : 0));
+    const momentumGain = isNoContest ? 0 : getSegmentMomentumGain(score, isPle);
+    const fatigueGain = (isNoContest ? 1 : getSegmentFatigueGain(resolvedSegment)) + (isPle && !isNoContest ? SHOW_BALANCE.pleFatigueBonus : 0);
     const momentumChanges: Record<string, number> = {};
     const fatigueChanges: Record<string, number> = {};
-    const titleNote = resolveTitleMatch(resolvedSegment, updatedChampionships, game.wrestlers, game.currentWeek, isPle);
-    const rivalryNote = isNoContest ? undefined : resolveRivalrySegment(resolvedSegment, updatedRivalries, score, game.currentWeek, isPle);
+    const titleResolution = resolveTitleMatch(resolvedSegment, updatedChampionships, game.wrestlers, {
+      seasonNumber: game.seasonNumber,
+      weekNumber: game.currentWeek,
+      showName: calendarWeek.showName,
+      showType: calendarWeek.showType,
+    });
+    const rivalryResolution = isNoContest
+      ? undefined
+      : resolveRivalrySegment(resolvedSegment, updatedRivalries, score, {
+          seasonNumber: game.seasonNumber,
+          weekNumber: game.currentWeek,
+          showName: calendarWeek.showName,
+          showType: calendarWeek.showType,
+        });
+    const titleNote = titleResolution?.note;
+    const rivalryNote = rivalryResolution?.note;
 
     resolvedSegment.participantIds.forEach((id) => {
       momentumChanges[id] = momentumGain;
@@ -117,8 +220,16 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
       titleNotes.push(titleNote);
     }
 
+    if (titleResolution?.event) {
+      titleHistoryEvents.push(titleResolution.event);
+    }
+
     if (rivalryNote) {
       rivalryNotes.push(rivalryNote);
+    }
+
+    if (rivalryResolution?.events.length) {
+      rivalryHistoryEvents.push(...rivalryResolution.events);
     }
 
     segmentResults.push({
@@ -140,7 +251,7 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
     });
   });
 
-  const totalScore = Math.round(segmentResults.reduce((sum, result) => sum + result.score, 0) / segmentResults.length);
+  const totalScore = segmentResults.length ? Math.round(segmentResults.reduce((sum, result) => sum + result.score, 0) / segmentResults.length) : 0;
   const biggestMomentumGain = getBiggestChange(momentumTotals, game.wrestlers);
   const biggestFatigueIncrease = getBiggestChange(fatigueTotals, game.wrestlers);
   const id = `season-${game.seasonNumber}-week-${game.currentWeek}`;
@@ -157,12 +268,17 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
     biggestFatigueIncrease,
     titleNotes,
     rivalryNotes,
+    titleHistoryEvents,
+    rivalryHistoryEvents,
     lockerRoomFallout,
   };
 
   const updatedWrestlers = game.wrestlers.map((wrestler) =>
     updateWrestlerPressure(wrestler, game.currentWeek, momentumTotals, fatigueTotals, lockerRoomFallout),
   );
+  const injuryNotes = evaluateInjuries(result, updatedWrestlers, game);
+  lockerRoomFallout.injuryNotes = injuryNotes;
+  const injuredWrestlers = applyInjuryFallout(updatedWrestlers, injuryNotes, game.currentWeek);
   const financeReport = generateFinanceReport(result, game);
 
   return {
@@ -170,9 +286,11 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
     game: {
       ...game,
       money: financeReport.endingMoney,
-      wrestlers: updatedWrestlers,
+      wrestlers: injuredWrestlers,
       championships: updatedChampionships,
       rivalries: updatedRivalries,
+      championshipHistory: [...(game.championshipHistory ?? []), ...titleHistoryEvents],
+      rivalryHistory: [...(game.rivalryHistory ?? []), ...rivalryHistoryEvents],
       socialPosts: [...game.socialPosts, ...generateSocialPosts(result, game)],
       financeReports: [...game.financeReports, financeReport],
       showHistory: [...game.showHistory, result],
@@ -192,33 +310,34 @@ function updateWrestlerPressure(
   const previousAppearances = wrestler.appearancesThisSeason ?? 0;
   const previousConsecutiveWeeks = wrestler.consecutiveWeeksBooked ?? 0;
   const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, currentWeek);
-  const wasUnderused = weeksSinceLastBooked >= 3;
-  const wasOverused = previousConsecutiveWeeks >= 3;
-  const wasHighlyFatigued = wrestler.fatigue >= 60;
-  let moraleChange = isBooked ? 1 : 0;
+  const wasUnderused = weeksSinceLastBooked >= FALLOUT_BALANCE.underuseWeeks;
+  const wasOverused = previousConsecutiveWeeks >= FALLOUT_BALANCE.overuseConsecutiveWeeks;
+  const wasHighlyFatigued = wrestler.fatigue >= FALLOUT_BALANCE.highFatigue;
+  // Normal TV time is a small morale positive; pressure penalties only bite after repeated usage or long absences.
+  let moraleChange = isBooked ? FALLOUT_BALANCE.bookedMoraleGain : 0;
   let underusedBoostNote = "";
 
   if (isBooked && wasUnderused) {
-    moraleChange += 2;
+    moraleChange += FALLOUT_BALANCE.underusedReturnMoraleGain;
     underusedBoostNote = `${wrestler.name} got back on TV after ${weeksSinceLastBooked} weeks away and responded well.`;
   }
 
   if (isBooked && (wasHighlyFatigued || wasOverused)) {
-    moraleChange -= 2;
+    moraleChange -= FALLOUT_BALANCE.pressureBookingMoralePenalty + (wrestler.injuryStatus === "minor" ? INJURY_BALANCE.minorMoralePenalty : 0);
     fallout.overuseWarnings.push({
       wrestlerId: wrestler.id,
       wrestlerName: wrestler.name,
-      moraleChange: -2,
-      note: `${wrestler.name} was booked through ${wasHighlyFatigued ? "heavy fatigue" : "a long TV streak"}.`,
+      moraleChange: -(FALLOUT_BALANCE.pressureBookingMoralePenalty + (wrestler.injuryStatus === "minor" ? INJURY_BALANCE.minorMoralePenalty : 0)),
+      note: `${wrestler.name} was booked through ${wasHighlyFatigued ? "heavy fatigue" : "a long TV streak"}${wrestler.injuryStatus === "minor" ? " while working hurt" : ""}.`,
     });
   }
 
   if (!isBooked && wasUnderused) {
-    moraleChange -= 2;
+    moraleChange -= FALLOUT_BALANCE.underuseMoralePenalty;
     fallout.underuseWarnings.push({
       wrestlerId: wrestler.id,
       wrestlerName: wrestler.name,
-      moraleChange: -2,
+      moraleChange: -FALLOUT_BALANCE.underuseMoralePenalty,
       note: `${wrestler.name} has gone ${weeksSinceLastBooked} weeks without TV time.`,
     });
   }
@@ -254,6 +373,100 @@ function updateWrestlerPressure(
   };
 }
 
+function evaluateInjuries(result: ShowResult, wrestlers: Wrestler[], game: GameState): InjuryFalloutItem[] {
+  const bookedSegmentTypes = result.segmentResults.reduce<Record<string, SegmentType[]>>((typesByWrestler, segment) => {
+    segment.participantIds.forEach((id) => {
+      typesByWrestler[id] = [...(typesByWrestler[id] ?? []), segment.type];
+    });
+    return typesByWrestler;
+  }, {});
+
+  return Object.entries(bookedSegmentTypes)
+    .map(([wrestlerId, segmentTypes]) => {
+      const wrestler = wrestlers.find((talent) => talent.id === wrestlerId);
+      const preShowWrestler = game.wrestlers.find((talent) => talent.id === wrestlerId);
+
+      if (!wrestler || preShowWrestler?.injuryStatus === "major") {
+        return undefined;
+      }
+
+      const riskScore = getInjuryRiskScore(wrestler, segmentTypes, result, game);
+      const seed = `${result.id}-${wrestler.id}-${segmentTypes.join("|")}`;
+      const variance = hashString(seed) % 20;
+      const deterministicRisk = riskScore + variance;
+      const status = deterministicRisk >= INJURY_BALANCE.majorThreshold ? "major" : deterministicRisk >= INJURY_BALANCE.minorThreshold ? "minor" : "healthy";
+
+      if (status === "healthy") {
+        return undefined;
+      }
+
+      const weeksRemaining =
+        status === "major" ? 3 + (hashString(`${seed}-major`) % 6) : 1 + (hashString(`${seed}-minor`) % 3);
+      const description = getInjuryDescription(wrestler, status, segmentTypes, deterministicRisk);
+      return {
+        wrestlerId: wrestler.id,
+        wrestlerName: wrestler.name,
+        status,
+        description,
+        weeksRemaining,
+        note:
+          status === "major"
+            ? `${wrestler.name} suffered a major injury and is unavailable for ${weeksRemaining} weeks.`
+            : `${wrestler.name} picked up a minor injury and can work through it for ${weeksRemaining} week${weeksRemaining === 1 ? "" : "s"}.`,
+      };
+    })
+    .filter((item): item is InjuryFalloutItem => Boolean(item));
+}
+
+function getInjuryRiskScore(wrestler: Wrestler, segmentTypes: SegmentType[], result: ShowResult, game: GameState) {
+  const physicalSegments = segmentTypes.filter((type) => type === "Match" || type === "Open Challenge").length;
+  const preShowWrestler = game.wrestlers.find((talent) => talent.id === wrestler.id);
+  const preShowFatigue = preShowWrestler?.fatigue ?? wrestler.fatigue;
+  const highestFatigue = Math.max(preShowFatigue, wrestler.fatigue);
+  const consecutiveWeeks = Math.max(preShowWrestler?.consecutiveWeeksBooked ?? 0, wrestler.consecutiveWeeksBooked ?? 0);
+  const minorInjuryLoad = preShowWrestler?.injuryStatus === "minor" || wrestler.injuryStatus === "minor" ? 12 : 0;
+  const physicalLoad = physicalSegments * 12;
+  const repeatLoad = consecutiveWeeks * 7;
+  const fatigueLoad = highestFatigue * 0.55 + (highestFatigue >= INJURY_BALANCE.severeFatigue ? 8 : highestFatigue >= INJURY_BALANCE.highFatigue ? 4 : 0);
+  const stageLoad = result.showType === "ple" ? 4 : 0;
+
+  return fatigueLoad + repeatLoad + physicalLoad + minorInjuryLoad + stageLoad;
+}
+
+function getInjuryDescription(wrestler: Wrestler, status: "minor" | "major", segmentTypes: SegmentType[], riskScore: number) {
+  if (status === "major") {
+    return segmentTypes.includes("Open Challenge")
+      ? `${wrestler.name} was hurt during the Open Challenge chaos.`
+      : `${wrestler.name} was hurt under heavy match load.`;
+  }
+
+  if (riskScore >= 90) {
+    return `${wrestler.name} is working through a painful knock from overuse.`;
+  }
+
+  return `${wrestler.name} is nursing a minor knock after the show.`;
+}
+
+function applyInjuryFallout(wrestlers: Wrestler[], injuryNotes: InjuryFalloutItem[], currentWeek: number) {
+  return wrestlers.map((wrestler) => {
+    const injury = injuryNotes.find((item) => item.wrestlerId === wrestler.id);
+
+    if (!injury) {
+      return wrestler;
+    }
+
+    const injuryWeeksRemaining = injury.status === wrestler.injuryStatus ? Math.max(wrestler.injuryWeeksRemaining, injury.weeksRemaining) : injury.weeksRemaining;
+
+    return {
+      ...wrestler,
+      injuryStatus: injury.status,
+      injuryDescription: injury.description,
+      injuryWeeksRemaining,
+      injuryOccurredWeek: currentWeek,
+    };
+  });
+}
+
 function getWeeksSinceLastBooked(wrestler: Wrestler, currentWeek: number) {
   const lastBookedWeek = wrestler.lastBookedWeek ?? 0;
 
@@ -267,30 +480,52 @@ function getWeeksSinceLastBooked(wrestler: Wrestler, currentWeek: number) {
 function getSegmentContextBonus(segment: Segment, championships: Championship[], rivalries: Rivalry[]) {
   const rivalry = segment.rivalryId ? rivalries.find((activeRivalry) => activeRivalry.id === segment.rivalryId) : undefined;
   const championship = segment.championshipId ? championships.find((title) => title.id === segment.championshipId) : undefined;
-  const rivalryBonus = rivalry ? (rivalry.stakes === "title" ? 5 : 3) : 0;
-  const titleBonus = championship ? (segment.type === "Match" ? 3 : 4) : 0;
+  const rivalryBonus = rivalry ? (rivalry.stakes === "title" ? CONTEXT_BONUS.titleRivalry : CONTEXT_BONUS.rivalry) : 0;
 
-  if (segment.type === "Backstage Angle" || segment.type === "Contract Signing") {
-    return rivalryBonus + titleBonus;
+  if (!championship) {
+    return rivalryBonus;
+  }
+
+  if (segment.type === "Match") {
+    return rivalryBonus + CONTEXT_BONUS.matchTitle;
+  }
+
+  if (segment.type === "Contract Signing") {
+    return rivalryBonus + CONTEXT_BONUS.contractTitle;
   }
 
   if (segment.type === "Open Challenge") {
-    return titleBonus;
+    return CONTEXT_BONUS.storyTitle;
   }
 
-  return segment.type === "Match" ? rivalryBonus + titleBonus : rivalryBonus;
+  return segment.type === "Backstage Angle" ? rivalryBonus + CONTEXT_BONUS.storyTitle : rivalryBonus;
 }
 
 function getSegmentFatigueGain(segment: Segment) {
-  if (segment.type === "Match" || segment.type === "Open Challenge") {
-    return 8;
+  return SEGMENT_FATIGUE_GAIN[segment.type];
+}
+
+function getSegmentMomentumGain(score: number, isPle: boolean) {
+  const baseGain = score >= 85 ? 5 : score >= 70 ? 4 : score >= 55 ? 2 : 1;
+  return baseGain + (isPle ? SHOW_BALANCE.pleMomentumBonus : 0);
+}
+
+function getOpenChallengeMomentModifier(segment: Segment, participants: Wrestler[]) {
+  if (segment.type !== "Open Challenge" || participants.length < 2) {
+    return 0;
   }
 
-  if (segment.type === "Backstage Angle") {
-    return 4;
-  }
+  const [issuer, opponent] = participants;
+  const readinessGap = getOpenChallengeReadiness(opponent) - getOpenChallengeReadiness(issuer);
+  const fatigueDrag = opponent.fatigue >= FALLOUT_BALANCE.highFatigue ? -2 : 0;
+  const momentumSpark = opponent.momentum >= 65 ? 2 : 0;
+  const surpriseQuality = readinessGap >= 10 ? 2 : readinessGap <= -15 ? -3 : 0;
 
-  return 3;
+  return surpriseQuality + fatigueDrag + momentumSpark;
+}
+
+function getOpenChallengeReadiness(wrestler: Wrestler) {
+  return wrestler.ringSkill * 0.35 + wrestler.popularity * 0.25 + wrestler.momentum * 0.25 + wrestler.morale * 0.1 - wrestler.fatigue * 0.2;
 }
 
 function resolveOpenChallenge(segment: Segment, game: GameState, segmentIndex: number, bookedIds: Set<string>) {
@@ -330,7 +565,13 @@ function selectOpenChallengeOpponent(segment: Segment, game: GameState, segmentI
 
 function isWrestlerAvailable(wrestler: Wrestler) {
   const maybeAvailability = wrestler as Wrestler & { injured?: boolean; unavailable?: boolean; status?: string };
-  return !maybeAvailability.injured && !maybeAvailability.unavailable && maybeAvailability.status !== "injured" && maybeAvailability.status !== "unavailable";
+  return (
+    wrestler.injuryStatus !== "major" &&
+    !maybeAvailability.injured &&
+    !maybeAvailability.unavailable &&
+    maybeAvailability.status !== "injured" &&
+    maybeAvailability.status !== "unavailable"
+  );
 }
 
 function hashString(value: string) {
@@ -403,7 +644,14 @@ export function getRivalryStatus(heat: number, freshness: number): RivalryStatus
   return "steady";
 }
 
-function resolveRivalrySegment(segment: Segment, rivalries: Rivalry[], score: number, currentWeek: number, isPle: boolean) {
+type ResolvedShowContext = {
+  seasonNumber: number;
+  weekNumber: number;
+  showName: string;
+  showType: "tv" | "ple";
+};
+
+function resolveRivalrySegment(segment: Segment, rivalries: Rivalry[], score: number, context: ResolvedShowContext) {
   if (!segment.rivalryId) {
     return undefined;
   }
@@ -414,29 +662,74 @@ function resolveRivalrySegment(segment: Segment, rivalries: Rivalry[], score: nu
     return undefined;
   }
 
-  const heatDelta = (score >= 75 ? 8 : score >= 60 ? 5 : -3) + (isPle ? 4 : 0);
-  const freshnessDelta = rivalry.lastAdvancedWeek === currentWeek ? -12 : -6;
+  const events: RivalryHistoryEvent[] = [];
+  const isPle = context.showType === "ple";
+  // Rivalry movement should be visible after each beat, but freshness prevents one story from maxing out instantly.
+  const heatDelta =
+    (score >= 75 ? RIVALRY_BALANCE.strongHeatGain : score >= 60 ? RIVALRY_BALANCE.steadyHeatGain : RIVALRY_BALANCE.flatHeatLoss) +
+    getRivalrySegmentTypeBonus(segment) +
+    (isPle ? RIVALRY_BALANCE.pleHeatBonus : 0);
+  const freshnessDelta = rivalry.lastAdvancedWeek === context.weekNumber ? RIVALRY_BALANCE.repeatedBeatFreshnessCost : RIVALRY_BALANCE.freshnessCost;
   rivalry.heat = clamp(rivalry.heat + heatDelta);
   rivalry.freshness = clamp(rivalry.freshness + freshnessDelta);
-  rivalry.lastAdvancedWeek = currentWeek;
+  rivalry.lastAdvancedWeek = context.weekNumber;
   rivalry.status = getRivalryStatus(rivalry.heat, rivalry.freshness);
 
+  const buildEvent = (eventType: RivalryHistoryEvent["eventType"], note: string): RivalryHistoryEvent => ({
+    id: `s${context.seasonNumber}-w${context.weekNumber}-${segment.id}-${rivalry.id}-${eventType}`,
+    rivalryId: rivalry.id,
+    rivalryName: rivalry.name,
+    participantIds: [...rivalry.participantIds],
+    weekNumber: context.weekNumber,
+    seasonNumber: context.seasonNumber,
+    showName: context.showName,
+    showType: context.showType,
+    eventType,
+    note,
+    heat: rivalry.heat,
+    freshness: rivalry.freshness,
+    status: rivalry.status,
+  });
+
+  let note: string;
+  let eventType: RivalryHistoryEvent["eventType"];
+
   if (rivalry.status === "stale") {
-    return `${rivalry.name} is getting stale after another beat${isPle ? " on a major stage" : " on TV"}.`;
+    eventType = "became_stale";
+    note = `${rivalry.name} is getting stale after another beat${isPle ? " on a major stage" : " on TV"}.`;
+  } else if (score >= 75) {
+    eventType = "heated_up";
+    note = `${rivalry.name} gained momentum and feels hotter after a strong${isPle ? " major-event" : ""} segment.`;
+  } else if (score >= 60) {
+    eventType = "advanced";
+    note = `${rivalry.name} heated up${isPle ? " under the major-event lights" : ""}, but the story lost a little freshness.`;
+  } else {
+    eventType = "cooled";
+    note = `${rivalry.name} cooled after a flat segment.`;
   }
 
-  if (score >= 75) {
-    return `${rivalry.name} gained momentum and feels hotter after a strong${isPle ? " major-event" : ""} segment.`;
+  events.push(buildEvent(eventType, note));
+
+  if (isPle) {
+    events.push(buildEvent("ple_payoff", `${rivalry.name} reached a PLE payoff beat at ${context.showName}.`));
   }
 
-  if (score >= 60) {
-    return `${rivalry.name} heated up${isPle ? " under the major-event lights" : ""}, but the story lost a little freshness.`;
-  }
-
-  return `${rivalry.name} cooled after a flat segment.`;
+  return { note, events };
 }
 
-function resolveTitleMatch(segment: Segment, championships: Championship[], wrestlers: Wrestler[], currentWeek: number, isPle: boolean) {
+function getRivalrySegmentTypeBonus(segment: Segment) {
+  if (segment.type === "Backstage Angle") {
+    return RIVALRY_BALANCE.backstageStoryBonus;
+  }
+
+  if (segment.type === "Contract Signing") {
+    return RIVALRY_BALANCE.contractStoryBonus;
+  }
+
+  return 0;
+}
+
+function resolveTitleMatch(segment: Segment, championships: Championship[], wrestlers: Wrestler[], context: ResolvedShowContext) {
   if (!segment.championshipId || segment.type !== "Match" || segment.participantIds.length !== 2) {
     return undefined;
   }
@@ -462,13 +755,50 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
 
   if (winner.id === championId) {
     championship.defenses += 1;
-    return `${champion.name} retained the ${championship.name}${isPle ? " on a major stage" : ""}.`;
+    const note = `${champion.name} retained the ${championship.name}${context.showType === "ple" ? " on a major stage" : ""}.`;
+
+    return {
+      note,
+      event: {
+        id: `s${context.seasonNumber}-w${context.weekNumber}-${segment.id}-${championship.id}-successful-defense`,
+        championshipId: championship.id,
+        championshipName: championship.name,
+        eventType: "successful_defense",
+        championIds: [championId],
+        weekNumber: context.weekNumber,
+        seasonNumber: context.seasonNumber,
+        showName: context.showName,
+        showType: context.showType,
+        segmentId: segment.id,
+        defenseNumber: championship.defenses,
+        note,
+      } satisfies ChampionshipHistoryEvent,
+    };
   }
 
+  const previousChampionIds = [...championship.championIds];
   championship.championIds = [winner.id];
-  championship.reignStartWeek = currentWeek;
+  championship.reignStartWeek = context.weekNumber;
   championship.defenses = 0;
-  return `${winner.name} defeated ${champion.name} to win the ${championship.name}${isPle ? " at a major event" : ""}.`;
+  const note = `${winner.name} defeated ${champion.name} to win the ${championship.name}${context.showType === "ple" ? " at a major event" : ""}.`;
+
+  return {
+    note,
+    event: {
+      id: `s${context.seasonNumber}-w${context.weekNumber}-${segment.id}-${championship.id}-title-change`,
+      championshipId: championship.id,
+      championshipName: championship.name,
+      eventType: "title_change",
+      championIds: [winner.id],
+      previousChampionIds,
+      weekNumber: context.weekNumber,
+      seasonNumber: context.seasonNumber,
+      showName: context.showName,
+      showType: context.showType,
+      segmentId: segment.id,
+      note,
+    } satisfies ChampionshipHistoryEvent,
+  };
 }
 
 function getSegmentWinner(segment: Segment, wrestlers: Wrestler[]) {
@@ -517,4 +847,32 @@ export function getBestSegment(result: ShowResult) {
 
 export function getResultChange(changeMap: Record<string, number>) {
   return Object.values(changeMap)[0] ?? 0;
+}
+
+export function getSegmentBalanceSmokeScores(wrestlers: Wrestler[], championships: Championship[] = [], rivalries: Rivalry[] = []) {
+  const [first, second, third] = wrestlers;
+
+  if (!first || !second) {
+    return [];
+  }
+
+  const rivalry = rivalries.find((activeRivalry) => activeRivalry.participantIds.some((id) => id === first.id || id === second.id));
+  const singlesTitle = championships.find(
+    (championship) => championship.division !== "Tag Team" && championship.championIds.length === 1 && [first.id, second.id].includes(championship.championIds[0]),
+  );
+  const multiPromoIds = [first, second, third].filter((wrestler): wrestler is Wrestler => Boolean(wrestler)).map((wrestler) => wrestler.id);
+  const sampleSegments: Segment[] = [
+    { id: "balance-match", type: "Match", participantIds: [first.id, second.id], championshipId: singlesTitle?.id, rivalryId: rivalry?.id },
+    { id: "balance-promo", type: "Promo", participantIds: [first.id] },
+    { id: "balance-backstage", type: "Backstage Angle", participantIds: [first.id, second.id], rivalryId: rivalry?.id },
+    { id: "balance-contract", type: "Contract Signing", participantIds: [first.id, second.id], championshipId: singlesTitle?.id, rivalryId: rivalry?.id },
+    { id: "balance-open-challenge", type: "Open Challenge", participantIds: [first.id, third?.id ?? second.id] },
+    { id: "balance-multi-promo", type: "Promo", participantIds: multiPromoIds },
+  ];
+
+  return sampleSegments.map((segment) => ({
+    type: segment.type,
+    participantIds: segment.participantIds,
+    score: scoreSegment(segment, wrestlers, championships, rivalries),
+  }));
 }

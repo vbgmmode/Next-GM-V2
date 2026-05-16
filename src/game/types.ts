@@ -4,6 +4,7 @@ export type Screen =
   | "dashboard"
   | "booking"
   | "roster"
+  | "profile"
   | "championships"
   | "rivalries"
   | "calendar"
@@ -29,6 +30,17 @@ export type RivalryStatus = "rising" | "steady" | "cooling" | "stale";
 
 export type RivalryStakes = "personal" | "title" | "respect" | "revenge";
 
+export type ChampionshipHistoryEventType = "title_change" | "successful_defense";
+
+export type RivalryHistoryEventType =
+  | "started"
+  | "advanced"
+  | "heated_up"
+  | "cooled"
+  | "became_stale"
+  | "ended"
+  | "ple_payoff";
+
 export type SocialCategory =
   | "fan_praise"
   | "push_complaint"
@@ -44,6 +56,8 @@ export type SocialTone = "excited" | "angry" | "skeptical" | "impressed" | "chao
 
 export type PressureLabel = "Stable" | "Tight" | "Critical" | "Surging";
 
+export type InjuryStatus = "healthy" | "minor" | "major";
+
 export type Wrestler = {
   id: string;
   name: string;
@@ -56,6 +70,10 @@ export type Wrestler = {
   appearancesThisSeason?: number;
   lastBookedWeek?: number;
   consecutiveWeeksBooked?: number;
+  injuryStatus: InjuryStatus;
+  injuryDescription?: string;
+  injuryWeeksRemaining: number;
+  injuryOccurredWeek?: number;
 };
 
 export type Segment = {
@@ -76,6 +94,22 @@ export type Championship = {
   defenses: number;
 };
 
+export type ChampionshipHistoryEvent = {
+  id: string;
+  championshipId: string;
+  championshipName: string;
+  eventType: ChampionshipHistoryEventType;
+  championIds: string[];
+  previousChampionIds?: string[];
+  weekNumber: number;
+  seasonNumber: number;
+  showName: string;
+  showType: ShowType;
+  segmentId?: string;
+  defenseNumber?: number;
+  note: string;
+};
+
 export type Rivalry = {
   id: string;
   name: string;
@@ -86,6 +120,22 @@ export type Rivalry = {
   lastAdvancedWeek: number;
   status: RivalryStatus;
   stakes: RivalryStakes;
+};
+
+export type RivalryHistoryEvent = {
+  id: string;
+  rivalryId: string;
+  rivalryName: string;
+  participantIds: string[];
+  weekNumber: number;
+  seasonNumber: number;
+  showName?: string;
+  showType?: ShowType;
+  eventType: RivalryHistoryEventType;
+  note: string;
+  heat?: number;
+  freshness?: number;
+  status?: RivalryStatus;
 };
 
 export type CalendarWeek = {
@@ -154,11 +204,28 @@ export type LockerRoomFalloutItem = {
   moraleChange?: number;
 };
 
+export type InjuryFalloutItem = {
+  wrestlerId: string;
+  wrestlerName: string;
+  status: Exclude<InjuryStatus, "healthy">;
+  description: string;
+  weeksRemaining: number;
+  note: string;
+};
+
+export type InjuryRecoveryNote = {
+  wrestlerId: string;
+  wrestlerName: string;
+  weekNumber: number;
+  note: string;
+};
+
 export type LockerRoomFallout = {
   moraleDrops: LockerRoomFalloutItem[];
   moraleBoosts: LockerRoomFalloutItem[];
   overuseWarnings: LockerRoomFalloutItem[];
   underuseWarnings: LockerRoomFalloutItem[];
+  injuryNotes: InjuryFalloutItem[];
 };
 
 export type ShowResult = {
@@ -180,6 +247,8 @@ export type ShowResult = {
   };
   titleNotes: string[];
   rivalryNotes: string[];
+  titleHistoryEvents: ChampionshipHistoryEvent[];
+  rivalryHistoryEvents: RivalryHistoryEvent[];
   lockerRoomFallout?: LockerRoomFallout;
 };
 
@@ -196,9 +265,12 @@ export type GameState = {
   wrestlers: Wrestler[];
   championships: Championship[];
   rivalries: Rivalry[];
+  championshipHistory: ChampionshipHistoryEvent[];
+  rivalryHistory: RivalryHistoryEvent[];
   calendar: CalendarWeek[];
   socialPosts: SocialPost[];
   financeReports: FinanceReport[];
+  injuryRecoveryNotes: InjuryRecoveryNote[];
   currentShow: Segment[];
   showHistory: ShowResult[];
 };
