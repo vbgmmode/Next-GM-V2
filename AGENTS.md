@@ -124,13 +124,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Solo Career Release Candidate
+Phase: Solo Career RC Stable / Screen/Menu Audit Planning v1
 
 Goal:
-Keep the complete single-player offline career loop stable and release-candidate ready before adding infrastructure complexity.
+Keep the complete single-player offline career loop stable while auditing every screen/menu before bounded content/data expansion.
 
 Current priority:
-Protect the RC build, fix only critical blockers or tiny polish bugs, and keep the solo career loop playable after every change.
+Protect the RC-stable build and document screen/menu data and UI/UX gaps before adding wrestlers, flavor pools, setup variants, rivalries, titles, or other content.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -139,8 +139,12 @@ Completed stabilization passes:
 - Balance & Tuning Audit v1
 - Content/Flavor Polish v1
 - Release Candidate Smoke Pass v1
+- RC Bug Sweep v1
+- RC Repo Hygiene / Prototype Artifact Packaging v1
 
 Upcoming Direction:
+- Complete Screen/Menu Audit Planning v1 before content implementation.
+- Data-Expansion Planning only until a bounded content plan is accepted.
 - RC bug fixes only when found.
 - Small documentation or QA follow-ups.
 - Consider save slots or a data persistence upgrade later, only if explicitly requested.
@@ -150,6 +154,7 @@ Upcoming Direction:
 These are temporary constraints for the current phase. They are not permanent bans.
 
 Unless the active ticket explicitly asks for it, do not add:
+- data expansion content before the planning phase defines boundaries
 - database
 - router
 - Tailwind
