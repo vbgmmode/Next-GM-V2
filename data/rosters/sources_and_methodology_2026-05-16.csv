@@ -1,0 +1,11 @@
+dataset_date,2026-05-16
+primary_roster_source_raw,https://www.thesmackdownhotel.com/roster/wwe/raw/
+primary_roster_source_smackdown,https://www.thesmackdownhotel.com/roster/wwe/smackdown/
+primary_roster_source_nxt,https://www.thesmackdownhotel.com/roster/wwe/nxt/
+primary_roster_source_aew_fightful,https://www.fightful.com/wrestling/updated-all-elite-roster/
+secondary_roster_source_aew_tsdh,https://www.thesmackdownhotel.com/roster/aew/
+official_wwe_profile_source,https://www.wwe.com/superstars
+wwe_2k_ratings_source,https://www.operationsports.com/wwe-2k26-ratings-list/
+wwe_face_heel_card_source,https://www.thesmackdownhotel.com/roster/?promotion=wwe&show=face-heel
+aew_face_heel_card_source,https://www.thesmackdownhotel.com/roster/?promotion=aew&show=face-heel
+important_note,"Sourced fields are roster membership, gender division, availability when the source stated it, champion fields when public roster/champion pages stated them, and WWE 2K overall ratings when available. Most detailed GM-sim attributes are derived estimates for prototyping, not official factual stats."

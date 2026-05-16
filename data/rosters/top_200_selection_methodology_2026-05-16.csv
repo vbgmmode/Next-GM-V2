@@ -1,0 +1,12 @@
+field,value
+source_file,all_rosters_attributes_2026-05-16.csv
+source_row_count,336
+output_row_count,200
+selection_date,2026-05-16
+ranking_method,Weighted Top 200 selection for GM simulation usability
+formula,game_overall*0.45 + star_power*0.20 + popularity_overall*0.15 + draw_power*0.10 + big_match_ability*0.05 + role_tier_bonus + championship_bonus + availability_bonus
+note,Public sources do not provide official values for every GM-sim attribute; retained rating_basis/rating_confidence/source URL columns distinguish sourced anchors from game-derived estimates.
+raw_count,41
+smackdown_count,34
+nxt_count,10
+aew_count,115

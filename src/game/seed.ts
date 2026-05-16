@@ -1,4 +1,18 @@
-import type { BrandStyle, CalendarWeek, Championship, GameDifficulty, GameState, GMStyle, Rivalry, RivalryStakes, StartingBudgetTier, Wrestler } from "./types";
+import type {
+  BrandStyle,
+  CalendarWeek,
+  Championship,
+  GameDifficulty,
+  GameState,
+  GMStyle,
+  PrototypeBrand,
+  RivalGMAssignment,
+  Rivalry,
+  RivalryStakes,
+  StartingBudgetTier,
+  Wrestler,
+} from "./types";
+import { top200DraftPool } from "./top200DraftPool";
 
 type SeedWrestler = Omit<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek"> &
   Partial<Pick<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek">>;
@@ -10,8 +24,43 @@ export type NewCareerOptions = {
   brandStyle?: BrandStyle;
   difficulty?: GameDifficulty;
   startingBudgetTier?: StartingBudgetTier;
+  rivalGMAssignments?: RivalGMAssignment[];
   draftedWrestlers?: Wrestler[];
 };
+
+export const prototypeBrands: PrototypeBrand[] = ["Raw", "SmackDown", "NXT", "AEW"];
+
+export const rivalGMCandidates: { gmName: string; gmStyle: GMStyle }[] = [
+  { gmName: "Cassandra Vale", gmStyle: "Ruthless Executive" },
+  { gmName: "Marcus King", gmStyle: "Ratings Chaser" },
+  { gmName: "Elena Cross", gmStyle: "Talent Developer" },
+  { gmName: "Teddy Knox", gmStyle: "Locker Room General" },
+  { gmName: "Vivienne Riot", gmStyle: "Chaos Booker" },
+  { gmName: "Jonah Steel", gmStyle: "Sports Realist" },
+  { gmName: "Sloane Mercer", gmStyle: "Brand Architect" },
+  { gmName: "Rafael Saint", gmStyle: "Big Money Promoter" },
+];
+
+export function isPrototypeBrand(value: unknown): value is PrototypeBrand {
+  return typeof value === "string" && prototypeBrands.includes(value as PrototypeBrand);
+}
+
+export function createRivalGMAssignments(playerBrand: BrandStyle): RivalGMAssignment[] {
+  if (!isPrototypeBrand(playerBrand)) {
+    return [];
+  }
+
+  const playerBrandIndex = prototypeBrands.indexOf(playerBrand);
+  const candidateOffset = playerBrandIndex * 2;
+  const rivalCandidates = rivalGMCandidates.slice(candidateOffset).concat(rivalGMCandidates.slice(0, candidateOffset));
+
+  return prototypeBrands
+    .filter((brand) => brand !== playerBrand)
+    .map((brand, index) => ({
+      brand,
+      ...rivalCandidates[index],
+    }));
+}
 
 export const defaultCareer: Required<Omit<NewCareerOptions, "draftedWrestlers">> = {
   gmName: "Alex Monroe",
@@ -20,6 +69,7 @@ export const defaultCareer: Required<Omit<NewCareerOptions, "draftedWrestlers">>
   brandStyle: "Raw",
   difficulty: "Medium",
   startingBudgetTier: "$2M",
+  rivalGMAssignments: createRivalGMAssignments("Raw"),
 };
 
 export const unlimitedStartingBudget = 999999999;
@@ -37,35 +87,7 @@ export function getStartingBudgetAmount(tier: StartingBudgetTier) {
   }
 }
 
-const baseRoster: SeedWrestler[] = [
-  { id: "jax-ransom", name: "Jax Ransom", popularity: 72, momentum: 58, fatigue: 18, morale: 65, ringSkill: 79, promoSkill: 61 },
-  { id: "mara-volt", name: "Mara Volt", popularity: 68, momentum: 66, fatigue: 22, morale: 72, ringSkill: 73, promoSkill: 76 },
-  { id: "toni-ash", name: "Toni Ash", popularity: 61, momentum: 54, fatigue: 12, morale: 69, ringSkill: 84, promoSkill: 48 },
-  { id: "rex-carter", name: "Rex Carter", popularity: 75, momentum: 62, fatigue: 27, morale: 58, ringSkill: 65, promoSkill: 82 },
-  { id: "ivy-maddox", name: "Ivy Maddox", popularity: 55, momentum: 49, fatigue: 10, morale: 77, ringSkill: 69, promoSkill: 71 },
-  { id: "sol-kane", name: "Sol Kane", popularity: 64, momentum: 60, fatigue: 16, morale: 74, ringSkill: 77, promoSkill: 64 },
-  { id: "nyx-cross", name: "Nyx Cross", popularity: 59, momentum: 70, fatigue: 20, morale: 67, ringSkill: 58, promoSkill: 87 },
-  { id: "bruno-slate", name: "Bruno Slate", popularity: 51, momentum: 44, fatigue: 14, morale: 63, ringSkill: 81, promoSkill: 43 },
-  { id: "elena-echo", name: "Elena Echo", popularity: 66, momentum: 57, fatigue: 19, morale: 70, ringSkill: 62, promoSkill: 84 },
-  { id: "dante-knox", name: "Dante Knox", popularity: 48, momentum: 52, fatigue: 8, morale: 75, ringSkill: 74, promoSkill: 55 },
-  { id: "sable-king", name: "Sable King", popularity: 70, momentum: 64, fatigue: 24, morale: 61, ringSkill: 71, promoSkill: 79 },
-  { id: "miles-mercer", name: "Miles Mercer", popularity: 57, momentum: 46, fatigue: 11, morale: 68, ringSkill: 67, promoSkill: 68 },
-];
-
-const baseDraftPool: SeedWrestler[] = [
-  { id: "cass-blaze", name: "Cass Blaze", popularity: 73, momentum: 67, fatigue: 15, morale: 70, ringSkill: 74, promoSkill: 83 },
-  { id: "atlas-rome", name: "Atlas Rome", popularity: 76, momentum: 60, fatigue: 21, morale: 66, ringSkill: 82, promoSkill: 64 },
-  { id: "viva-valentine", name: "Viva Valentine", popularity: 69, momentum: 72, fatigue: 13, morale: 79, ringSkill: 66, promoSkill: 88 },
-  { id: "knox-hallow", name: "Knox Hallow", popularity: 63, momentum: 58, fatigue: 18, morale: 62, ringSkill: 86, promoSkill: 51 },
-  { id: "zara-volt", name: "Zara Volt", popularity: 71, momentum: 63, fatigue: 20, morale: 73, ringSkill: 78, promoSkill: 75 },
-  { id: "brick-montoya", name: "Brick Montoya", popularity: 58, momentum: 55, fatigue: 16, morale: 68, ringSkill: 80, promoSkill: 49 },
-  { id: "nova-raine", name: "Nova Raine", popularity: 67, momentum: 69, fatigue: 11, morale: 76, ringSkill: 70, promoSkill: 81 },
-  { id: "malik-venom", name: "Malik Venom", popularity: 62, momentum: 64, fatigue: 23, morale: 60, ringSkill: 72, promoSkill: 84 },
-  { id: "penny-onyx", name: "Penny Onyx", popularity: 54, momentum: 61, fatigue: 9, morale: 80, ringSkill: 77, promoSkill: 58 },
-  { id: "rowan-steel", name: "Rowan Steel", popularity: 65, momentum: 53, fatigue: 17, morale: 71, ringSkill: 88, promoSkill: 45 },
-  { id: "luca-saints", name: "Luca Saints", popularity: 60, momentum: 57, fatigue: 12, morale: 74, ringSkill: 63, promoSkill: 86 },
-  { id: "ember-kai", name: "Ember Kai", popularity: 56, momentum: 66, fatigue: 14, morale: 69, ringSkill: 83, promoSkill: 55 },
-];
+const defaultRosterSize = 12;
 
 function cloneWrestlers(wrestlers: SeedWrestler[]) {
   return wrestlers.map((wrestler) => ({
@@ -80,9 +102,9 @@ function cloneWrestlers(wrestlers: SeedWrestler[]) {
   }));
 }
 
-export const roster: Wrestler[] = cloneWrestlers(baseRoster);
+export const roster: Wrestler[] = cloneWrestlers(top200DraftPool.slice(0, defaultRosterSize));
 
-export const draftPool: Wrestler[] = cloneWrestlers([...baseDraftPool, ...roster]);
+export const draftPool: Wrestler[] = cloneWrestlers(top200DraftPool);
 
 function byStarPower(wrestlers: Wrestler[]) {
   return [...wrestlers].sort((a, b) => b.popularity + b.momentum - (a.popularity + a.momentum));
@@ -235,6 +257,7 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
     brandStyle: career.brandStyle,
     difficulty: career.difficulty,
     startingBudgetTier: career.startingBudgetTier,
+    rivalGMAssignments: career.rivalGMAssignments,
     createdAt: new Date().toISOString(),
     money: startingMoney,
     wrestlers: startingRoster,

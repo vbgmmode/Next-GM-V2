@@ -1,5 +1,5 @@
-import type { Championship, GameDifficulty, GameState, LockerRoomFallout, Rivalry, Screen, ShowResult, StartingBudgetTier, Wrestler } from "./types";
-import { createDefaultChampionships, createDefaultRivalries, createSeasonCalendar, defaultCareer } from "./seed";
+import type { Championship, GameDifficulty, GameState, GMStyle, LockerRoomFallout, RivalGMAssignment, Rivalry, Screen, ShowResult, StartingBudgetTier, Wrestler } from "./types";
+import { createDefaultChampionships, createDefaultRivalries, createSeasonCalendar, defaultCareer, isPrototypeBrand } from "./seed";
 
 export type GameScreen = Exclude<Screen, "title" | "setup">;
 export type ProfileReturnScreen = Extract<GameScreen, "roster" | "booking">;
@@ -43,6 +43,42 @@ function isGameDifficulty(value: unknown): value is GameDifficulty {
 
 function isStartingBudgetTier(value: unknown): value is StartingBudgetTier {
   return value === "$1M" || value === "$2M" || value === "$4M" || value === "Unlimited";
+}
+
+function normalizeRivalGMAssignments(value: unknown): RivalGMAssignment[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const seenBrands = new Set<string>();
+  const seenGMs = new Set<string>();
+  const assignments: RivalGMAssignment[] = [];
+
+  value.forEach((item) => {
+    if (!item || typeof item !== "object") {
+      return;
+    }
+
+    const candidate = item as Partial<RivalGMAssignment>;
+
+    if (!isPrototypeBrand(candidate.brand) || typeof candidate.gmName !== "string" || typeof candidate.gmStyle !== "string") {
+      return;
+    }
+
+    if (seenBrands.has(candidate.brand) || seenGMs.has(candidate.gmName)) {
+      return;
+    }
+
+    seenBrands.add(candidate.brand);
+    seenGMs.add(candidate.gmName);
+    assignments.push({
+      brand: candidate.brand,
+      gmName: candidate.gmName,
+      gmStyle: candidate.gmStyle as GMStyle,
+    });
+  });
+
+  return assignments;
 }
 
 function isProfileReturnScreen(value: unknown): value is ProfileReturnScreen {
@@ -130,6 +166,7 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
       brandStyle: savedGame.brandStyle ?? defaultCareer.brandStyle,
       difficulty: isGameDifficulty(savedGame.difficulty) ? savedGame.difficulty : defaultCareer.difficulty,
       startingBudgetTier: isStartingBudgetTier(savedGame.startingBudgetTier) ? savedGame.startingBudgetTier : defaultCareer.startingBudgetTier,
+      rivalGMAssignments: normalizeRivalGMAssignments(savedGame.rivalGMAssignments),
       createdAt: savedGame.createdAt ?? new Date().toISOString(),
       money: savedGame.money ?? 250000,
       wrestlers,

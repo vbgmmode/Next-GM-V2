@@ -22,6 +22,8 @@ export type GameDifficulty = "Easy" | "Medium" | "Hard" | "Legendary";
 
 export type StartingBudgetTier = "$1M" | "$2M" | "$4M" | "Unlimited";
 
+export type PrototypeBrand = "Raw" | "SmackDown" | "NXT" | "AEW";
+
 export type GMStyle =
   | "Creative Visionary"
   | "Talent Developer"
@@ -37,14 +39,17 @@ export type GMStyle =
   | "Big Money Promoter";
 
 export type BrandStyle =
-  | "Raw"
-  | "SmackDown"
-  | "NXT"
-  | "AEW"
+  | PrototypeBrand
   | "Prime Time Sports Entertainment"
   | "Underground Fight Club"
   | "Workrate Showcase"
   | "Reality Era Chaos";
+
+export type RivalGMAssignment = {
+  brand: PrototypeBrand;
+  gmName: string;
+  gmStyle: GMStyle;
+};
 
 export type RivalryStatus = "rising" | "steady" | "cooling" | "stale";
 
@@ -282,6 +287,7 @@ export type GameState = {
   brandStyle: BrandStyle;
   difficulty: GameDifficulty;
   startingBudgetTier: StartingBudgetTier;
+  rivalGMAssignments: RivalGMAssignment[];
   createdAt: string;
   money: number;
   wrestlers: Wrestler[];

@@ -10,7 +10,7 @@ import {
 import { advanceGameWeek, startNextSeason } from "./game/advanceWeek";
 import { getFinancePressureLabel } from "./game/finance";
 import { migrateSavedGameState } from "./game/migration";
-import { createNewGame, defaultCareer, draftPool } from "./game/seed";
+import { createNewGame, createRivalGMAssignments, defaultCareer, draftPool } from "./game/seed";
 import {
   getBestSegment,
   getCurrentCalendarWeek,
@@ -34,6 +34,7 @@ import type {
   Rivalry,
   RivalryHistoryEvent,
   RivalryStakes,
+  RivalGMAssignment,
   Screen,
   Segment,
   SegmentType,
@@ -52,6 +53,7 @@ type RosterFilter = "All" | "Hot" | "Tired" | "Frustrated";
 type RosterPressureTag = "Overused" | "Underused" | "Protected Star" | "Morale Risk" | "Injury Risk" | "Minor Injury" | "Unavailable";
 type SocialFilter = "All" | "Fan Reaction" | "Dirt Sheets" | "Analyst Takes" | "Title Scene" | "Rivalries";
 type SetupStep = "contract" | "gm" | "brand" | "rules" | "preview" | "draft" | "review";
+type DraftSort = "rank" | "popularity" | "momentum" | "ringSkill" | "promoSkill";
 
 type TitleMode = "home" | "load";
 
@@ -89,6 +91,14 @@ type GMRead = {
 };
 
 const draftPickCount = 12;
+
+const draftSortOptions: { label: string; value: DraftSort }[] = [
+  { label: "Top 200 Rank", value: "rank" },
+  { label: "Popularity", value: "popularity" },
+  { label: "Momentum", value: "momentum" },
+  { label: "Ring", value: "ringSkill" },
+  { label: "Promo", value: "promoSkill" },
+];
 
 type ChoiceOption<T extends string = string> = {
   description?: string;
@@ -967,6 +977,7 @@ function App() {
     brandStyle: BrandStyle;
     difficulty: GameDifficulty;
     startingBudgetTier: StartingBudgetTier;
+    rivalGMAssignments: RivalGMAssignment[];
     draftedWrestlers: Wrestler[];
   }) {
     const newGame = createNewGame(career);
@@ -1621,6 +1632,7 @@ function NewGameSetupScreen({
     brandStyle: BrandStyle;
     difficulty: GameDifficulty;
     startingBudgetTier: StartingBudgetTier;
+    rivalGMAssignments: RivalGMAssignment[];
     draftedWrestlers: Wrestler[];
   }) => void;
 }) {
@@ -1631,13 +1643,22 @@ function NewGameSetupScreen({
   const [brandStyle, setBrandStyle] = useState<BrandStyle>(defaultCareer.brandStyle);
   const [difficulty, setDifficulty] = useState<GameDifficulty>(defaultCareer.difficulty);
   const [startingBudgetTier, setStartingBudgetTier] = useState<StartingBudgetTier>(defaultCareer.startingBudgetTier);
+  const [rivalGMAssignments, setRivalGMAssignments] = useState<RivalGMAssignment[]>(() => createRivalGMAssignments(defaultCareer.brandStyle));
   const [draftedWrestlers, setDraftedWrestlers] = useState<Wrestler[]>([]);
+  const [draftSearch, setDraftSearch] = useState("");
+  const [draftSort, setDraftSort] = useState<DraftSort>("rank");
   const selectedGmStyle = gmStyleOptions.find((option) => option.label === gmStyle) ?? gmStyleOptions[0];
   const selectedBrandStyle = brandStyleOptions.find((option) => option.label === brandStyle) ?? brandStyleOptions[0];
   const selectedDifficulty = difficultyOptions.find((option) => option.label === difficulty) ?? difficultyOptions[1];
   const selectedBudget = budgetOptions.find((option) => option.label === startingBudgetTier) ?? budgetOptions[1];
   const canPreview = gmName.trim().length > 0 && brandName.trim().length > 0;
-  const availableWrestlers = draftPool.filter((wrestler) => !draftedWrestlers.some((drafted) => drafted.id === wrestler.id));
+  const draftSearchTerm = draftSearch.trim().toLowerCase();
+  const draftedIds = new Set(draftedWrestlers.map((wrestler) => wrestler.id));
+  const availableDraftCount = draftPool.length - draftedWrestlers.length;
+  const availableWrestlers = draftPool
+    .filter((wrestler) => !draftedIds.has(wrestler.id))
+    .filter((wrestler) => !draftSearchTerm || wrestler.name.toLowerCase().includes(draftSearchTerm))
+    .sort((a, b) => (draftSort === "rank" ? 0 : b[draftSort] - a[draftSort]));
   const topStar = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.popularity + wrestler.momentum);
   const bestTalker = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.promoSkill);
   const bestInRing = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.ringSkill);
@@ -1655,6 +1676,7 @@ function NewGameSetupScreen({
       brandStyle,
       difficulty,
       startingBudgetTier,
+      rivalGMAssignments,
       draftedWrestlers,
     });
   }
@@ -1677,6 +1699,7 @@ function NewGameSetupScreen({
     const shouldSyncBrandName = !brandName.trim() || brandName.trim() === currentBrandStyleLabel || brandName.trim() === defaultCareer.brandName;
 
     setBrandStyle(nextBrandStyle);
+    setRivalGMAssignments(createRivalGMAssignments(nextBrandStyle));
 
     if (shouldSyncBrandName) {
       setBrandName(choice);
@@ -1827,6 +1850,21 @@ function NewGameSetupScreen({
               <Metric label="First Season" value="12 Weeks" detail="PLEs in Weeks 4, 8, and 12" />
               <Metric label="Next Step" value="Draft Night" detail="Build the first locker room" />
             </div>
+            <section className="rival-universe" aria-label="Rival GM assignments">
+              <div>
+                <p className="eyebrow">Rival GM Universe</p>
+                <h3>The Other Chairs Are Filled</h3>
+              </div>
+              <div className="rival-universe-grid">
+                {rivalGMAssignments.map((assignment) => (
+                  <article key={assignment.brand}>
+                    <span>{assignment.brand}</span>
+                    <strong>{assignment.gmName}</strong>
+                    <small>{assignment.gmStyle}</small>
+                  </article>
+                ))}
+              </div>
+            </section>
             <p className="lede">
               Week 1 opens on TV. This first campaign starts with Collision Course in Week 4, and ownership expects momentum before the road reaches Final Bell.
             </p>
@@ -1845,7 +1883,9 @@ function NewGameSetupScreen({
           <div className="setup-panel draft-panel">
             <p className="eyebrow">Draft Night</p>
             <h2>You're On The Clock</h2>
-            <p className="lede">Build the first 12-person locker room for {brandName.trim() || defaultCareer.brandName}. No rival brands yet. Every pick is yours.</p>
+            <p className="lede">
+              Build the first 12-person locker room for {brandName.trim() || defaultCareer.brandName}. The Top 200 board is open across every source brand, and every pick is yours.
+            </p>
             <div className="draft-board">
               <section className="draft-column">
                 <div className="draft-head">
@@ -1853,18 +1893,38 @@ function NewGameSetupScreen({
                     <p className="eyebrow">Available Talent</p>
                     <h3>Pick {Math.min(draftedWrestlers.length + 1, draftPickCount)} of {draftPickCount}</h3>
                   </div>
-                  <strong>{availableWrestlers.length} Available</strong>
+                  <strong>{draftSearchTerm ? `${availableWrestlers.length} Showing` : `${availableDraftCount} Available`}</strong>
+                </div>
+                <div className="draft-tools" aria-label="Draft board controls">
+                  <label>
+                    Search
+                    <input value={draftSearch} onChange={(event) => setDraftSearch(event.target.value)} placeholder="Find a performer" />
+                  </label>
+                  <label>
+                    Sort
+                    <select value={draftSort} onChange={(event) => setDraftSort(event.target.value as DraftSort)}>
+                      {draftSortOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
                 <div className="draft-list">
-                  {availableWrestlers.map((wrestler) => (
-                    <DraftTalentCard
-                      actionLabel="Draft"
-                      disabled={draftedWrestlers.length >= draftPickCount}
-                      key={wrestler.id}
-                      onAction={() => draftWrestler(wrestler)}
-                      wrestler={wrestler}
-                    />
-                  ))}
+                  {availableWrestlers.length ? (
+                    availableWrestlers.map((wrestler) => (
+                      <DraftTalentCard
+                        actionLabel="Draft"
+                        disabled={draftedWrestlers.length >= draftPickCount}
+                        key={wrestler.id}
+                        onAction={() => draftWrestler(wrestler)}
+                        wrestler={wrestler}
+                      />
+                    ))
+                  ) : (
+                    <div className="empty-state compact">No draft files match that search.</div>
+                  )}
                 </div>
               </section>
 
