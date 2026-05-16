@@ -6,6 +6,7 @@ export type Screen =
   | "championships"
   | "rivalries"
   | "calendar"
+  | "social"
   | "results"
   | "seasonReview";
 
@@ -16,6 +17,19 @@ export type ShowType = "tv" | "ple";
 export type RivalryStatus = "rising" | "steady" | "cooling" | "stale";
 
 export type RivalryStakes = "personal" | "title" | "respect" | "revenge";
+
+export type SocialCategory =
+  | "fan_praise"
+  | "push_complaint"
+  | "title_scene"
+  | "rivalry_heat"
+  | "viral_moment"
+  | "dirt_sheet"
+  | "analyst_take"
+  | "fatigue_concern"
+  | "ple_reaction";
+
+export type SocialTone = "excited" | "angry" | "skeptical" | "impressed" | "chaotic" | "analytical";
 
 export type Wrestler = {
   id: string;
@@ -67,13 +81,30 @@ export type CalendarWeek = {
   resultId?: string;
 };
 
+export type SocialPost = {
+  id: string;
+  weekNumber: number;
+  seasonNumber: number;
+  showName: string;
+  category: SocialCategory;
+  author: string;
+  text: string;
+  tone: SocialTone;
+  relatedWrestlerIds: string[];
+  relatedRivalryIds?: string[];
+  relatedChampionshipIds?: string[];
+};
+
 export type SegmentResult = {
   segmentId: string;
   type: SegmentType;
   participantNames: string[];
+  participantIds: string[];
   score: number;
   momentumChanges: Record<string, number>;
   fatigueChanges: Record<string, number>;
+  championshipId?: string;
+  rivalryId?: string;
   titleNote?: string;
   rivalryNote?: string;
 };
@@ -108,6 +139,7 @@ export type GameState = {
   championships: Championship[];
   rivalries: Rivalry[];
   calendar: CalendarWeek[];
+  socialPosts: SocialPost[];
   currentShow: Segment[];
   showHistory: ShowResult[];
 };

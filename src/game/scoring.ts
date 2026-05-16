@@ -1,4 +1,5 @@
 import type { CalendarWeek, Championship, GameState, Rivalry, RivalryStatus, Segment, ShowResult, Wrestler } from "./types";
+import { generateSocialPosts } from "./social";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
@@ -75,9 +76,12 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
       segmentId: segment.id,
       type: segment.type,
       participantNames: segment.participantIds.map((id) => game.wrestlers.find((wrestler) => wrestler.id === id)?.name ?? "Unknown"),
+      participantIds: segment.participantIds,
       score,
       momentumChanges,
       fatigueChanges,
+      championshipId: segment.championshipId,
+      rivalryId: segment.rivalryId,
       titleNote,
       rivalryNote,
     };
@@ -116,6 +120,7 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
       wrestlers: updatedWrestlers,
       championships: updatedChampionships,
       rivalries: updatedRivalries,
+      socialPosts: [...game.socialPosts, ...generateSocialPosts(result, game)],
       showHistory: [...game.showHistory, result],
     },
   };

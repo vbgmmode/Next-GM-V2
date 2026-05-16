@@ -21,6 +21,8 @@ import type {
   Segment,
   SegmentType,
   ShowResult,
+  SocialCategory,
+  SocialPost,
   ShowType,
   Wrestler,
 } from "./game/types";
@@ -32,6 +34,7 @@ type SavedGameState = {
 
 type RosterSort = "popularity" | "momentum" | "fatigue" | "morale";
 type RosterFilter = "All" | "Hot" | "Tired" | "Frustrated";
+type SocialFilter = "All" | "Fan Reaction" | "Dirt Sheets" | "Analyst Takes" | "Title Scene" | "Rivalries";
 
 function getSegmentRuntime(type: SegmentType) {
   return type === "Match" ? "12 min TV time" : "6 min TV time";
@@ -151,6 +154,45 @@ function getBestShow(showHistory: ShowResult[], seasonNumber?: number) {
   return results.reduce<ShowResult | undefined>((best, result) => (!best || result.totalScore > best.totalScore ? result : best), undefined);
 }
 
+function formatSocialCategory(category: SocialCategory) {
+  return category
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function formatSocialTone(tone: SocialPost["tone"]) {
+  return tone.charAt(0).toUpperCase() + tone.slice(1);
+}
+
+function getSocialFilterCategory(filter: SocialFilter): SocialCategory[] | null {
+  if (filter === "Fan Reaction") {
+    return ["fan_praise", "push_complaint", "viral_moment", "ple_reaction", "fatigue_concern"];
+  }
+
+  if (filter === "Dirt Sheets") {
+    return ["dirt_sheet"];
+  }
+
+  if (filter === "Analyst Takes") {
+    return ["analyst_take"];
+  }
+
+  if (filter === "Title Scene") {
+    return ["title_scene"];
+  }
+
+  if (filter === "Rivalries") {
+    return ["rivalry_heat"];
+  }
+
+  return null;
+}
+
+function getRelatedWrestlerNames(post: SocialPost, wrestlers: Wrestler[]) {
+  return post.relatedWrestlerIds.map((id) => wrestlers.find((wrestler) => wrestler.id === id)?.name).filter(Boolean).join(" / ");
+}
+
 function buildBroadcastRecap(result: ShowResult) {
   const bestSegment = getBestSegment(result);
   const bestNames = bestSegment.participantNames.join(" / ");
@@ -183,6 +225,7 @@ function isSavedGameState(value: unknown): value is SavedGameState {
       saved.screen === "championships" ||
       saved.screen === "rivalries" ||
       saved.screen === "calendar" ||
+      saved.screen === "social" ||
       saved.screen === "seasonReview" ||
       saved.screen === "results") &&
     Boolean(game) &&
@@ -224,6 +267,7 @@ function loadSavedGame() {
         Array.isArray(savedState.game.calendar) && savedState.game.calendar.length
           ? savedState.game.calendar
           : createSeasonCalendar(),
+      socialPosts: Array.isArray(savedState.game.socialPosts) ? savedState.game.socialPosts : [],
     },
   };
 }
@@ -563,6 +607,10 @@ function App() {
     return <CalendarScreen game={game} latestResult={latestResult} onNavigate={navigateTo} />;
   }
 
+  if (screen === "social") {
+    return <SocialScreen game={game} latestResult={latestResult} onNavigate={navigateTo} />;
+  }
+
   if (screen === "results" && latestResult) {
     return <ResultsScreen game={game} result={latestResult} onAdvanceWeek={advanceWeek} onNavigate={navigateTo} />;
   }
@@ -649,6 +697,7 @@ function DashboardScreen({
   const currentShow = getCurrentCalendarWeek(game);
   const nextPle = getNextPle(game.calendar, game.currentWeek);
   const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
+  const latestSocialPost = game.socialPosts[game.socialPosts.length - 1];
 
   return (
     <main className="app-shell">
@@ -780,6 +829,23 @@ function DashboardScreen({
           View Rivalries
         </button>
       </section>
+
+      {latestSocialPost ? (
+        <section className="command-panel social-spotlight">
+          <div className="section-heading">
+            <p className="eyebrow">IWC Buzz</p>
+            <h3>{formatSocialCategory(latestSocialPost.category)}</h3>
+          </div>
+          <p className="social-preview-text">{latestSocialPost.text}</p>
+          <div className="show-strip">
+            <span>{latestSocialPost.author}</span>
+            <span>{formatSocialTone(latestSocialPost.tone)}</span>
+          </div>
+          <button className="secondary-action" onClick={() => onNavigate("social")}>
+            View Social
+          </button>
+        </section>
+      ) : null}
 
       <section className="command-grid">
         <article className="command-panel">
@@ -1301,6 +1367,79 @@ function CalendarScreen({
   );
 }
 
+function SocialScreen({
+  game,
+  latestResult,
+  onNavigate,
+}: {
+  game: GameState;
+  latestResult?: ShowResult;
+  onNavigate: (screen: Exclude<Screen, "title">) => void;
+}) {
+  const [filter, setFilter] = useState<SocialFilter>("All");
+  const categories = getSocialFilterCategory(filter);
+  const visiblePosts = [...game.socialPosts]
+    .reverse()
+    .filter((post) => !categories || categories.includes(post.category));
+
+  return (
+    <main className="app-shell">
+      <Header game={game} />
+      <GameNav currentScreen="social" hasResults={Boolean(latestResult)} onNavigate={onNavigate} />
+      <section className="dashboard-hero">
+        <div>
+          <p className="eyebrow">Post-Show Pulse</p>
+          <h2>Social / IWC</h2>
+          <p className="lede">The feed only reacts to shows that actually happened: scores, title fallout, rivalry movement, fatigue, and major-event moments.</p>
+        </div>
+        <button className="primary-action" onClick={() => onNavigate("booking")}>
+          Book Show
+        </button>
+      </section>
+
+      <section className="roster-controls" aria-label="Social filters">
+        <div>
+          <span>Filter</span>
+          {(["All", "Fan Reaction", "Dirt Sheets", "Analyst Takes", "Title Scene", "Rivalries"] as SocialFilter[]).map((option) => (
+            <button className={filter === option ? "active-filter" : ""} key={option} onClick={() => setFilter(option)}>
+              {option}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="social-feed" aria-label="Social posts">
+        {visiblePosts.length ? (
+          visiblePosts.map((post) => (
+            <article className={`social-post tone-${post.tone}`} key={post.id}>
+              <div className="social-post-head">
+                <div>
+                  <p className="eyebrow">
+                    Season {post.seasonNumber} · Week {post.weekNumber} · {post.showName}
+                  </p>
+                  <h3>{post.author}</h3>
+                </div>
+                <div className="show-strip">
+                  <span>{formatSocialCategory(post.category)}</span>
+                  <span>{formatSocialTone(post.tone)}</span>
+                </div>
+              </div>
+              <p>{post.text}</p>
+              {post.relatedWrestlerIds.length ? (
+                <small>Related: {getRelatedWrestlerNames(post, game.wrestlers)}</small>
+              ) : null}
+            </article>
+          ))
+        ) : (
+          <div className="empty-state">
+            {game.socialPosts.length ? "No posts match this filter." : "The internet has nothing to react to yet. Run a show and the buzz will arrive after the results."}
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
+
 function ResultsScreen({
   game,
   result,
@@ -1313,6 +1452,7 @@ function ResultsScreen({
   onNavigate: (screen: Exclude<Screen, "title">) => void;
 }) {
   const bestSegment = getBestSegment(result);
+  const buzzPreview = game.socialPosts.filter((post) => post.seasonNumber === result.seasonNumber && post.weekNumber === result.week).slice(-3).reverse();
 
   return (
     <main className="app-shell">
@@ -1361,6 +1501,27 @@ function ResultsScreen({
           {result.rivalryNotes.map((note) => (
             <p key={note}>{note}</p>
           ))}
+        </section>
+      ) : null}
+
+      {buzzPreview.length ? (
+        <section className="social-buzz" aria-label="IWC buzz preview">
+          <div className="section-heading">
+            <p className="eyebrow">IWC Buzz</p>
+            <h3>Post-Show Reaction</h3>
+          </div>
+          <div className="social-preview-grid">
+            {buzzPreview.map((post) => (
+              <article className="social-preview" key={post.id}>
+                <span>{formatSocialCategory(post.category)}</span>
+                <strong>{post.author}</strong>
+                <p>{post.text}</p>
+              </article>
+            ))}
+          </div>
+          <button className="secondary-action" onClick={() => onNavigate("social")}>
+            View Social
+          </button>
         </section>
       ) : null}
 
@@ -1605,6 +1766,9 @@ function GameNav({
       </button>
       <button className={currentScreen === "calendar" ? "active-filter" : ""} onClick={() => onNavigate("calendar")}>
         Calendar
+      </button>
+      <button className={currentScreen === "social" ? "active-filter" : ""} onClick={() => onNavigate("social")}>
+        Social
       </button>
       {hasResults ? (
         <button className={currentScreen === "results" ? "active-filter" : ""} onClick={() => onNavigate("results")}>

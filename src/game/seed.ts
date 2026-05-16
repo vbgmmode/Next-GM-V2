@@ -112,6 +112,7 @@ export function createNewGame(): GameState {
     championships: createDefaultChampionships(),
     rivalries: createDefaultRivalries(),
     calendar: createSeasonCalendar(),
+    socialPosts: [],
     currentShow: [],
     showHistory: [],
   };
