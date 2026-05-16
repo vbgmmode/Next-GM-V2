@@ -51,5 +51,11 @@ export function startNextSeason(game: GameState): GameState {
     currentWeek: 1,
     calendar: createSeasonCalendar(),
     currentShow: [],
+    wrestlers: game.wrestlers.map((wrestler) => ({
+      ...wrestler,
+      appearancesThisSeason: 0,
+      lastBookedWeek: 0,
+      consecutiveWeeksBooked: 0,
+    })),
   };
 }

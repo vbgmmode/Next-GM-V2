@@ -460,6 +460,11 @@ h3 {
   margin-bottom: 18px;
 }
 
+.roster-pressure-panel {
+  border-color: rgba(246, 193, 86, 0.28);
+  margin-bottom: 18px;
+}
+
 .calendar-spotlight {
   border-color: rgba(255, 255, 255, 0.18);
   margin-bottom: 18px;
@@ -620,6 +625,23 @@ h3 {
 
 .wrestler-card.status-frustrated {
   border-left-color: #ff9aa3;
+}
+
+.pressure-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.pressure-tags span {
+  background: rgba(8, 9, 13, 0.72);
+  border: 1px solid rgba(246, 193, 86, 0.22);
+  color: #f6c156;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 6px 8px;
+  text-transform: uppercase;
 }
 
 .wrestler-card-head {
@@ -1152,14 +1174,45 @@ h3 {
 }
 
 .title-fallout,
-.story-fallout {
+.story-fallout,
+.locker-room-fallout {
   margin-bottom: 18px;
 }
 
 .title-fallout p,
-.story-fallout p {
+.story-fallout p,
+.locker-room-fallout p {
   color: #f4f7fb;
   line-height: 1.45;
+}
+
+.locker-room-fallout {
+  background:
+    linear-gradient(180deg, rgba(216, 35, 50, 0.055), transparent),
+    rgba(14, 17, 24, 0.92);
+  border: 1px solid rgba(216, 35, 50, 0.28);
+  padding: 18px;
+}
+
+.fallout-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fallout-grid div {
+  background: rgba(8, 9, 13, 0.5);
+  border-left: 3px solid #f6c156;
+  padding: 12px;
+}
+
+.fallout-grid span {
+  color: #f6c156;
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 900;
+  margin-bottom: 8px;
+  text-transform: uppercase;
 }
 
 .result-row {
@@ -1233,6 +1286,7 @@ h3 {
   .status-grid,
   .command-grid,
   .spotlight-grid,
+  .fallout-grid,
   .roster-controls,
   .roster-grid,
   .rivalry-form,

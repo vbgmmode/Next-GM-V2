@@ -1,4 +1,15 @@
-import type { CalendarWeek, Championship, GameState, Rivalry, RivalryStatus, Segment, SegmentResult, ShowResult, Wrestler } from "./types";
+import type {
+  CalendarWeek,
+  Championship,
+  GameState,
+  LockerRoomFallout,
+  Rivalry,
+  RivalryStatus,
+  Segment,
+  SegmentResult,
+  ShowResult,
+  Wrestler,
+} from "./types";
 import { generateFinanceReport } from "./finance";
 import { generateSocialPosts } from "./social";
 
@@ -70,6 +81,12 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
   const fatigueTotals: Record<string, number> = {};
   const titleNotes: string[] = [];
   const rivalryNotes: string[] = [];
+  const lockerRoomFallout: LockerRoomFallout = {
+    moraleDrops: [],
+    moraleBoosts: [],
+    overuseWarnings: [],
+    underuseWarnings: [],
+  };
   const updatedChampionships = game.championships.map((championship) => ({ ...championship, championIds: [...championship.championIds] }));
   const updatedRivalries = game.rivalries.map((rivalry) => ({ ...rivalry, participantIds: [...rivalry.participantIds] }));
   const resolvedBookedIds = new Set(game.currentShow.flatMap((segment) => segment.participantIds));
@@ -140,14 +157,12 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
     biggestFatigueIncrease,
     titleNotes,
     rivalryNotes,
+    lockerRoomFallout,
   };
 
-  const updatedWrestlers = game.wrestlers.map((wrestler) => ({
-    ...wrestler,
-    momentum: clamp(wrestler.momentum + (momentumTotals[wrestler.id] ?? 0)),
-    fatigue: clamp(wrestler.fatigue + (fatigueTotals[wrestler.id] ?? 0)),
-    morale: clamp(wrestler.morale + (momentumTotals[wrestler.id] ? 1 : 0)),
-  }));
+  const updatedWrestlers = game.wrestlers.map((wrestler) =>
+    updateWrestlerPressure(wrestler, game.currentWeek, momentumTotals, fatigueTotals, lockerRoomFallout),
+  );
   const financeReport = generateFinanceReport(result, game);
 
   return {
@@ -163,6 +178,90 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
       showHistory: [...game.showHistory, result],
     },
   };
+}
+
+function updateWrestlerPressure(
+  wrestler: Wrestler,
+  currentWeek: number,
+  momentumTotals: Record<string, number>,
+  fatigueTotals: Record<string, number>,
+  fallout: LockerRoomFallout,
+) {
+  const isBooked = Object.prototype.hasOwnProperty.call(momentumTotals, wrestler.id) || Object.prototype.hasOwnProperty.call(fatigueTotals, wrestler.id);
+  const previousLastBookedWeek = wrestler.lastBookedWeek ?? 0;
+  const previousAppearances = wrestler.appearancesThisSeason ?? 0;
+  const previousConsecutiveWeeks = wrestler.consecutiveWeeksBooked ?? 0;
+  const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, currentWeek);
+  const wasUnderused = weeksSinceLastBooked >= 3;
+  const wasOverused = previousConsecutiveWeeks >= 3;
+  const wasHighlyFatigued = wrestler.fatigue >= 60;
+  let moraleChange = isBooked ? 1 : 0;
+  let underusedBoostNote = "";
+
+  if (isBooked && wasUnderused) {
+    moraleChange += 2;
+    underusedBoostNote = `${wrestler.name} got back on TV after ${weeksSinceLastBooked} weeks away and responded well.`;
+  }
+
+  if (isBooked && (wasHighlyFatigued || wasOverused)) {
+    moraleChange -= 2;
+    fallout.overuseWarnings.push({
+      wrestlerId: wrestler.id,
+      wrestlerName: wrestler.name,
+      moraleChange: -2,
+      note: `${wrestler.name} was booked through ${wasHighlyFatigued ? "heavy fatigue" : "a long TV streak"}.`,
+    });
+  }
+
+  if (!isBooked && wasUnderused) {
+    moraleChange -= 2;
+    fallout.underuseWarnings.push({
+      wrestlerId: wrestler.id,
+      wrestlerName: wrestler.name,
+      moraleChange: -2,
+      note: `${wrestler.name} has gone ${weeksSinceLastBooked} weeks without TV time.`,
+    });
+  }
+
+  const nextMorale = clamp(wrestler.morale + moraleChange);
+
+  if (nextMorale < wrestler.morale) {
+    fallout.moraleDrops.push({
+      wrestlerId: wrestler.id,
+      wrestlerName: wrestler.name,
+      moraleChange: nextMorale - wrestler.morale,
+      note: `${wrestler.name} lost morale from ${isBooked ? "being pushed through pressure" : "sitting out again"}.`,
+    });
+  }
+
+  if (nextMorale > wrestler.morale && moraleChange > 1) {
+    fallout.moraleBoosts.push({
+      wrestlerId: wrestler.id,
+      wrestlerName: wrestler.name,
+      moraleChange: nextMorale - wrestler.morale,
+      note: underusedBoostNote || `${wrestler.name} gained morale from meaningful TV time.`,
+    });
+  }
+
+  return {
+    ...wrestler,
+    momentum: clamp(wrestler.momentum + (momentumTotals[wrestler.id] ?? 0)),
+    fatigue: clamp(wrestler.fatigue + (fatigueTotals[wrestler.id] ?? 0)),
+    morale: nextMorale,
+    appearancesThisSeason: isBooked ? previousAppearances + 1 : previousAppearances,
+    lastBookedWeek: isBooked ? currentWeek : previousLastBookedWeek,
+    consecutiveWeeksBooked: isBooked ? (previousLastBookedWeek === currentWeek - 1 ? previousConsecutiveWeeks + 1 : 1) : 0,
+  };
+}
+
+function getWeeksSinceLastBooked(wrestler: Wrestler, currentWeek: number) {
+  const lastBookedWeek = wrestler.lastBookedWeek ?? 0;
+
+  if (!lastBookedWeek) {
+    return Math.max(0, currentWeek - 1);
+  }
+
+  return Math.max(0, currentWeek - lastBookedWeek);
 }
 
 function getSegmentContextBonus(segment: Segment, championships: Championship[], rivalries: Rivalry[]) {

@@ -52,6 +52,9 @@ export type Wrestler = {
   morale: number;
   ringSkill: number;
   promoSkill: number;
+  appearancesThisSeason?: number;
+  lastBookedWeek?: number;
+  consecutiveWeeksBooked?: number;
 };
 
 export type Segment = {
@@ -143,6 +146,20 @@ export type SegmentResult = {
   isNoContest?: boolean;
 };
 
+export type LockerRoomFalloutItem = {
+  wrestlerId: string;
+  wrestlerName: string;
+  note: string;
+  moraleChange?: number;
+};
+
+export type LockerRoomFallout = {
+  moraleDrops: LockerRoomFalloutItem[];
+  moraleBoosts: LockerRoomFalloutItem[];
+  overuseWarnings: LockerRoomFalloutItem[];
+  underuseWarnings: LockerRoomFalloutItem[];
+};
+
 export type ShowResult = {
   id: string;
   seasonNumber: number;
@@ -162,6 +179,7 @@ export type ShowResult = {
   };
   titleNotes: string[];
   rivalryNotes: string[];
+  lockerRoomFallout?: LockerRoomFallout;
 };
 
 export type GameState = {

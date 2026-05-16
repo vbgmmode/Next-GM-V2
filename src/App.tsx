@@ -41,6 +41,7 @@ type SavedGameState = {
 
 type RosterSort = "popularity" | "momentum" | "fatigue" | "morale";
 type RosterFilter = "All" | "Hot" | "Tired" | "Frustrated";
+type RosterPressureTag = "Overused" | "Underused" | "Protected Star" | "Morale Risk" | "Injury Risk";
 type SocialFilter = "All" | "Fan Reaction" | "Dirt Sheets" | "Analyst Takes" | "Title Scene" | "Rivalries";
 type SetupStep = "contract" | "gm" | "brand" | "preview" | "draft" | "review";
 
@@ -184,6 +185,60 @@ function getWrestlerStatus(wrestler: Wrestler): Exclude<RosterFilter, "All"> | "
   }
 
   return "Steady";
+}
+
+function getWeeksSinceLastBooked(wrestler: Wrestler, currentWeek: number) {
+  if (!wrestler.lastBookedWeek) {
+    return Math.max(0, currentWeek - 1);
+  }
+
+  return Math.max(0, currentWeek - wrestler.lastBookedWeek);
+}
+
+function getRosterPressureTags(wrestler: Wrestler, currentWeek: number): RosterPressureTag[] {
+  const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, currentWeek);
+  const isOverused = wrestler.fatigue >= 60 || (wrestler.consecutiveWeeksBooked ?? 0) >= 3;
+  const tags: RosterPressureTag[] = [];
+
+  if (wrestler.fatigue >= 75) {
+    tags.push("Injury Risk");
+  }
+
+  if (wrestler.morale <= 45) {
+    tags.push("Morale Risk");
+  }
+
+  if (isOverused) {
+    tags.push("Overused");
+  }
+
+  if (weeksSinceLastBooked >= 3) {
+    tags.push("Underused");
+  }
+
+  if (wrestler.popularity >= 68 && wrestler.momentum >= 60 && !isOverused && wrestler.fatigue < 75) {
+    tags.push("Protected Star");
+  }
+
+  return tags;
+}
+
+function getTopOverusedWrestler(wrestlers: Wrestler[]) {
+  return wrestlers
+    .filter((wrestler) => wrestler.fatigue >= 60 || (wrestler.consecutiveWeeksBooked ?? 0) >= 3)
+    .sort((a, b) => b.fatigue + (b.consecutiveWeeksBooked ?? 0) * 8 - (a.fatigue + (a.consecutiveWeeksBooked ?? 0) * 8))[0];
+}
+
+function getTopUnderusedWrestler(wrestlers: Wrestler[], currentWeek: number) {
+  return wrestlers
+    .filter((wrestler) => getWeeksSinceLastBooked(wrestler, currentWeek) >= 3)
+    .sort(
+      (a, b) =>
+        getWeeksSinceLastBooked(b, currentWeek) * 10 +
+        b.popularity +
+        b.momentum -
+        (getWeeksSinceLastBooked(a, currentWeek) * 10 + a.popularity + a.momentum),
+    )[0];
 }
 
 function getRosterLeader(wrestlers: Wrestler[], score: (wrestler: Wrestler) => number) {
@@ -370,6 +425,15 @@ function saveSnapshot(game: GameState, screen: SavedGameState["screen"]) {
   saveGameState({ game, screen });
 }
 
+function normalizeWrestlers(wrestlers: Wrestler[]) {
+  return wrestlers.map((wrestler) => ({
+    ...wrestler,
+    appearancesThisSeason: wrestler.appearancesThisSeason ?? 0,
+    lastBookedWeek: wrestler.lastBookedWeek ?? 0,
+    consecutiveWeeksBooked: wrestler.consecutiveWeeksBooked ?? 0,
+  }));
+}
+
 function isSavedGameState(value: unknown): value is SavedGameState {
   if (!value || typeof value !== "object") {
     return false;
@@ -411,18 +475,21 @@ function loadSavedGame() {
     return null;
   }
 
+  const wrestlers = normalizeWrestlers(savedState.game.wrestlers);
+
   return {
     ...savedState,
     game: {
       ...savedState.game,
+      wrestlers,
       championships:
         Array.isArray(savedState.game.championships) && savedState.game.championships.length
           ? savedState.game.championships
-          : createDefaultChampionships(savedState.game.wrestlers),
+          : createDefaultChampionships(wrestlers),
       rivalries:
         Array.isArray(savedState.game.rivalries) && savedState.game.rivalries.length
           ? savedState.game.rivalries
-          : createDefaultRivalries(savedState.game.wrestlers),
+          : createDefaultRivalries(wrestlers),
       seasonNumber: savedState.game.seasonNumber ?? 1,
       calendar:
         Array.isArray(savedState.game.calendar) && savedState.game.calendar.length
@@ -1184,6 +1251,13 @@ function DashboardScreen({
   const latestSocialPost = game.socialPosts[game.socialPosts.length - 1];
   const latestFinanceReport = getLatestFinanceReport(game);
   const pressureLabel = getFinancePressureLabel(game.money, latestFinanceReport?.profitLoss ?? 0);
+  const topOverused = getTopOverusedWrestler(game.wrestlers);
+  const topUnderused = getTopUnderusedWrestler(game.wrestlers, game.currentWeek);
+  const overusedCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Overused")).length;
+  const underusedCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Underused")).length;
+  const protectedStarCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Protected Star")).length;
+  const moraleRiskCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Morale Risk")).length;
+  const injuryRiskCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk")).length;
 
   return (
     <main className="app-shell">
@@ -1262,6 +1336,37 @@ function DashboardScreen({
         <Metric label="Last Show" value={lastShow ? `${lastShow.totalScore} (${getShowGrade(lastShow.totalScore)})` : "No Result"} />
         <Metric label="Avg Fatigue" value={`${averageFatigue}`} detail={averageFatigue >= 45 ? "Roster needs rest" : "Manageable load"} />
         <Metric label="Top Momentum" value={`${topMomentumTalent.momentum}`} detail={topMomentumTalent.name} />
+      </section>
+
+      <section className="command-panel roster-pressure-panel">
+        <div className="section-heading">
+          <p className="eyebrow">Roster Pressure</p>
+          <h3>Locker Room Load</h3>
+        </div>
+        <div className="pressure-tags">
+          <span>Overused {overusedCount}</span>
+          <span>Underused {underusedCount}</span>
+          <span>Protected Star {protectedStarCount}</span>
+          <span>Morale Risk {moraleRiskCount}</span>
+          <span>Injury Risk {injuryRiskCount}</span>
+        </div>
+        <div className="spotlight-grid">
+          <Metric
+            label="Top Overused"
+            value={topOverused ? topOverused.name : "None"}
+            detail={topOverused ? `Fat ${topOverused.fatigue} · Streak ${topOverused.consecutiveWeeksBooked ?? 0}` : "Load is stable"}
+          />
+          <Metric
+            label="Top Underused"
+            value={topUnderused ? topUnderused.name : "None"}
+            detail={topUnderused ? `${getWeeksSinceLastBooked(topUnderused, game.currentWeek)} weeks off TV` : "No long absences"}
+          />
+          <Metric label="Morale Risk" value={`${moraleRiskCount}`} detail={moraleRiskCount ? "Needs attention" : "Room is steady"} />
+          <Metric label="Injury Risk" value={`${injuryRiskCount}`} detail={injuryRiskCount ? "Protect high fatigue" : "No red flags"} />
+        </div>
+        <button className="secondary-action" onClick={() => onNavigate("roster")}>
+          View Roster
+        </button>
       </section>
 
       <section className={`command-panel finance-spotlight pressure-${pressureLabel.toLowerCase()}`}>
@@ -1581,6 +1686,10 @@ function RosterScreen({
       .filter((wrestler) => filter === "All" || getWrestlerStatus(wrestler) === filter)
       .sort((a, b) => b[sortBy] - a[sortBy]);
   }, [filter, game.wrestlers, sortBy]);
+  const topOverused = getTopOverusedWrestler(game.wrestlers);
+  const topUnderused = getTopUnderusedWrestler(game.wrestlers, game.currentWeek);
+  const moraleRiskCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Morale Risk")).length;
+  const injuryRiskCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk")).length;
 
   return (
     <main className="app-shell">
@@ -1595,6 +1704,21 @@ function RosterScreen({
         <button className="primary-action" onClick={() => onNavigate("booking")}>
           Book Show
         </button>
+      </section>
+
+      <section className="status-grid" aria-label="Roster pressure summary">
+        <Metric
+          label="Top Overused"
+          value={topOverused ? topOverused.name : "None"}
+          detail={topOverused ? `Fat ${topOverused.fatigue} · Streak ${topOverused.consecutiveWeeksBooked ?? 0}` : "No pressure spike"}
+        />
+        <Metric
+          label="Top Underused"
+          value={topUnderused ? topUnderused.name : "None"}
+          detail={topUnderused ? `${getWeeksSinceLastBooked(topUnderused, game.currentWeek)} weeks off TV` : "No long absence"}
+        />
+        <Metric label="Morale Risk" value={`${moraleRiskCount}`} detail={moraleRiskCount ? "Watch the room" : "Stable"} />
+        <Metric label="Injury Risk" value={`${injuryRiskCount}`} detail={injuryRiskCount ? "Protect fatigue" : "Clear"} />
       </section>
 
       <section className="roster-controls" aria-label="Roster controls">
@@ -1618,7 +1742,7 @@ function RosterScreen({
 
       <section className="roster-grid" aria-label="Roster list">
         {visibleWrestlers.length ? (
-          visibleWrestlers.map((wrestler) => <WrestlerCard key={wrestler.id} wrestler={wrestler} />)
+          visibleWrestlers.map((wrestler) => <WrestlerCard currentWeek={game.currentWeek} key={wrestler.id} wrestler={wrestler} />)
         ) : (
           <div className="empty-state">No wrestlers match this filter.</div>
         )}
@@ -2075,6 +2199,14 @@ function ResultsScreen({
   const bestSegment = getBestSegment(result);
   const buzzPreview = game.socialPosts.filter((post) => post.seasonNumber === result.seasonNumber && post.weekNumber === result.week).slice(-3).reverse();
   const financeReport = getFinanceReportForResult(game, result);
+  const lockerRoomFalloutItems = result.lockerRoomFallout
+    ? [
+        ...result.lockerRoomFallout.moraleDrops,
+        ...result.lockerRoomFallout.moraleBoosts,
+        ...result.lockerRoomFallout.overuseWarnings,
+        ...result.lockerRoomFallout.underuseWarnings,
+      ]
+    : [];
 
   return (
     <main className="app-shell">
@@ -2101,6 +2233,53 @@ function ResultsScreen({
         <Metric label="Momentum Gain" value={result.biggestMomentumGain.name} detail={`+${result.biggestMomentumGain.amount}`} />
         <Metric label="Fatigue Hit" value={result.biggestFatigueIncrease.name} detail={`+${result.biggestFatigueIncrease.amount}`} />
       </section>
+
+      {result.lockerRoomFallout && lockerRoomFalloutItems.length ? (
+        <section className="locker-room-fallout" aria-label="Locker room fallout">
+          <div className="section-heading">
+            <p className="eyebrow">Locker Room Fallout</p>
+            <h3>Roster Pressure</h3>
+          </div>
+          <div className="fallout-grid">
+            {result.lockerRoomFallout.moraleDrops.length ? (
+              <div>
+                <span>Morale Drops</span>
+                {result.lockerRoomFallout.moraleDrops.map((item) => (
+                  <p key={`${item.wrestlerId}-drop`}>
+                    {item.note} {item.moraleChange ? `(${item.moraleChange})` : ""}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+            {result.lockerRoomFallout.moraleBoosts.length ? (
+              <div>
+                <span>Morale Boosts</span>
+                {result.lockerRoomFallout.moraleBoosts.map((item) => (
+                  <p key={`${item.wrestlerId}-boost`}>
+                    {item.note} {item.moraleChange ? `(+${item.moraleChange})` : ""}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+            {result.lockerRoomFallout.overuseWarnings.length ? (
+              <div>
+                <span>Overuse Warnings</span>
+                {result.lockerRoomFallout.overuseWarnings.map((item) => (
+                  <p key={`${item.wrestlerId}-overuse`}>{item.note}</p>
+                ))}
+              </div>
+            ) : null}
+            {result.lockerRoomFallout.underuseWarnings.length ? (
+              <div>
+                <span>Underuse Warnings</span>
+                {result.lockerRoomFallout.underuseWarnings.map((item) => (
+                  <p key={`${item.wrestlerId}-underuse`}>{item.note}</p>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       {result.titleNotes?.length ? (
         <section className="title-fallout" aria-label="Title fallout">
@@ -2275,8 +2454,10 @@ function SeasonReviewScreen({
   );
 }
 
-function WrestlerCard({ wrestler }: { wrestler: Wrestler }) {
+function WrestlerCard({ currentWeek, wrestler }: { currentWeek: number; wrestler: Wrestler }) {
   const status = getWrestlerStatus(wrestler);
+  const pressureTags = getRosterPressureTags(wrestler, currentWeek);
+  const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, currentWeek);
 
   return (
     <article className={`wrestler-card status-${status.toLowerCase()}`}>
@@ -2287,6 +2468,9 @@ function WrestlerCard({ wrestler }: { wrestler: Wrestler }) {
         </div>
         <strong>{status}</strong>
       </div>
+      <div className="pressure-tags">
+        {pressureTags.length ? pressureTags.map((tag) => <span key={tag}>{tag}</span>) : <span>Balanced</span>}
+      </div>
       <div className="wrestler-stats">
         <Metric label="Popularity" value={`${wrestler.popularity}`} />
         <Metric label="Momentum" value={`${wrestler.momentum}`} />
@@ -2294,6 +2478,9 @@ function WrestlerCard({ wrestler }: { wrestler: Wrestler }) {
         <Metric label="Morale" value={`${wrestler.morale}`} />
         <Metric label="Ring" value={`${wrestler.ringSkill}`} />
         <Metric label="Promo" value={`${wrestler.promoSkill}`} />
+        <Metric label="Appearances" value={`${wrestler.appearancesThisSeason ?? 0}`} detail="This season" />
+        <Metric label="Last Booked" value={wrestler.lastBookedWeek ? `Week ${wrestler.lastBookedWeek}` : "Never"} detail={`${weeksSinceLastBooked} weeks off TV`} />
+        <Metric label="TV Streak" value={`${wrestler.consecutiveWeeksBooked ?? 0}`} detail="Consecutive weeks" />
       </div>
     </article>
   );

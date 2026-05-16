@@ -47,7 +47,12 @@ export const draftPool: Wrestler[] = [
 ];
 
 function cloneWrestlers(wrestlers: Wrestler[]) {
-  return wrestlers.map((wrestler) => ({ ...wrestler }));
+  return wrestlers.map((wrestler) => ({
+    ...wrestler,
+    appearancesThisSeason: wrestler.appearancesThisSeason ?? 0,
+    lastBookedWeek: wrestler.lastBookedWeek ?? 0,
+    consecutiveWeeksBooked: wrestler.consecutiveWeeksBooked ?? 0,
+  }));
 }
 
 function byStarPower(wrestlers: Wrestler[]) {

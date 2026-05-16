@@ -50,8 +50,12 @@ The game currently supports:
 - Singles title matches that can change championships
 - Rivalry context attached to eligible segments
 - Run Show
-- Results with broadcast recap, segment scores, momentum/fatigue fallout, title fallout, rivalry fallout, social buzz, and finance fallout
+- Results with broadcast recap, segment scores, momentum/fatigue fallout, title fallout, rivalry fallout, locker room fallout, social buzz, and finance fallout
 - Advance Week
+- TV-time tracking with appearances this season, last booked week, and consecutive weeks booked
+- Open Challenge resolved opponents count as booked after the show
+- Roster pressure labels for overused, underused, protected star, morale risk, and injury risk states
+- Deterministic locker room fallout after shows
 - Roster
 - Championships
 - Rivalries with heat, freshness, stakes, status, create, and end controls
@@ -84,6 +88,9 @@ The loop must remain playable after every change.
 - Open Challenge opponents are not revealed before the show runs.
 - Open Challenge opponents resolve deterministically at show-run time.
 - Only Match title matches can change championships.
+- Roster pressure should come from actual booking choices.
+- Morale and fatigue fallout should be revealed after the show, not before.
+- Booking can show context and warnings, but not predicted fallout.
 - The UI can warn, summarize, and provide context, but it should not secretly decide for the player.
 - Big moments deserve stronger presentation.
 - Dashboard should orient the player.
@@ -105,9 +112,9 @@ Current priority:
 Deepen the post-draft solo career by improving booking stakes, roster pressure, consequence clarity, social/finance feedback, and season review value.
 
 Upcoming Direction:
-- Add richer roster pressure and morale events.
-- Run a booking balance pass across segment value, fatigue, and card composition.
 - Polish post-show fallout so results, social, finance, and rivalry movement feel sharper.
+- Run a booking balance pass across segment value, fatigue, morale, and card composition.
+- Add injury system v1 when explicitly requested by an active ticket.
 - Strengthen season review and next-season carryover without adding infrastructure complexity.
 - Consider save slots or a data persistence upgrade later, only if explicitly requested.
 - Keep setup and draft bounded unless an active ticket asks to expand them.
