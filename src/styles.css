@@ -833,6 +833,31 @@ h3 {
   padding: 44px 0 28px;
 }
 
+.qa-harness-banner {
+  align-items: center;
+  background:
+    linear-gradient(90deg, rgba(0, 168, 150, 0.18), transparent),
+    rgba(8, 12, 18, 0.94);
+  border: 1px solid rgba(0, 168, 150, 0.42);
+  border-radius: 8px;
+  color: #dbe2ef;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+}
+
+.qa-harness-banner strong {
+  color: #f4f7fb;
+  text-transform: uppercase;
+}
+
+.qa-harness-banner span {
+  color: #9ea8ba;
+}
+
 .identity-strip {
   display: flex;
   flex-wrap: wrap;
@@ -1317,6 +1342,7 @@ h3 {
 .rivalry-card,
 .title-fallout,
 .story-fallout,
+.broadcast-overrun-fallout,
 .rivalry-form {
   background:
     linear-gradient(180deg, rgba(246, 193, 86, 0.06), transparent),
@@ -1683,6 +1709,7 @@ h3 {
 
 .runtime-board,
 .smart-rundown-panel,
+.broadcast-risk-panel,
 .composer-panel {
   background: rgba(14, 17, 24, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1720,6 +1747,30 @@ h3 {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.broadcast-risk-panel {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+}
+
+.broadcast-risk-panel.risk-soft {
+  border-color: rgba(246, 193, 86, 0.28);
+}
+
+.broadcast-risk-panel.risk-warning {
+  border-color: rgba(246, 193, 86, 0.54);
+}
+
+.broadcast-risk-panel.risk-strong {
+  border-color: rgba(255, 83, 97, 0.54);
+}
+
+.broadcast-risk-panel p {
+  color: #dbe2ef;
+  line-height: 1.45;
+  margin: 0;
 }
 
 .runtime-board {
@@ -2190,15 +2241,24 @@ h3 {
 
 .title-fallout,
 .story-fallout,
+.broadcast-overrun-fallout,
 .locker-room-fallout {
   margin-bottom: 18px;
 }
 
 .title-fallout p,
 .story-fallout p,
+.broadcast-overrun-fallout p,
 .locker-room-fallout p {
   color: #f4f7fb;
   line-height: 1.45;
+}
+
+.broadcast-overrun-fallout {
+  background:
+    linear-gradient(180deg, rgba(255, 83, 97, 0.06), transparent),
+    rgba(14, 17, 24, 0.92);
+  border-color: rgba(255, 83, 97, 0.34);
 }
 
 .locker-room-fallout {

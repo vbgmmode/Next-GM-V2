@@ -17,6 +17,8 @@ import {
   getResultChange,
   getRivalryStatus,
   getShowGrade,
+  getWrestlerDivisionGroup,
+  hasIntergenderMatchParticipants,
   isValidSegment,
   runShow,
 } from "./game/scoring";
@@ -245,6 +247,7 @@ const showRuntimeMinMinutes = 90;
 const showRuntimeOvertimeMinutes = 135;
 const tvRuntimeWarningMinutes = 150;
 const maxBookingSegments = 24;
+const qaHarnessParam = "qa";
 
 const segmentCatalogOptions: SegmentCatalogOption[] = [
   {
@@ -510,6 +513,14 @@ function getSegmentRuntime(segment: Segment) {
   return `${getSegmentDurationMinutes(segment)} min TV time`;
 }
 
+function formatRuntimeVariance(variance = 0) {
+  if (variance === 0) {
+    return "on time";
+  }
+
+  return variance > 0 ? `+${variance} min` : `${variance} min`;
+}
+
 function getParticipantRequirementLabel(option: SegmentCatalogOption) {
   if (option.minParticipants === option.maxParticipants) {
     return `${option.minParticipants} ${option.minParticipants === 1 ? "person" : "people"} required`;
@@ -540,6 +551,10 @@ function getSegmentRequirementDetails(segment: Segment) {
     option.championshipAllowed ? "Championship context can be attached when eligible." : "No championship context or title change in this format.",
     option.winnerRequired ? "A winner is resolved when the show runs." : "No winner is required for this segment.",
   ];
+
+  if (segment.type === "Match") {
+    details.push("Match competitors must come from the same division.");
+  }
 
   if (option.rivalryRelevant) {
     details.push("Rivalry context is useful when this beat belongs to an active story.");
@@ -634,6 +649,10 @@ function getSegmentValidationWarning(segment: Segment, wrestlers: Wrestler[] = [
     return `${unavailable.name} is unavailable with a major injury.`;
   }
 
+  if (hasIntergenderMatchParticipants(segment, wrestlers)) {
+    return "Intergender matches are not allowed. Choose competitors from the same division.";
+  }
+
   const range = getSegmentParticipantRange(segment);
   const label = segment.type === "Open Challenge" ? "issuer" : "wrestler";
   const option = getSegmentCatalogOption(segment);
@@ -704,10 +723,51 @@ function getShowReadiness(validSegments: number, invalidSegments: number, runtim
   };
 }
 
+function getBroadcastRuntimeRisk(runtimeMinutes: number) {
+  if (runtimeMinutes > showRuntimeOvertimeMinutes) {
+    return {
+      tone: "strong",
+      title: "Packed Broadcast Risk",
+      note: "This card is packed. If live timing drifts, the main event could feel rushed.",
+    };
+  }
+
+  if (runtimeMinutes > showRuntimeTargetMinutes) {
+    return {
+      tone: "warning",
+      title: "Broadcast Risk",
+      note: "The final block may lose breathing room if earlier segments run long.",
+    };
+  }
+
+  if (runtimeMinutes >= showRuntimeTargetMinutes - 5) {
+    return {
+      tone: "soft",
+      title: "Tight Timing Window",
+      note: "This rundown leaves little room for live overrun.",
+    };
+  }
+
+  return undefined;
+}
+
 function getSegmentParticipants(segment: Segment, wrestlers: Wrestler[]) {
   return segment.participantIds
     .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
     .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
+}
+
+function canWrestlersShareMatch(wrestlers: Wrestler[]) {
+  const divisions = [...new Set(wrestlers.map((wrestler) => getWrestlerDivisionGroup(wrestler)).filter((division): division is "mens" | "womens" => Boolean(division)))];
+  return divisions.length <= 1;
+}
+
+function wouldCreateIntergenderMatch(segment: Segment, wrestler: Wrestler, wrestlers: Wrestler[]) {
+  if (segment.type !== "Match" || segment.participantIds.includes(wrestler.id)) {
+    return false;
+  }
+
+  return !canWrestlersShareMatch([...getSegmentParticipants(segment, wrestlers), wrestler]);
 }
 
 function getInjuryStatusLabel(status: InjuryStatus) {
@@ -1158,13 +1218,18 @@ function chooseSmartPair(
   const sorted = sortSmartTalent(available, game, usage, "match").filter((wrestler) => (usage[wrestler.id] ?? 0) < 2);
 
   for (const first of sorted) {
-    const second = sorted.find((candidate) => candidate.id !== first.id && !usedPairs.has(getSmartPairKey([first.id, candidate.id])));
+    const second = sorted.find(
+      (candidate) =>
+        candidate.id !== first.id &&
+        !usedPairs.has(getSmartPairKey([first.id, candidate.id])) &&
+        canWrestlersShareMatch([first, candidate]),
+    );
     if (second) {
       return [first, second];
     }
   }
 
-  return sorted.slice(0, 2);
+  return [];
 }
 
 function buildSmartSegment(
@@ -1239,8 +1304,12 @@ function buildSmartRundown(game: GameState): SmartRundownResult {
 
     if (first && second) {
       addSegment("P003", [first.id], 14, rivalry.id);
-      addSegment(rivalry.heat >= 65 ? "M019" : "M001", [first.id, second.id], 30, rivalry.id);
-      notes.add(`Featured active rivalry: ${rivalry.name}.`);
+      if (canWrestlersShareMatch([first, second])) {
+        addSegment(rivalry.heat >= 65 ? "M019" : "M001", [first.id, second.id], 30, rivalry.id);
+        notes.add(`Featured active rivalry: ${rivalry.name}.`);
+      } else {
+        notes.add(`Featured ${rivalry.name} in a talk segment because current match rules need same-division competitors.`);
+      }
     }
   }
 
@@ -1338,7 +1407,7 @@ function buildSmartRundown(game: GameState): SmartRundownResult {
     notes.add(`Gave underused talent TV time: ${underusedNames.join(" / ")}.`);
   }
 
-  notes.add(`Kept the rough draft inside the ${showRuntimeMinMinutes}-${showRuntimeOvertimeMinutes} minute broadcast-ready window.`);
+  notes.add(`Kept the rough draft inside the ${showRuntimeMinMinutes}-${showRuntimeOvertimeMinutes} minute broadcast-ready window and away from an overrun-heavy layout.`);
 
   return {
     notes: [...notes],
@@ -1619,13 +1688,14 @@ function buildBroadcastRecap(result: ShowResult) {
   const bestNames = bestSegment.participantNames.join(" / ");
   const titleFallout = result.titleNotes?.length ? ` Title fallout: ${result.titleNotes.join(" ")}` : "";
   const rivalryFallout = result.rivalryNotes?.length ? ` Story movement: ${result.rivalryNotes[0]}` : "";
+  const runtimeFallout = result.broadcastOverrunNotes?.length ? ` Production note: ${result.broadcastOverrunNotes[0]}` : "";
   const scoreTone = result.totalScore >= 85 ? "premium" : result.totalScore >= 70 ? "controlled" : result.totalScore >= 55 ? "uneven" : "cold";
   const showFrame =
     result.showType === "ple"
       ? `${result.showName} gave ${result.brandName} a ${scoreTone} major-event receipt`
       : `${result.brandName} posted a ${scoreTone} ${result.totalScore} (${getShowGrade(result.totalScore)})`;
 
-  return `${showFrame} in Week ${result.week}. ${bestNames} delivered the strongest ${bestSegment.type.toLowerCase()} at ${bestSegment.score}. ${result.biggestMomentumGain.name} gained the most momentum, while ${result.biggestFatigueIncrease.name} took the biggest fatigue hit.${titleFallout}${rivalryFallout}`;
+  return `${showFrame} in Week ${result.week}. ${bestNames} delivered the strongest ${bestSegment.type.toLowerCase()} at ${bestSegment.score}. ${result.biggestMomentumGain.name} gained the most momentum, while ${result.biggestFatigueIncrease.name} took the biggest fatigue hit.${runtimeFallout}${titleFallout}${rivalryFallout}`;
 }
 
 function buildSavedGameState(
@@ -1686,15 +1756,34 @@ function getMostRecentCareer(careerSaves: CareerSave[]) {
   return careerSaves[0] ?? null;
 }
 
+function isQaHarnessRequested() {
+  return import.meta.env.DEV && new URLSearchParams(window.location.search).get(qaHarnessParam) === "runtime";
+}
+
+function buildQaRuntimeHarnessState(): SavedGameState {
+  const draftedWrestlers = draftPool.slice(0, draftPickCount);
+  const game = createNewGame({
+    ...defaultCareer,
+    draftedWrestlers,
+    brandName: "QA Runtime",
+    brandStyle: "Raw",
+    rivalGMAssignments: createRivalGMAssignments("Raw"),
+  });
+
+  return buildSavedGameState(game, "booking");
+}
+
 function App() {
+  const qaHarnessState = useMemo(() => (isQaHarnessRequested() ? buildQaRuntimeHarnessState() : null), []);
+  const isQaHarness = Boolean(qaHarnessState);
   const [careerSaves, setCareerSaves] = useState<CareerSave[]>(() => loadCareerSaves());
-  const [savedGame, setSavedGame] = useState<SavedGameState | null>(null);
+  const [savedGame, setSavedGame] = useState<SavedGameState | null>(qaHarnessState);
   const [activeSaveId, setActiveSaveId] = useState<string | undefined>();
-  const [screen, setScreen] = useState<Screen>("title");
+  const [screen, setScreen] = useState<Screen>(qaHarnessState?.screen ?? "title");
   const [titleMode, setTitleMode] = useState<TitleMode>("home");
-  const [game, setGame] = useState<GameState | null>(null);
-  const [profileWrestlerId, setProfileWrestlerId] = useState<string | undefined>();
-  const [profileReturnScreen, setProfileReturnScreen] = useState<ProfileReturnScreen>("roster");
+  const [game, setGame] = useState<GameState | null>(qaHarnessState?.game ?? null);
+  const [profileWrestlerId, setProfileWrestlerId] = useState<string | undefined>(qaHarnessState?.profileWrestlerId);
+  const [profileReturnScreen, setProfileReturnScreen] = useState<ProfileReturnScreen>(qaHarnessState?.profileReturnScreen ?? "roster");
   const latestResult = game?.showHistory[game.showHistory.length - 1];
   const recentCareer = getMostRecentCareer(careerSaves);
 
@@ -1710,6 +1799,11 @@ function App() {
     profileState?: Pick<SavedGameState, "profileReturnScreen" | "profileWrestlerId">,
   ) {
     const nextSavedGame = buildSavedGameState(nextGame, nextScreen, profileState);
+
+    if (isQaHarness) {
+      setSavedGame(nextSavedGame);
+      return nextSavedGame;
+    }
 
     if (!activeSaveId) {
       console.warn("Could not save career because no active save is selected.");
@@ -2220,6 +2314,7 @@ function App() {
     return (
       <BookingScreen
         game={game}
+        isQaHarness={isQaHarness}
         onAddSegment={addSegment}
         onBack={() => navigateTo("dashboard")}
         onNavigate={navigateTo}
@@ -3355,6 +3450,7 @@ function DashboardScreen({
 
 function BookingScreen({
   game,
+  isQaHarness,
   onAddSegment,
   onBack,
   onNavigate,
@@ -3368,6 +3464,7 @@ function BookingScreen({
   onUpdateSegment,
 }: {
   game: GameState;
+  isQaHarness?: boolean;
   onAddSegment: (type: SegmentType, segmentId?: string) => void;
   onBack: () => void;
   onNavigate: (screen: GameScreen) => void;
@@ -3392,6 +3489,7 @@ function BookingScreen({
   const validRuntimeMinutes = validShowSegments.reduce((total, segment) => total + getSegmentDurationMinutes(segment), 0);
   const runtimePercent = Math.min(100, Math.round((validRuntimeMinutes / showRuntimeTargetMinutes) * 100));
   const readiness = getShowReadiness(validSegments, invalidSegments, validRuntimeMinutes);
+  const broadcastRisk = getBroadcastRuntimeRisk(validRuntimeMinutes);
   const canRunShow = readiness.canRun;
   const composerSegment = game.currentShow.find((segment) => segment.id === composerSegmentId);
   const bookedCounts = game.currentShow.reduce<Record<string, number>>((counts, segment) => {
@@ -3434,7 +3532,8 @@ function BookingScreen({
       rivalry?.participantIds.length === 2 &&
       range.min <= 2 &&
       range.max >= 2 &&
-      rivalry.participantIds.every((id) => game.wrestlers.some((wrestler) => wrestler.id === id && wrestler.injuryStatus !== "major"));
+      rivalry.participantIds.every((id) => game.wrestlers.some((wrestler) => wrestler.id === id && wrestler.injuryStatus !== "major")) &&
+      !hasIntergenderMatchParticipants({ ...segment, participantIds: rivalry.participantIds }, game.wrestlers);
 
     if (canPrefill && rivalry) {
       onUpdateSegment(segment.id, { rivalryId, participantIds: [...rivalry.participantIds] });
@@ -3472,6 +3571,12 @@ function BookingScreen({
     <main className="app-shell">
       <Header game={game} />
       <GameNav currentScreen="booking" hasResults={Boolean(game.showHistory.length)} onNavigate={onNavigate} />
+      {isQaHarness ? (
+        <section className="qa-harness-banner" aria-label="QA harness notice">
+          <strong>QA Runtime Harness</strong>
+          <span>In-memory fixture. Real career saves are not updated from this session.</span>
+        </section>
+      ) : null}
       <section className={`booking-top ${calendarWeek.showType === "ple" ? "ple-panel" : ""}`}>
         <button className="secondary-action" onClick={onBack}>
           Dashboard
@@ -3556,6 +3661,16 @@ function BookingScreen({
               <span>Ready window {showRuntimeMinMinutes}-{tvRuntimeWarningMinutes} min</span>
             </div>
           </section>
+
+          {broadcastRisk ? (
+            <section className={`broadcast-risk-panel risk-${broadcastRisk.tone}`} aria-label="Broadcast runtime risk">
+              <div className="section-heading">
+                <p className="eyebrow">Live TV Timing</p>
+                <h3>{broadcastRisk.title}</h3>
+              </div>
+              <p>{broadcastRisk.note}</p>
+            </section>
+          ) : null}
 
           <section className="segment-list" aria-label="Current show segments">
             {game.currentShow.length === 0 ? (
@@ -3770,6 +3885,7 @@ function SegmentComposer({
         }}
         rivalries={rivalries}
         segment={segment}
+        wrestlers={wrestlers}
       />
 
       <div className="participant-label">
@@ -3782,10 +3898,11 @@ function SegmentComposer({
         {wrestlers.map((wrestler) => {
           const checked = segment.participantIds.includes(wrestler.id);
           const isUnavailable = wrestler.injuryStatus === "major";
-          const disabled = (!checked && segment.participantIds.length >= range.max) || (!checked && isUnavailable);
+          const isDivisionBlocked = wouldCreateIntergenderMatch(segment, wrestler, wrestlers);
+          const disabled = (!checked && segment.participantIds.length >= range.max) || (!checked && isUnavailable) || isDivisionBlocked;
 
           return (
-            <div className={`participant-pick ${checked ? "selected" : ""} ${isUnavailable ? "unavailable" : ""}`} key={wrestler.id}>
+            <div className={`participant-pick ${checked ? "selected" : ""} ${isUnavailable || isDivisionBlocked ? "unavailable" : ""}`} key={wrestler.id}>
               <label>
                 <input
                   checked={checked}
@@ -3798,6 +3915,7 @@ function SegmentComposer({
                   <small>
                     Mom {wrestler.momentum} · Fat {wrestler.fatigue}
                     {wrestler.injuryStatus !== "healthy" ? ` · ${getInjuryStatusLabel(wrestler.injuryStatus)}` : ""}
+                    {isDivisionBlocked ? " · Division mismatch" : ""}
                   </small>
                 </span>
               </label>
@@ -4628,9 +4746,25 @@ function ResultsScreen({
       <section className="status-grid" aria-label="Show highlights">
         <Metric label="Show Score" value={`${result.totalScore}`} detail={`Grade ${getShowGrade(result.totalScore)}`} />
         <Metric label="Best Segment" value={`${bestSegment.score}`} detail={bestSegment.participantNames.join(" / ")} />
-        <Metric label="Segments" value={`${result.segmentResults.length}`} detail={result.showType === "ple" ? "Major event" : "TV card"} />
+        <Metric
+          label="Runtime"
+          value={result.actualRuntimeMinutes !== undefined ? `${result.actualRuntimeMinutes} min` : "Legacy"}
+          detail={result.plannedRuntimeMinutes !== undefined ? `Planned ${result.plannedRuntimeMinutes} min${result.broadcastOverrunMinutes ? ` · +${result.broadcastOverrunMinutes} over` : ""}` : "No runtime record"}
+        />
         <Metric label="Best Type" value={bestSegment.type} detail={bestSegment.participantNames.join(" / ")} />
       </section>
+
+      {result.broadcastOverrunNotes?.length ? (
+        <section className="broadcast-overrun-fallout" aria-label="Broadcast overrun fallout">
+          <div className="section-heading">
+            <p className="eyebrow">Broadcast Timing</p>
+            <h3>{result.broadcastOverrunLevel === "major" ? "Major Overrun" : result.broadcastOverrunLevel === "moderate" ? "Overrun Pressure" : "Minor Overrun"}</h3>
+          </div>
+          {result.broadcastOverrunNotes.map((note) => (
+            <p key={note}>{note}</p>
+          ))}
+        </section>
+      ) : null}
 
       {result.titleNotes?.length ? (
         <section className="title-fallout" aria-label="Title fallout">
@@ -4687,6 +4821,12 @@ function ResultsScreen({
               <h3>{segment.participantNames.join(" / ")}</h3>
               <p>
                 Momentum +{getResultChange(segment.momentumChanges)} · Fatigue +{getResultChange(segment.fatigueChanges)}
+              </p>
+              <p>
+                {segment.actualDurationMinutes !== undefined
+                  ? `Runtime ${segment.plannedDurationMinutes ?? 0} planned / ${segment.actualDurationMinutes} actual · ${formatRuntimeVariance(segment.durationVarianceMinutes)}`
+                  : "Runtime not recorded for this legacy segment"}
+                {segment.overrunAffected ? " · closing block compressed" : ""}
               </p>
               {segment.recapNote ? <p>{segment.recapNote}</p> : null}
               {segment.titleNote ? <p className="title-note">{segment.titleNote}</p> : null}
@@ -4748,9 +4888,25 @@ function WeekReviewScreen({
       <section className="status-grid" aria-label="Week review show outcome">
         <Metric label="Show Score" value={`${result.totalScore}`} detail={`Grade ${getShowGrade(result.totalScore)}`} />
         <Metric label="Best Segment" value={`${bestSegment.score}`} detail={bestSegment.participantNames.join(" / ")} />
-        <Metric label="Best Type" value={bestSegment.type} />
+        <Metric
+          label="Runtime"
+          value={result.actualRuntimeMinutes !== undefined ? `${result.actualRuntimeMinutes} min` : "Legacy"}
+          detail={result.plannedRuntimeMinutes !== undefined ? `Planned ${result.plannedRuntimeMinutes} min` : "No runtime record"}
+        />
         <Metric label="Show" value={result.showName} detail={getShowTypeLabel(result.showType)} />
       </section>
+
+      {result.broadcastOverrunNotes?.length ? (
+        <section className="broadcast-overrun-fallout" aria-label="Week review broadcast overrun">
+          <div className="section-heading">
+            <p className="eyebrow">Broadcast Fallout</p>
+            <h3>Closing Block Pressure</h3>
+          </div>
+          {result.broadcastOverrunNotes.map((note) => (
+            <p key={note}>{note}</p>
+          ))}
+        </section>
+      ) : null}
 
       <section className="locker-room-fallout" aria-label="Locker room fallout">
         <div className="section-heading">
@@ -5171,13 +5327,18 @@ function RivalryControl({
   onSetSegmentRivalry,
   rivalries,
   segment,
+  wrestlers,
 }: {
   onSetSegmentRivalry: (segmentId: string, rivalryId: string) => void;
   rivalries: Rivalry[];
   segment: Segment;
+  wrestlers: Wrestler[];
 }) {
   const eligibleRivalries = rivalries.filter((rivalry) => canSegmentAttachRivalry(segment, rivalry));
   const selectedRivalry = rivalries.find((rivalry) => rivalry.id === segment.rivalryId);
+  const selectedRivalryMatchBlocked = Boolean(
+    selectedRivalry && segment.type === "Match" && hasIntergenderMatchParticipants({ ...segment, participantIds: selectedRivalry.participantIds }, wrestlers),
+  );
 
   return (
     <div className="rivalry-control">
@@ -5185,7 +5346,9 @@ function RivalryControl({
         <span>Rivalry Context</span>
         <strong>
           {selectedRivalry
-            ? `${selectedRivalry.name} attached. Heat ${selectedRivalry.heat}, ${formatRivalryStatus(selectedRivalry.status)}.`
+            ? selectedRivalryMatchBlocked
+              ? `${selectedRivalry.name} attached for context. This rivalry works better as a promo or angle under current match rules.`
+              : `${selectedRivalry.name} attached. Heat ${selectedRivalry.heat}, ${formatRivalryStatus(selectedRivalry.status)}.`
             : eligibleRivalries.length
               ? "Attach an active rivalry when this segment advances a story."
               : "Select a rivalry participant to attach story context."}

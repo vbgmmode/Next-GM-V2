@@ -97,9 +97,56 @@ const INJURY_BALANCE = {
   pleStageLoad: 2,
 };
 
+const BROADCAST_RUNTIME_MINUTES = 120;
+
+const CATALOG_EXECUTION_PROFILES: Record<
+  string,
+  {
+    varianceMinutes: number;
+    minimumMinutes: number;
+    fatigueBase: number;
+    fatiguePerMinute: number;
+  }
+> = {
+  M001: { varianceMinutes: 5, minimumMinutes: 6, fatigueBase: 2, fatiguePerMinute: 0.14 },
+  M002: { varianceMinutes: 6, minimumMinutes: 7, fatigueBase: 3, fatiguePerMinute: 0.16 },
+  M003: { varianceMinutes: 7, minimumMinutes: 8, fatigueBase: 3, fatiguePerMinute: 0.17 },
+  M019: { varianceMinutes: 8, minimumMinutes: 8, fatigueBase: 4, fatiguePerMinute: 0.22 },
+  P001: { varianceMinutes: 2, minimumMinutes: 3, fatigueBase: 1, fatiguePerMinute: 0.06 },
+  P002: { varianceMinutes: 2, minimumMinutes: 3, fatigueBase: 1, fatiguePerMinute: 0.05 },
+  P003: { varianceMinutes: 3, minimumMinutes: 3, fatigueBase: 1, fatiguePerMinute: 0.07 },
+  A001: { varianceMinutes: 2, minimumMinutes: 3, fatigueBase: 1, fatiguePerMinute: 0.07 },
+  A004: { varianceMinutes: 5, minimumMinutes: 3, fatigueBase: 3, fatiguePerMinute: 0.15 },
+  A046: { varianceMinutes: 3, minimumMinutes: 3, fatigueBase: 2, fatiguePerMinute: 0.1 },
+  P007: { varianceMinutes: 5, minimumMinutes: 4, fatigueBase: 3, fatiguePerMinute: 0.17 },
+  P008: { varianceMinutes: 3, minimumMinutes: 5, fatigueBase: 1, fatiguePerMinute: 0.08 },
+};
+
+const SEGMENT_EXECUTION_FALLBACKS: Record<
+  SegmentType,
+  {
+    varianceMinutes: number;
+    minimumMinutes: number;
+    fatigueBase: number;
+    fatiguePerMinute: number;
+  }
+> = {
+  Match: { varianceMinutes: 5, minimumMinutes: 6, fatigueBase: 2, fatiguePerMinute: 0.14 },
+  Promo: { varianceMinutes: 2, minimumMinutes: 3, fatigueBase: 1, fatiguePerMinute: 0.06 },
+  "Backstage Angle": { varianceMinutes: 3, minimumMinutes: 3, fatigueBase: 2, fatiguePerMinute: 0.1 },
+  "Contract Signing": { varianceMinutes: 3, minimumMinutes: 5, fatigueBase: 1, fatiguePerMinute: 0.08 },
+  "Open Challenge": { varianceMinutes: 5, minimumMinutes: 4, fatigueBase: 3, fatiguePerMinute: 0.17 },
+};
+
+type BroadcastOverrunLevel = NonNullable<ShowResult["broadcastOverrunLevel"]>;
+
 export function isValidSegment(segment: Segment, wrestlers: Wrestler[] = []) {
   const hasMajorInjury = segment.participantIds.some((id) => wrestlers.find((wrestler) => wrestler.id === id)?.injuryStatus === "major");
   if (hasMajorInjury) {
+    return false;
+  }
+
+  if (segment.type === "Match" && hasIntergenderMatchParticipants(segment, wrestlers)) {
     return false;
   }
 
@@ -122,6 +169,36 @@ export function isValidSegment(segment: Segment, wrestlers: Wrestler[] = []) {
     default:
       return false;
   }
+}
+
+export function getWrestlerDivisionGroup(wrestler?: Wrestler) {
+  const division = wrestler?.division?.toLowerCase() ?? "";
+
+  if (division.includes("women") || division.includes("female")) {
+    return "womens";
+  }
+
+  if (division.includes("men") || division.includes("male")) {
+    return "mens";
+  }
+
+  return undefined;
+}
+
+export function hasIntergenderMatchParticipants(segment: Segment, wrestlers: Wrestler[]) {
+  if (segment.type !== "Match") {
+    return false;
+  }
+
+  const groups = [
+    ...new Set(
+      segment.participantIds
+        .map((id) => getWrestlerDivisionGroup(wrestlers.find((wrestler) => wrestler.id === id)))
+        .filter((group): group is "mens" | "womens" => Boolean(group)),
+    ),
+  ];
+
+  return groups.length > 1;
 }
 
 export function scoreSegment(segment: Segment, wrestlers: Wrestler[], championships: Championship[] = [], rivalries: Rivalry[] = []) {
@@ -170,8 +247,15 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
   const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers));
   const calendarWeek = getCurrentCalendarWeek(game);
   const isPle = calendarWeek.showType === "ple";
+  const segmentExecutions = validSegments.map((segment, index) => resolveSegmentRuntime(segment, game, index));
+  const plannedRuntimeMinutes = segmentExecutions.reduce((total, execution) => total + execution.plannedDurationMinutes, 0);
+  const actualRuntimeMinutes = segmentExecutions.reduce((total, execution) => total + execution.actualDurationMinutes, 0);
+  const broadcastOverrunMinutes = Math.max(0, actualRuntimeMinutes - BROADCAST_RUNTIME_MINUTES);
+  const broadcastOverrunLevel = getBroadcastOverrunLevel(broadcastOverrunMinutes);
+  const overrunAffectedSegmentIds = getBroadcastOverrunAffectedSegmentIds(validSegments, broadcastOverrunLevel);
   const momentumTotals: Record<string, number> = {};
   const fatigueTotals: Record<string, number> = {};
+  const participantUseCounts: Record<string, number> = {};
   const titleNotes: string[] = [];
   const rivalryNotes: string[] = [];
   const titleHistoryEvents: ChampionshipHistoryEvent[] = [];
@@ -189,13 +273,19 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
   const segmentResults: SegmentResult[] = [];
 
   validSegments.forEach((segment, index) => {
+    const execution = segmentExecutions[index];
     const openChallengeResolution =
       segment.type === "Open Challenge" ? resolveOpenChallenge(segment, game, index, resolvedBookedIds) : undefined;
     const resolvedSegment = openChallengeResolution?.segment ?? segment;
     const isNoContest = Boolean(openChallengeResolution?.isNoContest);
-    const score = isNoContest ? 0 : clamp(scoreSegment(resolvedSegment, game.wrestlers, updatedChampionships, updatedRivalries) + (isPle ? SHOW_BALANCE.pleScoreBonus : 0));
+    const overrunSegmentPenalty =
+      broadcastOverrunLevel && overrunAffectedSegmentIds.has(segment.id)
+        ? getBroadcastOverrunSegmentPenalty(broadcastOverrunLevel, resolvedSegment, game.wrestlers)
+        : 0;
+    const score = isNoContest
+      ? 0
+      : clamp(scoreSegment(resolvedSegment, game.wrestlers, updatedChampionships, updatedRivalries) + (isPle ? SHOW_BALANCE.pleScoreBonus : 0) - overrunSegmentPenalty);
     const momentumGain = isNoContest ? 0 : getSegmentMomentumGain(score, isPle);
-    const fatigueGain = (isNoContest ? 1 : getSegmentFatigueGain(resolvedSegment)) + (isPle && !isNoContest ? SHOW_BALANCE.pleFatigueBonus : 0);
     const momentumChanges: Record<string, number> = {};
     const fatigueChanges: Record<string, number> = {};
     const titleResolution = resolveTitleMatch(resolvedSegment, updatedChampionships, game.wrestlers, {
@@ -216,10 +306,14 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
     const rivalryNote = rivalryResolution?.note;
 
     resolvedSegment.participantIds.forEach((id) => {
+      const fatigueGain =
+        (isNoContest ? 1 : getSegmentFatigueGain(resolvedSegment, execution.actualDurationMinutes, id, game.wrestlers, participantUseCounts[id] ?? 0)) +
+        (isPle && !isNoContest ? SHOW_BALANCE.pleFatigueBonus : 0);
       momentumChanges[id] = momentumGain;
       fatigueChanges[id] = fatigueGain;
       momentumTotals[id] = (momentumTotals[id] ?? 0) + momentumGain;
       fatigueTotals[id] = (fatigueTotals[id] ?? 0) + fatigueGain;
+      participantUseCounts[id] = (participantUseCounts[id] ?? 0) + 1;
       resolvedBookedIds.add(id);
     });
 
@@ -245,6 +339,10 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
       participantNames: resolvedSegment.participantIds.map((id) => game.wrestlers.find((wrestler) => wrestler.id === id)?.name ?? "Unknown"),
       participantIds: resolvedSegment.participantIds,
       score,
+      plannedDurationMinutes: execution.plannedDurationMinutes,
+      actualDurationMinutes: execution.actualDurationMinutes,
+      durationVarianceMinutes: execution.actualDurationMinutes - execution.plannedDurationMinutes,
+      overrunAffected: overrunAffectedSegmentIds.has(segment.id),
       momentumChanges,
       fatigueChanges,
       championshipId: resolvedSegment.championshipId,
@@ -258,10 +356,13 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
     });
   });
 
-  const totalScore = segmentResults.length ? Math.round(segmentResults.reduce((sum, result) => sum + result.score, 0) / segmentResults.length) : 0;
+  const broadcastOverrunNotes = getBroadcastOverrunNotes(broadcastOverrunMinutes, broadcastOverrunLevel, segmentResults);
+  const overrunShowPenalty = getBroadcastOverrunShowPenalty(broadcastOverrunLevel);
+  const totalScore = segmentResults.length ? clamp(Math.round(segmentResults.reduce((sum, result) => sum + result.score, 0) / segmentResults.length) - overrunShowPenalty) : 0;
   const biggestMomentumGain = getBiggestChange(momentumTotals, game.wrestlers);
   const biggestFatigueIncrease = getBiggestChange(fatigueTotals, game.wrestlers);
   const id = `season-${game.seasonNumber}-week-${game.currentWeek}`;
+  const overrunAffectedIds = [...overrunAffectedSegmentIds];
   const result: ShowResult = {
     id,
     seasonNumber: game.seasonNumber,
@@ -269,6 +370,12 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
     brandName: game.brandName,
     showName: calendarWeek.showName,
     showType: calendarWeek.showType,
+    plannedRuntimeMinutes,
+    actualRuntimeMinutes,
+    broadcastOverrunMinutes,
+    broadcastOverrunLevel,
+    broadcastOverrunNotes,
+    overrunAffectedSegmentId: overrunAffectedIds[overrunAffectedIds.length - 1],
     totalScore,
     segmentResults,
     biggestMomentumGain,
@@ -303,6 +410,125 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
       showHistory: [...game.showHistory, result],
     },
   };
+}
+
+function getSegmentPlannedDuration(segment: Segment) {
+  return Math.max(1, Math.round(segment.durationMinutes ?? SEGMENT_EXECUTION_FALLBACKS[segment.type].minimumMinutes));
+}
+
+function getSegmentExecutionProfile(segment: Segment) {
+  return (segment.segmentCatalogId ? CATALOG_EXECUTION_PROFILES[segment.segmentCatalogId] : undefined) ?? SEGMENT_EXECUTION_FALLBACKS[segment.type];
+}
+
+function resolveSegmentRuntime(segment: Segment, game: GameState, index: number) {
+  const plannedDurationMinutes = getSegmentPlannedDuration(segment);
+  const profile = getSegmentExecutionProfile(segment);
+  const seed = `${game.seasonNumber}-${game.currentWeek}-${segment.id}-${segment.segmentCatalogId ?? segment.type}-${index}`;
+  const drift = getDeterministicDurationDrift(seed, profile.varianceMinutes);
+  const maximumMinutes = plannedDurationMinutes + Math.ceil(profile.varianceMinutes * 1.5);
+  const actualDurationMinutes = Math.round(clamp(plannedDurationMinutes + drift, profile.minimumMinutes, maximumMinutes));
+
+  return {
+    plannedDurationMinutes,
+    actualDurationMinutes,
+  };
+}
+
+function getDeterministicDurationDrift(seed: string, varianceMinutes: number) {
+  const spread = varianceMinutes * 2 + 1;
+  return (hashString(`${seed}-duration-drift`) % spread) - varianceMinutes;
+}
+
+function getBroadcastOverrunLevel(overrunMinutes: number): BroadcastOverrunLevel | undefined {
+  if (overrunMinutes <= 0) {
+    return undefined;
+  }
+
+  if (overrunMinutes <= 10) {
+    return "minor";
+  }
+
+  if (overrunMinutes <= 25) {
+    return "moderate";
+  }
+
+  return "major";
+}
+
+function getBroadcastOverrunAffectedSegmentIds(segments: Segment[], level?: BroadcastOverrunLevel) {
+  const affectedIds = new Set<string>();
+
+  if (!level || !segments.length) {
+    return affectedIds;
+  }
+
+  const affectedCount = level === "major" && segments.length > 1 ? 2 : 1;
+  segments.slice(-affectedCount).forEach((segment) => affectedIds.add(segment.id));
+  return affectedIds;
+}
+
+function getBroadcastOverrunSegmentPenalty(level: BroadcastOverrunLevel, segment: Segment, wrestlers: Wrestler[]) {
+  const topStarPressure = segment.participantIds.some((id) => {
+    const wrestler = wrestlers.find((talent) => talent.id === id);
+    return wrestler ? wrestler.popularity >= 90 || wrestler.momentum >= 90 : false;
+  });
+  const contextPressure = segment.championshipId || segment.rivalryId || topStarPressure ? 2 : 0;
+
+  if (level === "major") {
+    return 14 + contextPressure;
+  }
+
+  if (level === "moderate") {
+    return 8 + contextPressure;
+  }
+
+  return 4 + contextPressure;
+}
+
+function getBroadcastOverrunShowPenalty(level?: BroadcastOverrunLevel) {
+  if (level === "major") {
+    return 8;
+  }
+
+  if (level === "moderate") {
+    return 4;
+  }
+
+  return level === "minor" ? 1 : 0;
+}
+
+function getBroadcastOverrunNotes(overrunMinutes: number, level: BroadcastOverrunLevel | undefined, segmentResults: SegmentResult[]) {
+  if (!level || overrunMinutes <= 0) {
+    return [];
+  }
+
+  const affectedSegments = segmentResults.filter((segment) => segment.overrunAffected);
+  const affectedSegment = affectedSegments[affectedSegments.length - 1];
+  const affectedNames = affectedSegment?.participantNames.join(" / ") ?? "the closing block";
+  const affectedBlock =
+    affectedSegments.length > 1
+      ? `The closing block around ${affectedNames}`
+      : affectedSegment?.type === "Match"
+        ? `${affectedNames}'s final match`
+        : `${affectedNames}'s closing segment`;
+  const lead =
+    level === "major"
+      ? `Major broadcast overrun: the show ran ${overrunMinutes} minutes long.`
+      : level === "moderate"
+        ? `Broadcast overrun: the show ran ${overrunMinutes} minutes long.`
+        : `Minor overrun: the show ran ${overrunMinutes} minutes past the TV window.`;
+  const compression =
+    affectedSegment?.type === "Match"
+      ? `${affectedBlock} lost breathing room and the finish felt rushed.`
+      : `${affectedBlock} was clipped for time and lost dramatic space.`;
+  const business =
+    level === "major"
+      ? "Fans noticed the pacing collapse, and the packed rundown softened the night's business upside."
+      : level === "moderate"
+        ? "The packed rundown hurt the broadcast rhythm and took the edge off the closing stretch."
+        : "The final block had to move faster than production wanted.";
+
+  return [lead, compression, business];
 }
 
 function updateWrestlerPressure(
@@ -509,8 +735,15 @@ function getSegmentContextBonus(segment: Segment, championships: Championship[],
   return segment.type === "Backstage Angle" ? rivalryBonus + CONTEXT_BONUS.storyTitle : rivalryBonus;
 }
 
-function getSegmentFatigueGain(segment: Segment) {
-  return SEGMENT_FATIGUE_GAIN[segment.type];
+function getSegmentFatigueGain(segment: Segment, actualDurationMinutes: number, wrestlerId: string, wrestlers: Wrestler[], priorCardUses: number) {
+  const profile = getSegmentExecutionProfile(segment);
+  const wrestler = wrestlers.find((talent) => talent.id === wrestlerId);
+  const fallback = SEGMENT_FATIGUE_GAIN[segment.type];
+  const durationLoad = actualDurationMinutes * profile.fatiguePerMinute;
+  const repeatedUseLoad = priorCardUses * 2;
+  const healthLoad = wrestler?.injuryStatus === "minor" ? 1 : 0;
+
+  return Math.max(1, Math.round(Math.max(fallback * 0.6, profile.fatigueBase + durationLoad + repeatedUseLoad + healthLoad)));
 }
 
 function getSegmentMomentumGain(score: number, isPle: boolean) {
@@ -558,7 +791,17 @@ function resolveOpenChallenge(segment: Segment, game: GameState, segmentIndex: n
 
 function selectOpenChallengeOpponent(segment: Segment, game: GameState, segmentIndex: number, bookedIds: Set<string>) {
   const issuerId = segment.participantIds[0];
-  const eligible = game.wrestlers.filter((wrestler) => wrestler.id !== issuerId && isWrestlerAvailable(wrestler));
+  const issuer = game.wrestlers.find((wrestler) => wrestler.id === issuerId);
+  const issuerDivision = getWrestlerDivisionGroup(issuer);
+  const eligible = game.wrestlers.filter((wrestler) => {
+    const opponentDivision = getWrestlerDivisionGroup(wrestler);
+
+    return (
+      wrestler.id !== issuerId &&
+      isWrestlerAvailable(wrestler) &&
+      (!issuerDivision || !opponentDivision || opponentDivision === issuerDivision)
+    );
+  });
 
   if (!eligible.length) {
     return undefined;

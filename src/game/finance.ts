@@ -37,18 +37,24 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
   const averagePopularity = bookedWrestlers.length ? bookedPopularity / bookedWrestlers.length : 50;
   const titleMatches = result.segmentResults.filter((segment) => segment.type === "Match" && segment.championshipId).length;
   const isPle = result.showType === "ple";
+  const overrunRevenueDrag =
+    result.broadcastOverrunLevel === "major" ? 0.09 : result.broadcastOverrunLevel === "moderate" ? 0.05 : result.broadcastOverrunLevel === "minor" ? 0.02 : 0;
+  const overrunProductionCost =
+    result.broadcastOverrunLevel === "major" ? 16000 : result.broadcastOverrunLevel === "moderate" ? 8000 : result.broadcastOverrunLevel === "minor" ? 2500 : 0;
+  const revenueMultiplier = 1 - overrunRevenueDrag;
 
   const attendance = roundMoney(
-    (isPle ? 6500 : 1200) +
+    ((isPle ? 6500 : 1200) +
       result.totalScore * (isPle ? 70 : 22) +
       averagePopularity * (isPle ? 30 : 12) +
-      titleMatches * (isPle ? 700 : 250),
+      titleMatches * (isPle ? 700 : 250)) *
+      revenueMultiplier,
   );
   const ticketRevenue = roundMoney(attendance * (isPle ? 38 : 24));
   const merchRevenue = roundMoney(attendance * ((isPle ? 8 : 4) + averagePopularity * 0.08 + result.totalScore * 0.04));
-  const mediaRevenue = roundMoney((isPle ? 125000 : 42000) + result.totalScore * (isPle ? 1100 : 360));
+  const mediaRevenue = roundMoney(((isPle ? 125000 : 42000) + result.totalScore * (isPle ? 1100 : 360)) * revenueMultiplier);
   const talentCost = roundMoney(bookedPopularity * (isPle ? 190 : 105) + result.segmentResults.length * (isPle ? 3500 : 2500));
-  const productionCost = roundMoney((isPle ? 210000 : 75000) + result.segmentResults.length * (isPle ? 12000 : 6000) + titleMatches * (isPle ? 8000 : 3000));
+  const productionCost = roundMoney((isPle ? 210000 : 75000) + result.segmentResults.length * (isPle ? 12000 : 6000) + titleMatches * (isPle ? 8000 : 3000) + overrunProductionCost);
   const profitLoss = ticketRevenue + merchRevenue + mediaRevenue - talentCost - productionCost;
   const endingMoney = roundMoney(game.money + profitLoss);
   const revenue = ticketRevenue + merchRevenue + mediaRevenue;
@@ -68,6 +74,10 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
     notes.push("The show materially improved the brand's cash position.");
   } else {
     notes.push(profitLoss > 0 ? "The show banked a controlled win without changing the whole season." : "The show landed close to break-even, manageable but not invisible.");
+  }
+
+  if (result.broadcastOverrunLevel && result.broadcastOverrunMinutes) {
+    notes.push(`The broadcast overran by ${result.broadcastOverrunMinutes} minutes, softening revenue and adding live-production cost.`);
   }
 
   return {

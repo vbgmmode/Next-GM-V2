@@ -143,6 +143,16 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
     });
   }
 
+  if (result.broadcastOverrunNotes?.length) {
+    posts.push({
+      category: "analyst_take",
+      author: "Gorilla Position Analytics",
+      tone: result.broadcastOverrunLevel === "major" ? "angry" : "skeptical",
+      text: result.broadcastOverrunNotes[result.broadcastOverrunNotes.length - 1],
+      relatedWrestlerIds: result.segmentResults.find((segment) => segment.overrunAffected)?.participantIds ?? [],
+    });
+  }
+
   result.segmentResults
     .filter((segment) => segment.titleNote)
     .slice(0, 2)
