@@ -1,4 +1,10 @@
+import { getRosterFinanceValueForWrestler } from "./financeCatalog";
 import type { FinanceReport, GameState, ShowResult, Wrestler } from "./types";
+
+type TalentCostProfile = {
+  missingFinanceRows: number;
+  showTalentCost: number;
+};
 
 function getUniqueBookedWrestlers(result: ShowResult, wrestlers: Wrestler[]) {
   const ids = [...new Set(result.segmentResults.flatMap((segment) => segment.participantIds))];
@@ -11,8 +17,49 @@ function roundMoney(value: number) {
   return Math.round(value);
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function formatTitleMatchCount(titleMatches: number) {
   return `${titleMatches} title match${titleMatches === 1 ? "" : "es"}`;
+}
+
+function getAverageScore(wrestlers: Wrestler[], score: (wrestler: Wrestler) => number, fallback: number) {
+  if (!wrestlers.length) {
+    return fallback;
+  }
+
+  return wrestlers.reduce((sum, wrestler) => sum + score(wrestler), 0) / wrestlers.length;
+}
+
+function getTalentCostFallback(wrestler: Wrestler) {
+  const roleFallbacks: Record<string, number> = {
+    MainEvent: 9500,
+    UpperCard: 7000,
+    Midcard: 4500,
+    Prospect: 2500,
+    Enhancement: 1200,
+  };
+
+  return roleFallbacks[wrestler.roleTier ?? ""] ?? clamp(wrestler.popularity * 80, 2000, 8000);
+}
+
+function getTalentCostProfile(bookedWrestlers: Wrestler[], isPle: boolean): TalentCostProfile {
+  return bookedWrestlers.reduce<TalentCostProfile>(
+    (profile, wrestler) => {
+      const financeRow = getRosterFinanceValueForWrestler(wrestler);
+      const appearanceCost = financeRow
+        ? financeRow.appearanceFeeUsd + financeRow.weeklyHireRateUsd * (isPle ? 0.45 : 0.12)
+        : getTalentCostFallback(wrestler);
+
+      return {
+        missingFinanceRows: profile.missingFinanceRows + (financeRow ? 0 : 1),
+        showTalentCost: profile.showTalentCost + appearanceCost * (isPle ? 1.25 : 1),
+      };
+    },
+    { missingFinanceRows: 0, showTalentCost: 0 },
+  );
 }
 
 export function getFinancePressureLabel(money: number, latestProfitLoss = 0) {
@@ -33,46 +80,70 @@ export function getFinancePressureLabel(money: number, latestProfitLoss = 0) {
 
 export function generateFinanceReport(result: ShowResult, game: GameState): FinanceReport {
   const bookedWrestlers = getUniqueBookedWrestlers(result, game.wrestlers);
-  const bookedPopularity = bookedWrestlers.reduce((sum, wrestler) => sum + wrestler.popularity, 0);
-  const averagePopularity = bookedWrestlers.length ? bookedPopularity / bookedWrestlers.length : 50;
+  const averageDraw = getAverageScore(bookedWrestlers, (wrestler) => wrestler.popularity * 0.5 + wrestler.momentum * 0.25 + Math.max(wrestler.ringSkill, wrestler.promoSkill) * 0.25, 55);
+  const merchandiseAppeal = getAverageScore(bookedWrestlers, (wrestler) => wrestler.popularity * 0.45 + wrestler.momentum * 0.35 + wrestler.promoSkill * 0.2, 55);
   const titleMatches = result.segmentResults.filter((segment) => segment.type === "Match" && segment.championshipId).length;
   const isPle = result.showType === "ple";
+  const segmentCount = result.segmentResults.length;
+  const runtimeMinutes =
+    result.actualRuntimeMinutes ??
+    result.plannedRuntimeMinutes ??
+    result.segmentResults.reduce((sum, segment) => sum + (segment.actualDurationMinutes ?? segment.plannedDurationMinutes ?? 10), 0);
+  const scoreFactor = clamp((result.totalScore - 50) / 50, 0, 1);
   const overrunRevenueDrag =
     result.broadcastOverrunLevel === "major" ? 0.09 : result.broadcastOverrunLevel === "moderate" ? 0.05 : result.broadcastOverrunLevel === "minor" ? 0.02 : 0;
   const overrunProductionCost =
     result.broadcastOverrunLevel === "major" ? 16000 : result.broadcastOverrunLevel === "moderate" ? 8000 : result.broadcastOverrunLevel === "minor" ? 2500 : 0;
   const revenueMultiplier = 1 - overrunRevenueDrag;
+  const talentCostProfile = getTalentCostProfile(bookedWrestlers, isPle);
 
   const attendance = roundMoney(
-    ((isPle ? 6500 : 1200) +
-      result.totalScore * (isPle ? 70 : 22) +
-      averagePopularity * (isPle ? 30 : 12) +
-      titleMatches * (isPle ? 700 : 250)) *
-      revenueMultiplier,
+    clamp(
+      ((isPle ? 4500 : 950) +
+        result.totalScore * (isPle ? 35 : 16) +
+        averageDraw * (isPle ? 18 : 10) +
+        Math.min(segmentCount, isPle ? 10 : 6) * (isPle ? 75 : 45) +
+        titleMatches * (isPle ? 450 : 175)) *
+        revenueMultiplier,
+      isPle ? 4500 : 700,
+      isPle ? 18500 : 6500,
+    ),
   );
-  const ticketRevenue = roundMoney(attendance * (isPle ? 38 : 24));
-  const merchRevenue = roundMoney(attendance * ((isPle ? 8 : 4) + averagePopularity * 0.08 + result.totalScore * 0.04));
-  const mediaRevenue = roundMoney(((isPle ? 125000 : 42000) + result.totalScore * (isPle ? 1100 : 360)) * revenueMultiplier);
-  const talentCost = roundMoney(bookedPopularity * (isPle ? 190 : 105) + result.segmentResults.length * (isPle ? 3500 : 2500));
-  const productionCost = roundMoney((isPle ? 210000 : 75000) + result.segmentResults.length * (isPle ? 12000 : 6000) + titleMatches * (isPle ? 8000 : 3000) + overrunProductionCost);
-  const profitLoss = ticketRevenue + merchRevenue + mediaRevenue - talentCost - productionCost;
-  const endingMoney = roundMoney(game.money + profitLoss);
+  const averageTicketPrice = isPle ? 33 + scoreFactor * 5 + titleMatches * 0.75 : 24 + scoreFactor * 3 + titleMatches * 0.4;
+  const merchPerHead = isPle ? 6 + merchandiseAppeal * 0.05 + scoreFactor * 2.5 : 3 + merchandiseAppeal * 0.045 + scoreFactor * 1.5;
+  const ticketRevenue = roundMoney(attendance * averageTicketPrice);
+  const merchRevenue = roundMoney(attendance * merchPerHead);
+  const mediaRevenue = roundMoney(((isPle ? 120000 : 62000) + result.totalScore * (isPle ? 550 : 240) + averageDraw * (isPle ? 150 : 85) + titleMatches * (isPle ? 10000 : 3500)) * revenueMultiplier);
+  const talentCost = roundMoney(talentCostProfile.showTalentCost + segmentCount * (isPle ? 2500 : 1200));
+  const productionCost = roundMoney(
+    (isPle ? 240000 : 65000) +
+      runtimeMinutes * (isPle ? 500 : 250) +
+      segmentCount * (isPle ? 6000 : 3500) +
+      titleMatches * (isPle ? 10000 : 3000) +
+      overrunProductionCost,
+  );
   const revenue = ticketRevenue + merchRevenue + mediaRevenue;
   const expenses = talentCost + productionCost;
+  const profitLoss = revenue - expenses;
+  const endingMoney = roundMoney(game.money + profitLoss);
   const notes = [
-    `${result.showName} drew ${attendance.toLocaleString()} fans off a ${result.totalScore} show score.`,
+    `${result.showName} drew ${attendance.toLocaleString()} fans off a ${result.totalScore} show score, closing at ${roundMoney(revenue).toLocaleString()} revenue against ${roundMoney(expenses).toLocaleString()} costs.`,
     isPle
-      ? `Major-event staging pushed costs up, but the larger gate and media package brought in ${roundMoney(revenue).toLocaleString()}.`
-      : "TV production stayed lean, with revenue tied tightly to show quality and booked star power.",
+      ? "PLE economics paid out through a larger gate and media package, with major-event production costs attached."
+      : "TV economics stayed bounded: gate, merch, and media money tracked the resolved score and booked star power.",
     titleMatches
       ? `${formatTitleMatchCount(titleMatches)} gave the live business a premium hook.`
       : "No title-match premium was attached to this card.",
   ];
 
+  if (talentCostProfile.missingFinanceRows) {
+    notes.push(`${talentCostProfile.missingFinanceRows} booked ${talentCostProfile.missingFinanceRows === 1 ? "talent used" : "talents used"} a conservative cost fallback because catalog finance data was missing.`);
+  }
+
   if (profitLoss < 0) {
-    notes.push(profitLoss < -75000 ? "The red number hit hard enough to tighten the office immediately." : "The show lost money and put a little more pressure on the office.");
+    notes.push(profitLoss < -75000 ? "The red number was meaningful, but it came from resolved show economics rather than hidden pre-show penalties." : "The show lost money, but the miss stayed inside normal weekly operating pressure.");
   } else if (profitLoss > 100000) {
-    notes.push("The show materially improved the brand's cash position.");
+    notes.push("The show materially improved the brand's cash position without changing any draft or contract rules.");
   } else {
     notes.push(profitLoss > 0 ? "The show banked a controlled win without changing the whole season." : "The show landed close to break-even, manageable but not invisible.");
   }
@@ -97,7 +168,7 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
     profitLoss,
     endingMoney,
     notes,
-    modelVersion: "legacy-compatible-v2",
+    modelVersion: "post-show-finance-v2",
     grossRevenue: revenue,
     totalExpenses: expenses,
     revenueBreakdown: [

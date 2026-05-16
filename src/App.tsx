@@ -5216,17 +5216,21 @@ function FinanceScreen({
         <section className="finance-report-card">
           <div className="section-heading">
             <p className="eyebrow">
-              Latest Report · {getShowTypeLabel(latestReport.showType)}
+              Latest Report · {getShowTypeLabel(latestReport.showType)} · {getFinanceReportModelLabel(latestReport)}
             </p>
             <h3>{latestReport.showName}</h3>
           </div>
           <div className="spotlight-grid">
             <Metric label="Attendance" value={latestReport.attendance.toLocaleString()} />
-            <Metric label="Revenue" value={formatMoney(latestReport.ticketRevenue + latestReport.merchRevenue + latestReport.mediaRevenue)} />
-            <Metric label="Costs" value={formatMoney(latestReport.talentCost + latestReport.productionCost)} />
+            <Metric label="Revenue" value={formatMoney(getFinanceGrossRevenue(latestReport))} />
+            <Metric label="Costs" value={formatMoney(getFinanceTotalExpenses(latestReport))} />
             <Metric label="Profit/Loss" value={formatMoney(latestReport.profitLoss)} />
             <Metric label="Ending Money" value={formatMoney(latestReport.endingMoney)} />
             <Metric label="Show Score" value={`${latestReport.showScore}`} />
+          </div>
+          <div className="finance-breakdown-grid" aria-label="Latest report breakdown">
+            <FinanceBreakdownList title="Revenue" items={getFinanceRevenueBreakdown(latestReport)} />
+            <FinanceBreakdownList title="Expenses" items={getFinanceExpenseBreakdown(latestReport)} />
           </div>
           <div className="finance-notes">
             {latestReport.notes.map((note, index) => (
@@ -5247,7 +5251,7 @@ function FinanceScreen({
             </div>
             <p className="social-preview-text">
               {bestRevenueReport
-                ? `${formatMoney(bestRevenueReport.ticketRevenue + bestRevenueReport.merchRevenue + bestRevenueReport.mediaRevenue)} revenue in Week ${bestRevenueReport.weekNumber}.`
+                ? `${formatMoney(getFinanceGrossRevenue(bestRevenueReport))} revenue in Week ${bestRevenueReport.weekNumber}.`
                 : "No revenue booked yet."}
             </p>
           </article>
@@ -5275,6 +5279,7 @@ function FinanceScreen({
               </div>
               <div className="finance-row-numbers">
                 <span>Attendance {report.attendance.toLocaleString()}</span>
+                <span>{getFinanceReportModelLabel(report)}</span>
                 <strong>{formatMoney(report.profitLoss)}</strong>
               </div>
             </article>
@@ -5282,6 +5287,26 @@ function FinanceScreen({
         ) : null}
       </section>
     </main>
+  );
+}
+
+function FinanceBreakdownList({
+  items,
+  title,
+}: {
+  items: NonNullable<FinanceReport["revenueBreakdown"]>;
+  title: string;
+}) {
+  return (
+    <article className="finance-breakdown-panel">
+      <span>{title}</span>
+      {items.map((item) => (
+        <div className="finance-breakdown-row" key={item.id}>
+          <strong>{item.label}</strong>
+          <em>{formatMoney(item.amount)}</em>
+        </div>
+      ))}
+    </article>
   );
 }
 
@@ -5638,6 +5663,8 @@ function WeekReviewScreen({
           </div>
           <div className="spotlight-grid">
             <Metric label="Profit/Loss" value={formatMoney(financeReport.profitLoss)} />
+            <Metric label="Revenue" value={formatMoney(getFinanceGrossRevenue(financeReport))} />
+            <Metric label="Costs" value={formatMoney(getFinanceTotalExpenses(financeReport))} />
             <Metric label="Attendance" value={financeReport.attendance.toLocaleString()} />
             <Metric label="Ending Money" value={formatMoney(financeReport.endingMoney)} />
           </div>
@@ -5711,7 +5738,7 @@ function SeasonReviewScreen({
         <Metric
           label="Best Revenue"
           value={bestRevenueReport ? bestRevenueReport.showName : "No Report"}
-          detail={bestRevenueReport ? formatMoney(bestRevenueReport.ticketRevenue + bestRevenueReport.merchRevenue + bestRevenueReport.mediaRevenue) : undefined}
+          detail={bestRevenueReport ? formatMoney(getFinanceGrossRevenue(bestRevenueReport)) : undefined}
         />
         <Metric label="Worst P/L" value={worstProfitReport ? worstProfitReport.showName : "No Report"} detail={worstProfitReport ? formatMoney(worstProfitReport.profitLoss) : undefined} />
       </section>

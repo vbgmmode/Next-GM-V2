@@ -1932,6 +1932,50 @@ h3 {
   gap: 8px;
 }
 
+.finance-breakdown-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 12px 0;
+}
+
+.finance-breakdown-panel {
+  background: rgba(8, 9, 13, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.finance-breakdown-panel > span {
+  color: #6fe2d4;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.finance-breakdown-row {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.finance-breakdown-row strong,
+.finance-breakdown-row em {
+  color: #f4f7fb;
+  font-size: 0.85rem;
+  font-style: normal;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.finance-breakdown-row em {
+  color: #f6c156;
+  text-align: right;
+}
+
 .finance-notes p {
   background: rgba(8, 9, 13, 0.62);
   border-radius: 6px;
@@ -3257,6 +3301,7 @@ h3 {
   .status-grid,
   .booking-rundown-layout,
   .command-grid,
+  .finance-breakdown-grid,
   .profile-layout,
   .spotlight-grid,
   .fallout-grid,

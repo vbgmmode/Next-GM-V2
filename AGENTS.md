@@ -49,6 +49,10 @@ The game currently supports:
 - NXT treated as an equal major brand, not developmental by default
 - Draft night with a 12-wrestler starting roster
 - Draft Night search and sort controls for the larger pool
+- Repo-owned finance-planning catalogs under data/finance
+- Typed finance catalog parsing, lookup helpers, ID normalization, and Top 200 finance mapping validation through src/game/financeCatalog.ts
+- Setup/Draft finance readout showing starting budget, drafted roster finance value, projected reserve, and reserve pressure
+- Draft finance readout is informational only; draft picks do not spend money and affordability is not enforced
 - localStorage career-save persistence
 - Save loading with fallbacks for added career fields
 - Save Migration Hardening v1 with centralized defaults for older localStorage saves
@@ -84,6 +88,7 @@ The game currently supports:
 - Start Next Season
 - Social/IWC
 - Finance & Brand Pressure
+- FinanceReport legacy-compatible v2 optional fields for future detailed revenue and expense categories
 
 ## Core Playable Loop
 Title
@@ -155,6 +160,10 @@ Completed stabilization passes:
 - Screen/Menu Audit Planning v1
 - Setup Flow Expansion v1
 - Top 200 Open Draft Activation v1
+- Finance Catalog Foundation v1
+- Setup/Draft Finance Readout v1
+- Finance Report Schema v2, Legacy-Compatible
+- Finance Integration Checkpoint Report v1
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
@@ -197,6 +206,18 @@ Open Draft Rules:
 - Raw, SmackDown, NXT, and AEW are equal major brands.
 - NXT is not developmental by default.
 - Any future restricted draft mode must be explicit and optional.
+
+Finance Readiness Rules:
+- Finance catalogs are repo-owned static data under data/finance.
+- src/game/financeCatalog.ts owns finance catalog parsing, typed lookups, ID normalization, and Top 200 finance mapping validation.
+- Setup/Draft finance readout is active but non-enforcing.
+- Draft Night and Draft Review may show starting budget, drafted roster finance value, projected reserve, and reserve pressure.
+- Draft picks still do not spend money.
+- Affordability is not enforced.
+- FinanceReport supports optional legacy-compatible v2 fields: modelVersion, grossRevenue, totalExpenses, revenueBreakdown, and expenseBreakdown.
+- Existing saves and legacy finance reports must remain compatible.
+- Current weekly finance formulas remain unchanged unless a future ticket explicitly changes them.
+- Draft spending, affordability enforcement, contracts, venues, payroll, recurring expenses, segment booking costs, finance projections, and weekly formula v2 remain out of scope unless explicitly requested.
 
 ## Permanent Scope Rules
 These should only be added when the user explicitly asks for them in the active ticket:
