@@ -44,7 +44,10 @@ The game currently supports:
 - Dashboard
 - Booking with Match, Promo, Backstage Angle, Contract Signing, and Open Challenge segments
 - Segment validation and minimum-card requirements
-- Championship context and singles title matches
+- Deterministic Open Challenge opponent reveal at show-run time
+- Segment-specific scoring and recap notes
+- Championship context on eligible non-match segments without title changes
+- Singles title matches that can change championships
 - Rivalry context attached to eligible segments
 - Run Show
 - Results with broadcast recap, segment scores, momentum/fatigue fallout, title fallout, rivalry fallout, social buzz, and finance fallout
@@ -78,6 +81,9 @@ The loop must remain playable after every change.
 - The player is the final decision-maker.
 - Consequences come after action.
 - Do not show predicted grades, fan reaction, finance fallout, title outcomes, rivalry movement, or social reaction before the show runs.
+- Open Challenge opponents are not revealed before the show runs.
+- Open Challenge opponents resolve deterministically at show-run time.
+- Only Match title matches can change championships.
 - The UI can warn, summarize, and provide context, but it should not secretly decide for the player.
 - Big moments deserve stronger presentation.
 - Dashboard should orient the player.
@@ -99,10 +105,11 @@ Current priority:
 Deepen the post-draft solo career by improving booking stakes, roster pressure, consequence clarity, social/finance feedback, and season review value.
 
 Upcoming Direction:
-- Tighten booking as a TV production card with clearer title, rivalry, and open-challenge decisions.
-- Make roster pressure more legible through fatigue, morale, momentum, and workload consequences.
-- Improve social and finance screens so fallout feels reactive, gamey, and decision-focused.
+- Add richer roster pressure and morale events.
+- Run a booking balance pass across segment value, fatigue, and card composition.
+- Polish post-show fallout so results, social, finance, and rivalry movement feel sharper.
 - Strengthen season review and next-season carryover without adding infrastructure complexity.
+- Consider save slots or a data persistence upgrade later, only if explicitly requested.
 - Keep setup and draft bounded unless an active ticket asks to expand them.
 
 ## Current Phase Scope Rules
