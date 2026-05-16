@@ -1682,10 +1682,44 @@ h3 {
 }
 
 .runtime-board,
+.smart-rundown-panel,
 .composer-panel {
   background: rgba(14, 17, 24, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
+}
+
+.smart-rundown-panel {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.smart-rundown-panel.warning {
+  border-color: rgba(246, 193, 86, 0.48);
+}
+
+.smart-rundown-panel.error {
+  border-color: rgba(255, 83, 97, 0.48);
+}
+
+.smart-rundown-panel p {
+  color: #b9c1cf;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.smart-rundown-panel ul {
+  color: #dbe2ef;
+  line-height: 1.45;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.smart-rundown-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .runtime-board {

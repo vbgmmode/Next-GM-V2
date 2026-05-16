@@ -222,6 +222,10 @@ export type SegmentResult = {
   participantNames: string[];
   participantIds: string[];
   score: number;
+  plannedDurationMinutes?: number;
+  actualDurationMinutes?: number;
+  durationVarianceMinutes?: number;
+  overrunAffected?: boolean;
   momentumChanges: Record<string, number>;
   fatigueChanges: Record<string, number>;
   championshipId?: string;
@@ -272,6 +276,12 @@ export type ShowResult = {
   brandName: string;
   showName: string;
   showType: ShowType;
+  plannedRuntimeMinutes?: number;
+  actualRuntimeMinutes?: number;
+  broadcastOverrunMinutes?: number;
+  broadcastOverrunLevel?: "minor" | "moderate" | "major";
+  broadcastOverrunNotes?: string[];
+  overrunAffectedSegmentId?: string;
   totalScore: number;
   segmentResults: SegmentResult[];
   biggestMomentumGain: {
