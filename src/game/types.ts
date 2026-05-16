@@ -210,6 +210,13 @@ export type SocialPost = {
   relatedChampionshipIds?: string[];
 };
 
+export type FinanceReportBreakdownItem = {
+  id: string;
+  label: string;
+  amount: number;
+  note?: string;
+};
+
 export type FinanceReport = {
   id: string;
   seasonNumber: number;
@@ -226,6 +233,11 @@ export type FinanceReport = {
   profitLoss: number;
   endingMoney: number;
   notes: string[];
+  modelVersion?: string;
+  grossRevenue?: number;
+  totalExpenses?: number;
+  revenueBreakdown?: FinanceReportBreakdownItem[];
+  expenseBreakdown?: FinanceReportBreakdownItem[];
 };
 
 export type SegmentResult = {

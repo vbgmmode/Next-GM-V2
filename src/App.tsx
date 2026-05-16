@@ -1801,10 +1801,49 @@ function getSeasonFinanceReports(game: GameState) {
   return game.financeReports.filter((report) => report.seasonNumber === game.seasonNumber);
 }
 
+function getLegacyFinanceRevenue(report: FinanceReport) {
+  return report.ticketRevenue + report.merchRevenue + report.mediaRevenue;
+}
+
+function getLegacyFinanceExpenses(report: FinanceReport) {
+  return report.talentCost + report.productionCost;
+}
+
+function getFinanceGrossRevenue(report: FinanceReport) {
+  return report.grossRevenue ?? getLegacyFinanceRevenue(report);
+}
+
+function getFinanceTotalExpenses(report: FinanceReport) {
+  return report.totalExpenses ?? getLegacyFinanceExpenses(report);
+}
+
+function getFinanceRevenueBreakdown(report: FinanceReport) {
+  return report.revenueBreakdown?.length
+    ? report.revenueBreakdown
+    : [
+        { id: "ticketRevenue", label: "Ticket Revenue", amount: report.ticketRevenue },
+        { id: "merchRevenue", label: "Merch Revenue", amount: report.merchRevenue },
+        { id: "mediaRevenue", label: "Media Revenue", amount: report.mediaRevenue },
+      ];
+}
+
+function getFinanceExpenseBreakdown(report: FinanceReport) {
+  return report.expenseBreakdown?.length
+    ? report.expenseBreakdown
+    : [
+        { id: "talentCost", label: "Talent Cost", amount: report.talentCost },
+        { id: "productionCost", label: "Production Cost", amount: report.productionCost },
+      ];
+}
+
+function getFinanceReportModelLabel(report: FinanceReport) {
+  return report.modelVersion ? "Legacy-Compatible v2" : "Legacy Report";
+}
+
 function getBestRevenueReport(reports: FinanceReport[]) {
   return reports.reduce<FinanceReport | undefined>((best, report) => {
-    const revenue = report.ticketRevenue + report.merchRevenue + report.mediaRevenue;
-    const bestRevenue = best ? best.ticketRevenue + best.merchRevenue + best.mediaRevenue : -Infinity;
+    const revenue = getFinanceGrossRevenue(report);
+    const bestRevenue = best ? getFinanceGrossRevenue(best) : -Infinity;
     return revenue > bestRevenue ? report : best;
   }, undefined);
 }

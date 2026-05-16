@@ -58,6 +58,7 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
   const profitLoss = ticketRevenue + merchRevenue + mediaRevenue - talentCost - productionCost;
   const endingMoney = roundMoney(game.money + profitLoss);
   const revenue = ticketRevenue + merchRevenue + mediaRevenue;
+  const expenses = talentCost + productionCost;
   const notes = [
     `${result.showName} drew ${attendance.toLocaleString()} fans off a ${result.totalScore} show score.`,
     isPle
@@ -96,5 +97,17 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
     profitLoss,
     endingMoney,
     notes,
+    modelVersion: "legacy-compatible-v2",
+    grossRevenue: revenue,
+    totalExpenses: expenses,
+    revenueBreakdown: [
+      { id: "ticketRevenue", label: "Ticket Revenue", amount: ticketRevenue },
+      { id: "merchRevenue", label: "Merch Revenue", amount: merchRevenue },
+      { id: "mediaRevenue", label: "Media Revenue", amount: mediaRevenue },
+    ],
+    expenseBreakdown: [
+      { id: "talentCost", label: "Talent Cost", amount: talentCost },
+      { id: "productionCost", label: "Production Cost", amount: productionCost },
+    ],
   };
 }
