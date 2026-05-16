@@ -16,6 +16,7 @@ import type {
 import { getTitleCatalogEntriesForBrand } from "./titleCatalog";
 import { applyRivalryCatalogDefaults, getDefaultStorylineIdForStakes, getRivalryStoryline } from "./rivalryCatalog";
 import { top200DraftPool } from "./top200DraftPool";
+import { enrichWrestlerIdentityContext } from "./wrestlerIdentityContext";
 
 type SeedWrestler = Omit<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek"> &
   Partial<Pick<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek">>;
@@ -118,6 +119,7 @@ const defaultRosterSize = 12;
 function cloneWrestlers(wrestlers: SeedWrestler[]) {
   return wrestlers.map((wrestler) => ({
     ...wrestler,
+    ...enrichWrestlerIdentityContext(wrestler),
     appearancesThisSeason: wrestler.appearancesThisSeason ?? 0,
     lastBookedWeek: wrestler.lastBookedWeek ?? 0,
     consecutiveWeeksBooked: wrestler.consecutiveWeeksBooked ?? 0,

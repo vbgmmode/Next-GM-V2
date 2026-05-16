@@ -48,6 +48,7 @@ The game currently supports:
 - Match Format Metadata Foundation v1 with centralized current segment/match format metadata
 - PLE Readiness Checklist v1 with non-spoiler major-event booking context
 - Post-Show Cause Ledger v1 with retrospective explanation from resolved result data
+- Wrestler Identity Context v1 with non-mechanical identity/context fields added to roster entries (display-only foundation)
 - Title Scene Pressure v1 with read-only championship diagnostics derived from current title, roster, rivalry, booking, calendar, and history state
 - Rivalry Payoff Window v1 with read-only rivalry timing diagnostics derived from current heat, freshness, history, booking, and PLE calendar state
 - Brand Pulse v1 with read-only, non-simulated post-show brand pressure diagnostics derived from player results and static rival brand flavor
@@ -149,13 +150,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Solo Career RC Stable / Data-Expansion Planning
+Phase: Non-Title Tag Match Planning v1
 
 Goal:
-Define safe boundaries for future content growth while preserving the complete offline solo career loop, expanded setup flow, and active Top 200 open draft pool.
+Define safe boundaries for introducing non-title 2v2 tag booking while preserving the complete offline solo career loop, expanded setup flow, and active Top 200 open draft pool.
 
 Current priority:
-Protect the RC-stable build, preserve the Top 200 open-draft rule, and keep rival brand foundation work read-only unless a future ticket explicitly asks for simulation or competition systems.
+Define the non-title tag booking implementation gate and keep all existing systems unchanged outside this bounded slice.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -183,6 +184,7 @@ Completed stabilization passes:
 - Rivalry Payoff Window v1
 - Brand Pulse v1
 - Non-Blocking Rival Draft Activity v1
+- Wrestler Identity Context v1 (non-mechanical display context layer)
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.

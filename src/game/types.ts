@@ -123,8 +123,13 @@ export type Wrestler = {
   sourceBrand?: string;
   sourceAvailability?: string;
   roleTier?: string;
+  role?: string;
   alignment?: string;
   archetype?: string;
+  wrestlingStyle?: string;
+  promoStyle?: string;
+  presentationHook?: string;
+  careerStageLabel?: string;
   division?: string;
   popularity: number;
   momentum: number;

@@ -14,6 +14,7 @@ import type {
   Wrestler,
 } from "./types";
 import { createDefaultChampionships, createDefaultRivalries, createRivalBrandUniverse, createRivalGMAssignments, createSeasonCalendar, defaultCareer, isPrototypeBrand } from "./seed";
+import { enrichWrestlerIdentityContext } from "./wrestlerIdentityContext";
 import { getSegmentTypeDefaults } from "./matchFormatCatalog";
 import { applyChampionshipCatalogDefaults } from "./titleCatalog";
 import { applyRivalryCatalogDefaults } from "./rivalryCatalog";
@@ -157,6 +158,7 @@ function isSavedGameCandidate(value: unknown): value is SavedGameCandidate {
 function normalizeWrestlers(wrestlers: unknown): Wrestler[] {
   return (Array.isArray(wrestlers) ? (wrestlers as Partial<Wrestler>[]) : []).map((wrestler) => ({
     ...wrestler,
+    ...enrichWrestlerIdentityContext(wrestler as Wrestler),
     appearancesThisSeason: wrestler.appearancesThisSeason ?? 0,
     lastBookedWeek: wrestler.lastBookedWeek ?? 0,
     consecutiveWeeksBooked: wrestler.consecutiveWeeksBooked ?? 0,

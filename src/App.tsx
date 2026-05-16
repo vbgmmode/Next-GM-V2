@@ -21,6 +21,7 @@ import {
   type SegmentCatalogOption,
 } from "./game/matchFormatCatalog";
 import { migrateSavedGameState } from "./game/migration";
+import { getWrestlerIdentityContext } from "./game/wrestlerIdentityContext";
 import {
   applyRivalryCatalogDefaults,
   deriveRivalryStage,
@@ -1122,12 +1123,17 @@ function getDraftSortValue(wrestler: Wrestler, sort: DraftSort) {
 }
 
 function getDraftSearchText(wrestler: Wrestler) {
+  const identity = getWrestlerIdentityContext(wrestler);
+
   return [
     wrestler.name,
     wrestler.sourceBrand,
     wrestler.sourceAvailability,
     wrestler.roleTier,
+    identity.role,
     wrestler.alignment,
+    identity.wrestlingStyle,
+    identity.promoStyle,
     wrestler.archetype,
     wrestler.division,
   ]
@@ -4322,6 +4328,8 @@ function DraftTalentCard({
   onAction?: () => void;
   wrestler: Wrestler;
 }) {
+  const identity = getWrestlerIdentityContext(wrestler);
+
   return (
     <article className="draft-talent-card">
       <div className="draft-talent-head">
@@ -4342,7 +4350,10 @@ function DraftTalentCard({
         <span>{getDraftTag(wrestler.sourceAvailability, "Source Status")}</span>
       </div>
       <p className="draft-card-read">
-        {getDraftTag(wrestler.division)} · {getDraftTag(wrestler.alignment, "Alignment Open")} · open draft availability
+        {getDraftTag(wrestler.division)} · {getDraftTag(identity.role)} · {getDraftTag(identity.careerStageLabel)} · open draft availability
+      </p>
+      <p className="draft-card-read">
+        {getDraftTag(identity.wrestlingStyle)} · {getDraftTag(identity.promoStyle)}
       </p>
       <div className="draft-stat-grid">
         <Metric label="Popularity" value={`${wrestler.popularity}`} />
@@ -5405,6 +5416,7 @@ function WrestlerProfileScreen({
   const affiliations = getWrestlerAffiliations(wrestler.id, game.wrestlers);
   const gmRead = getGMRead(wrestler, game);
   const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, game.currentWeek);
+  const identity = getWrestlerIdentityContext(wrestler);
 
   return (
     <main className="app-shell">
@@ -5415,6 +5427,7 @@ function WrestlerProfileScreen({
           <p className="eyebrow">Wrestler Profile</p>
           <h2>{wrestler.name}</h2>
           <div className="identity-strip">
+            <span>{identity.role}</span>
             <span>{status}</span>
             <span>{getInjuryStatusLabel(wrestler.injuryStatus)}</span>
             {pressureTags.length ? pressureTags.map((tag) => <span key={tag}>{tag}</span>) : <span>Balanced</span>}
@@ -5451,6 +5464,9 @@ function WrestlerProfileScreen({
               <Metric label="Appearances" value={`${wrestler.appearancesThisSeason ?? 0}`} detail="This season" />
               <Metric label="Last Booked" value={wrestler.lastBookedWeek ? `Week ${wrestler.lastBookedWeek}` : "Never"} detail={`${weeksSinceLastBooked} weeks off TV`} />
               <Metric label="TV Streak" value={`${wrestler.consecutiveWeeksBooked ?? 0}`} detail="Consecutive weeks booked" />
+              <Metric label="Career Stage" value={identity.careerStageLabel} />
+              <Metric label="Identity" value={identity.role} detail={identity.wrestlingStyle} />
+              <Metric label="Promo Type" value={identity.promoStyle} detail={identity.presentationHook} />
             </div>
           </section>
 
