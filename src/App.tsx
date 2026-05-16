@@ -8,6 +8,7 @@ import {
   updateSaveRecord,
 } from "./gameStorage";
 import { advanceGameWeek, startNextSeason } from "./game/advanceWeek";
+import { getRosterAffiliations, getWrestlerAffiliations } from "./game/affiliationCatalog";
 import { getFinancePressureLabel } from "./game/finance";
 import { getRosterFinanceValueForWrestler } from "./game/financeCatalog";
 import { migrateSavedGameState } from "./game/migration";
@@ -35,6 +36,7 @@ import {
 import { getChampionshipDivisionGroup, getTitleCatalogBrand, wrestlerFitsChampionshipDivision } from "./game/titleCatalog";
 import type {
   CalendarWeek,
+  AffiliationKind,
   BrandStyle,
   Championship,
   ChampionshipHistoryEvent,
@@ -58,6 +60,7 @@ import type {
   ShowType,
   StartingBudgetTier,
   Wrestler,
+  WrestlerAffiliation,
 } from "./game/types";
 import type { GameScreen, ProfileReturnScreen, SavedGameState } from "./game/migration";
 import type { StoredSaveRecord } from "./gameStorage";
@@ -568,6 +571,25 @@ function formatLocationLabel(screen: GameScreen) {
 
 function formatPressureLabel(label: PressureLabel) {
   return label;
+}
+
+function formatAffiliationKind(kind: AffiliationKind) {
+  if (kind === "tag_team") {
+    return "Tag Team";
+  }
+
+  if (kind === "faction") {
+    return "Faction";
+  }
+
+  return "Affiliation";
+}
+
+function getAffiliationMemberNames(affiliation: WrestlerAffiliation, wrestlers: Wrestler[]) {
+  return affiliation.memberWrestlerIds
+    .map((id) => wrestlers.find((wrestler) => wrestler.id === id)?.name)
+    .filter(Boolean)
+    .join(" / ");
 }
 
 function getCatalogOptionsForType(type: SegmentType) {
@@ -4471,6 +4493,10 @@ function RosterScreen({
   const injuryRiskCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk")).length;
   const minorInjuryCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus === "minor").length;
   const unavailableCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus === "major").length;
+  const rosterAffiliations = getRosterAffiliations(game.wrestlers);
+  const featuredAffiliations = rosterAffiliations
+    .filter((affiliation) => affiliation.memberWrestlerIds.length > 1)
+    .slice(0, 3);
 
   return (
     <main className="app-shell">
@@ -4504,6 +4530,37 @@ function RosterScreen({
         <Metric label="Unavailable" value={`${unavailableCount}`} detail={unavailableCount ? "Major injury block" : "None"} />
       </section>
 
+      <section className="command-panel affiliation-roster-panel" aria-label="Affiliation intelligence">
+        <div className="section-heading">
+          <p className="eyebrow">Locker Room Links</p>
+          <h3>{rosterAffiliations.length ? "Affiliation Context" : "No Source Affiliations"}</h3>
+        </div>
+        {rosterAffiliations.length ? (
+          <>
+            <div className="spotlight-grid compact-grid">
+              <Metric label="Visible Groups" value={`${rosterAffiliations.length}`} detail="Source roster labels only" />
+              <Metric
+                label="Team/Faction Fits"
+                value={`${featuredAffiliations.length}`}
+                detail={featuredAffiliations.length ? featuredAffiliations.map((affiliation) => affiliation.name).join(" / ") : "No multi-member links drafted"}
+              />
+              <Metric label="Gameplay Status" value="Read-Only" detail="No tag mechanics active" />
+            </div>
+            {featuredAffiliations.length ? (
+              <div className="affiliation-strip">
+                {featuredAffiliations.map((affiliation) => (
+                  <span key={affiliation.id}>
+                    {affiliation.name} · {formatAffiliationKind(affiliation.kind)}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div className="empty-state compact">No drafted wrestler has a source team or faction label in the current Top 200 data.</div>
+        )}
+      </section>
+
       <section className="roster-controls" aria-label="Roster controls">
         <div>
           <span>Sort</span>
@@ -4526,7 +4583,13 @@ function RosterScreen({
       <section className="roster-grid" aria-label="Roster list">
         {visibleWrestlers.length ? (
           visibleWrestlers.map((wrestler) => (
-            <WrestlerCard currentWeek={game.currentWeek} key={wrestler.id} onOpenProfile={onOpenProfile} wrestler={wrestler} />
+            <WrestlerCard
+              currentWeek={game.currentWeek}
+              key={wrestler.id}
+              onOpenProfile={onOpenProfile}
+              rosterAffiliations={rosterAffiliations}
+              wrestler={wrestler}
+            />
           ))
         ) : (
           <div className="empty-state">No wrestlers match this filter.</div>
@@ -4562,6 +4625,7 @@ function WrestlerProfileScreen({
   const recentRivalryHistory = getWrestlerRivalryHistory(game, wrestler.id);
   const recentAppearances = getRecentWrestlerAppearances(game, wrestler.id);
   const recentSocialPosts = getRecentWrestlerSocialPosts(game, wrestler.id);
+  const affiliations = getWrestlerAffiliations(wrestler.id, game.wrestlers);
   const gmRead = getGMRead(wrestler, game);
   const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, game.currentWeek);
 
@@ -4628,6 +4692,29 @@ function WrestlerProfileScreen({
               <p>
                 <strong>Need:</strong> {gmRead.need}
               </p>
+            </div>
+          </section>
+
+          <section className="profile-panel affiliation-profile-panel" aria-label="Affiliation context">
+            <div className="section-heading">
+              <p className="eyebrow">Affiliation Context</p>
+              <h3>{affiliations.length ? "Locker Room Links" : "No Source Link"}</h3>
+            </div>
+            <div className="profile-list">
+              {affiliations.length ? (
+                affiliations.map((affiliation) => (
+                  <article className="profile-context-row affiliation-context-row" key={affiliation.id}>
+                    <strong>{affiliation.name}</strong>
+                    <span>
+                      {formatAffiliationKind(affiliation.kind)} · {affiliation.status}
+                    </span>
+                    <p>{getAffiliationMemberNames(affiliation, game.wrestlers) || wrestler.name}</p>
+                    <small>{affiliation.notes}</small>
+                  </article>
+                ))
+              ) : (
+                <div className="empty-state compact">No team, faction, or affiliation label is available for {wrestler.name} in the current Top 200 source data.</div>
+              )}
             </div>
           </section>
 
@@ -5869,15 +5956,18 @@ function SeasonReviewScreen({
 function WrestlerCard({
   currentWeek,
   onOpenProfile,
+  rosterAffiliations,
   wrestler,
 }: {
   currentWeek: number;
   onOpenProfile: (wrestlerId: string) => void;
+  rosterAffiliations: WrestlerAffiliation[];
   wrestler: Wrestler;
 }) {
   const status = getWrestlerStatus(wrestler);
   const pressureTags = getRosterPressureTags(wrestler, currentWeek);
   const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, currentWeek);
+  const affiliations = rosterAffiliations.filter((affiliation) => affiliation.memberWrestlerIds.includes(wrestler.id));
 
   return (
     <article className={`wrestler-card status-${status.toLowerCase()}`}>
@@ -5896,6 +5986,15 @@ function WrestlerCard({
       <div className="pressure-tags">
         {pressureTags.length ? pressureTags.map((tag) => <span key={tag}>{tag}</span>) : <span>Balanced</span>}
       </div>
+      {affiliations.length ? (
+        <div className="affiliation-strip compact-affiliation-strip" aria-label={`${wrestler.name} affiliation context`}>
+          {affiliations.slice(0, 2).map((affiliation) => (
+            <span key={affiliation.id}>
+              {affiliation.name} · {formatAffiliationKind(affiliation.kind)}
+            </span>
+          ))}
+        </div>
+      ) : null}
       <div className="wrestler-stats">
         <Metric label="Popularity" value={`${wrestler.popularity}`} />
         <Metric label="Momentum" value={`${wrestler.momentum}`} />

@@ -72,6 +72,18 @@ export type RivalBrandState = {
   activityHistory: RivalBrandActivity[];
 };
 
+export type AffiliationKind = "tag_team" | "faction" | "affiliation";
+
+export type WrestlerAffiliation = {
+  id: string;
+  name: string;
+  kind: AffiliationKind;
+  memberWrestlerIds: string[];
+  status: string;
+  sourceLabel?: string;
+  notes?: string;
+};
+
 export type RivalryStatus = "rising" | "steady" | "cooling" | "stale";
 
 export type RivalryStakes = "personal" | "title" | "respect" | "revenge";

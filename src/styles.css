@@ -1184,6 +1184,11 @@ h3 {
   margin-bottom: 18px;
 }
 
+.affiliation-roster-panel {
+  border-color: rgba(111, 226, 212, 0.24);
+  margin-bottom: 18px;
+}
+
 .calendar-spotlight {
   border-color: rgba(255, 255, 255, 0.18);
   margin-bottom: 18px;
@@ -1377,6 +1382,27 @@ h3 {
   text-transform: uppercase;
 }
 
+.affiliation-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.affiliation-strip span {
+  background: rgba(8, 9, 13, 0.72);
+  border: 1px solid rgba(111, 226, 212, 0.24);
+  border-radius: 999px;
+  color: #6fe2d4;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 6px 8px;
+  text-transform: uppercase;
+}
+
+.compact-affiliation-strip {
+  margin: -4px 0 14px;
+}
+
 .wrestler-card-head {
   align-items: start;
   display: flex;
@@ -1475,6 +1501,10 @@ h3 {
   border-color: rgba(0, 168, 150, 0.24);
 }
 
+.affiliation-profile-panel {
+  border-color: rgba(111, 226, 212, 0.24);
+}
+
 .social-profile-panel {
   border-color: rgba(255, 83, 97, 0.24);
 }
@@ -1511,6 +1541,10 @@ h3 {
   display: grid;
 }
 
+.affiliation-context-row {
+  border-left-color: #f6c156;
+}
+
 .profile-history-row span,
 .profile-context-row span {
   color: #9ea8ba;
@@ -1521,10 +1555,18 @@ h3 {
   text-transform: uppercase;
 }
 
-.profile-history-row p {
+.profile-history-row p,
+.profile-context-row p,
+.profile-context-row small {
   color: #b9c1cf;
   line-height: 1.4;
   margin-top: 6px;
+}
+
+.profile-context-row small {
+  color: #9ea8ba;
+  display: block;
+  font-size: 0.82rem;
 }
 
 .profile-history-row b {
