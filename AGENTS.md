@@ -45,6 +45,10 @@ The game currently supports:
 - Rival GM assignments to unselected brands as setup flavor/state only
 - Rival Brand Foundation v1 with typed persisted read-only rival brand state derived from setup assignments
 - Tag Team / Affiliation Foundation v1 with typed read-only roster/profile context derived from Top 200 source metadata
+- Match Format Metadata Foundation v1 with centralized current segment/match format metadata
+- PLE Readiness Checklist v1 with non-spoiler major-event booking context
+- Post-Show Cause Ledger v1 with retrospective explanation from resolved result data
+- Title Scene Pressure v1 with read-only championship diagnostics derived from current title, roster, rivalry, booking, calendar, and history state
 - Top 200 open draft pool staged from data/rosters and activated through src/game/top200DraftPool.ts
 - 199 game-eligible performers available by default in Draft Night
 - Open Draft Night availability across source brands; source/current brand does not restrict draft availability
@@ -169,6 +173,10 @@ Completed stabilization passes:
 - Finance Integration Checkpoint Report v1
 - Rival Brand Foundation v1
 - Tag Team / Affiliation Foundation v1
+- Match Format Metadata Foundation v1
+- PLE Readiness Checklist v1
+- Post-Show Cause Ledger v1
+- Title Scene Pressure v1
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.

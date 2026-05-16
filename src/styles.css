@@ -1696,6 +1696,62 @@ h3 {
   text-transform: uppercase;
 }
 
+.title-pressure-card.pressure-hot,
+.title-pressure-chip.pressure-hot {
+  border-color: rgba(0, 168, 150, 0.42);
+  border-left-color: #00a896;
+}
+
+.title-pressure-card.pressure-watch,
+.title-pressure-chip.pressure-watch {
+  border-color: rgba(246, 193, 86, 0.44);
+  border-left-color: #f6c156;
+}
+
+.title-pressure-card.pressure-build,
+.title-pressure-chip.pressure-build {
+  border-color: rgba(255, 83, 97, 0.42);
+  border-left-color: #ff5361;
+}
+
+.title-pressure-deck {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 12px 0;
+}
+
+.title-pressure-chip {
+  background: rgba(8, 9, 13, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 3px solid rgba(185, 193, 207, 0.45);
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.title-pressure-chip span {
+  color: #f6c156;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.title-pressure-chip p,
+.title-pressure-dashboard {
+  color: #b9c1cf;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.title-pressure-dashboard {
+  border-left: 3px solid #f6c156;
+  margin: 12px 0;
+  padding-left: 10px;
+}
+
 .title-division-builder,
 .title-eligible-readout {
   display: grid;
@@ -2065,6 +2121,81 @@ h3 {
   padding: 10px 12px;
 }
 
+.cause-ledger-panel {
+  background:
+    linear-gradient(180deg, rgba(246, 193, 86, 0.07), transparent),
+    rgba(14, 17, 24, 0.92);
+  border: 1px solid rgba(246, 193, 86, 0.26);
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 18px;
+}
+
+.cause-ledger-panel.compact {
+  border-color: rgba(111, 226, 212, 0.22);
+}
+
+.cause-ledger-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cause-ledger-section {
+  background: rgba(8, 9, 13, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.cause-ledger-section > span {
+  color: #f6c156;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.cause-ledger-section > div {
+  display: grid;
+  gap: 8px;
+}
+
+.cause-ledger-item {
+  border-left: 3px solid rgba(185, 193, 207, 0.5);
+  display: grid;
+  gap: 4px;
+  padding-left: 10px;
+}
+
+.cause-ledger-item.item-strong {
+  border-left-color: #00a896;
+}
+
+.cause-ledger-item.item-steady {
+  border-left-color: #f6c156;
+}
+
+.cause-ledger-item.item-watch {
+  border-left-color: #ff5361;
+}
+
+.cause-ledger-item strong {
+  color: #f4f7fb;
+  font-size: 0.9rem;
+}
+
+.cause-ledger-item p,
+.cause-ledger-empty {
+  color: #b9c1cf;
+  line-height: 1.45;
+  margin: 0;
+}
+
 .finance-history-row {
   align-items: center;
   background: rgba(14, 17, 24, 0.92);
@@ -2154,6 +2285,7 @@ h3 {
 
 .runtime-board,
 .smart-rundown-panel,
+.ple-readiness-panel,
 .broadcast-risk-panel,
 .composer-panel {
   background: rgba(14, 17, 24, 0.92);
@@ -2192,6 +2324,85 @@ h3 {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.ple-readiness-panel {
+  background:
+    linear-gradient(180deg, rgba(216, 35, 50, 0.12), transparent 52%),
+    rgba(14, 17, 24, 0.94);
+  border-color: rgba(255, 83, 97, 0.38);
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.ple-readiness-summary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ple-readiness-summary .metric {
+  min-height: 92px;
+  padding: 14px;
+}
+
+.ple-readiness-summary .metric strong {
+  font-size: 1.25rem;
+}
+
+.ple-checklist-items {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ple-checklist-item {
+  background: rgba(8, 9, 13, 0.56);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 3px solid rgba(185, 193, 207, 0.45);
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.ple-checklist-item.item-ready {
+  border-left-color: #00a896;
+}
+
+.ple-checklist-item.item-watch {
+  border-left-color: #f6c156;
+}
+
+.ple-checklist-item.item-build {
+  border-left-color: #ff5361;
+}
+
+.ple-checklist-item span {
+  color: #9ea8ba;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.ple-checklist-item strong {
+  color: #f4f7fb;
+  line-height: 1.2;
+}
+
+.ple-checklist-item p,
+.ple-readiness-note {
+  color: #b9c1cf;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.ple-readiness-note {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.9rem;
+  padding-top: 12px;
 }
 
 .broadcast-risk-panel {
@@ -3331,6 +3542,7 @@ h3 {
   .draft-stat-grid,
   .draft-tools,
   .title-scene-board,
+  .title-pressure-deck,
   .title-division-builder {
     grid-template-columns: 1fr;
   }
@@ -3383,6 +3595,9 @@ h3 {
   .command-grid,
   .finance-breakdown-grid,
   .profile-layout,
+  .cause-ledger-grid,
+  .ple-checklist-items,
+  .ple-readiness-summary,
   .spotlight-grid,
   .fallout-grid,
   .roster-controls,

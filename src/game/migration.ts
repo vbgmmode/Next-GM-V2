@@ -9,12 +9,12 @@ import type {
   Rivalry,
   Screen,
   Segment,
-  SegmentType,
   ShowResult,
   StartingBudgetTier,
   Wrestler,
 } from "./types";
 import { createDefaultChampionships, createDefaultRivalries, createRivalBrandUniverse, createRivalGMAssignments, createSeasonCalendar, defaultCareer, isPrototypeBrand } from "./seed";
+import { getSegmentTypeDefaults } from "./matchFormatCatalog";
 import { applyChampionshipCatalogDefaults } from "./titleCatalog";
 import { applyRivalryCatalogDefaults } from "./rivalryCatalog";
 
@@ -201,30 +201,10 @@ function normalizeRivalries(rivalries: unknown, wrestlers: Wrestler[]) {
   return Array.isArray(rivalries) ? (rivalries as Rivalry[]).map(applyRivalryCatalogDefaults) : createDefaultRivalries(wrestlers);
 }
 
-function getDefaultSegmentDefaults(type: SegmentType) {
-  if (type === "Open Challenge") {
-    return { segmentCatalogId: "P007", segmentDisplayName: "Open Challenge", durationMinutes: 7, participantMin: 1, participantMax: 1 };
-  }
-
-  if (type === "Contract Signing") {
-    return { segmentCatalogId: "P008", segmentDisplayName: "Contract Signing", durationMinutes: 9, participantMin: 2, participantMax: 2 };
-  }
-
-  if (type === "Promo") {
-    return { segmentCatalogId: "P001", segmentDisplayName: "Standard Promo", durationMinutes: 5, participantMin: 1, participantMax: 3 };
-  }
-
-  if (type === "Backstage Angle") {
-    return { segmentCatalogId: "A001", segmentDisplayName: "Backstage Interview", durationMinutes: 4, participantMin: 1, participantMax: 3 };
-  }
-
-  return { segmentCatalogId: "M001", segmentDisplayName: "Singles Match", durationMinutes: 12, participantMin: 2, participantMax: 2 };
-}
-
 function normalizeCurrentShow(currentShow: unknown): Segment[] {
   return (Array.isArray(currentShow) ? (currentShow as Partial<Segment>[]) : []).map((segment, index) => {
     const type = segment.type ?? "Match";
-    const defaults = getDefaultSegmentDefaults(type);
+    const defaults = getSegmentTypeDefaults(type);
 
     return {
       id: segment.id ?? `migrated-segment-${index}`,

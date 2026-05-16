@@ -11,6 +11,15 @@ import { advanceGameWeek, startNextSeason } from "./game/advanceWeek";
 import { getRosterAffiliations, getWrestlerAffiliations } from "./game/affiliationCatalog";
 import { getFinancePressureLabel } from "./game/finance";
 import { getRosterFinanceValueForWrestler } from "./game/financeCatalog";
+import {
+  bookingSegmentTypes,
+  getCatalogOptionById,
+  getCatalogOptionsForType,
+  getDefaultCatalogOption,
+  getSegmentCatalogOption,
+  getSegmentParticipantRange,
+  type SegmentCatalogOption,
+} from "./game/matchFormatCatalog";
 import { migrateSavedGameState } from "./game/migration";
 import {
   applyRivalryCatalogDefaults,
@@ -117,28 +126,67 @@ type GMRead = {
   need: string;
 };
 
-type SegmentCatalogOption = {
-  id: string;
-  family: SegmentType;
-  group: string;
-  label: string;
-  variant: string;
-  defaultDurationMinutes: number;
-  minParticipants: number;
-  maxParticipants: number;
-  championshipAllowed: boolean;
-  winnerRequired: boolean;
-  rivalryRelevant: boolean;
-  intent: string;
-  note: string;
-  productionCue: string;
-};
-
 type SmartRundownResult = {
   error?: string;
   notes: string[];
   segments: Segment[];
 };
+
+type PleReadinessTone = "ready" | "watch" | "build";
+
+type PleReadinessItem = {
+  id: string;
+  label: string;
+  status: string;
+  detail: string;
+  tone: PleReadinessTone;
+};
+
+type PleReadinessSnapshot = {
+  items: PleReadinessItem[];
+  readyCount: number;
+  titleMatchCount: number;
+  representedRivalries: Rivalry[];
+  unresolvedRivalries: Rivalry[];
+  bookedMajorStars: Wrestler[];
+  mainEvent?: Segment;
+};
+
+type TitleScenePressureTone = "hot" | "steady" | "watch" | "build";
+
+type TitleScenePressureDiagnostic = {
+  id: string;
+  label: string;
+  detail: string;
+  tone: TitleScenePressureTone;
+};
+
+type TitleScenePressureSnapshot = {
+  primary: TitleScenePressureDiagnostic;
+  diagnostics: TitleScenePressureDiagnostic[];
+  divisionHealth: string;
+  producerRead: string;
+  defenseWindow: number;
+  reignLength: number;
+  weeksSinceLastTitleEvent: number;
+  titleRivalries: Rivalry[];
+};
+
+type CauseLedgerTone = "strong" | "steady" | "watch";
+
+type CauseLedgerItem = {
+  id: string;
+  label: string;
+  detail: string;
+  tone: CauseLedgerTone;
+};
+
+type CauseLedgerSection = {
+  id: string;
+  label: string;
+  items: CauseLedgerItem[];
+};
+
 type QaHarnessMode = "runtime" | "legacy-runtime";
 
 const draftPickCount = 12;
@@ -267,208 +315,12 @@ const budgetOptions: ChoiceOption<StartingBudgetTier>[] = [
     description: "Sandbox-style money for fantasy booking and experimentation.",
   },
 ];
-const bookingSegmentTypes: SegmentType[] = ["Match", "Promo", "Backstage Angle", "Contract Signing", "Open Challenge"];
 const showRuntimeTargetMinutes = 120;
 const showRuntimeMinMinutes = 90;
 const showRuntimeOvertimeMinutes = 135;
 const tvRuntimeWarningMinutes = 150;
 const maxBookingSegments = 24;
 const qaHarnessParam = "qa";
-
-const segmentCatalogOptions: SegmentCatalogOption[] = [
-  {
-    id: "M001",
-    family: "Match",
-    group: "Standard",
-    label: "Singles Match",
-    variant: "One on One",
-    defaultDurationMinutes: 12,
-    minParticipants: 2,
-    maxParticipants: 2,
-    championshipAllowed: true,
-    winnerRequired: true,
-    rivalryRelevant: true,
-    intent: "Clean bell-to-bell focus for two wrestlers. Best when the card needs a clear sporting center.",
-    note: "Two wrestlers, one finish, title eligible when the champion is involved.",
-    productionCue: "Bell-to-bell spotlight",
-  },
-  {
-    id: "M002",
-    family: "Match",
-    group: "Standard",
-    label: "Triple Threat",
-    variant: "Three-way",
-    defaultDurationMinutes: 13,
-    minParticipants: 3,
-    maxParticipants: 3,
-    championshipAllowed: false,
-    winnerRequired: true,
-    rivalryRelevant: true,
-    intent: "Three-way traffic for contender tension, uneasy alliances, and a crowded title-scene lane.",
-    note: "Three wrestlers required. Title changes stay off this format in the current build.",
-    productionCue: "Three-way traffic",
-  },
-  {
-    id: "M003",
-    family: "Match",
-    group: "Standard",
-    label: "Fatal 4-Way",
-    variant: "Four-way",
-    defaultDurationMinutes: 14,
-    minParticipants: 4,
-    maxParticipants: 4,
-    championshipAllowed: false,
-    winnerRequired: true,
-    rivalryRelevant: true,
-    intent: "Four-wrestler showcase when the show needs chaos, shared spotlight, or contender congestion.",
-    note: "Four wrestlers required. Title changes stay off this format in the current build.",
-    productionCue: "Contender pileup",
-  },
-  {
-    id: "M019",
-    family: "Match",
-    group: "Hardcore",
-    label: "Extreme Rules",
-    variant: "One on One",
-    defaultDurationMinutes: 13,
-    minParticipants: 2,
-    maxParticipants: 2,
-    championshipAllowed: true,
-    winnerRequired: true,
-    rivalryRelevant: true,
-    intent: "No-DQ style TV escalation for a feud that needs a harder edge without changing hidden formulas.",
-    note: "Two wrestlers, one finish, title eligible when the champion is involved.",
-    productionCue: "No-DQ escalation",
-  },
-  {
-    id: "P001",
-    family: "Promo",
-    group: "Core Promo",
-    label: "Standard Promo",
-    variant: "Mic time",
-    defaultDurationMinutes: 5,
-    minParticipants: 1,
-    maxParticipants: 3,
-    championshipAllowed: false,
-    winnerRequired: false,
-    rivalryRelevant: false,
-    intent: "Character and microphone time for a wrestler or small group without forcing a feud beat.",
-    note: "One to three wrestlers. No winner is resolved because this is a talk segment.",
-    productionCue: "Mic spotlight",
-  },
-  {
-    id: "P003",
-    family: "Promo",
-    group: "Core Promo",
-    label: "Call-Out Promo",
-    variant: "Calls out rival",
-    defaultDurationMinutes: 6,
-    minParticipants: 1,
-    maxParticipants: 2,
-    championshipAllowed: false,
-    winnerRequired: false,
-    rivalryRelevant: true,
-    intent: "Direct microphone pressure for calling someone out, sharpening a feud, or setting a confrontation.",
-    note: "One or two wrestlers. Rivalry context is especially useful but never forced.",
-    productionCue: "Direct challenge",
-  },
-  {
-    id: "P002",
-    family: "Promo",
-    group: "Core Promo",
-    label: "Hype Promo",
-    variant: "Momentum builder",
-    defaultDurationMinutes: 5,
-    minParticipants: 1,
-    maxParticipants: 1,
-    championshipAllowed: false,
-    winnerRequired: false,
-    rivalryRelevant: false,
-    intent: "Single-wrestler hype package for giving the audience a reason to care before the next beat.",
-    note: "One wrestler. No opponent or winner is needed.",
-    productionCue: "Character hype",
-  },
-  {
-    id: "A001",
-    family: "Backstage Angle",
-    group: "Backstage Interview",
-    label: "Backstage Interview",
-    variant: "Solo/duo interview",
-    defaultDurationMinutes: 4,
-    minParticipants: 1,
-    maxParticipants: 3,
-    championshipAllowed: false,
-    winnerRequired: false,
-    rivalryRelevant: false,
-    intent: "Backstage camera time for character texture, locker-room read, or quiet story setup.",
-    note: "One to three wrestlers. Useful for context without making the segment feel like a fight.",
-    productionCue: "Backstage texture",
-  },
-  {
-    id: "A046",
-    family: "Backstage Angle",
-    group: "Production/Entrance Adjacent",
-    label: "Backstage Confrontation",
-    variant: "Mid-ramp stop",
-    defaultDurationMinutes: 4,
-    minParticipants: 2,
-    maxParticipants: 4,
-    championshipAllowed: false,
-    winnerRequired: false,
-    rivalryRelevant: true,
-    intent: "A tense production-area faceoff that puts bodies in the same frame before the show moves on.",
-    note: "Two to four wrestlers. Rivalry context helps clarify why cameras are here.",
-    productionCue: "Hallway pressure",
-  },
-  {
-    id: "A004",
-    family: "Backstage Angle",
-    group: "Attack Angle",
-    label: "Backstage Attack",
-    variant: "Surprise assault",
-    defaultDurationMinutes: 4,
-    minParticipants: 2,
-    maxParticipants: 4,
-    championshipAllowed: false,
-    winnerRequired: false,
-    rivalryRelevant: true,
-    intent: "Ambush-style TV heat for making the backstage feed feel dangerous without new injury logic.",
-    note: "Two to four wrestlers. This frames an attack but does not add new injury effects.",
-    productionCue: "Ambush angle",
-  },
-  {
-    id: "P008",
-    family: "Contract Signing",
-    group: "Special",
-    label: "Contract Signing",
-    variant: "Formal match signing",
-    defaultDurationMinutes: 9,
-    minParticipants: 2,
-    maxParticipants: 2,
-    championshipAllowed: true,
-    winnerRequired: false,
-    rivalryRelevant: true,
-    intent: "Big-table confrontation for formal stakes, title framing, and pre-match tension.",
-    note: "Two wrestlers. Championship context can be attached, but no championship changes here.",
-    productionCue: "Table stakes",
-  },
-  {
-    id: "P007",
-    family: "Open Challenge",
-    group: "Special",
-    label: "Open Challenge",
-    variant: "Champion or star invites opponent",
-    defaultDurationMinutes: 7,
-    minParticipants: 1,
-    maxParticipants: 1,
-    championshipAllowed: true,
-    winnerRequired: false,
-    rivalryRelevant: false,
-    intent: "One star or champion throws the door open. The answer stays hidden until the broadcast runs.",
-    note: "One issuer only. The opponent is resolved at show-run time.",
-    productionCue: "Unanswered call",
-  },
-];
 
 function formatMoney(amount: number) {
   const sign = amount < 0 ? "-" : "";
@@ -592,22 +444,6 @@ function getAffiliationMemberNames(affiliation: WrestlerAffiliation, wrestlers: 
     .join(" / ");
 }
 
-function getCatalogOptionsForType(type: SegmentType) {
-  return segmentCatalogOptions.filter((option) => option.family === type);
-}
-
-function getDefaultCatalogOption(type: SegmentType) {
-  return getCatalogOptionsForType(type)[0];
-}
-
-function getCatalogOptionById(id: string) {
-  return segmentCatalogOptions.find((option) => option.id === id);
-}
-
-function getSegmentCatalogOption(segment: Segment) {
-  return segmentCatalogOptions.find((option) => option.id === segment.segmentCatalogId) ?? getDefaultCatalogOption(segment.type)!;
-}
-
 function getSegmentDurationMinutes(segment: Segment) {
   return segment.durationMinutes ?? getSegmentCatalogOption(segment)?.defaultDurationMinutes ?? 8;
 }
@@ -710,31 +546,6 @@ function getSegmentRequirementForSegment(segment: Segment) {
 
 function getSegmentDescription(type: SegmentType) {
   return getDefaultCatalogOption(type)?.note ?? "Build the segment structure without exposing hidden outcomes.";
-}
-
-function getSegmentParticipantRange(segment: Segment) {
-  const option = getSegmentCatalogOption(segment);
-
-  return {
-    min: segment.participantMin ?? option?.minParticipants ?? (segment.type === "Open Challenge" ? 1 : 2),
-    max: segment.participantMax ?? option?.maxParticipants ?? getFallbackParticipantLimit(segment.type),
-  };
-}
-
-function getFallbackParticipantLimit(type: SegmentType) {
-  if (type === "Promo") {
-    return 3;
-  }
-
-  if (type === "Backstage Angle") {
-    return 4;
-  }
-
-  if (type === "Open Challenge") {
-    return 1;
-  }
-
-  return 2;
 }
 
 function getSegmentPickerLabel(type: SegmentType) {
@@ -852,6 +663,104 @@ function getBroadcastRuntimeRisk(runtimeMinutes: number) {
   }
 
   return undefined;
+}
+
+function isMajorEventStar(wrestler: Wrestler) {
+  return wrestler.popularity >= 90 || wrestler.momentum >= 90 || wrestler.roleTier?.toLowerCase() === "mainevent";
+}
+
+function getPleReadinessSnapshot(game: GameState, validShowSegments: Segment[], calendarWeek: CalendarWeek): PleReadinessSnapshot | undefined {
+  if (calendarWeek.showType !== "ple") {
+    return undefined;
+  }
+
+  const titleMatchSegments = validShowSegments.filter((segment) => {
+    const championship = segment.championshipId ? game.championships.find((title) => title.id === segment.championshipId) : undefined;
+    return Boolean(championship && canSegmentContestChampionship(segment, championship, game.wrestlers));
+  });
+  const representedRivalryIds = new Set(validShowSegments.map((segment) => segment.rivalryId).filter((id): id is string => Boolean(id)));
+  const activeRivalries = game.rivalries.filter((rivalry) => rivalry.status !== "stale");
+  const representedRivalries = activeRivalries.filter((rivalry) => representedRivalryIds.has(rivalry.id));
+  const unresolvedRivalries = activeRivalries.filter((rivalry) => !representedRivalryIds.has(rivalry.id));
+  const bookedWrestlerIds = new Set(validShowSegments.flatMap((segment) => segment.participantIds));
+  const bookedMajorStars = game.wrestlers.filter((wrestler) => bookedWrestlerIds.has(wrestler.id) && isMajorEventStar(wrestler));
+  const majorMatchCount = validShowSegments.filter((segment) => {
+    const participants = getSegmentParticipants(segment, game.wrestlers);
+    return segment.type === "Match" && participants.length >= 2 && (segment.championshipId || segment.rivalryId || participants.some(isMajorEventStar));
+  }).length;
+  const mainEvent = validShowSegments[validShowSegments.length - 1];
+  const mainEventParticipants = mainEvent ? getSegmentParticipants(mainEvent, game.wrestlers) : [];
+  const mainEventHasAnchor = Boolean(
+    mainEvent &&
+      isValidSegment(mainEvent, game.wrestlers) &&
+      (mainEvent.championshipId || mainEvent.rivalryId || mainEventParticipants.some(isMajorEventStar)),
+  );
+  const items: PleReadinessItem[] = [
+    {
+      id: "event-block",
+      label: "Event Block",
+      status: validShowSegments.length >= 5 ? "Card feels filled" : validShowSegments.length >= 3 ? "Core card forming" : "Needs more structure",
+      detail: `${validShowSegments.length} valid segment${validShowSegments.length === 1 ? "" : "s"} ready for ${calendarWeek.showName}.`,
+      tone: validShowSegments.length >= 5 ? "ready" : validShowSegments.length >= 3 ? "watch" : "build",
+    },
+    {
+      id: "title-stakes",
+      label: "Title Stakes",
+      status: titleMatchSegments.length >= 2 ? "Multiple defenses" : titleMatchSegments.length === 1 ? "One sanctioned defense" : "No title match yet",
+      detail: `${titleMatchSegments.length} current match${titleMatchSegments.length === 1 ? "" : "es"} with title stakes attached.`,
+      tone: titleMatchSegments.length >= 2 ? "ready" : titleMatchSegments.length === 1 ? "watch" : "build",
+    },
+    {
+      id: "rivalry-payoff",
+      label: "Rivalry Payoff",
+      status: representedRivalries.length >= 2 ? "Stories represented" : representedRivalries.length === 1 ? "One story beat" : "No active rivalry beat",
+      detail: unresolvedRivalries.length
+        ? `${representedRivalries.length} active rivalr${representedRivalries.length === 1 ? "y" : "ies"} on card. Still off card: ${unresolvedRivalries
+            .slice(0, 2)
+            .map((rivalry) => rivalry.name)
+            .join(" / ")}${unresolvedRivalries.length > 2 ? " / more" : ""}.`
+        : `${representedRivalries.length} active rivalr${representedRivalries.length === 1 ? "y" : "ies"} represented on the card.`,
+      tone: representedRivalries.length >= 2 ? "ready" : representedRivalries.length === 1 ? "watch" : "build",
+    },
+    {
+      id: "main-event-anchor",
+      label: "Main Event Anchor",
+      status: mainEventHasAnchor ? "Closing slot has stakes" : mainEvent ? "Closing slot is light" : "No closing slot yet",
+      detail: mainEvent
+        ? `${mainEvent.segmentDisplayName ?? mainEvent.type} closes the rundown${mainEventParticipants.length ? ` with ${mainEventParticipants.map((wrestler) => wrestler.name).join(" / ")}` : ""}.`
+        : "Add a valid final segment before the PLE goes live.",
+      tone: mainEventHasAnchor ? "ready" : mainEvent ? "watch" : "build",
+    },
+    {
+      id: "star-power",
+      label: "Star Power",
+      status: bookedMajorStars.length >= 4 ? "Top acts visible" : bookedMajorStars.length >= 2 ? "Some star power" : "Star power light",
+      detail: bookedMajorStars.length
+        ? `${bookedMajorStars.length} high-popularity or high-momentum wrestler${bookedMajorStars.length === 1 ? "" : "s"} booked: ${bookedMajorStars
+            .slice(0, 3)
+            .map((wrestler) => wrestler.name)
+            .join(" / ")}${bookedMajorStars.length > 3 ? " / more" : ""}.`
+        : "No high-popularity or high-momentum wrestlers are booked yet.",
+      tone: bookedMajorStars.length >= 4 ? "ready" : bookedMajorStars.length >= 2 ? "watch" : "build",
+    },
+    {
+      id: "major-match-gravity",
+      label: "Major Match Gravity",
+      status: majorMatchCount >= 2 ? "Match spine is strong" : majorMatchCount === 1 ? "One feature match" : "Needs a feature match",
+      detail: `${majorMatchCount} valid match${majorMatchCount === 1 ? "" : "es"} currently carry title, rivalry, or top-star context.`,
+      tone: majorMatchCount >= 2 ? "ready" : majorMatchCount === 1 ? "watch" : "build",
+    },
+  ];
+
+  return {
+    items,
+    readyCount: items.filter((item) => item.tone === "ready").length,
+    titleMatchCount: titleMatchSegments.length,
+    representedRivalries,
+    unresolvedRivalries,
+    bookedMajorStars,
+    mainEvent,
+  };
 }
 
 function getSegmentParticipants(segment: Segment, wrestlers: Wrestler[]) {
@@ -1273,6 +1182,197 @@ function getTitleSceneRead(championship: Championship, wrestlers: Wrestler[], cu
     label: "Strong Scene",
     detail: `${contenders.length} same-division contender${contenders.length === 1 ? "" : "s"} fit the title picture.`,
   };
+}
+
+function formatWeekCount(weeks: number) {
+  return `${weeks} week${weeks === 1 ? "" : "s"}`;
+}
+
+function getChampionshipHistoryAgeWeeks(game: GameState, event: ChampionshipHistoryEvent) {
+  const seasonDelta = Math.max(0, game.seasonNumber - event.seasonNumber);
+  return Math.max(0, seasonDelta * 12 + game.currentWeek - event.weekNumber);
+}
+
+function getTitleRivalries(championship: Championship, wrestlers: Wrestler[], rivalries: Rivalry[]) {
+  const championIds = new Set(championship.championIds);
+
+  return rivalries.filter((rivalry) => {
+    if (rivalry.status === "stale" || rivalry.stakes !== "title") {
+      return false;
+    }
+
+    const hasChampion = rivalry.participantIds.some((id) => championIds.has(id));
+    const hasEligibleChallenger = rivalry.participantIds.some((id) => {
+      const wrestler = wrestlers.find((talent) => talent.id === id);
+      return Boolean(wrestler && !championIds.has(id) && wrestlerFitsChampionshipDivision(wrestler, championship));
+    });
+
+    return hasChampion && hasEligibleChallenger;
+  });
+}
+
+function getTitleScenePressureSnapshot(championship: Championship, game: GameState): TitleScenePressureSnapshot {
+  const scene = getTitleDivisionScene(championship, game.wrestlers, game.rivalries, game.currentWeek);
+  const recentHistory = getChampionshipHistory(game, championship.id, 1);
+  const latestTitleEvent = recentHistory[0];
+  const defenseWindow = championship.minimumDefenseFrequencyWeeks ?? 6;
+  const reignLength = getReignLength(championship, game.currentWeek);
+  const weeksSinceLastTitleEvent = latestTitleEvent ? getChampionshipHistoryAgeWeeks(game, latestTitleEvent) : Math.max(0, reignLength - 1);
+  const calendarWeek = getCurrentCalendarWeek(game);
+  const contenders = scene.eligibleRoster;
+  const hotContenders = contenders.filter((wrestler) => wrestler.momentum >= 75);
+  const premiumContenders = contenders.filter((wrestler) => wrestler.popularity >= 75);
+  const titleRivalries = getTitleRivalries(championship, game.wrestlers, game.rivalries);
+  const championNeedsTv = scene.champions.some((wrestler) => getWeeksSinceLastBooked(wrestler, game.currentWeek) >= 2);
+  const diagnostics: TitleScenePressureDiagnostic[] = [];
+
+  if (championship.eligibleMatchScope === "tag_team") {
+    diagnostics.push({
+      id: "tag-scope",
+      label: "Presentation Scene",
+      detail: "Tag title context is visible, but tag title booking is not active in this build.",
+      tone: "steady",
+    });
+  } else if (!scene.champions.length) {
+    diagnostics.push({
+      id: "no-champion",
+      label: "Champion Assignment Gap",
+      detail: "No current champion resolves from the saved roster data, so this scene can only show fallback context.",
+      tone: "build",
+    });
+  } else {
+    if (contenders.length < 2) {
+      diagnostics.push({
+        id: "needs-challenger",
+        label: "Needs A Challenger",
+        detail: "The title office has fewer than two eligible same-division challengers around the champion.",
+        tone: "build",
+      });
+    }
+
+    if (championNeedsTv) {
+      const quietChampion = scene.champions.find((wrestler) => getWeeksSinceLastBooked(wrestler, game.currentWeek) >= 2);
+      diagnostics.push({
+        id: "champion-tv",
+        label: "Champion Needs TV",
+        detail: quietChampion
+          ? `${quietChampion.name} has been off the current-season TV board for ${formatWeekCount(getWeeksSinceLastBooked(quietChampion, game.currentWeek))}.`
+          : "The champion has been away from recent TV time.",
+        tone: "watch",
+      });
+    }
+
+    if (weeksSinceLastTitleEvent >= defenseWindow && reignLength >= defenseWindow) {
+      diagnostics.push({
+        id: "defense-drought",
+        label: "Defense Drought",
+        detail: `No resolved defense or title change is recorded in ${formatWeekCount(weeksSinceLastTitleEvent)}; this is advisory only.`,
+        tone: "watch",
+      });
+    }
+
+    if (titleRivalries.length || hotContenders.length >= 2) {
+      diagnostics.push({
+        id: "hot-scene",
+        label: "Hot Scene",
+        detail: titleRivalries.length
+          ? `${titleRivalries[0].name} gives the title picture active story heat.`
+          : `${hotContenders.slice(0, 2).map((wrestler) => wrestler.name).join(" / ")} are carrying strong momentum near this belt.`,
+        tone: "hot",
+      });
+    }
+
+    if ((calendarWeek.showType === "ple" || calendarWeek.isGoHome) && (titleRivalries.length || hotContenders.length || premiumContenders.length) && contenders.length >= 2) {
+      diagnostics.push({
+        id: "ple-ready",
+        label: "PLE-Ready Stakes",
+        detail: `${calendarWeek.showName} has enough visible champion/challenger context for a major-event title beat if you want it.`,
+        tone: "hot",
+      });
+    }
+
+    if (contenders.length >= 7) {
+      diagnostics.push({
+        id: "contender-crowding",
+        label: "Contender Crowding",
+        detail: `${contenders.length} eligible wrestlers fit this lane, so the title scene can support eliminators or spotlight matches.`,
+        tone: "steady",
+      });
+    }
+
+    if (!titleRivalries.length && !hotContenders.length && weeksSinceLastTitleEvent >= Math.max(3, defenseWindow - 2)) {
+      diagnostics.push({
+        id: "cooling-division",
+        label: "Cooling Division",
+        detail: "No hot contender or active title rivalry is currently propping up the scene.",
+        tone: "build",
+      });
+    }
+  }
+
+  if (!diagnostics.length) {
+    diagnostics.push({
+      id: "stable-scene",
+      label: "Stable Division",
+      detail: "Champion, challenger depth, and recent title context are all readable without a forced title beat.",
+      tone: "steady",
+    });
+  }
+
+  const primary =
+    diagnostics.find((item) => item.tone === "build") ??
+    diagnostics.find((item) => item.tone === "watch") ??
+    diagnostics.find((item) => item.tone === "hot") ??
+    diagnostics[0];
+  const divisionHealth = `${contenders.length} eligible · ${hotContenders.length} hot · ${titleRivalries.length} title rivalr${titleRivalries.length === 1 ? "y" : "ies"}`;
+  const producerRead =
+    primary.tone === "hot"
+      ? "Title office reads hot. Feature it, protect it, or let the chase breathe."
+      : primary.tone === "build"
+        ? "Title office wants attention, but the choice stays with booking."
+        : primary.tone === "watch"
+          ? "Title office is flagging pressure without requiring a defense."
+          : "Title office is steady and ready to support TV when you need it.";
+
+  return {
+    primary,
+    diagnostics: diagnostics.slice(0, 4),
+    divisionHealth,
+    producerRead,
+    defenseWindow,
+    reignLength,
+    weeksSinceLastTitleEvent,
+    titleRivalries,
+  };
+}
+
+function getTitleScenePressureRank(tone: TitleScenePressureTone) {
+  if (tone === "build") {
+    return 4;
+  }
+
+  if (tone === "watch") {
+    return 3;
+  }
+
+  if (tone === "hot") {
+    return 2;
+  }
+
+  return 1;
+}
+
+function getChampionshipPressureSnapshots(game: GameState) {
+  return game.championships
+    .map((championship) => ({
+      championship,
+      snapshot: getTitleScenePressureSnapshot(championship, game),
+    }))
+    .sort(
+      (a, b) =>
+        getTitleScenePressureRank(b.snapshot.primary.tone) - getTitleScenePressureRank(a.snapshot.primary.tone) ||
+        b.championship.prestige - a.championship.prestige,
+    );
 }
 
 function getTitleSceneGMRead(championship: Championship, scene: ReturnType<typeof getTitleDivisionScene>) {
@@ -2091,6 +2191,184 @@ function buildBroadcastRecap(result: ShowResult) {
       : `${result.brandName} posted a ${scoreTone} ${result.totalScore} (${getShowGrade(result.totalScore)})`;
 
   return `${showFrame} in Week ${result.week}. ${bestNames} delivered the strongest ${bestSegment.type.toLowerCase()} at ${bestSegment.score}. ${result.biggestMomentumGain.name} gained the most momentum, while ${result.biggestFatigueIncrease.name} took the biggest fatigue hit.${runtimeFallout}${titleFallout}${rivalryFallout}`;
+}
+
+function getSafeBestSegment(result: ShowResult) {
+  return result.segmentResults?.length ? getBestSegment(result) : undefined;
+}
+
+function buildPostShowCauseLedger(game: GameState, result: ShowResult, financeReport?: FinanceReport): CauseLedgerSection[] {
+  const segmentResults = result.segmentResults ?? [];
+  const bestSegment = getSafeBestSegment(result);
+  const validSegmentCount = segmentResults.length;
+  const titleSegments = segmentResults.filter((segment) => segment.titleNote || segment.championshipId);
+  const rivalrySegments = segmentResults.filter((segment) => segment.rivalryNote || segment.rivalryId);
+  const affectedOverrunSegments = segmentResults.filter((segment) => segment.overrunAffected);
+  const fallout = result.lockerRoomFallout;
+  const socialPosts = game.socialPosts.filter((post) => post.seasonNumber === result.seasonNumber && post.weekNumber === result.week);
+  const strongSegments = segmentResults.filter((segment) => segment.score >= 85);
+  const coldSegments = segmentResults.filter((segment) => segment.score < 60);
+  const sections: CauseLedgerSection[] = [];
+
+  const performanceItems: CauseLedgerItem[] = [];
+  if (bestSegment) {
+    performanceItems.push({
+      id: "best-segment",
+      label: "Top Driver",
+      detail: `${bestSegment.participantNames.join(" / ")} carried the night with a ${bestSegment.score} ${bestSegment.type.toLowerCase()}.`,
+      tone: bestSegment.score >= 85 ? "strong" : bestSegment.score >= 70 ? "steady" : "watch",
+    });
+  }
+  if (strongSegments.length || coldSegments.length) {
+    performanceItems.push({
+      id: "score-shape",
+      label: "Score Shape",
+      detail: `${strongSegments.length} segment${strongSegments.length === 1 ? "" : "s"} landed at 85+, while ${coldSegments.length} segment${coldSegments.length === 1 ? "" : "s"} finished below 60.`,
+      tone: coldSegments.length ? "watch" : strongSegments.length ? "strong" : "steady",
+    });
+  }
+  if (result.broadcastOverrunNotes?.length) {
+    performanceItems.push({
+      id: "runtime-pressure",
+      label: "Runtime Pressure",
+      detail: result.broadcastOverrunNotes[0],
+      tone: result.broadcastOverrunLevel === "major" || result.broadcastOverrunLevel === "moderate" ? "watch" : "steady",
+    });
+  } else if (result.actualRuntimeMinutes !== undefined) {
+    performanceItems.push({
+      id: "runtime-clean",
+      label: "Runtime Shape",
+      detail: `${result.actualRuntimeMinutes} actual minutes against ${result.plannedRuntimeMinutes ?? "unknown"} planned kept the broadcast record clean.`,
+      tone: "steady",
+    });
+  }
+  if (performanceItems.length) {
+    sections.push({ id: "performance", label: "Show Performance Drivers", items: performanceItems });
+  }
+
+  const structureItems: CauseLedgerItem[] = [];
+  if (validSegmentCount) {
+    structureItems.push({
+      id: "card-volume",
+      label: "Card Structure",
+      detail: `${validSegmentCount} resolved segment${validSegmentCount === 1 ? "" : "s"} shaped the final average.`,
+      tone: validSegmentCount >= 5 ? "strong" : validSegmentCount >= 2 ? "steady" : "watch",
+    });
+  }
+  if (titleSegments.length || rivalrySegments.length) {
+    structureItems.push({
+      id: "stakes-mix",
+      label: "Stakes Mix",
+      detail: `${titleSegments.length} title-linked segment${titleSegments.length === 1 ? "" : "s"} and ${rivalrySegments.length} rivalry-linked segment${rivalrySegments.length === 1 ? "" : "s"} gave the recap its consequence lanes.`,
+      tone: titleSegments.length + rivalrySegments.length >= 2 ? "strong" : "steady",
+    });
+  }
+  if (affectedOverrunSegments.length) {
+    structureItems.push({
+      id: "compressed-block",
+      label: "Compressed Block",
+      detail: `${affectedOverrunSegments.length} late segment${affectedOverrunSegments.length === 1 ? " was" : "s were"} marked as affected by broadcast overrun.`,
+      tone: "watch",
+    });
+  }
+  if (structureItems.length) {
+    sections.push({ id: "structure", label: "Card Structure Drivers", items: structureItems });
+  }
+
+  const stakesItems: CauseLedgerItem[] = [];
+  if (result.titleNotes?.length) {
+    stakesItems.push({
+      id: "title-fallout",
+      label: "Title Desk",
+      detail: result.titleNotes[0],
+      tone: "strong",
+    });
+  }
+  if (result.rivalryNotes?.length) {
+    stakesItems.push({
+      id: "rivalry-fallout",
+      label: "Rivalry Desk",
+      detail: result.rivalryNotes[0],
+      tone: "strong",
+    });
+  }
+  if (!stakesItems.length && validSegmentCount) {
+    stakesItems.push({
+      id: "no-stakes-fallout",
+      label: "Stakes Desk",
+      detail: "No championship or rivalry note fired because the resolved card did not attach those consequence lanes.",
+      tone: "watch",
+    });
+  }
+  if (stakesItems.length) {
+    sections.push({ id: "stakes", label: "Title And Rivalry Drivers", items: stakesItems });
+  }
+
+  const rosterItems: CauseLedgerItem[] = [];
+  if (result.biggestMomentumGain?.name) {
+    rosterItems.push({
+      id: "momentum-driver",
+      label: "Momentum",
+      detail: `${result.biggestMomentumGain.name} gained the most momentum after their resolved TV usage.`,
+      tone: "strong",
+    });
+  }
+  if (result.biggestFatigueIncrease?.name) {
+    rosterItems.push({
+      id: "fatigue-driver",
+      label: "Fatigue Load",
+      detail: `${result.biggestFatigueIncrease.name} took the biggest fatigue hit from the finished card.`,
+      tone: result.biggestFatigueIncrease.amount >= 12 ? "watch" : "steady",
+    });
+  }
+  const falloutCount =
+    (fallout?.moraleDrops.length ?? 0) +
+    (fallout?.moraleBoosts.length ?? 0) +
+    (fallout?.overuseWarnings.length ?? 0) +
+    (fallout?.underuseWarnings.length ?? 0) +
+    (fallout?.injuryNotes.length ?? 0);
+  if (falloutCount) {
+    rosterItems.push({
+      id: "locker-room-fallout",
+      label: "Locker Room",
+      detail: `${falloutCount} roster fallout note${falloutCount === 1 ? "" : "s"} came out of actual usage, morale, fatigue, and injury checks.`,
+      tone: fallout?.injuryNotes.length || fallout?.moraleDrops.length ? "watch" : "steady",
+    });
+  }
+  if (rosterItems.length) {
+    sections.push({ id: "roster", label: "Roster Pressure Drivers", items: rosterItems });
+  }
+
+  const businessItems: CauseLedgerItem[] = [];
+  if (financeReport) {
+    businessItems.push({
+      id: "finance-close",
+      label: "Brand Office",
+      detail: `${financeReport.showName} closed at ${formatMoney(financeReport.profitLoss)} on ${formatMoney(getFinanceGrossRevenue(financeReport))} revenue and ${formatMoney(getFinanceTotalExpenses(financeReport))} costs.`,
+      tone: financeReport.profitLoss >= 0 ? "strong" : "watch",
+    });
+    if (financeReport.notes.length) {
+      businessItems.push({
+        id: "finance-note",
+        label: "Business Cause",
+        detail: financeReport.notes[0],
+        tone: financeReport.profitLoss >= 0 ? "steady" : "watch",
+      });
+    }
+  }
+  if (socialPosts.length) {
+    businessItems.push({
+      id: "audience-pulse",
+      label: "Audience Pulse",
+      detail: `${socialPosts.length} IWC/social post${socialPosts.length === 1 ? "" : "s"} reacted to resolved score, title, rivalry, fatigue, or major-event facts.`,
+      tone: "steady",
+    });
+  }
+  if (businessItems.length) {
+    sections.push({ id: "business", label: "Business And Audience Drivers", items: businessItems });
+  }
+
+  return sections;
 }
 
 function buildSavedGameState(
@@ -3671,8 +3949,10 @@ function DashboardScreen({
   const averageFatigue = Math.round(game.wrestlers.reduce((sum, wrestler) => sum + wrestler.fatigue, 0) / game.wrestlers.length);
   const nextAction =
     validSegments >= 2 ? "The rundown can go live when you are ready." : "Book at least 2 valid segments before production can roll.";
-  const topChampionship = [...game.championships].sort((a, b) => b.prestige - a.prestige)[0];
-  const topTitleContenders = getTopContenders(topChampionship, game.wrestlers, 2);
+  const championshipPressureSnapshots = getChampionshipPressureSnapshots(game);
+  const topChampionship = championshipPressureSnapshots[0]?.championship ?? [...game.championships].sort((a, b) => b.prestige - a.prestige)[0];
+  const topTitlePressure = championshipPressureSnapshots.find((item) => item.championship.id === topChampionship?.id)?.snapshot;
+  const topTitleContenders = topChampionship ? getTopContenders(topChampionship, game.wrestlers, 2) : [];
   const hottestRivalry = getHottestRivalry(game.rivalries);
   const coolingRivalry = getCoolingRivalry(game.rivalries);
   const currentShow = getCurrentCalendarWeek(game);
@@ -3856,13 +4136,14 @@ function DashboardScreen({
       <section className="command-panel championship-spotlight">
         <div className="section-heading">
           <p className="eyebrow">Championship Spotlight</p>
-          <h3>{topChampionship.name}</h3>
+          <h3>{topChampionship?.name ?? "No Titles"}</h3>
         </div>
         <div className="spotlight-grid">
-          <Metric label="Champion" value={getWrestlerNames(topChampionship.championIds, game.wrestlers)} />
-          <Metric label="Prestige" value={`${topChampionship.prestige}`} />
-          <Metric label="Likely Contenders" value={topTitleContenders.map((wrestler) => wrestler.name).join(" / ")} />
+          <Metric label="Pressure" value={topTitlePressure?.primary.label ?? "No Read"} detail={topTitlePressure?.primary.detail} />
+          <Metric label="Champion" value={topChampionship ? getWrestlerNames(topChampionship.championIds, game.wrestlers) : "None"} />
+          <Metric label="Top Contenders" value={topTitleContenders.map((wrestler) => wrestler.name).join(" / ") || "No clear lane"} />
         </div>
+        {topTitlePressure ? <p className="title-pressure-dashboard">{topTitlePressure.divisionHealth}</p> : null}
         <button className="secondary-action" onClick={() => onNavigate("championships")}>
           View Championships
         </button>
@@ -4018,6 +4299,7 @@ function BookingScreen({
   const runtimePercent = Math.min(100, Math.round((validRuntimeMinutes / showRuntimeTargetMinutes) * 100));
   const readiness = getShowReadiness(validSegments, invalidSegments, validRuntimeMinutes);
   const broadcastRisk = getBroadcastRuntimeRisk(validRuntimeMinutes);
+  const pleReadiness = getPleReadinessSnapshot(game, validShowSegments, calendarWeek);
   const canRunShow = readiness.canRun;
   const composerSegment = game.currentShow.find((segment) => segment.id === composerSegmentId);
   const bookedCounts = game.currentShow.reduce<Record<string, number>>((counts, segment) => {
@@ -4191,6 +4473,8 @@ function BookingScreen({
             </div>
           </section>
 
+          {pleReadiness ? <PleReadinessChecklist calendarWeek={calendarWeek} snapshot={pleReadiness} /> : null}
+
           {broadcastRisk ? (
             <section className={`broadcast-risk-panel risk-${broadcastRisk.tone}`} aria-label="Broadcast runtime risk">
               <div className="section-heading">
@@ -4249,6 +4533,7 @@ function BookingScreen({
             <SegmentComposer
               bookedCounts={bookedCounts}
               championships={game.championships}
+              game={game}
               onApplyCatalogOption={(option) => applyCatalogOption(composerSegment, option)}
               onClose={() => setComposerSegmentId(undefined)}
               onOpenProfile={onOpenProfile}
@@ -4274,9 +4559,38 @@ function BookingScreen({
   );
 }
 
+function PleReadinessChecklist({ calendarWeek, snapshot }: { calendarWeek: CalendarWeek; snapshot: PleReadinessSnapshot }) {
+  return (
+    <section className="ple-readiness-panel" aria-label="PLE readiness checklist">
+      <div className="section-heading">
+        <p className="eyebrow">PLE Readiness Checklist</p>
+        <h3>{calendarWeek.showName} Control Room</h3>
+      </div>
+      <div className="ple-readiness-summary">
+        <Metric label="Producer Notes" value={`${snapshot.readyCount}/${snapshot.items.length}`} detail="Advisory only" />
+        <Metric label="Title Matches" value={`${snapshot.titleMatchCount}`} detail="Sanctioned current-card defenses" />
+        <Metric label="Story Beats" value={`${snapshot.representedRivalries.length}`} detail={`${snapshot.unresolvedRivalries.length} active off card`} />
+      </div>
+      <div className="ple-checklist-items">
+        {snapshot.items.map((item) => (
+          <article className={`ple-checklist-item item-${item.tone}`} key={item.id}>
+            <span>{item.label}</span>
+            <strong>{item.status}</strong>
+            <p>{item.detail}</p>
+          </article>
+        ))}
+      </div>
+      <p className="ple-readiness-note">
+        Producer note only. This panel reads the current card shape and does not forecast grades, audience reaction, finances, injuries, morale, title outcomes, or rivalry movement.
+      </p>
+    </section>
+  );
+}
+
 function SegmentComposer({
   bookedCounts,
   championships,
+  game,
   onApplyCatalogOption,
   onClose,
   onOpenProfile,
@@ -4291,6 +4605,7 @@ function SegmentComposer({
 }: {
   bookedCounts: Record<string, number>;
   championships: Championship[];
+  game: GameState;
   onApplyCatalogOption: (option: SegmentCatalogOption) => void;
   onClose: () => void;
   onOpenProfile: (wrestlerId: string) => void;
@@ -4402,6 +4717,7 @@ function SegmentComposer({
       <SegmentContext segment={segment} wrestlers={wrestlers} bookedCounts={bookedCounts} />
       <TitleMatchControl
         championships={championships}
+        game={game}
         onSetSegmentChampionship={onSetSegmentChampionship}
         segment={segment}
         wrestlers={wrestlers}
@@ -4886,6 +5202,7 @@ function ChampionshipsScreen({
           const scene = getTitleDivisionScene(championship, game.wrestlers, game.rivalries, game.currentWeek);
           const recentHistory = getChampionshipHistory(game, championship.id);
           const titleRead = getTitleSceneRead(championship, game.wrestlers, game.currentWeek, game.rivalries);
+          const pressureSnapshot = getTitleScenePressureSnapshot(championship, game);
           const gmRead = getTitleSceneGMRead(championship, scene);
 
           return (
@@ -4904,6 +5221,11 @@ function ChampionshipsScreen({
                 <Metric label="Defenses" value={`${championship.defenses}`} />
               </div>
               <div className="title-scene-board" aria-label={`${championship.name} title scene status`}>
+                <article className={`title-pressure-card pressure-${pressureSnapshot.primary.tone}`}>
+                  <span>Pressure Read</span>
+                  <strong>{pressureSnapshot.primary.label}</strong>
+                  <small>{pressureSnapshot.primary.detail}</small>
+                </article>
                 <article>
                   <span>Scene Read</span>
                   <strong>{titleRead.label}</strong>
@@ -4914,6 +5236,19 @@ function ChampionshipsScreen({
                   <strong>{championship.eligibleMatchScope === "tag_team" ? "Tag Scope" : `${championship.division} Singles`}</strong>
                   <small>{championship.minimumDefenseFrequencyWeeks ? `Defense rhythm: about ${championship.minimumDefenseFrequencyWeeks} weeks` : "Legacy title cadence"}</small>
                 </article>
+                <article>
+                  <span>Title Clock</span>
+                  <strong>{pressureSnapshot.weeksSinceLastTitleEvent ? `${formatWeekCount(pressureSnapshot.weeksSinceLastTitleEvent)} since title event` : "Fresh title event"}</strong>
+                  <small>Window read: about {formatWeekCount(pressureSnapshot.defenseWindow)} · advisory only</small>
+                </article>
+              </div>
+              <div className="title-pressure-deck" aria-label={`${championship.name} pressure diagnostics`}>
+                {pressureSnapshot.diagnostics.map((diagnostic) => (
+                  <article className={`title-pressure-chip pressure-${diagnostic.tone}`} key={diagnostic.id}>
+                    <span>{diagnostic.label}</span>
+                    <p>{diagnostic.detail}</p>
+                  </article>
+                ))}
               </div>
               <div className="title-division-builder" aria-label={`${championship.name} division builder`}>
                 <article>
@@ -4940,7 +5275,8 @@ function ChampionshipsScreen({
                 </article>
                 <article>
                   <span>GM Read</span>
-                  <strong>{gmRead}</strong>
+                  <strong>{pressureSnapshot.producerRead}</strong>
+                  <small>{gmRead}</small>
                 </article>
               </div>
               <div className="history-list" aria-label={`${championship.name} recent history`}>
@@ -5448,6 +5784,46 @@ function FinanceBreakdownList({
   );
 }
 
+function PostShowCauseLedger({ compact = false, sections }: { compact?: boolean; sections: CauseLedgerSection[] }) {
+  if (!sections.length) {
+    return (
+      <section className="cause-ledger-panel compact" aria-label="Post-show cause ledger">
+        <div className="section-heading">
+          <p className="eyebrow">Cause Ledger</p>
+          <h3>Limited Record</h3>
+        </div>
+        <p className="cause-ledger-empty">This result has limited legacy data, so there is no deeper cause ledger beyond the visible recap.</p>
+      </section>
+    );
+  }
+
+  const visibleSections = compact ? sections.slice(0, 4) : sections;
+
+  return (
+    <section className={`cause-ledger-panel ${compact ? "compact" : ""}`} aria-label="Post-show cause ledger">
+      <div className="section-heading">
+        <p className="eyebrow">Post-Show Cause Ledger</p>
+        <h3>{compact ? "Why The Week Moved" : "Why It Happened"}</h3>
+      </div>
+      <div className="cause-ledger-grid">
+        {visibleSections.map((section) => (
+          <article className="cause-ledger-section" key={section.id}>
+            <span>{section.label}</span>
+            <div>
+              {section.items.map((item) => (
+                <div className={`cause-ledger-item item-${item.tone}`} key={item.id}>
+                  <strong>{item.label}</strong>
+                  <p>{item.detail}</p>
+                </div>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function ResultsScreen({
   game,
   onContinueWeekReview,
@@ -5460,6 +5836,8 @@ function ResultsScreen({
   onNavigate: (screen: GameScreen) => void;
 }) {
   const bestSegment = getBestSegment(result);
+  const financeReport = getFinanceReportForResult(game, result);
+  const causeLedger = buildPostShowCauseLedger(game, result, financeReport);
 
   return (
     <main className="app-shell">
@@ -5490,6 +5868,8 @@ function ResultsScreen({
         />
         <Metric label="Best Type" value={bestSegment.type} detail={bestSegment.participantNames.join(" / ")} />
       </section>
+
+      <PostShowCauseLedger sections={causeLedger} />
 
       {result.broadcastOverrunNotes?.length ? (
         <section className="broadcast-overrun-fallout" aria-label="Broadcast overrun fallout">
@@ -5590,6 +5970,7 @@ function WeekReviewScreen({
 }) {
   const bestSegment = getBestSegment(result);
   const financeReport = getFinanceReportForResult(game, result);
+  const causeLedger = buildPostShowCauseLedger(game, result, financeReport);
   const buzzPreview = game.socialPosts.filter((post) => post.seasonNumber === result.seasonNumber && post.weekNumber === result.week).slice(-3).reverse();
   const bookedIds = [...new Set(result.segmentResults.flatMap((segment) => segment.participantIds))];
   const injuryRiskWrestlers = game.wrestlers.filter(
@@ -5644,6 +6025,8 @@ function WeekReviewScreen({
           ))}
         </section>
       ) : null}
+
+      <PostShowCauseLedger sections={causeLedger} compact />
 
       <section className="locker-room-fallout" aria-label="Locker room fallout">
         <div className="section-heading">
@@ -6013,11 +6396,13 @@ function WrestlerCard({
 
 function TitleMatchControl({
   championships,
+  game,
   onSetSegmentChampionship,
   segment,
   wrestlers,
 }: {
   championships: Championship[];
+  game: GameState;
   onSetSegmentChampionship: (segmentId: string, championshipId: string) => void;
   segment: Segment;
   wrestlers: Wrestler[];
@@ -6074,6 +6459,7 @@ function TitleMatchControl({
     championship,
     contenders: getTitleDivisionScene(championship, wrestlers).topContenders,
     challengers: segment.participantIds.filter((id) => !championship.championIds.includes(id)),
+    pressure: getTitleScenePressureSnapshot(championship, game),
   }));
   const titleAdjacentSummaries = isTitleMatch && !eligibleChampionships.length ? sameDivisionTitleOptions : [];
 
@@ -6116,13 +6502,16 @@ function TitleMatchControl({
       ) : null}
       {titleSceneSummaries.length ? (
         <div className="title-eligible-readout" aria-label="Eligible title challengers">
-          {titleSceneSummaries.map(({ championship, contenders, challengers }) => (
+          {titleSceneSummaries.map(({ championship, contenders, challengers, pressure }) => (
             <article key={championship.id}>
               <span>{isTitleMatch ? "Sanctioned title defense" : championship.name}</span>
               <strong>{championship.name}</strong>
               <small>
                 Champion: {getWrestlerNames(championship.championIds, wrestlers)}
                 {isTitleMatch && challengers.length ? ` · Eligible challenger: ${getWrestlerNames(challengers, wrestlers)}` : ""}
+              </small>
+              <small>
+                Pressure: {pressure.primary.label} · {pressure.divisionHealth}
               </small>
               <small>Title scene: {formatTitleSceneNamesWithChampionContext(contenders, championships, championship.id, "No clear same-division challengers")}</small>
             </article>
@@ -6131,13 +6520,20 @@ function TitleMatchControl({
       ) : null}
       {titleAdjacentSummaries.length ? (
         <div className="title-eligible-readout" aria-label="Title-adjacent contender context">
-          {titleAdjacentSummaries.map((championship) => (
+          {titleAdjacentSummaries.map((championship) => {
+            const pressure = getTitleScenePressureSnapshot(championship, game);
+
+            return (
             <article key={championship.id}>
               <span>Title-adjacent, not a defense</span>
               <strong>{championship.name}</strong>
               <small>Needs champion: {getWrestlerNames(championship.championIds, wrestlers)}</small>
+              <small>
+                Pressure: {pressure.primary.label} · {pressure.divisionHealth}
+              </small>
             </article>
-          ))}
+            );
+          })}
         </div>
       ) : null}
     </div>

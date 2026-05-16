@@ -16,6 +16,7 @@ import type {
 } from "./types";
 import { generateFinanceReport } from "./finance";
 import { generateSocialPosts } from "./social";
+import { getSegmentValidationRange } from "./matchFormatCatalog";
 import { getChampionshipDivisionGroup, wrestlerFitsChampionshipDivision } from "./titleCatalog";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
@@ -151,25 +152,8 @@ export function isValidSegment(segment: Segment, wrestlers: Wrestler[] = []) {
     return false;
   }
 
-  if (segment.participantMin !== undefined || segment.participantMax !== undefined) {
-    const min = segment.participantMin ?? 1;
-    const max = segment.participantMax ?? min;
-    return segment.participantIds.length >= min && segment.participantIds.length <= max;
-  }
-
-  switch (segment.type) {
-    case "Match":
-    case "Contract Signing":
-      return segment.participantIds.length === 2;
-    case "Promo":
-      return segment.participantIds.length >= 1 && segment.participantIds.length <= 3;
-    case "Backstage Angle":
-      return segment.participantIds.length >= 2 && segment.participantIds.length <= 4;
-    case "Open Challenge":
-      return segment.participantIds.length === 1;
-    default:
-      return false;
-  }
+  const range = getSegmentValidationRange(segment);
+  return segment.participantIds.length >= range.min && segment.participantIds.length <= range.max;
 }
 
 export function getWrestlerDivisionGroup(wrestler?: Wrestler) {
