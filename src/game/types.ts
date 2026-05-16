@@ -18,7 +18,19 @@ export type SegmentType = "Match" | "Promo" | "Backstage Angle" | "Contract Sign
 
 export type ShowType = "tv" | "ple";
 
-export type GMStyle = "Creative Visionary" | "Talent Developer" | "Ruthless Executive" | "Ratings Chaser";
+export type GMStyle =
+  | "Creative Visionary"
+  | "Talent Developer"
+  | "Ruthless Executive"
+  | "Ratings Chaser"
+  | "Locker Room General"
+  | "Star Maker"
+  | "Chaos Booker"
+  | "Sports Realist"
+  | "Brand Architect"
+  | "Veteran Operator"
+  | "Cult Favorite"
+  | "Big Money Promoter";
 
 export type BrandStyle =
   | "Prime Time Sports Entertainment"

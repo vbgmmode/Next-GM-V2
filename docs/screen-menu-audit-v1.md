@@ -124,12 +124,21 @@ Good setup fantasy, direct and low friction.
 
 - Could eventually stage the "you are hired" moment with more sports-broadcast pressure.
 
+### Human Audit Notes
+
+- The "you are hired" framing is working and should be preserved.
+- The current player-facing "12-week road" framing feels too short for the long-term GM fantasy.
+- Internal season structure can remain 12-week seasons, but setup copy should not imply the whole career is one short challenge.
+- Future contract/setup language should communicate that the player is being hired to run a brand over time, with a multi-season and eventually multi-year fantasy.
+- This is a future copy/framing note only. It does not authorize setup flow, season structure, persistence, or gameplay changes.
+
 ### Player Decision This Screen Should Support
 
 Commit to starting a new solo career or return to the title screen.
 
 ### Priority Notes
 
+- P1: Reframe player-facing contract copy away from "one short road" and toward being hired to run a brand over time.
 - P2: Audit whether the setup fantasy needs more stakes before content expansion.
 
 ### Open Questions For Human Review
@@ -161,12 +170,23 @@ Clear setup form with compact choices.
 
 - Risks feeling like setup metadata unless styles have stronger character framing.
 
+### Human Audit Notes
+
+- GM name selection is working and should stay.
+- The "Who runs the room?" framing is strong and should be preserved.
+- GM identity should eventually include a few more characteristics beyond the current style choices.
+- Each GM characteristic or style should eventually have a small info affordance, tooltip, or info panel explaining what it means.
+- The explanation does not need to define exact mechanical effects yet.
+- The UI should eventually clarify whether a GM choice is flavor-only, roleplay framing, or gameplay-relevant once that product decision is made.
+- This is a future setup-framing note only. It does not authorize new GM systems, new persistence fields, or setup flow changes.
+
 ### Player Decision This Screen Should Support
 
 Choose who the player wants to be as a GM.
 
 ### Priority Notes
 
+- P1: Expand GM identity framing and add explanation affordances in a later implementation ticket.
 - P1: Audit whether GM style should remain flavor-only or needs clearer expectation-setting later.
 
 ### Open Questions For Human Review
@@ -198,12 +218,34 @@ Easy to understand, but still form-like.
 
 - Brand fantasy could carry more visual identity and atmosphere.
 
+### Human Audit Notes
+
+- The current "what does TV feel like?" / brand-style step does not feel like the right long-term setup fantasy.
+- Future setup should shift toward entering a competitive GM universe before Draft Night.
+- Desired future setup flow:
+  1. Contract / You're Hired.
+  2. Choose GM identity.
+  3. Select rival GMs or other GMs in the universe.
+  4. Select available brand.
+  5. CPU rival GMs claim remaining brands.
+  6. Enter Draft Night.
+- Brand selection should feel like choosing the player's seat at the table, not only picking a TV style.
+- Desired initial available brand fantasies for prototype planning are WWE Raw, WWE SmackDown, WWE NXT, and AEW.
+- Those names describe prototype fantasy only. Any later public or release version may need fictionalized equivalents or another licensing-safe approach.
+- Rival GMs should be selected or shown before the player chooses a brand.
+- After the player chooses their brand, CPU rival GMs should pick or be assigned remaining brands.
+- This future structure should make the world feel competitive before Draft Night.
+- Future data/system needs would include rival GM identities, rival GM names, rival GM traits/styles, a brand pool, brand assignment logic, player brand vs CPU rival brands, and draft-night setup that reflects the chosen brand universe.
+- This is a future direction note only. It does not authorize adding rival GM data, real brands, brand assignment logic, routing changes, setup screen changes, draft changes, or persistence changes.
+
 ### Player Decision This Screen Should Support
 
 Choose what the player's wrestling product should feel like.
 
 ### Priority Notes
 
+- P1: Reframe setup flow around entering a competitive GM universe before Draft Night.
+- P2: Decide whether brand style remains as a sub-choice after brand selection.
 - P1: Audit whether brand style needs better preview before any setup variant expansion.
 
 ### Open Questions For Human Review
@@ -1029,4 +1071,3 @@ Commit to continuing the career into another season.
 - Reach or simulate a PLE week.
 - Reach or simulate Season Review.
 - For each screen, mark P0/P1/P2 gaps and defer implementation details to later tickets.
-

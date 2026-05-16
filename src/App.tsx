@@ -88,7 +88,61 @@ type GMRead = {
 
 const draftPickCount = 12;
 
-const gmStyles: GMStyle[] = ["Creative Visionary", "Talent Developer", "Ruthless Executive", "Ratings Chaser"];
+type ChoiceOption<T extends string = string> = {
+  description?: string;
+  label: T;
+};
+
+const gmStyleOptions: ChoiceOption<GMStyle>[] = [
+  {
+    label: "Creative Visionary",
+    description: "Story-first leader built for long arcs, character turns, and patient payoffs.",
+  },
+  {
+    label: "Talent Developer",
+    description: "Locker-room builder who protects prospects and turns overlooked wrestlers into stars.",
+  },
+  {
+    label: "Ruthless Executive",
+    description: "Business-first operator who makes cold calls when the pressure hits.",
+  },
+  {
+    label: "Ratings Chaser",
+    description: "Spectacle-first GM chasing headlines, big swings, and must-watch TV.",
+  },
+  {
+    label: "Locker Room General",
+    description: "Morale-first leader who keeps egos aligned and the room bought in.",
+  },
+  {
+    label: "Star Maker",
+    description: "Obsessed with finding the next face of the company before everyone else sees it.",
+  },
+  {
+    label: "Chaos Booker",
+    description: "Thrives on swerves, shocks, controversy, and wild live-TV energy.",
+  },
+  {
+    label: "Sports Realist",
+    description: "Treats the brand like a fight league where rankings, stakes, and credibility matter.",
+  },
+  {
+    label: "Brand Architect",
+    description: "Builds a clear identity, sharp presentation, and a long-term audience promise.",
+  },
+  {
+    label: "Veteran Operator",
+    description: "Steady, political, experienced, and hard to rattle when the office gets loud.",
+  },
+  {
+    label: "Cult Favorite",
+    description: "Internet-savvy and fan-trust driven, with room for unconventional acts.",
+  },
+  {
+    label: "Big Money Promoter",
+    description: "Sells premium attractions, business spectacle, and the biggest room possible.",
+  },
+];
 const brandStyles: BrandStyle[] = [
   "Prime Time Sports Entertainment",
   "Underground Fight Club",
@@ -1561,7 +1615,7 @@ function NewGameSetupScreen({
             <p className="eyebrow">Sign The Contract</p>
             <h1>You're Hired</h1>
             <p className="lede">
-              A national broadcast window is open, the roster is restless, and ownership wants a 12-week road that feels like appointment TV.
+              A national broadcast window is open, the roster is restless, and ownership wants a GM who can build more than one hot night. Take the chair and turn this brand into a lasting force.
             </p>
             <div className="title-actions">
               <button className="primary-action" onClick={() => setStep("gm")}>
@@ -1630,10 +1684,10 @@ function NewGameSetupScreen({
               <Metric label="GM" value={gmName.trim() || defaultCareer.gmName} detail={gmStyle} />
               <Metric label="Brand Style" value={brandStyle} />
               <Metric label="Starting Money" value={formatMoney(250000)} />
-              <Metric label="Season" value="12 Weeks" detail="PLEs in Weeks 4, 8, and 12" />
+              <Metric label="First Season" value="12 Weeks" detail="PLEs in Weeks 4, 8, and 12" />
             </div>
             <p className="lede">
-              Week 1 opens on TV. The first PLE is Collision Course in Week 4, and ownership expects momentum before the road reaches Final Bell.
+              Week 1 opens on TV. This first campaign starts with Collision Course in Week 4, and ownership expects momentum before the road reaches Final Bell.
             </p>
             <div className="title-actions">
               <button className="secondary-action" onClick={() => setStep("brand")}>
