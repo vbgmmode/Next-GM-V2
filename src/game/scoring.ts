@@ -111,6 +111,7 @@ const CATALOG_EXECUTION_PROFILES: Record<
   }
 > = {
   M001: { varianceMinutes: 5, minimumMinutes: 6, fatigueBase: 2, fatiguePerMinute: 0.14 },
+  M020: { varianceMinutes: 6, minimumMinutes: 6, fatigueBase: 3, fatiguePerMinute: 0.18 },
   M002: { varianceMinutes: 6, minimumMinutes: 7, fatigueBase: 3, fatiguePerMinute: 0.16 },
   M003: { varianceMinutes: 7, minimumMinutes: 8, fatigueBase: 3, fatiguePerMinute: 0.17 },
   M019: { varianceMinutes: 8, minimumMinutes: 8, fatigueBase: 4, fatiguePerMinute: 0.22 },
@@ -145,6 +146,11 @@ type BroadcastOverrunLevel = NonNullable<ShowResult["broadcastOverrunLevel"]>;
 export function isValidSegment(segment: Segment, wrestlers: Wrestler[] = []) {
   const hasMajorInjury = segment.participantIds.some((id) => wrestlers.find((wrestler) => wrestler.id === id)?.injuryStatus === "major");
   if (hasMajorInjury) {
+    return false;
+  }
+
+  const uniqueParticipantCount = new Set(segment.participantIds).size;
+  if (segment.participantIds.length !== uniqueParticipantCount) {
     return false;
   }
 
@@ -310,6 +316,8 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
       titleHistoryEvents.push(titleResolution.event);
     }
 
+    const winnerId = getSegmentWinner(resolvedSegment, game.wrestlers)?.id;
+
     if (rivalryNote) {
       rivalryNotes.push(rivalryNote);
     }
@@ -332,9 +340,11 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
       fatigueChanges,
       championshipId: resolvedSegment.championshipId,
       rivalryId: resolvedSegment.rivalryId,
+      segmentCatalogId: resolvedSegment.segmentCatalogId,
+      winnerId,
       titleNote,
       rivalryNote,
-      recapNote: getSegmentRecap(resolvedSegment, game.wrestlers, score, isPle, openChallengeResolution?.isNoContest),
+      recapNote: getSegmentRecap(resolvedSegment, game.wrestlers, score, isPle, winnerId, openChallengeResolution?.isNoContest),
       resolvedOpponentId: openChallengeResolution?.opponent?.id,
       resolvedOpponentName: openChallengeResolution?.opponent?.name,
       isNoContest,
@@ -820,10 +830,11 @@ function hashString(value: string) {
   return hash;
 }
 
-function getSegmentRecap(segment: Segment, wrestlers: Wrestler[], score: number, isPle: boolean, isNoContest?: boolean) {
+function getSegmentRecap(segment: Segment, wrestlers: Wrestler[], score: number, isPle: boolean, winnerId?: string, isNoContest?: boolean) {
   const names = segment.participantIds.map((id) => wrestlers.find((wrestler) => wrestler.id === id)?.name ?? "Unknown");
   const joinedNames = names.join(" / ");
   const pairedNames = names.join(" and ");
+  const teamNames = getTagTeamNamesForSegment(segment, wrestlers);
   const stage = isPle ? " under major-event pressure" : "";
 
   if (segment.type === "Open Challenge") {
@@ -844,6 +855,13 @@ function getSegmentRecap(segment: Segment, wrestlers: Wrestler[], score: number,
   }
 
   if (segment.type === "Match") {
+    if (segment.segmentCatalogId === "M020") {
+      const winnerLabel = getTagMatchWinnerLabel(segment, wrestlers, winnerId);
+      return winnerLabel
+        ? `${teamNames}. ${winnerLabel} in a 2v2 tag contest, with ${getSegmentMatchTone(score)}${stage}.`
+        : `${teamNames} ran a 2v2 tag contest${stage}.`;
+    }
+
     if (score >= 85) {
       return `${pairedNames} delivered a premium bell-to-bell statement${stage}.`;
     }
@@ -1069,10 +1087,88 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
 }
 
 function getSegmentWinner(segment: Segment, wrestlers: Wrestler[]) {
+  if (segment.segmentCatalogId === "M020") {
+    return getTagMatchWinner(segment, wrestlers);
+  }
+
   return segment.participantIds
     .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
     .filter((wrestler): wrestler is Wrestler => Boolean(wrestler))
     .sort((a, b) => getWinnerScore(b) - getWinnerScore(a))[0];
+}
+
+function getTagMatchTeams(segment: Segment) {
+  if (segment.segmentCatalogId !== "M020" || segment.participantIds.length !== 4) {
+    return undefined;
+  }
+
+  return {
+    teamAIds: [segment.participantIds[0], segment.participantIds[1]],
+    teamBIds: [segment.participantIds[2], segment.participantIds[3]],
+  };
+}
+
+function getTagTeamNamesForSegment(segment: Segment, wrestlers: Wrestler[]) {
+  const teams = getTagMatchTeams(segment);
+
+  if (!teams) {
+    return segment.participantIds.map((id) => wrestlers.find((wrestler) => wrestler.id === id)?.name ?? "Unknown").join(" / ");
+  }
+
+  const teamA = teams.teamAIds.map((id) => wrestlers.find((wrestler) => wrestler.id === id)?.name ?? "Unknown").join(" / ");
+  const teamB = teams.teamBIds.map((id) => wrestlers.find((wrestler) => wrestler.id === id)?.name ?? "Unknown").join(" / ");
+
+  return `Team A ${teamA ? `(${teamA})` : "(TBD)"} vs Team B ${teamB ? `(${teamB})` : "(TBD)"}`;
+}
+
+function getTagMatchWinner(segment: Segment, wrestlers: Wrestler[]) {
+  const teams = getTagMatchTeams(segment);
+
+  if (!teams) {
+    return undefined;
+  }
+
+  const teamARoster = teams.teamAIds.map((id) => wrestlers.find((wrestler) => wrestler.id === id)).filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
+  const teamBRoster = teams.teamBIds.map((id) => wrestlers.find((wrestler) => wrestler.id === id)).filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
+
+  if (!teamARoster.length || !teamBRoster.length) {
+    return undefined;
+  }
+
+  const teamAScore = teamARoster.reduce((sum, wrestler) => sum + getWinnerScore(wrestler), 0);
+  const teamBScore = teamBRoster.reduce((sum, wrestler) => sum + getWinnerScore(wrestler), 0);
+  const winningTeam = teamAScore === teamBScore ? teamARoster : teamAScore > teamBScore ? teamARoster : teamBRoster;
+
+  return winningTeam.sort((a, b) => getWinnerScore(b) - getWinnerScore(a))[0];
+}
+
+function getTagMatchWinnerLabel(segment: Segment, wrestlers: Wrestler[], winnerId?: string) {
+  if (!winnerId) {
+    return undefined;
+  }
+
+  const winner = wrestlers.find((wrestler) => wrestler.id === winnerId);
+
+  if (!winner) {
+    return undefined;
+  }
+
+  const teams = getTagMatchTeams(segment);
+
+  if (!teams) {
+    return undefined;
+  }
+
+  const winningSide = teams.teamAIds.includes(winner.id) ? "Team A" : "Team B";
+  return `${winningSide} (${winner.name}) won`;
+}
+
+function getSegmentMatchTone(score: number) {
+  if (score >= 85) {
+    return "Team control was clear";
+  }
+
+  return score >= 70 ? "the contest moved with clean timing" : "the side momentum was uneven";
 }
 
 function getWinnerScore(wrestler: Wrestler) {

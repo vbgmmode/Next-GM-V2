@@ -63,6 +63,7 @@ import type {
   RivalGMAssignment,
   Screen,
   Segment,
+  SegmentResult,
   SegmentType,
   ShowResult,
   SocialCategory,
@@ -778,6 +779,11 @@ function getSegmentValidationWarning(segment: Segment, wrestlers: Wrestler[] = [
     return "";
   }
 
+  const uniqueParticipantCount = new Set(segment.participantIds).size;
+  if (segment.participantIds.length !== uniqueParticipantCount) {
+    return "Each wrestler can only appear once in a segment.";
+  }
+
   const unavailable = getSegmentParticipants(segment, wrestlers).find((wrestler) => wrestler.injuryStatus === "major");
 
   if (unavailable) {
@@ -948,7 +954,7 @@ function getPleReadinessSnapshot(game: GameState, validShowSegments: Segment[], 
       label: "Main Event Anchor",
       status: mainEventHasAnchor ? "Closing slot has stakes" : mainEvent ? "Closing slot is light" : "No closing slot yet",
       detail: mainEvent
-        ? `${mainEvent.segmentDisplayName ?? mainEvent.type} closes the rundown${mainEventParticipants.length ? ` with ${mainEventParticipants.map((wrestler) => wrestler.name).join(" / ")}` : ""}.`
+        ? `${mainEvent.segmentDisplayName ?? mainEvent.type} closes the rundown${mainEventParticipants.length ? ` with ${getSegmentParticipantsLabel(mainEvent, game.wrestlers)}` : ""}.`
         : "Add a valid final segment before the PLE goes live.",
       tone: mainEventHasAnchor ? "ready" : mainEvent ? "watch" : "build",
     },
@@ -988,6 +994,65 @@ function getSegmentParticipants(segment: Segment, wrestlers: Wrestler[]) {
   return segment.participantIds
     .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
     .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
+}
+
+function getSegmentParticipantsLabel(segment: Segment, wrestlers: Wrestler[]) {
+  const participants = getSegmentParticipants(segment, wrestlers);
+
+  if (!participants.length) {
+    return "No participants selected";
+  }
+
+  if (segment.segmentCatalogId === "M020" && segment.participantIds.length === 4) {
+    const teamA = participants
+      .slice(0, 2)
+      .map((wrestler) => wrestler.name)
+      .join(" / ");
+    const teamB = participants
+      .slice(2)
+      .map((wrestler) => wrestler.name)
+      .join(" / ");
+    return `Team A (${teamA || "TBD"}) vs Team B (${teamB || "TBD"})`;
+  }
+
+  return participants.map((wrestler) => wrestler.name).join(" / ");
+}
+
+function getSegmentResultParticipantsLabel(segment: SegmentResult, wrestlers: Wrestler[]) {
+  if (!segment.participantIds.length) {
+    return "No participants";
+  }
+
+  if (segment.segmentCatalogId === "M020" && segment.participantIds.length === 4) {
+    const teamA = segment.participantIds
+      .slice(0, 2)
+      .map((id: string) => wrestlers.find((wrestler) => wrestler.id === id)?.name ?? "Unknown")
+      .join(" / ");
+    const teamB = segment.participantIds
+      .slice(2)
+      .map((id: string) => wrestlers.find((wrestler) => wrestler.id === id)?.name ?? "Unknown")
+      .join(" / ");
+    const winnerLabel = getTagMatchResultWinnerLabel(segment, wrestlers);
+    return `${winnerLabel ? `${winnerLabel} · ` : ""}Team A (${teamA || "TBD"}) vs Team B (${teamB || "TBD"})`;
+  }
+
+  return segment.participantNames.join(" / ");
+}
+
+function getTagMatchResultWinnerLabel(segment: SegmentResult, wrestlers: Wrestler[]) {
+  if (segment.type !== "Match" || segment.segmentCatalogId !== "M020" || !segment.winnerId) {
+    return undefined;
+  }
+
+  const winner = wrestlers.find((wrestler) => wrestler.id === segment.winnerId);
+
+  if (!winner) {
+    return undefined;
+  }
+
+  const teamAIds = segment.participantIds.slice(0, 2);
+  const winningSide = teamAIds.includes(segment.winnerId) ? "Team A" : "Team B";
+  return `${winningSide} winner: ${winner.name}`;
 }
 
 function canWrestlersShareMatch(wrestlers: Wrestler[]) {
@@ -4486,11 +4551,7 @@ function DashboardScreen({
                   <span>
                     Segment {index + 1} · {segment.type}
                   </span>
-                  <strong>
-                    {getSegmentParticipants(segment, game.wrestlers)
-                      .map((wrestler) => wrestler.name)
-                      .join(" / ") || "No participants selected"}
-                  </strong>
+                  <strong>{getSegmentParticipantsLabel(segment, game.wrestlers)}</strong>
                   <small>{isValidSegment(segment, game.wrestlers) ? "Ready for TV" : getSegmentValidationWarning(segment, game.wrestlers)}</small>
                 </div>
               ))}
@@ -4980,7 +5041,7 @@ function BookingScreen({
                           ))}
                         </div>
                         <p className="segment-cue">{option.productionCue}</p>
-                        <p>{participants.map((wrestler) => wrestler.name).join(" / ") || getSegmentValidationWarning(segment, game.wrestlers)}</p>
+                        <p>{getSegmentParticipantsLabel(segment, game.wrestlers) || getSegmentValidationWarning(segment, game.wrestlers)}</p>
                       </div>
                       <div className="segment-actions">
                         <button className="secondary-action" onClick={() => setComposerSegmentId(segment.id)}>
@@ -6358,13 +6419,13 @@ function ResultsScreen({
 
       <section className="status-grid" aria-label="Show highlights">
         <Metric label="Show Score" value={`${result.totalScore}`} detail={`Grade ${getShowGrade(result.totalScore)}`} />
-        <Metric label="Best Segment" value={`${bestSegment.score}`} detail={bestSegment.participantNames.join(" / ")} />
+        <Metric label="Best Segment" value={`${bestSegment.score}`} detail={getSegmentResultParticipantsLabel(bestSegment, game.wrestlers)} />
         <Metric
           label="Runtime"
           value={result.actualRuntimeMinutes !== undefined ? `${result.actualRuntimeMinutes} min` : "Legacy"}
           detail={result.plannedRuntimeMinutes !== undefined ? `Planned ${result.plannedRuntimeMinutes} min${result.broadcastOverrunMinutes ? ` · +${result.broadcastOverrunMinutes} over` : ""}` : "No runtime record"}
         />
-        <Metric label="Best Type" value={bestSegment.type} detail={bestSegment.participantNames.join(" / ")} />
+        <Metric label="Best Type" value={bestSegment.type} detail={getSegmentResultParticipantsLabel(bestSegment, game.wrestlers)} />
       </section>
 
       <PostShowCauseLedger sections={causeLedger} />
@@ -6433,7 +6494,7 @@ function ResultsScreen({
               <p className="eyebrow">
                 Segment {index + 1} · {segment.type}
               </p>
-              <h3>{segment.participantNames.join(" / ")}</h3>
+              <h3>{getSegmentResultParticipantsLabel(segment, game.wrestlers)}</h3>
               <p>
                 Momentum +{getResultChange(segment.momentumChanges)} · Fatigue +{getResultChange(segment.fatigueChanges)}
               </p>
@@ -6504,7 +6565,7 @@ function WeekReviewScreen({
 
       <section className="status-grid" aria-label="Week review show outcome">
         <Metric label="Show Score" value={`${result.totalScore}`} detail={`Grade ${getShowGrade(result.totalScore)}`} />
-        <Metric label="Best Segment" value={`${bestSegment.score}`} detail={bestSegment.participantNames.join(" / ")} />
+        <Metric label="Best Segment" value={`${bestSegment.score}`} detail={getSegmentResultParticipantsLabel(bestSegment, game.wrestlers)} />
         <Metric
           label="Runtime"
           value={result.actualRuntimeMinutes !== undefined ? `${result.actualRuntimeMinutes} min` : "Legacy"}
@@ -6912,6 +6973,36 @@ function TitleMatchControl({
     return null;
   }
 
+  const isTagMatch = segment.type === "Match" && segment.segmentCatalogId === "M020";
+
+  if (isTagMatch) {
+    const participantsLabel = getSegmentParticipantsLabel(segment, wrestlers);
+    const staleChampion = segment.championshipId ? championships.find((championship) => championship.id === segment.championshipId) : undefined;
+
+    return (
+      <div className="title-match-control">
+        <div>
+          <span>Title Match</span>
+          <strong>Tag Team Match (2v2) is non-title in v1.</strong>
+          <small>{participantsLabel}</small>
+        </div>
+        <div className="title-defense-state">
+          <span>Title Controls</span>
+          <strong>Sanctioned title defenses stay singles-only in this build.</strong>
+        </div>
+        {staleChampion ? (
+          <div className="title-eligible-readout" aria-label="Legacy title context">
+            <article>
+              <span>Legacy context detected</span>
+              <strong>{staleChampion.name}</strong>
+              <small>This segment is a non-title format; legacy title attachment is ignored.</small>
+            </article>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   const eligibleChampionships = championships.filter((championship) => canSegmentAttachChampionship(segment, championship, wrestlers));
   const selectedChampionship = championships.find((championship) => championship.id === segment.championshipId);
   const isTitleMatch = segment.type === "Match";
@@ -7206,7 +7297,7 @@ function SegmentContext({
     <div className="segment-context">
       <div>
         <span>Selected</span>
-        <strong>{participants.map((wrestler) => wrestler.name).join(" / ") || "No participants selected"}</strong>
+        <strong>{getSegmentParticipantsLabel(segment, wrestlers)}</strong>
       </div>
       <div>
         <span>Production Note</span>

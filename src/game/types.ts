@@ -292,6 +292,8 @@ export type SegmentResult = {
   fatigueChanges: Record<string, number>;
   championshipId?: string;
   rivalryId?: string;
+  segmentCatalogId?: string;
+  winnerId?: string;
   titleNote?: string;
   rivalryNote?: string;
   recapNote?: string;
