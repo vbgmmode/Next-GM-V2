@@ -12,6 +12,7 @@ import type {
   StartingBudgetTier,
   Wrestler,
 } from "./types";
+import { getTitleCatalogEntriesForBrand } from "./titleCatalog";
 import { top200DraftPool } from "./top200DraftPool";
 
 type SeedWrestler = Omit<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek"> &
@@ -110,7 +111,54 @@ function byStarPower(wrestlers: Wrestler[]) {
   return [...wrestlers].sort((a, b) => b.popularity + b.momentum - (a.popularity + a.momentum));
 }
 
-export function createDefaultChampionships(wrestlers: Wrestler[] = roster): Championship[] {
+function getSeedDivisionGroup(wrestler: Wrestler) {
+  const division = wrestler.division?.toLowerCase() ?? "";
+
+  if (division.includes("women") || division.includes("female")) {
+    return "Womens";
+  }
+
+  if (division.includes("men") || division.includes("male")) {
+    return "Mens";
+  }
+
+  return undefined;
+}
+
+export function createDefaultChampionships(wrestlers: Wrestler[] = roster, brandStyle: BrandStyle = defaultCareer.brandStyle): Championship[] {
+  const catalogTitles = getTitleCatalogEntriesForBrand(brandStyle).filter((title) => title.eligibleMatchScope === "singles");
+
+  if (catalogTitles.length) {
+    const ranked = byStarPower(wrestlers);
+    const usedChampionIds = new Set<string>();
+
+    return catalogTitles.map((title) => {
+      const sameDivision = ranked.filter((wrestler) => getSeedDivisionGroup(wrestler) === title.division);
+      const champion = sameDivision.find((wrestler) => !usedChampionIds.has(wrestler.id)) ?? sameDivision[0] ?? ranked.find((wrestler) => !usedChampionIds.has(wrestler.id)) ?? ranked[0] ?? roster[0];
+
+      usedChampionIds.add(champion.id);
+
+      return {
+        id: title.canonicalTitleId,
+        name: title.displayName,
+        division: title.division,
+        catalogId: title.catalogId,
+        canonicalTitleId: title.canonicalTitleId,
+        brand: title.brand,
+        titleLevel: title.titleLevel,
+        titleType: title.prestigeTier,
+        prestigeTier: title.prestigeTier,
+        eligibleMatchScope: title.eligibleMatchScope,
+        minimumDefenseFrequencyWeeks: title.minimumDefenseFrequencyWeeks,
+        titleSceneCopy: title.sceneCopy,
+        prestige: title.prestige,
+        championIds: [champion.id],
+        reignStartWeek: 1,
+        defenses: 0,
+      };
+    });
+  }
+
   const ranked = byStarPower(wrestlers);
   const worldChampion = ranked[0] ?? roster[0];
   const televisionChampion =
@@ -261,7 +309,7 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
     createdAt: new Date().toISOString(),
     money: startingMoney,
     wrestlers: startingRoster,
-    championships: createDefaultChampionships(startingRoster),
+    championships: createDefaultChampionships(startingRoster, career.brandStyle),
     rivalries: createDefaultRivalries(startingRoster),
     championshipHistory: [],
     rivalryHistory: [],

@@ -125,6 +125,15 @@ export type Championship = {
   id: string;
   name: string;
   division: string;
+  catalogId?: string;
+  canonicalTitleId?: string;
+  brand?: PrototypeBrand;
+  titleLevel?: string;
+  titleType?: string;
+  prestigeTier?: string;
+  eligibleMatchScope?: "singles" | "tag_team";
+  minimumDefenseFrequencyWeeks?: number;
+  titleSceneCopy?: string;
   prestige: number;
   championIds: string[];
   reignStartWeek: number;

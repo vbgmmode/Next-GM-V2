@@ -16,6 +16,7 @@ import type {
 } from "./types";
 import { generateFinanceReport } from "./finance";
 import { generateSocialPosts } from "./social";
+import { getChampionshipDivisionGroup, wrestlerFitsChampionshipDivision } from "./titleCatalog";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
@@ -1005,13 +1006,19 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
 
   const championship = championships.find((title) => title.id === segment.championshipId);
 
-  if (!championship || championship.division === "Tag Team" || championship.championIds.length !== 1) {
+  if (!championship || championship.eligibleMatchScope === "tag_team" || championship.division === "Tag Team" || championship.championIds.length !== 1) {
     return undefined;
   }
 
   const championId = championship.championIds[0];
 
   if (!segment.participantIds.includes(championId)) {
+    return undefined;
+  }
+
+  const titleDivision = getChampionshipDivisionGroup(championship);
+
+  if (titleDivision && !segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship))) {
     return undefined;
   }
 

@@ -1,5 +1,6 @@
 import type { Championship, GameDifficulty, GameState, GMStyle, LockerRoomFallout, RivalGMAssignment, Rivalry, Screen, Segment, SegmentType, ShowResult, StartingBudgetTier, Wrestler } from "./types";
 import { createDefaultChampionships, createDefaultRivalries, createSeasonCalendar, defaultCareer, isPrototypeBrand } from "./seed";
+import { applyChampionshipCatalogDefaults } from "./titleCatalog";
 
 export type GameScreen = Exclude<Screen, "title" | "setup">;
 export type ProfileReturnScreen = Extract<GameScreen, "roster" | "booking">;
@@ -133,6 +134,12 @@ function normalizeShowHistory(showHistory: unknown): ShowResult[] {
   });
 }
 
+function normalizeChampionships(championships: unknown, wrestlers: Wrestler[], brandStyle: GameState["brandStyle"]) {
+  return Array.isArray(championships) && championships.length
+    ? (championships as Championship[]).map((championship) => applyChampionshipCatalogDefaults(championship, brandStyle))
+    : createDefaultChampionships(wrestlers, brandStyle);
+}
+
 function getDefaultSegmentDefaults(type: SegmentType) {
   if (type === "Open Challenge") {
     return { segmentCatalogId: "P007", segmentDisplayName: "Open Challenge", durationMinutes: 7, participantMin: 1, participantMax: 1 };
@@ -195,6 +202,8 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
     screen = "dashboard";
   }
 
+  const brandStyle = typeof savedGame.brandStyle === "string" ? (savedGame.brandStyle as GameState["brandStyle"]) : defaultCareer.brandStyle;
+
   return {
     game: {
       seasonNumber: savedGame.seasonNumber ?? 1,
@@ -203,17 +212,14 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
       gmName: savedGame.gmName ?? defaultCareer.gmName,
       gmStyle: savedGame.gmStyle ?? defaultCareer.gmStyle,
       brandName: savedGame.brandName ?? defaultCareer.brandName,
-      brandStyle: savedGame.brandStyle ?? defaultCareer.brandStyle,
+      brandStyle,
       difficulty: isGameDifficulty(savedGame.difficulty) ? savedGame.difficulty : defaultCareer.difficulty,
       startingBudgetTier: isStartingBudgetTier(savedGame.startingBudgetTier) ? savedGame.startingBudgetTier : defaultCareer.startingBudgetTier,
       rivalGMAssignments: normalizeRivalGMAssignments(savedGame.rivalGMAssignments),
       createdAt: savedGame.createdAt ?? new Date().toISOString(),
       money: savedGame.money ?? 250000,
       wrestlers,
-      championships:
-        Array.isArray(savedGame.championships) && savedGame.championships.length
-          ? (savedGame.championships as Championship[])
-          : createDefaultChampionships(wrestlers),
+      championships: normalizeChampionships(savedGame.championships, wrestlers, brandStyle),
       rivalries: Array.isArray(savedGame.rivalries) ? (savedGame.rivalries as Rivalry[]) : createDefaultRivalries(wrestlers),
       championshipHistory: Array.isArray(savedGame.championshipHistory) ? savedGame.championshipHistory : [],
       rivalryHistory: Array.isArray(savedGame.rivalryHistory) ? savedGame.rivalryHistory : [],

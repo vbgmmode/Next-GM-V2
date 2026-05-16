@@ -22,6 +22,7 @@ import {
   isValidSegment,
   runShow,
 } from "./game/scoring";
+import { getChampionshipDivisionGroup, getTitleCatalogBrand, wrestlerFitsChampionshipDivision } from "./game/titleCatalog";
 import type {
   CalendarWeek,
   BrandStyle,
@@ -114,6 +115,7 @@ type SmartRundownResult = {
   notes: string[];
   segments: Segment[];
 };
+type QaHarnessMode = "runtime" | "legacy-runtime";
 
 const draftPickCount = 12;
 
@@ -1033,30 +1035,46 @@ function getWrestlerNames(ids: string[], wrestlers: Wrestler[]) {
 }
 
 function isSinglesChampionship(championship: Championship) {
-  return championship.division !== "Tag Team" && championship.championIds.length === 1;
+  return championship.eligibleMatchScope !== "tag_team" && championship.division !== "Tag Team" && championship.championIds.length === 1;
 }
 
-function canSegmentContestChampionship(segment: Segment, championship: Championship) {
+function doSegmentParticipantsFitChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[]) {
+  const titleDivision = getChampionshipDivisionGroup(championship);
+
+  if (!titleDivision) {
+    return true;
+  }
+
+  return segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship));
+}
+
+function canSegmentContestChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[] = []) {
   return (
     segment.type === "Match" &&
-    isValidSegment(segment) &&
+    isValidSegment(segment, wrestlers) &&
     segment.participantIds.length === 2 &&
     isSinglesChampionship(championship) &&
-    segment.participantIds.includes(championship.championIds[0])
+    segment.participantIds.includes(championship.championIds[0]) &&
+    doSegmentParticipantsFitChampionship(segment, championship, wrestlers)
   );
 }
 
-function canSegmentAttachChampionship(segment: Segment, championship: Championship) {
-  if (canSegmentContestChampionship(segment, championship)) {
+function canSegmentAttachChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[] = []) {
+  if (canSegmentContestChampionship(segment, championship, wrestlers)) {
     return true;
   }
 
   if (segment.type === "Contract Signing") {
-    return isValidSegment(segment) && isSinglesChampionship(championship) && segment.participantIds.includes(championship.championIds[0]);
+    return (
+      isValidSegment(segment, wrestlers) &&
+      isSinglesChampionship(championship) &&
+      segment.participantIds.includes(championship.championIds[0]) &&
+      doSegmentParticipantsFitChampionship(segment, championship, wrestlers)
+    );
   }
 
   if (segment.type === "Open Challenge") {
-    return isValidSegment(segment) && championship.championIds.includes(segment.participantIds[0]);
+    return isValidSegment(segment, wrestlers) && championship.championIds.includes(segment.participantIds[0]) && doSegmentParticipantsFitChampionship(segment, championship, wrestlers);
   }
 
   return false;
@@ -1065,8 +1083,49 @@ function canSegmentAttachChampionship(segment: Segment, championship: Championsh
 function getTopContenders(championship: Championship, wrestlers: Wrestler[], limit = 3) {
   return [...wrestlers]
     .filter((wrestler) => !championship.championIds.includes(wrestler.id))
+    .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship))
     .sort((a, b) => b.popularity + b.momentum - (a.popularity + a.momentum))
     .slice(0, limit);
+}
+
+function getTitleSceneRead(championship: Championship, wrestlers: Wrestler[], currentWeek: number) {
+  const contenders = getTopContenders(championship, wrestlers, 6);
+  const defenseWindow = championship.minimumDefenseFrequencyWeeks ?? 6;
+  const reignLength = getReignLength(championship, currentWeek);
+
+  if (championship.eligibleMatchScope === "tag_team") {
+    return {
+      label: "Presentation Scene",
+      detail: "Tag title context is tracked, but tag-team title matches are outside this build.",
+    };
+  }
+
+  if (contenders.length < 2) {
+    return {
+      label: "Thin Scene",
+      detail: "The roster needs more same-division contenders around this championship.",
+    };
+  }
+
+  if (reignLength >= defenseWindow && championship.defenses === 0) {
+    return {
+      label: "Needs Attention",
+      detail: `No defense recorded across a ${reignLength}-week reign.`,
+    };
+  }
+
+  return {
+    label: "Active Scene",
+    detail: `${contenders.length} same-division contender${contenders.length === 1 ? "" : "s"} fit the title picture.`,
+  };
+}
+
+function getChampionshipOfficeLine(championship: Championship) {
+  const brand = championship.brand ?? "Brand";
+  const level = championship.titleLevel ?? "Title";
+  const type = championship.titleType ?? championship.prestigeTier ?? championship.division;
+
+  return `${brand} · ${championship.division} · ${level} · ${type}`;
 }
 
 function getReignLength(championship: Championship, currentWeek: number) {
@@ -1254,7 +1313,7 @@ function buildSmartSegment(
   };
 
   if (option.championshipAllowed) {
-    const championship = game.championships.find((title) => canSegmentAttachChampionship(segment, title));
+    const championship = game.championships.find((title) => canSegmentAttachChampionship(segment, title, game.wrestlers));
     if (championship) {
       segment = { ...segment, championshipId: championship.id };
     }
@@ -1756,11 +1815,18 @@ function getMostRecentCareer(careerSaves: CareerSave[]) {
   return careerSaves[0] ?? null;
 }
 
-function isQaHarnessRequested() {
-  return import.meta.env.DEV && new URLSearchParams(window.location.search).get(qaHarnessParam) === "runtime";
+function getQaHarnessMode(): QaHarnessMode | null {
+  const env = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env;
+
+  if (!env?.DEV) {
+    return null;
+  }
+
+  const mode = new URLSearchParams(window.location.search).get(qaHarnessParam);
+  return mode === "runtime" || mode === "legacy-runtime" ? mode : null;
 }
 
-function buildQaRuntimeHarnessState(): SavedGameState {
+function buildQaRuntimeHarnessState(mode: QaHarnessMode): SavedGameState {
   const draftedWrestlers = draftPool.slice(0, draftPickCount);
   const game = createNewGame({
     ...defaultCareer,
@@ -1770,13 +1836,56 @@ function buildQaRuntimeHarnessState(): SavedGameState {
     rivalGMAssignments: createRivalGMAssignments("Raw"),
   });
 
+  if (mode === "legacy-runtime") {
+    const focusWrestler = game.wrestlers[0];
+    const legacyResult: ShowResult = {
+      id: "qa-legacy-runtime-result",
+      seasonNumber: game.seasonNumber,
+      week: game.currentWeek,
+      brandName: game.brandName,
+      showName: "Legacy Runtime TV",
+      showType: "tv",
+      totalScore: 82,
+      segmentResults: [
+        {
+          segmentId: "qa-legacy-runtime-segment",
+          type: "Promo",
+          participantNames: [focusWrestler.name],
+          participantIds: [focusWrestler.id],
+          score: 82,
+          momentumChanges: { [focusWrestler.id]: 4 },
+          fatigueChanges: { [focusWrestler.id]: 2 },
+          recapNote: `${focusWrestler.name} carried a legacy promo result without runtime fields.`,
+        },
+      ],
+      biggestMomentumGain: { name: focusWrestler.name, amount: 4 },
+      biggestFatigueIncrease: { name: focusWrestler.name, amount: 2 },
+      titleNotes: [],
+      rivalryNotes: [],
+      titleHistoryEvents: [],
+      rivalryHistoryEvents: [],
+      lockerRoomFallout: {
+        moraleDrops: [],
+        moraleBoosts: [],
+        overuseWarnings: [],
+        underuseWarnings: [],
+        injuryNotes: [],
+      },
+    };
+
+    return buildSavedGameState({ ...game, showHistory: [legacyResult] }, "results");
+  }
+
   return buildSavedGameState(game, "booking");
 }
 
 function App() {
-  const qaHarnessState = useMemo(() => (isQaHarnessRequested() ? buildQaRuntimeHarnessState() : null), []);
+  const qaHarnessState = useMemo(() => {
+    const mode = getQaHarnessMode();
+    return mode ? buildQaRuntimeHarnessState(mode) : null;
+  }, []);
   const isQaHarness = Boolean(qaHarnessState);
-  const [careerSaves, setCareerSaves] = useState<CareerSave[]>(() => loadCareerSaves());
+  const [careerSaves, setCareerSaves] = useState<CareerSave[]>(() => (isQaHarness ? [] : loadCareerSaves()));
   const [savedGame, setSavedGame] = useState<SavedGameState | null>(qaHarnessState);
   const [activeSaveId, setActiveSaveId] = useState<string | undefined>();
   const [screen, setScreen] = useState<Screen>(qaHarnessState?.screen ?? "title");
@@ -2011,7 +2120,7 @@ function App() {
             ? current.championships.find((title) => title.id === updatedSegment.championshipId)
             : undefined;
 
-          if (championship && !canSegmentAttachChampionship(updatedSegment, championship)) {
+          if (championship && !canSegmentAttachChampionship(updatedSegment, championship, current.wrestlers)) {
             updatedSegment = { ...updatedSegment, championshipId: undefined };
           }
 
@@ -2059,7 +2168,7 @@ function App() {
 
           const championship = current.championships.find((title) => title.id === championshipId);
 
-          if (!championshipId || !championship || !canSegmentAttachChampionship(segment, championship)) {
+          if (!championshipId || !championship || !canSegmentAttachChampionship(segment, championship, current.wrestlers)) {
             return { ...segment, championshipId: undefined };
           }
 
@@ -2144,7 +2253,7 @@ function App() {
             ? current.championships.find((title) => title.id === updatedSegment.championshipId)
             : undefined;
 
-          if (championship && !canSegmentAttachChampionship(updatedSegment, championship)) {
+          if (championship && !canSegmentAttachChampionship(updatedSegment, championship, current.wrestlers)) {
             updatedSegment = { ...updatedSegment, championshipId: undefined };
           }
 
@@ -4262,7 +4371,9 @@ function ChampionshipsScreen({
         <div>
           <p className="eyebrow">Title Office</p>
           <h2>Championships</h2>
-          <p className="lede">Prestige lives here. Champions anchor the brand, contenders circle, and title matches create stakes once the bell rings.</p>
+          <p className="lede">
+            {getTitleCatalogBrand(game.brandStyle)} title scenes. Champions anchor the brand, contenders circle by division, and title matches create stakes once the bell rings.
+          </p>
         </div>
         <button className="primary-action" onClick={() => onNavigate("booking")}>
           Book Show
@@ -4271,26 +4382,40 @@ function ChampionshipsScreen({
 
       <section className="championship-grid" aria-label="Championships">
         {game.championships.map((championship) => {
-          const contenders = getTopContenders(championship, game.wrestlers);
+          const contenders = getTopContenders(championship, game.wrestlers, 4);
           const recentHistory = getChampionshipHistory(game, championship.id);
+          const titleRead = getTitleSceneRead(championship, game.wrestlers, game.currentWeek);
 
           return (
             <article className="championship-card" key={championship.id}>
               <div className="championship-head">
                 <div>
-                  <p className="eyebrow">{championship.division}</p>
+                  <p className="eyebrow">{getChampionshipOfficeLine(championship)}</p>
                   <h3>{championship.name}</h3>
                 </div>
                 <strong>Prestige {championship.prestige}</strong>
               </div>
+              <p className="title-scene-copy">{championship.titleSceneCopy ?? "Title scene context is derived from the current roster and resolved title history."}</p>
               <div className="spotlight-grid">
                 <Metric label="Champion" value={getWrestlerNames(championship.championIds, game.wrestlers)} />
                 <Metric label="Reign" value={`${getReignLength(championship, game.currentWeek)} Week${getReignLength(championship, game.currentWeek) === 1 ? "" : "s"}`} />
                 <Metric label="Defenses" value={`${championship.defenses}`} />
               </div>
+              <div className="title-scene-board" aria-label={`${championship.name} title scene status`}>
+                <article>
+                  <span>Scene Read</span>
+                  <strong>{titleRead.label}</strong>
+                  <small>{titleRead.detail}</small>
+                </article>
+                <article>
+                  <span>Eligibility</span>
+                  <strong>{championship.eligibleMatchScope === "tag_team" ? "Tag Scope" : `${championship.division} Singles`}</strong>
+                  <small>{championship.minimumDefenseFrequencyWeeks ? `Defense rhythm: about ${championship.minimumDefenseFrequencyWeeks} weeks` : "Legacy title cadence"}</small>
+                </article>
+              </div>
               <div className="contender-strip">
-                <span>Top Contenders</span>
-                <strong>{contenders.map((wrestler) => wrestler.name).join(" / ")}</strong>
+                <span>Eligible Contenders</span>
+                <strong>{contenders.length ? contenders.map((wrestler) => wrestler.name).join(" / ") : "No clear same-division contenders"}</strong>
               </div>
               <div className="history-list" aria-label={`${championship.name} recent history`}>
                 <span className="history-label">Recent History</span>
@@ -5275,7 +5400,7 @@ function TitleMatchControl({
     return null;
   }
 
-  const eligibleChampionships = championships.filter((championship) => canSegmentAttachChampionship(segment, championship));
+  const eligibleChampionships = championships.filter((championship) => canSegmentAttachChampionship(segment, championship, wrestlers));
   const selectedChampionship = championships.find((championship) => championship.id === segment.championshipId);
   const isTitleMatch = segment.type === "Match";
   const controlLabel = isTitleMatch ? "Title Match" : "Title Context";
@@ -5284,8 +5409,11 @@ function TitleMatchControl({
     segment.type === "Open Challenge"
       ? "Select a champion as issuer to frame the challenge around their title scene."
       : segment.type === "Contract Signing"
-        ? "Select a current singles champion to attach championship context."
-        : "Singles title option opens when a match includes a current singles champion.";
+        ? "Select a current singles champion and same-division talent to attach championship context."
+        : "Singles title option opens when a match includes a current champion and same-division challenger.";
+  const titleContextLine = selectedChampionship
+    ? `${selectedChampionship.brand ?? "Brand"} · ${selectedChampionship.division} · ${selectedChampionship.titleLevel ?? "Title"}`
+    : "Title office checks champion, participants, and division before sanctioning.";
 
   return (
     <div className="title-match-control">
@@ -5302,6 +5430,7 @@ function TitleMatchControl({
                 : "Attach championship context without putting the title at stake."
               : emptyMessage}
         </strong>
+        <small>{titleContextLine}</small>
       </div>
       {eligibleChampionships.length ? (
         <div className="title-buttons">
@@ -5314,7 +5443,7 @@ function TitleMatchControl({
               key={championship.id}
               onClick={() => onSetSegmentChampionship(segment.id, championship.id)}
             >
-              {championship.name}
+              {championship.name} · {championship.division}
             </button>
           ))}
         </div>
