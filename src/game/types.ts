@@ -12,7 +12,7 @@ export type Screen =
   | "results"
   | "seasonReview";
 
-export type SegmentType = "Match" | "Promo";
+export type SegmentType = "Match" | "Promo" | "Backstage Angle" | "Contract Signing" | "Open Challenge";
 
 export type ShowType = "tv" | "ple";
 
@@ -137,6 +137,10 @@ export type SegmentResult = {
   rivalryId?: string;
   titleNote?: string;
   rivalryNote?: string;
+  recapNote?: string;
+  resolvedOpponentId?: string;
+  resolvedOpponentName?: string;
+  isNoContest?: boolean;
 };
 
 export type ShowResult = {

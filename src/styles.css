@@ -170,6 +170,111 @@ button:disabled {
   margin-top: 24px;
 }
 
+.draft-panel {
+  max-width: none;
+}
+
+.draft-board {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.75fr);
+  margin-top: 20px;
+}
+
+.draft-column {
+  background: rgba(8, 9, 13, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  min-height: 520px;
+  padding: 14px;
+}
+
+.drafted-column {
+  border-color: rgba(246, 193, 86, 0.24);
+}
+
+.draft-head,
+.draft-talent-head {
+  align-items: start;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.draft-head > strong {
+  color: #f6c156;
+  text-transform: uppercase;
+}
+
+.draft-list {
+  display: grid;
+  gap: 12px;
+  max-height: 68vh;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.drafted-list {
+  display: grid;
+  gap: 10px;
+}
+
+.draft-talent-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent),
+    rgba(14, 17, 24, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 4px solid #d82332;
+  padding: 14px;
+}
+
+.draft-talent-head button {
+  min-height: 38px;
+}
+
+.draft-stat-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.draft-stat-grid .metric {
+  min-height: 76px;
+  padding: 10px;
+}
+
+.draft-stat-grid .metric strong {
+  font-size: 1.12rem;
+}
+
+.drafted-pick {
+  background: rgba(14, 17, 24, 0.92);
+  border-left: 3px solid #f6c156;
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+}
+
+.drafted-pick span,
+.drafted-pick small {
+  color: #9ea8ba;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.draft-actions {
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.draft-review-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 18px 0 24px;
+}
+
 h1,
 h2,
 h3,
@@ -847,6 +952,7 @@ h3 {
 .booking-controls {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 18px;
 }
@@ -970,6 +1076,26 @@ h3 {
   min-height: 38px;
 }
 
+.participant-label {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 14px 18px 0;
+}
+
+.participant-label span {
+  color: #9ea8ba;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.participant-label strong {
+  color: #f6c156;
+  font-size: 0.82rem;
+}
+
 .participant-grid {
   display: grid;
   gap: 10px;
@@ -1076,6 +1202,16 @@ h3 {
 
   .choice-grid {
     grid-template-columns: 1fr;
+  }
+
+  .draft-board,
+  .draft-review-grid,
+  .draft-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .draft-column {
+    min-height: auto;
   }
 
   .dashboard-hero,

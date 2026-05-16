@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { clearGameState, loadGameState, saveGameState } from "./gameStorage";
 import { advanceGameWeek, startNextSeason } from "./game/advanceWeek";
 import { getFinancePressureLabel } from "./game/finance";
-import { createDefaultChampionships, createDefaultRivalries, createNewGame, createSeasonCalendar, defaultCareer } from "./game/seed";
+import { createDefaultChampionships, createDefaultRivalries, createNewGame, createSeasonCalendar, defaultCareer, draftPool } from "./game/seed";
 import {
   getBestSegment,
   getCurrentCalendarWeek,
@@ -42,7 +42,9 @@ type SavedGameState = {
 type RosterSort = "popularity" | "momentum" | "fatigue" | "morale";
 type RosterFilter = "All" | "Hot" | "Tired" | "Frustrated";
 type SocialFilter = "All" | "Fan Reaction" | "Dirt Sheets" | "Analyst Takes" | "Title Scene" | "Rivalries";
-type SetupStep = "contract" | "gm" | "brand" | "preview";
+type SetupStep = "contract" | "gm" | "brand" | "preview" | "draft" | "review";
+
+const draftPickCount = 12;
 
 const gmStyles: GMStyle[] = ["Creative Visionary", "Talent Developer", "Ruthless Executive", "Ratings Chaser"];
 const brandStyles: BrandStyle[] = [
@@ -51,6 +53,7 @@ const brandStyles: BrandStyle[] = [
   "Workrate Showcase",
   "Reality Era Chaos",
 ];
+const bookingSegmentTypes: SegmentType[] = ["Match", "Promo", "Backstage Angle", "Contract Signing", "Open Challenge"];
 
 function formatMoney(amount: number) {
   const sign = amount < 0 ? "-" : "";
@@ -62,11 +65,99 @@ function formatPressureLabel(label: PressureLabel) {
 }
 
 function getSegmentRuntime(type: SegmentType) {
-  return type === "Match" ? "12 min TV time" : "6 min TV time";
+  if (type === "Match" || type === "Open Challenge") {
+    return "12 min TV time";
+  }
+
+  if (type === "Backstage Angle") {
+    return "7 min TV time";
+  }
+
+  return "6 min TV time";
 }
 
 function getSegmentRequirement(type: SegmentType) {
-  return type === "Match" ? "Needs exactly 2 wrestlers" : "Needs 1 to 3 wrestlers";
+  if (type === "Match") {
+    return "Needs exactly 2 wrestlers";
+  }
+
+  if (type === "Promo") {
+    return "Needs 1 to 3 wrestlers";
+  }
+
+  if (type === "Backstage Angle") {
+    return "Needs 2 to 4 wrestlers";
+  }
+
+  if (type === "Contract Signing") {
+    return "Needs exactly 2 wrestlers";
+  }
+
+  return "Needs exactly 1 issuer";
+}
+
+function getSegmentDescription(type: SegmentType) {
+  if (type === "Match") {
+    return "A bell-to-bell TV match where performance, popularity, momentum, and fatigue matter.";
+  }
+
+  if (type === "Promo") {
+    return "A microphone segment built around promo skill, popularity, and current momentum.";
+  }
+
+  if (type === "Backstage Angle") {
+    return "A camera-in-the-hallway story beat that works best with momentum and rivalry context.";
+  }
+
+  if (type === "Contract Signing") {
+    return "A table-set confrontation for two wrestlers. It can frame a title without changing champions.";
+  }
+
+  return "One wrestler issues the challenge. The opponent is selected and revealed only when the show runs.";
+}
+
+function getSegmentParticipantLimit(type: SegmentType) {
+  if (type === "Promo") {
+    return 3;
+  }
+
+  if (type === "Backstage Angle") {
+    return 4;
+  }
+
+  if (type === "Open Challenge") {
+    return 1;
+  }
+
+  return 2;
+}
+
+function getSegmentPickerLabel(type: SegmentType) {
+  return type === "Open Challenge" ? "Issuer" : "Participants";
+}
+
+function getSegmentValidationWarning(segment: Segment) {
+  if (isValidSegment(segment)) {
+    return "";
+  }
+
+  if (segment.type === "Match") {
+    return "Match needs exactly 2 wrestlers.";
+  }
+
+  if (segment.type === "Promo") {
+    return "Promo needs 1 to 3 wrestlers.";
+  }
+
+  if (segment.type === "Backstage Angle") {
+    return "Backstage Angle needs 2 to 4 wrestlers.";
+  }
+
+  if (segment.type === "Contract Signing") {
+    return "Contract Signing needs exactly 2 wrestlers.";
+  }
+
+  return "Open Challenge needs exactly 1 issuer.";
 }
 
 function getShowSegmentLimit(game: GameState) {
@@ -95,6 +186,10 @@ function getWrestlerStatus(wrestler: Wrestler): Exclude<RosterFilter, "All"> | "
   return "Steady";
 }
 
+function getRosterLeader(wrestlers: Wrestler[], score: (wrestler: Wrestler) => number) {
+  return [...wrestlers].sort((a, b) => score(b) - score(a))[0];
+}
+
 function getWrestlerNames(ids: string[], wrestlers: Wrestler[]) {
   return ids.map((id) => wrestlers.find((wrestler) => wrestler.id === id)?.name ?? "Unknown").join(" / ");
 }
@@ -112,6 +207,22 @@ function canSegmentContestChampionship(segment: Segment, championship: Champions
   );
 }
 
+function canSegmentAttachChampionship(segment: Segment, championship: Championship) {
+  if (canSegmentContestChampionship(segment, championship)) {
+    return true;
+  }
+
+  if (segment.type === "Contract Signing") {
+    return isValidSegment(segment) && isSinglesChampionship(championship) && segment.participantIds.includes(championship.championIds[0]);
+  }
+
+  if (segment.type === "Open Challenge") {
+    return isValidSegment(segment) && championship.championIds.includes(segment.participantIds[0]);
+  }
+
+  return false;
+}
+
 function getTopContenders(championship: Championship, wrestlers: Wrestler[], limit = 3) {
   return [...wrestlers]
     .filter((wrestler) => !championship.championIds.includes(wrestler.id))
@@ -124,7 +235,7 @@ function getReignLength(championship: Championship, currentWeek: number) {
 }
 
 function canSegmentAttachRivalry(segment: Segment, rivalry: Rivalry) {
-  return segment.participantIds.some((id) => rivalry.participantIds.includes(id));
+  return segment.type !== "Open Challenge" && segment.participantIds.some((id) => rivalry.participantIds.includes(id));
 }
 
 function getRivalryParticipants(rivalry: Rivalry, wrestlers: Wrestler[]) {
@@ -307,11 +418,11 @@ function loadSavedGame() {
       championships:
         Array.isArray(savedState.game.championships) && savedState.game.championships.length
           ? savedState.game.championships
-          : createDefaultChampionships(),
+          : createDefaultChampionships(savedState.game.wrestlers),
       rivalries:
         Array.isArray(savedState.game.rivalries) && savedState.game.rivalries.length
           ? savedState.game.rivalries
-          : createDefaultRivalries(),
+          : createDefaultRivalries(savedState.game.wrestlers),
       seasonNumber: savedState.game.seasonNumber ?? 1,
       calendar:
         Array.isArray(savedState.game.calendar) && savedState.game.calendar.length
@@ -348,6 +459,7 @@ function App() {
     gmStyle: GMStyle;
     brandName: string;
     brandStyle: BrandStyle;
+    draftedWrestlers: Wrestler[];
   }) {
     const newGame = createNewGame(career);
     saveSnapshot(newGame, "dashboard");
@@ -425,7 +537,7 @@ function App() {
 
           const championship = current.championships.find((title) => title.id === championshipId);
 
-          if (!championshipId || !championship || !canSegmentContestChampionship(segment, championship)) {
+          if (!championshipId || !championship || !canSegmentAttachChampionship(segment, championship)) {
             return { ...segment, championshipId: undefined };
           }
 
@@ -495,7 +607,7 @@ function App() {
           }
 
           const isSelected = segment.participantIds.includes(wrestlerId);
-          const participantLimit = segment.type === "Match" ? 2 : 3;
+          const participantLimit = getSegmentParticipantLimit(segment.type);
           const participantIds = isSelected
             ? segment.participantIds.filter((id) => id !== wrestlerId)
             : segment.participantIds.length < participantLimit
@@ -507,7 +619,7 @@ function App() {
             ? current.championships.find((title) => title.id === updatedSegment.championshipId)
             : undefined;
 
-          if (championship && !canSegmentContestChampionship(updatedSegment, championship)) {
+          if (championship && !canSegmentAttachChampionship(updatedSegment, championship)) {
             updatedSegment = { ...updatedSegment, championshipId: undefined };
           }
 
@@ -744,17 +856,23 @@ function NewGameSetupScreen({
   onStartCareer,
 }: {
   onCancel: () => void;
-  onStartCareer: (career: { gmName: string; gmStyle: GMStyle; brandName: string; brandStyle: BrandStyle }) => void;
+  onStartCareer: (career: { gmName: string; gmStyle: GMStyle; brandName: string; brandStyle: BrandStyle; draftedWrestlers: Wrestler[] }) => void;
 }) {
   const [step, setStep] = useState<SetupStep>("contract");
   const [gmName, setGmName] = useState(defaultCareer.gmName);
   const [gmStyle, setGmStyle] = useState<GMStyle>(defaultCareer.gmStyle);
   const [brandName, setBrandName] = useState(defaultCareer.brandName);
   const [brandStyle, setBrandStyle] = useState<BrandStyle>(defaultCareer.brandStyle);
+  const [draftedWrestlers, setDraftedWrestlers] = useState<Wrestler[]>([]);
   const canPreview = gmName.trim().length > 0 && brandName.trim().length > 0;
+  const availableWrestlers = draftPool.filter((wrestler) => !draftedWrestlers.some((drafted) => drafted.id === wrestler.id));
+  const topStar = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.popularity + wrestler.momentum);
+  const bestTalker = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.promoSkill);
+  const bestInRing = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.ringSkill);
+  const highestMomentum = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.momentum);
 
   function startCareer() {
-    if (!canPreview) {
+    if (!canPreview || draftedWrestlers.length !== draftPickCount) {
       return;
     }
 
@@ -763,14 +881,27 @@ function NewGameSetupScreen({
       gmStyle,
       brandName: brandName.trim(),
       brandStyle,
+      draftedWrestlers,
     });
+  }
+
+  function draftWrestler(wrestler: Wrestler) {
+    if (draftedWrestlers.length >= draftPickCount || draftedWrestlers.some((drafted) => drafted.id === wrestler.id)) {
+      return;
+    }
+
+    setDraftedWrestlers((current) => [...current, wrestler]);
+  }
+
+  function undoLastPick() {
+    setDraftedWrestlers((current) => current.slice(0, -1));
   }
 
   return (
     <main className="setup-screen">
       <section className="setup-shell">
         <div className="setup-progress" aria-label="Setup progress">
-          {["contract", "gm", "brand", "preview"].map((item, index) => (
+          {["contract", "gm", "brand", "preview", "draft", "review"].map((item, index) => (
             <span className={step === item ? "active-step" : ""} key={item}>
               {index + 1}
             </span>
@@ -860,14 +991,141 @@ function NewGameSetupScreen({
               <button className="secondary-action" onClick={() => setStep("brand")}>
                 Back
               </button>
+              <button className="primary-action" onClick={() => setStep("draft")}>
+                Enter Draft Night
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {step === "draft" ? (
+          <div className="setup-panel draft-panel">
+            <p className="eyebrow">Draft Night</p>
+            <h2>You're On The Clock</h2>
+            <p className="lede">Build the first 12-person locker room for {brandName.trim() || defaultCareer.brandName}. No rival brands yet. Every pick is yours.</p>
+            <div className="draft-board">
+              <section className="draft-column">
+                <div className="draft-head">
+                  <div>
+                    <p className="eyebrow">Available Talent</p>
+                    <h3>Pick {Math.min(draftedWrestlers.length + 1, draftPickCount)} of {draftPickCount}</h3>
+                  </div>
+                  <strong>{availableWrestlers.length} Available</strong>
+                </div>
+                <div className="draft-list">
+                  {availableWrestlers.map((wrestler) => (
+                    <DraftTalentCard
+                      actionLabel="Draft"
+                      disabled={draftedWrestlers.length >= draftPickCount}
+                      key={wrestler.id}
+                      onAction={() => draftWrestler(wrestler)}
+                      wrestler={wrestler}
+                    />
+                  ))}
+                </div>
+              </section>
+
+              <section className="draft-column drafted-column">
+                <div className="draft-head">
+                  <div>
+                    <p className="eyebrow">Drafted Roster</p>
+                    <h3>{draftedWrestlers.length}/{draftPickCount} Signed</h3>
+                  </div>
+                  <button className="secondary-action" disabled={!draftedWrestlers.length} onClick={undoLastPick}>
+                    Undo Pick
+                  </button>
+                </div>
+                <div className="drafted-list">
+                  {draftedWrestlers.length ? (
+                    draftedWrestlers.map((wrestler, index) => (
+                      <div className="drafted-pick" key={wrestler.id}>
+                        <span>Pick {index + 1}</span>
+                        <strong>{wrestler.name}</strong>
+                        <small>
+                          Pop {wrestler.popularity} · Mom {wrestler.momentum} · Ring {wrestler.ringSkill} · Promo {wrestler.promoSkill} · Fat {wrestler.fatigue} · Morale {wrestler.morale}
+                        </small>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="empty-state compact">No picks made yet. The board is waiting.</div>
+                  )}
+                </div>
+              </section>
+            </div>
+            <div className="title-actions draft-actions">
+              <button className="secondary-action" onClick={() => setStep("preview")}>
+                Back
+              </button>
+              <button className="primary-action" disabled={draftedWrestlers.length !== draftPickCount} onClick={() => setStep("review")}>
+                Complete Draft
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {step === "review" ? (
+          <div className="setup-panel">
+            <p className="eyebrow">Draft Review</p>
+            <h2>{brandName.trim() || defaultCareer.brandName} Roster</h2>
+            <div className="status-grid setup-summary">
+              <Metric label="Top Star" value={topStar?.name ?? "None"} detail={topStar ? `Pop ${topStar.popularity} · Mom ${topStar.momentum}` : undefined} />
+              <Metric label="Best Talker" value={bestTalker?.name ?? "None"} detail={bestTalker ? `Promo ${bestTalker.promoSkill}` : undefined} />
+              <Metric label="Best In-Ring" value={bestInRing?.name ?? "None"} detail={bestInRing ? `Ring ${bestInRing.ringSkill}` : undefined} />
+              <Metric label="Highest Momentum" value={highestMomentum?.name ?? "None"} detail={highestMomentum ? `Momentum ${highestMomentum.momentum}` : undefined} />
+            </div>
+            <section className="draft-review-grid">
+              {draftedWrestlers.map((wrestler) => (
+                <DraftTalentCard key={wrestler.id} wrestler={wrestler} />
+              ))}
+            </section>
+            <div className="title-actions">
+              <button className="secondary-action" onClick={() => setStep("draft")}>
+                Back To Draft
+              </button>
               <button className="primary-action" onClick={startCareer}>
-                Start Career
+                Enter Week 1
               </button>
             </div>
           </div>
         ) : null}
       </section>
     </main>
+  );
+}
+
+function DraftTalentCard({
+  actionLabel,
+  disabled,
+  onAction,
+  wrestler,
+}: {
+  actionLabel?: string;
+  disabled?: boolean;
+  onAction?: () => void;
+  wrestler: Wrestler;
+}) {
+  return (
+    <article className="draft-talent-card">
+      <div className="draft-talent-head">
+        <div>
+          <p className="eyebrow">Draft File</p>
+          <h3>{wrestler.name}</h3>
+        </div>
+        {onAction ? (
+          <button disabled={disabled} onClick={onAction}>
+            {actionLabel}
+          </button>
+        ) : null}
+      </div>
+      <div className="draft-stat-grid">
+        <Metric label="Popularity" value={`${wrestler.popularity}`} />
+        <Metric label="Momentum" value={`${wrestler.momentum}`} />
+        <Metric label="Ring" value={`${wrestler.ringSkill}`} />
+        <Metric label="Promo" value={`${wrestler.promoSkill}`} />
+        <Metric label="Fatigue" value={`${wrestler.fatigue}`} />
+        <Metric label="Morale" value={`${wrestler.morale}`} />
+      </div>
+    </article>
   );
 }
 
@@ -1222,12 +1480,11 @@ function BookingScreen({
       </section>
 
       <section className="booking-controls" aria-label="Booking controls">
-        <button disabled={game.currentShow.length >= segmentLimit} onClick={() => onAddSegment("Match")}>
-          Add Match
-        </button>
-        <button disabled={game.currentShow.length >= segmentLimit} onClick={() => onAddSegment("Promo")}>
-          Add Promo
-        </button>
+        {bookingSegmentTypes.map((type) => (
+          <button disabled={game.currentShow.length >= segmentLimit} key={type} onClick={() => onAddSegment(type)}>
+            Add {type}
+          </button>
+        ))}
         <button className="secondary-action" onClick={() => onNavigate("roster")}>
           View Roster
         </button>
@@ -1241,7 +1498,7 @@ function BookingScreen({
 
       <section className="segment-list" aria-label="Current show segments">
         {game.currentShow.length === 0 ? (
-          <div className="empty-state">The rundown is empty. Add a match or promo to start building tonight's TV card.</div>
+          <div className="empty-state">The rundown is empty. Add a segment to start building tonight's TV card.</div>
         ) : (
           game.currentShow.map((segment, index) => (
             <article className={`segment ${isValidSegment(segment) ? "valid" : ""}`} key={segment.id}>
@@ -1252,6 +1509,7 @@ function BookingScreen({
                     {segment.type} <span>{getSegmentRuntime(segment.type)}</span>
                   </h3>
                   <p>{getSegmentRequirement(segment.type)}</p>
+                  <p>{getSegmentDescription(segment.type)}</p>
                 </div>
                 <button className="danger-action" onClick={() => onRemoveSegment(segment.id)}>
                   Remove
@@ -1271,10 +1529,14 @@ function BookingScreen({
                 segment={segment}
               />
 
+              <div className="participant-label">
+                <span>{getSegmentPickerLabel(segment.type)}</span>
+                {segment.type === "Open Challenge" ? <strong>Opponent revealed after Run Show</strong> : null}
+              </div>
               <div className="participant-grid">
                 {game.wrestlers.map((wrestler) => {
                   const checked = segment.participantIds.includes(wrestler.id);
-                  const limit = segment.type === "Match" ? 2 : 3;
+                  const limit = getSegmentParticipantLimit(segment.type);
                   const disabled = !checked && segment.participantIds.length >= limit;
 
                   return (
@@ -1917,6 +2179,7 @@ function ResultsScreen({
               <p>
                 Momentum +{getResultChange(segment.momentumChanges)} · Fatigue +{getResultChange(segment.fatigueChanges)}
               </p>
+              {segment.recapNote ? <p>{segment.recapNote}</p> : null}
               {segment.titleNote ? <p className="title-note">{segment.titleNote}</p> : null}
               {segment.rivalryNote ? <p className="rivalry-note">{segment.rivalryNote}</p> : null}
             </div>
@@ -2047,29 +2310,42 @@ function TitleMatchControl({
   segment: Segment;
   wrestlers: Wrestler[];
 }) {
-  if (segment.type !== "Match") {
+  if (segment.type !== "Match" && segment.type !== "Contract Signing" && segment.type !== "Open Challenge") {
     return null;
   }
 
-  const eligibleChampionships = championships.filter((championship) => canSegmentContestChampionship(segment, championship));
+  const eligibleChampionships = championships.filter((championship) => canSegmentAttachChampionship(segment, championship));
   const selectedChampionship = championships.find((championship) => championship.id === segment.championshipId);
+  const isTitleMatch = segment.type === "Match";
+  const controlLabel = isTitleMatch ? "Title Match" : "Title Context";
+  const clearLabel = isTitleMatch ? "Non-Title" : "No Title Context";
+  const emptyMessage =
+    segment.type === "Open Challenge"
+      ? "Select a champion as issuer to frame the challenge around their title scene."
+      : segment.type === "Contract Signing"
+        ? "Select a current singles champion to attach championship context."
+        : "Singles title option opens when a match includes a current singles champion.";
 
   return (
     <div className="title-match-control">
       <div>
-        <span>Title Context</span>
+        <span>{controlLabel}</span>
         <strong>
           {selectedChampionship
-            ? `${selectedChampionship.name} at stake. Champion: ${getWrestlerNames(selectedChampionship.championIds, wrestlers)}.`
+            ? isTitleMatch
+              ? `${selectedChampionship.name} at stake. Champion: ${getWrestlerNames(selectedChampionship.championIds, wrestlers)}.`
+              : `${selectedChampionship.name} in the frame. Champion: ${getWrestlerNames(selectedChampionship.championIds, wrestlers)}.`
             : eligibleChampionships.length
-              ? "This match can be sanctioned for a singles championship."
-              : "Singles title option opens when a match includes a current singles champion."}
+              ? isTitleMatch
+                ? "This match can be sanctioned for a singles championship."
+                : "Attach championship context without putting the title at stake."
+              : emptyMessage}
         </strong>
       </div>
       {eligibleChampionships.length ? (
         <div className="title-buttons">
           <button className={!segment.championshipId ? "active-filter" : ""} onClick={() => onSetSegmentChampionship(segment.id, "")}>
-            Non-Title
+            {clearLabel}
           </button>
           {eligibleChampionships.map((championship) => (
             <button
@@ -2203,7 +2479,11 @@ function SegmentContext({
   });
 
   if (!isValidSegment(segment)) {
-    warnings.unshift("Segment is incomplete.");
+    warnings.unshift(getSegmentValidationWarning(segment));
+  }
+
+  if (segment.type === "Open Challenge" && isValidSegment(segment)) {
+    warnings.push("Opponent stays unrevealed until the show runs.");
   }
 
   return (

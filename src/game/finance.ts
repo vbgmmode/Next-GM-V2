@@ -31,7 +31,7 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
   const bookedWrestlers = getUniqueBookedWrestlers(result, game.wrestlers);
   const bookedPopularity = bookedWrestlers.reduce((sum, wrestler) => sum + wrestler.popularity, 0);
   const averagePopularity = bookedWrestlers.length ? bookedPopularity / bookedWrestlers.length : 50;
-  const titleMatches = result.segmentResults.filter((segment) => segment.championshipId).length;
+  const titleMatches = result.segmentResults.filter((segment) => segment.type === "Match" && segment.championshipId).length;
   const isPle = result.showType === "ple";
 
   const attendance = roundMoney(

@@ -25,6 +25,7 @@ The game should not feel like:
 - Vite
 - Plain CSS in src/styles.css
 - localStorage persistence through src/gameStorage.ts
+- npm with package-lock.json
 - No router currently
 - No Tailwind currently
 - No backend currently
@@ -34,15 +35,23 @@ The game should not feel like:
 The game currently supports:
 - Title screen
 - Continue/New Game/Reset Save
+- Multi-step new game setup
+- GM name and GM style selection
+- Brand name and brand style selection
+- Draft night with a 12-wrestler starting roster
 - localStorage single-save persistence
+- Save loading with fallbacks for added career fields
 - Dashboard
-- Booking
+- Booking with Match, Promo, Backstage Angle, Contract Signing, and Open Challenge segments
+- Segment validation and minimum-card requirements
+- Championship context and singles title matches
+- Rivalry context attached to eligible segments
 - Run Show
-- Results
+- Results with broadcast recap, segment scores, momentum/fatigue fallout, title fallout, rivalry fallout, social buzz, and finance fallout
 - Advance Week
 - Roster
 - Championships
-- Rivalries
+- Rivalries with heat, freshness, stakes, status, create, and end controls
 - Calendar
 - 12-week season
 - PLEs
@@ -53,6 +62,8 @@ The game currently supports:
 
 ## Core Playable Loop
 New Game
+→ Setup Career
+→ Draft Roster
 → Dashboard
 → Booking
 → Run Show
@@ -85,7 +96,14 @@ Goal:
 Build a complete single-player offline career loop before adding infrastructure complexity.
 
 Current priority:
-Strengthen the playable career with new game setup, draft, richer booking, roster pressure, social, finance, and season review.
+Deepen the post-draft solo career by improving booking stakes, roster pressure, consequence clarity, social/finance feedback, and season review value.
+
+Upcoming Direction:
+- Tighten booking as a TV production card with clearer title, rivalry, and open-challenge decisions.
+- Make roster pressure more legible through fatigue, morale, momentum, and workload consequences.
+- Improve social and finance screens so fallout feels reactive, gamey, and decision-focused.
+- Strengthen season review and next-season carryover without adding infrastructure complexity.
+- Keep setup and draft bounded unless an active ticket asks to expand them.
 
 ## Current Phase Scope Rules
 These are temporary constraints for the current phase. They are not permanent bans.
@@ -98,8 +116,8 @@ Unless the active ticket explicitly asks for it, do not add:
 - custom logos
 - modding
 - scouting
-- contracts
-- draft
+- contract-management systems beyond the current setup framing and Contract Signing segment type
+- draft expansion beyond the current new-game draft flow
 - complex accounting
 
 ## Permanent Scope Rules
