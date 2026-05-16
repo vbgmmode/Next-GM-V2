@@ -1,4 +1,4 @@
-import type { Championship, GameDifficulty, GameState, GMStyle, LockerRoomFallout, RivalGMAssignment, Rivalry, Screen, ShowResult, StartingBudgetTier, Wrestler } from "./types";
+import type { Championship, GameDifficulty, GameState, GMStyle, LockerRoomFallout, RivalGMAssignment, Rivalry, Screen, Segment, SegmentType, ShowResult, StartingBudgetTier, Wrestler } from "./types";
 import { createDefaultChampionships, createDefaultRivalries, createSeasonCalendar, defaultCareer, isPrototypeBrand } from "./seed";
 
 export type GameScreen = Exclude<Screen, "title" | "setup">;
@@ -133,6 +133,46 @@ function normalizeShowHistory(showHistory: unknown): ShowResult[] {
   });
 }
 
+function getDefaultSegmentDefaults(type: SegmentType) {
+  if (type === "Open Challenge") {
+    return { segmentCatalogId: "P007", segmentDisplayName: "Open Challenge", durationMinutes: 7, participantMin: 1, participantMax: 1 };
+  }
+
+  if (type === "Contract Signing") {
+    return { segmentCatalogId: "P008", segmentDisplayName: "Contract Signing", durationMinutes: 9, participantMin: 2, participantMax: 2 };
+  }
+
+  if (type === "Promo") {
+    return { segmentCatalogId: "P001", segmentDisplayName: "Standard Promo", durationMinutes: 5, participantMin: 1, participantMax: 3 };
+  }
+
+  if (type === "Backstage Angle") {
+    return { segmentCatalogId: "A001", segmentDisplayName: "Backstage Interview", durationMinutes: 4, participantMin: 1, participantMax: 3 };
+  }
+
+  return { segmentCatalogId: "M001", segmentDisplayName: "Singles Match", durationMinutes: 12, participantMin: 2, participantMax: 2 };
+}
+
+function normalizeCurrentShow(currentShow: unknown): Segment[] {
+  return (Array.isArray(currentShow) ? (currentShow as Partial<Segment>[]) : []).map((segment, index) => {
+    const type = segment.type ?? "Match";
+    const defaults = getDefaultSegmentDefaults(type);
+
+    return {
+      id: segment.id ?? `migrated-segment-${index}`,
+      type,
+      participantIds: Array.isArray(segment.participantIds) ? segment.participantIds : [],
+      championshipId: segment.championshipId,
+      rivalryId: segment.rivalryId,
+      segmentCatalogId: segment.segmentCatalogId ?? defaults.segmentCatalogId,
+      segmentDisplayName: segment.segmentDisplayName ?? defaults.segmentDisplayName,
+      durationMinutes: segment.durationMinutes ?? defaults.durationMinutes,
+      participantMin: segment.participantMin ?? defaults.participantMin,
+      participantMax: segment.participantMax ?? defaults.participantMax,
+    };
+  });
+}
+
 export function migrateSavedGameState(value: unknown): SavedGameState | null {
   if (!isSavedGameCandidate(value)) {
     return null;
@@ -181,7 +221,7 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
       socialPosts: Array.isArray(savedGame.socialPosts) ? savedGame.socialPosts : [],
       financeReports: Array.isArray(savedGame.financeReports) ? savedGame.financeReports : [],
       injuryRecoveryNotes: Array.isArray(savedGame.injuryRecoveryNotes) ? savedGame.injuryRecoveryNotes : [],
-      currentShow: Array.isArray(savedGame.currentShow) ? savedGame.currentShow : [],
+      currentShow: normalizeCurrentShow(savedGame.currentShow),
       showHistory,
     },
     screen,

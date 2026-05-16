@@ -90,6 +90,23 @@ type GMRead = {
   need: string;
 };
 
+type SegmentCatalogOption = {
+  id: string;
+  family: SegmentType;
+  group: string;
+  label: string;
+  variant: string;
+  defaultDurationMinutes: number;
+  minParticipants: number;
+  maxParticipants: number;
+  championshipAllowed: boolean;
+  winnerRequired: boolean;
+  rivalryRelevant: boolean;
+  intent: string;
+  note: string;
+  productionCue: string;
+};
+
 const draftPickCount = 12;
 
 const draftSortOptions: { label: string; value: DraftSort }[] = [
@@ -217,6 +234,206 @@ const budgetOptions: ChoiceOption<StartingBudgetTier>[] = [
   },
 ];
 const bookingSegmentTypes: SegmentType[] = ["Match", "Promo", "Backstage Angle", "Contract Signing", "Open Challenge"];
+const showRuntimeTargetMinutes = 120;
+const showRuntimeMinMinutes = 90;
+const showRuntimeOvertimeMinutes = 135;
+const tvRuntimeWarningMinutes = 150;
+const maxBookingSegments = 24;
+
+const segmentCatalogOptions: SegmentCatalogOption[] = [
+  {
+    id: "M001",
+    family: "Match",
+    group: "Standard",
+    label: "Singles Match",
+    variant: "One on One",
+    defaultDurationMinutes: 12,
+    minParticipants: 2,
+    maxParticipants: 2,
+    championshipAllowed: true,
+    winnerRequired: true,
+    rivalryRelevant: true,
+    intent: "Clean bell-to-bell focus for two wrestlers. Best when the card needs a clear sporting center.",
+    note: "Two wrestlers, one finish, title eligible when the champion is involved.",
+    productionCue: "Bell-to-bell spotlight",
+  },
+  {
+    id: "M002",
+    family: "Match",
+    group: "Standard",
+    label: "Triple Threat",
+    variant: "Three-way",
+    defaultDurationMinutes: 13,
+    minParticipants: 3,
+    maxParticipants: 3,
+    championshipAllowed: false,
+    winnerRequired: true,
+    rivalryRelevant: true,
+    intent: "Three-way traffic for contender tension, uneasy alliances, and a crowded title-scene lane.",
+    note: "Three wrestlers required. Title changes stay off this format in the current build.",
+    productionCue: "Three-way traffic",
+  },
+  {
+    id: "M003",
+    family: "Match",
+    group: "Standard",
+    label: "Fatal 4-Way",
+    variant: "Four-way",
+    defaultDurationMinutes: 14,
+    minParticipants: 4,
+    maxParticipants: 4,
+    championshipAllowed: false,
+    winnerRequired: true,
+    rivalryRelevant: true,
+    intent: "Four-wrestler showcase when the show needs chaos, shared spotlight, or contender congestion.",
+    note: "Four wrestlers required. Title changes stay off this format in the current build.",
+    productionCue: "Contender pileup",
+  },
+  {
+    id: "M019",
+    family: "Match",
+    group: "Hardcore",
+    label: "Extreme Rules",
+    variant: "One on One",
+    defaultDurationMinutes: 13,
+    minParticipants: 2,
+    maxParticipants: 2,
+    championshipAllowed: true,
+    winnerRequired: true,
+    rivalryRelevant: true,
+    intent: "No-DQ style TV escalation for a feud that needs a harder edge without changing hidden formulas.",
+    note: "Two wrestlers, one finish, title eligible when the champion is involved.",
+    productionCue: "No-DQ escalation",
+  },
+  {
+    id: "P001",
+    family: "Promo",
+    group: "Core Promo",
+    label: "Standard Promo",
+    variant: "Mic time",
+    defaultDurationMinutes: 5,
+    minParticipants: 1,
+    maxParticipants: 3,
+    championshipAllowed: false,
+    winnerRequired: false,
+    rivalryRelevant: false,
+    intent: "Character and microphone time for a wrestler or small group without forcing a feud beat.",
+    note: "One to three wrestlers. No winner is resolved because this is a talk segment.",
+    productionCue: "Mic spotlight",
+  },
+  {
+    id: "P003",
+    family: "Promo",
+    group: "Core Promo",
+    label: "Call-Out Promo",
+    variant: "Calls out rival",
+    defaultDurationMinutes: 6,
+    minParticipants: 1,
+    maxParticipants: 2,
+    championshipAllowed: false,
+    winnerRequired: false,
+    rivalryRelevant: true,
+    intent: "Direct microphone pressure for calling someone out, sharpening a feud, or setting a confrontation.",
+    note: "One or two wrestlers. Rivalry context is especially useful but never forced.",
+    productionCue: "Direct challenge",
+  },
+  {
+    id: "P002",
+    family: "Promo",
+    group: "Core Promo",
+    label: "Hype Promo",
+    variant: "Momentum builder",
+    defaultDurationMinutes: 5,
+    minParticipants: 1,
+    maxParticipants: 1,
+    championshipAllowed: false,
+    winnerRequired: false,
+    rivalryRelevant: false,
+    intent: "Single-wrestler hype package for giving the audience a reason to care before the next beat.",
+    note: "One wrestler. No opponent or winner is needed.",
+    productionCue: "Character hype",
+  },
+  {
+    id: "A001",
+    family: "Backstage Angle",
+    group: "Backstage Interview",
+    label: "Backstage Interview",
+    variant: "Solo/duo interview",
+    defaultDurationMinutes: 4,
+    minParticipants: 1,
+    maxParticipants: 3,
+    championshipAllowed: false,
+    winnerRequired: false,
+    rivalryRelevant: false,
+    intent: "Backstage camera time for character texture, locker-room read, or quiet story setup.",
+    note: "One to three wrestlers. Useful for context without making the segment feel like a fight.",
+    productionCue: "Backstage texture",
+  },
+  {
+    id: "A046",
+    family: "Backstage Angle",
+    group: "Production/Entrance Adjacent",
+    label: "Backstage Confrontation",
+    variant: "Mid-ramp stop",
+    defaultDurationMinutes: 4,
+    minParticipants: 2,
+    maxParticipants: 4,
+    championshipAllowed: false,
+    winnerRequired: false,
+    rivalryRelevant: true,
+    intent: "A tense production-area faceoff that puts bodies in the same frame before the show moves on.",
+    note: "Two to four wrestlers. Rivalry context helps clarify why cameras are here.",
+    productionCue: "Hallway pressure",
+  },
+  {
+    id: "A004",
+    family: "Backstage Angle",
+    group: "Attack Angle",
+    label: "Backstage Attack",
+    variant: "Surprise assault",
+    defaultDurationMinutes: 4,
+    minParticipants: 2,
+    maxParticipants: 4,
+    championshipAllowed: false,
+    winnerRequired: false,
+    rivalryRelevant: true,
+    intent: "Ambush-style TV heat for making the backstage feed feel dangerous without new injury logic.",
+    note: "Two to four wrestlers. This frames an attack but does not add new injury effects.",
+    productionCue: "Ambush angle",
+  },
+  {
+    id: "P008",
+    family: "Contract Signing",
+    group: "Special",
+    label: "Contract Signing",
+    variant: "Formal match signing",
+    defaultDurationMinutes: 9,
+    minParticipants: 2,
+    maxParticipants: 2,
+    championshipAllowed: true,
+    winnerRequired: false,
+    rivalryRelevant: true,
+    intent: "Big-table confrontation for formal stakes, title framing, and pre-match tension.",
+    note: "Two wrestlers. Championship context can be attached, but no championship changes here.",
+    productionCue: "Table stakes",
+  },
+  {
+    id: "P007",
+    family: "Open Challenge",
+    group: "Special",
+    label: "Open Challenge",
+    variant: "Champion or star invites opponent",
+    defaultDurationMinutes: 7,
+    minParticipants: 1,
+    maxParticipants: 1,
+    championshipAllowed: true,
+    winnerRequired: false,
+    rivalryRelevant: false,
+    intent: "One star or champion throws the door open. The answer stays hidden until the broadcast runs.",
+    note: "One issuer only. The opponent is resolved at show-run time.",
+    productionCue: "Unanswered call",
+  },
+];
 
 function formatMoney(amount: number) {
   const sign = amount < 0 ? "-" : "";
@@ -263,21 +480,78 @@ function formatPressureLabel(label: PressureLabel) {
   return label;
 }
 
-function getSegmentRuntime(type: SegmentType) {
-  if (type === "Match" || type === "Open Challenge") {
-    return "12 min TV time";
+function getCatalogOptionsForType(type: SegmentType) {
+  return segmentCatalogOptions.filter((option) => option.family === type);
+}
+
+function getDefaultCatalogOption(type: SegmentType) {
+  return getCatalogOptionsForType(type)[0];
+}
+
+function getSegmentCatalogOption(segment: Segment) {
+  return segmentCatalogOptions.find((option) => option.id === segment.segmentCatalogId) ?? getDefaultCatalogOption(segment.type)!;
+}
+
+function getSegmentDurationMinutes(segment: Segment) {
+  return segment.durationMinutes ?? getSegmentCatalogOption(segment)?.defaultDurationMinutes ?? 8;
+}
+
+function getSegmentRuntime(segment: Segment) {
+  return `${getSegmentDurationMinutes(segment)} min TV time`;
+}
+
+function getParticipantRequirementLabel(option: SegmentCatalogOption) {
+  if (option.minParticipants === option.maxParticipants) {
+    return `${option.minParticipants} ${option.minParticipants === 1 ? "person" : "people"} required`;
   }
 
-  if (type === "Backstage Angle") {
-    return "7 min TV time";
+  return `${option.minParticipants}-${option.maxParticipants} people allowed`;
+}
+
+function getSegmentIdentityBadges(segment: Segment) {
+  const option = getSegmentCatalogOption(segment);
+  const badges = [option.group, getParticipantRequirementLabel(option), option.championshipAllowed ? "Title context" : "No title change"];
+
+  if (option.winnerRequired) {
+    badges.push("Winner resolved");
   }
 
-  return "6 min TV time";
+  if (option.rivalryRelevant) {
+    badges.push("Rivalry friendly");
+  }
+
+  return badges;
+}
+
+function getSegmentRequirementDetails(segment: Segment) {
+  const option = getSegmentCatalogOption(segment);
+  const details = [
+    getParticipantRequirementLabel(option),
+    option.championshipAllowed ? "Championship context can be attached when eligible." : "No championship context or title change in this format.",
+    option.winnerRequired ? "A winner is resolved when the show runs." : "No winner is required for this segment.",
+  ];
+
+  if (option.rivalryRelevant) {
+    details.push("Rivalry context is useful when this beat belongs to an active story.");
+  }
+
+  if (segment.type === "Open Challenge") {
+    details.push("The answering opponent stays hidden until Run Show.");
+  }
+
+  return details;
 }
 
 function getSegmentRequirement(type: SegmentType) {
-  if (type === "Match") {
-    return "Needs exactly 2 wrestlers";
+  const option = getDefaultCatalogOption(type);
+
+  if (option?.minParticipants === option?.maxParticipants) {
+    const label = type === "Open Challenge" ? "issuer" : "wrestler";
+    return `Needs exactly ${option.minParticipants} ${label}${option.minParticipants === 1 ? "" : "s"}`;
+  }
+
+  if (option) {
+    return `Needs ${option.minParticipants} to ${option.maxParticipants} wrestlers`;
   }
 
   if (type === "Promo") {
@@ -295,27 +569,31 @@ function getSegmentRequirement(type: SegmentType) {
   return "Needs exactly 1 issuer";
 }
 
-function getSegmentDescription(type: SegmentType) {
-  if (type === "Match") {
-    return "A bell-to-bell TV match where performance, popularity, momentum, and fatigue matter.";
+function getSegmentRequirementForSegment(segment: Segment) {
+  const range = getSegmentParticipantRange(segment);
+  const label = segment.type === "Open Challenge" ? "issuer" : "wrestler";
+
+  if (range.min === range.max) {
+    return `Needs exactly ${range.min} ${label}${range.min === 1 ? "" : "s"}`;
   }
 
-  if (type === "Promo") {
-    return "A microphone segment built around promo skill, popularity, and current momentum.";
-  }
-
-  if (type === "Backstage Angle") {
-    return "A camera-in-the-hallway story beat that works best with momentum and rivalry context.";
-  }
-
-  if (type === "Contract Signing") {
-    return "A table-set confrontation for two wrestlers. It can frame a title without changing champions.";
-  }
-
-  return "One wrestler issues the challenge. The opponent is selected and revealed only when the show runs.";
+  return `Needs ${range.min} to ${range.max} wrestlers`;
 }
 
-function getSegmentParticipantLimit(type: SegmentType) {
+function getSegmentDescription(type: SegmentType) {
+  return getDefaultCatalogOption(type)?.note ?? "Build the segment structure without exposing hidden outcomes.";
+}
+
+function getSegmentParticipantRange(segment: Segment) {
+  const option = getSegmentCatalogOption(segment);
+
+  return {
+    min: segment.participantMin ?? option?.minParticipants ?? (segment.type === "Open Challenge" ? 1 : 2),
+    max: segment.participantMax ?? option?.maxParticipants ?? getFallbackParticipantLimit(segment.type),
+  };
+}
+
+function getFallbackParticipantLimit(type: SegmentType) {
   if (type === "Promo") {
     return 3;
   }
@@ -346,27 +624,74 @@ function getSegmentValidationWarning(segment: Segment, wrestlers: Wrestler[] = [
     return `${unavailable.name} is unavailable with a major injury.`;
   }
 
-  if (segment.type === "Match") {
-    return "Match needs exactly 2 wrestlers.";
+  const range = getSegmentParticipantRange(segment);
+  const label = segment.type === "Open Challenge" ? "issuer" : "wrestler";
+  const option = getSegmentCatalogOption(segment);
+  const segmentName = segment.segmentDisplayName ?? option.label ?? segment.type;
+
+  if (range.min === range.max) {
+    return `${segmentName} needs exactly ${range.min} ${label}${range.min === 1 ? "" : "s"} before it can hold a TV slot.`;
   }
 
-  if (segment.type === "Promo") {
-    return "Promo needs 1 to 3 wrestlers.";
+  if (segment.participantIds.length < range.min) {
+    return `${segmentName} needs ${range.min - segment.participantIds.length} more ${label}${range.min - segment.participantIds.length === 1 ? "" : "s"} for this format.`;
   }
 
-  if (segment.type === "Backstage Angle") {
-    return "Backstage Angle needs 2 to 4 wrestlers.";
-  }
-
-  if (segment.type === "Contract Signing") {
-    return "Contract Signing needs exactly 2 wrestlers.";
-  }
-
-  return "Open Challenge needs exactly 1 issuer.";
+  return `${segmentName} is over format capacity. Keep it to ${range.max} ${label}${range.max === 1 ? "" : "s"}.`;
 }
 
-function getShowSegmentLimit(game: GameState) {
-  return getCurrentCalendarWeek(game).showType === "ple" ? 6 : 4;
+function getShowReadiness(validSegments: number, invalidSegments: number, runtimeMinutes: number) {
+  if (invalidSegments > 0) {
+    return {
+      canRun: false,
+      status: "Fix The Rundown",
+      tone: "blocked",
+      note: `${invalidSegments} segment${invalidSegments === 1 ? "" : "s"} need talent or availability fixes before production can roll.`,
+    };
+  }
+
+  if (validSegments < 2) {
+    return {
+      canRun: false,
+      status: "Underbuilt Show",
+      tone: "underbuilt",
+      note: "Book at least 2 valid TV segments so the broadcast has more than one beat.",
+    };
+  }
+
+  if (runtimeMinutes < showRuntimeMinMinutes) {
+    return {
+      canRun: false,
+      status: "Underbuilt Show",
+      tone: "underbuilt",
+      note: `${showRuntimeMinMinutes - runtimeMinutes} more TV minutes needed to reach the live broadcast window.`,
+    };
+  }
+
+  if (runtimeMinutes > tvRuntimeWarningMinutes) {
+    return {
+      canRun: false,
+      status: "Overloaded Show",
+      tone: "overloaded",
+      note: `Cut ${runtimeMinutes - tvRuntimeWarningMinutes} TV minutes to fit the production block.`,
+    };
+  }
+
+  if (runtimeMinutes > showRuntimeOvertimeMinutes) {
+    return {
+      canRun: true,
+      status: "Overtime Window",
+      tone: "warning",
+      note: "This card can run, but the broadcast is packed. Trim time if you want a cleaner TV shape.",
+    };
+  }
+
+  return {
+    canRun: true,
+    status: "Broadcast Ready",
+    tone: "ready",
+    note: "The show has enough valid TV time and fits the production block.",
+  };
 }
 
 function getSegmentParticipants(segment: Segment, wrestlers: Wrestler[]) {
@@ -513,6 +838,122 @@ function getDraftTag(value: string | undefined, fallback = "Unlisted") {
   return value?.trim() || fallback;
 }
 
+function getAverageDraftScore(wrestlers: Wrestler[], score: (wrestler: Wrestler) => number) {
+  if (!wrestlers.length) {
+    return 0;
+  }
+
+  return Math.round(wrestlers.reduce((sum, wrestler) => sum + score(wrestler), 0) / wrestlers.length);
+}
+
+function getDraftValueCounts(wrestlers: Wrestler[], getValue: (wrestler: Wrestler) => string | undefined) {
+  return wrestlers.reduce<Record<string, number>>((counts, wrestler) => {
+    const value = getDraftTag(getValue(wrestler));
+    counts[value] = (counts[value] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
+function getDraftCountSummary(counts: Record<string, number>, limit = 3) {
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+  if (!entries.length) {
+    return "No data";
+  }
+
+  return entries
+    .slice(0, limit)
+    .map(([label, count]) => `${label} ${count}`)
+    .join(" / ");
+}
+
+function getMostCommonDraftValue(counts: Record<string, number>, fallback = "Balanced") {
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? fallback;
+}
+
+function getDraftReviewPressure(wrestlers: Wrestler[]) {
+  const sourceStatusWatch = wrestlers.filter((wrestler) => wrestler.sourceAvailability && wrestler.sourceAvailability !== "Active");
+  const highFatigue = wrestlers.filter((wrestler) => wrestler.fatigue >= 40);
+  const lowMorale = wrestlers.filter((wrestler) => wrestler.morale <= 64);
+  const strongTalkers = wrestlers.filter((wrestler) => wrestler.promoSkill >= 85);
+  const strongWorkers = wrestlers.filter((wrestler) => wrestler.ringSkill >= 85);
+  const divisionCounts = getDraftValueCounts(wrestlers, (wrestler) => wrestler.division);
+  const thinDivision = Object.entries(divisionCounts).find(([, count]) => count <= 2);
+
+  if (sourceStatusWatch.length) {
+    return {
+      label: "Source Status Watch",
+      value: `${sourceStatusWatch.length} Flagged`,
+      detail: `${sourceStatusWatch.slice(0, 2).map((wrestler) => wrestler.name).join(" / ")} require a closer Week 1 read.`,
+    };
+  }
+
+  if (highFatigue.length) {
+    return {
+      label: "Condition Watch",
+      value: `${highFatigue.length} High Fatigue`,
+      detail: `${highFatigue[0].name} is the first name to monitor before stacking TV time.`,
+    };
+  }
+
+  if (lowMorale.length) {
+    return {
+      label: "Locker Room Watch",
+      value: `${lowMorale.length} Low Morale`,
+      detail: `${lowMorale[0].name} may need careful early usage to keep the room steady.`,
+    };
+  }
+
+  if (strongTalkers.length < 4) {
+    return {
+      label: "Promo Depth",
+      value: `${strongTalkers.length} Elite Talkers`,
+      detail: "The room may need simple early mic assignments until voices separate.",
+    };
+  }
+
+  if (strongWorkers.length < 4) {
+    return {
+      label: "Ring Depth",
+      value: `${strongWorkers.length} Elite Workers`,
+      detail: "The first cards may need protected matchups while the bell-to-bell core forms.",
+    };
+  }
+
+  if (thinDivision) {
+    return {
+      label: "Division Shape",
+      value: `${thinDivision[0]} ${thinDivision[1]}`,
+      detail: "One side of the room is thinner, so early booking should balance exposure.",
+    };
+  }
+
+  return {
+    label: "Opening Pressure",
+    value: "Balanced Room",
+    detail: "No single pressure point dominates the first Week 1 board.",
+  };
+}
+
+function getDraftReviewRead(wrestlers: Wrestler[]) {
+  const averageRing = getAverageDraftScore(wrestlers, (wrestler) => wrestler.ringSkill);
+  const averagePromo = getAverageDraftScore(wrestlers, (wrestler) => wrestler.promoSkill);
+  const tierCounts = getDraftValueCounts(wrestlers, (wrestler) => wrestler.roleTier);
+  const archetypeCounts = getDraftValueCounts(wrestlers, (wrestler) => wrestler.archetype);
+  const brandCounts = getDraftValueCounts(wrestlers, (wrestler) => wrestler.sourceBrand);
+  const topTier = getMostCommonDraftValue(tierCounts, "Mixed Tier");
+  const topArchetype = getMostCommonDraftValue(archetypeCounts, "Mixed Style");
+  const sourceMix = Object.keys(brandCounts).length;
+  const identity =
+    averagePromo >= averageRing + 4
+      ? "a mic-forward locker room"
+      : averageRing >= averagePromo + 4
+        ? "a bell-to-bell locker room"
+        : "a balanced TV locker room";
+
+  return `This reads like ${identity} leaning ${topArchetype}, with ${topTier} depth setting the tone. You pulled from ${sourceMix} source brand${sourceMix === 1 ? "" : "s"}, so Week 1 can be framed as an open-board roster rather than a brand-restricted room.`;
+}
+
 function getRosterLeader(wrestlers: Wrestler[], score: (wrestler: Wrestler) => number) {
   return [...wrestlers].sort((a, b) => score(b) - score(a))[0];
 }
@@ -529,6 +970,7 @@ function canSegmentContestChampionship(segment: Segment, championship: Champions
   return (
     segment.type === "Match" &&
     isValidSegment(segment) &&
+    segment.participantIds.length === 2 &&
     isSinglesChampionship(championship) &&
     segment.participantIds.includes(championship.championIds[0])
   );
@@ -612,7 +1054,7 @@ function hasPlePayoff(game: GameState, rivalryId: string) {
 }
 
 function canSegmentAttachRivalry(segment: Segment, rivalry: Rivalry) {
-  return segment.type !== "Open Challenge" && segment.participantIds.some((id) => rivalry.participantIds.includes(id));
+  return segment.type !== "Open Challenge" && (!segment.participantIds.length || segment.participantIds.some((id) => rivalry.participantIds.includes(id)));
 }
 
 function getRivalryParticipants(rivalry: Rivalry, wrestlers: Wrestler[]) {
@@ -1133,22 +1575,73 @@ function App() {
     setScreen(returnScreen);
   }
 
-  function addSegment(type: SegmentType) {
+  function addSegment(type: SegmentType, segmentId?: string) {
     setGame((current) => {
-      if (!current || current.currentShow.length >= getShowSegmentLimit(current)) {
+      if (!current || current.currentShow.length >= maxBookingSegments) {
         return current;
       }
 
+      const catalogOption = getDefaultCatalogOption(type);
       const updatedGame = {
         ...current,
         currentShow: [
           ...current.currentShow,
           {
-            id: `segment-${Date.now()}-${current.currentShow.length}`,
+            id: segmentId ?? `segment-${Date.now()}-${current.currentShow.length}`,
             type,
             participantIds: [],
+            segmentCatalogId: catalogOption?.id,
+            segmentDisplayName: catalogOption?.label,
+            durationMinutes: catalogOption?.defaultDurationMinutes,
+            participantMin: catalogOption?.minParticipants,
+            participantMax: catalogOption?.maxParticipants,
           },
         ],
+      };
+
+      persistGameSnapshot(updatedGame, "booking");
+      return updatedGame;
+    });
+  }
+
+  function updateSegment(segmentId: string, updates: Partial<Segment>) {
+    setGame((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const updatedGame = {
+        ...current,
+        currentShow: current.currentShow.map((segment) => {
+          if (segment.id !== segmentId) {
+            return segment;
+          }
+
+          let updatedSegment = { ...segment, ...updates };
+          const range = getSegmentParticipantRange(updatedSegment);
+
+          if (updatedSegment.participantIds.length > range.max) {
+            updatedSegment = { ...updatedSegment, participantIds: updatedSegment.participantIds.slice(0, range.max) };
+          }
+
+          const championship = updatedSegment.championshipId
+            ? current.championships.find((title) => title.id === updatedSegment.championshipId)
+            : undefined;
+
+          if (championship && !canSegmentAttachChampionship(updatedSegment, championship)) {
+            updatedSegment = { ...updatedSegment, championshipId: undefined };
+          }
+
+          const rivalry = updatedSegment.rivalryId
+            ? current.rivalries.find((activeRivalry) => activeRivalry.id === updatedSegment.rivalryId)
+            : undefined;
+
+          if (rivalry && !canSegmentAttachRivalry(updatedSegment, rivalry)) {
+            updatedSegment = { ...updatedSegment, rivalryId: undefined };
+          }
+
+          return updatedSegment;
+        }),
       };
 
       persistGameSnapshot(updatedGame, "booking");
@@ -1244,7 +1737,7 @@ function App() {
             return segment;
           }
 
-          const participantLimit = getSegmentParticipantLimit(segment.type);
+          const participantLimit = getSegmentParticipantRange(segment).max;
           const participantIds = isSelected
             ? segment.participantIds.filter((id) => id !== wrestlerId)
             : segment.participantIds.length < participantLimit
@@ -1435,6 +1928,7 @@ function App() {
         onSetSegmentChampionship={setSegmentChampionship}
         onSetSegmentRivalry={setSegmentRivalry}
         onToggleParticipant={toggleParticipant}
+        onUpdateSegment={updateSegment}
       />
     );
   }
@@ -1720,6 +2214,13 @@ function NewGameSetupScreen({
   const bestTalker = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.promoSkill);
   const bestInRing = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.ringSkill);
   const highestMomentum = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.momentum);
+  const weekOneAnchor = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.morale + wrestler.momentum + (100 - wrestler.fatigue));
+  const draftReviewPressure = getDraftReviewPressure(draftedWrestlers);
+  const draftReviewRead = getDraftReviewRead(draftedWrestlers);
+  const draftTierCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.roleTier);
+  const draftArchetypeCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.archetype);
+  const draftDivisionCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.division);
+  const draftSourceBrandCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.sourceBrand);
 
   function startCareer() {
     if (!canPreview || draftedWrestlers.length !== draftPickCount) {
@@ -2093,15 +2594,43 @@ function NewGameSetupScreen({
         ) : null}
 
         {step === "review" ? (
-          <div className="setup-panel">
+          <div className="setup-panel draft-review-panel">
             <p className="eyebrow">Draft Review</p>
             <h2>{brandName.trim() || defaultCareer.brandName} Roster</h2>
-            <div className="status-grid setup-summary">
-              <Metric label="Top Star" value={topStar?.name ?? "None"} detail={topStar ? `Pop ${topStar.popularity} · Mom ${topStar.momentum}` : undefined} />
+            <p className="lede">The board is locked. Read the room before you walk into Week 1.</p>
+            <div className="status-grid setup-summary draft-review-summary">
+              <Metric label="Franchise Player" value={topStar?.name ?? "None"} detail={topStar ? `Pop ${topStar.popularity} · Mom ${topStar.momentum}` : undefined} />
               <Metric label="Best Talker" value={bestTalker?.name ?? "None"} detail={bestTalker ? `Promo ${bestTalker.promoSkill}` : undefined} />
               <Metric label="Best In-Ring" value={bestInRing?.name ?? "None"} detail={bestInRing ? `Ring ${bestInRing.ringSkill}` : undefined} />
-              <Metric label="Highest Momentum" value={highestMomentum?.name ?? "None"} detail={highestMomentum ? `Momentum ${highestMomentum.momentum}` : undefined} />
+              <Metric label="Momentum Leader" value={highestMomentum?.name ?? "None"} detail={highestMomentum ? `Momentum ${highestMomentum.momentum}` : undefined} />
+              <Metric label="Week 1 Anchor" value={weekOneAnchor?.name ?? "None"} detail={weekOneAnchor ? `Morale ${weekOneAnchor.morale} · Fat ${weekOneAnchor.fatigue}` : undefined} />
+              <Metric label={draftReviewPressure.label} value={draftReviewPressure.value} detail={draftReviewPressure.detail} />
             </div>
+            <section className="war-room-read" aria-label="Draft review war room read">
+              <div>
+                <p className="eyebrow">War Room Read</p>
+                <h3>Locker Room Identity</h3>
+              </div>
+              <p>{draftReviewRead}</p>
+            </section>
+            <section className="draft-review-breakdown" aria-label="Drafted roster shape">
+              <article>
+                <span>Tier Mix</span>
+                <strong>{getDraftCountSummary(draftTierCounts, 4)}</strong>
+              </article>
+              <article>
+                <span>Style Lean</span>
+                <strong>{getDraftCountSummary(draftArchetypeCounts, 4)}</strong>
+              </article>
+              <article>
+                <span>Division Split</span>
+                <strong>{getDraftCountSummary(draftDivisionCounts, 3)}</strong>
+              </article>
+              <article>
+                <span>Source Mix</span>
+                <strong>{getDraftCountSummary(draftSourceBrandCounts, 4)}</strong>
+              </article>
+            </section>
             <section className="draft-review-grid">
               {draftedWrestlers.map((wrestler) => (
                 <DraftTalentCard key={wrestler.id} wrestler={wrestler} />
@@ -2533,9 +3062,10 @@ function BookingScreen({
   onSetSegmentChampionship,
   onSetSegmentRivalry,
   onToggleParticipant,
+  onUpdateSegment,
 }: {
   game: GameState;
-  onAddSegment: (type: SegmentType) => void;
+  onAddSegment: (type: SegmentType, segmentId?: string) => void;
   onBack: () => void;
   onNavigate: (screen: GameScreen) => void;
   onOpenProfile: (wrestlerId: string) => void;
@@ -2544,17 +3074,67 @@ function BookingScreen({
   onSetSegmentChampionship: (segmentId: string, championshipId: string) => void;
   onSetSegmentRivalry: (segmentId: string, rivalryId: string) => void;
   onToggleParticipant: (segmentId: string, wrestlerId: string) => void;
+  onUpdateSegment: (segmentId: string, updates: Partial<Segment>) => void;
 }) {
-  const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers)).length;
-  const canRunShow = validSegments >= 2;
+  const [composerSegmentId, setComposerSegmentId] = useState<string | undefined>();
+  const validShowSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers));
+  const validSegments = validShowSegments.length;
+  const invalidSegments = game.currentShow.length - validSegments;
   const calendarWeek = getCurrentCalendarWeek(game);
-  const segmentLimit = getShowSegmentLimit(game);
+  const runtimeMinutes = game.currentShow.reduce((total, segment) => total + getSegmentDurationMinutes(segment), 0);
+  const validRuntimeMinutes = validShowSegments.reduce((total, segment) => total + getSegmentDurationMinutes(segment), 0);
+  const runtimePercent = Math.min(100, Math.round((validRuntimeMinutes / showRuntimeTargetMinutes) * 100));
+  const readiness = getShowReadiness(validSegments, invalidSegments, validRuntimeMinutes);
+  const canRunShow = readiness.canRun;
+  const composerSegment = game.currentShow.find((segment) => segment.id === composerSegmentId);
   const bookedCounts = game.currentShow.reduce<Record<string, number>>((counts, segment) => {
     segment.participantIds.forEach((id) => {
       counts[id] = (counts[id] ?? 0) + 1;
     });
     return counts;
   }, {});
+
+  function beginAddSegment(type: SegmentType) {
+    const segmentId = `segment-${Date.now()}-${game.currentShow.length}`;
+    onAddSegment(type, segmentId);
+    setComposerSegmentId(segmentId);
+  }
+
+  function removeAndClose(segmentId: string) {
+    onRemoveSegment(segmentId);
+    if (composerSegmentId === segmentId) {
+      setComposerSegmentId(undefined);
+    }
+  }
+
+  function applyCatalogOption(segment: Segment, option: SegmentCatalogOption) {
+    onUpdateSegment(segment.id, {
+      segmentCatalogId: option.id,
+      segmentDisplayName: option.label,
+      durationMinutes: option.defaultDurationMinutes,
+      participantMin: option.minParticipants,
+      participantMax: option.maxParticipants,
+      championshipId: option.championshipAllowed ? segment.championshipId : undefined,
+    });
+  }
+
+  function setComposerRivalry(segment: Segment, rivalryId: string) {
+    const rivalry = game.rivalries.find((activeRivalry) => activeRivalry.id === rivalryId);
+    const range = getSegmentParticipantRange(segment);
+    const canPrefill =
+      segment.type === "Match" &&
+      rivalry?.participantIds.length === 2 &&
+      range.min <= 2 &&
+      range.max >= 2 &&
+      rivalry.participantIds.every((id) => game.wrestlers.some((wrestler) => wrestler.id === id && wrestler.injuryStatus !== "major"));
+
+    if (canPrefill && rivalry) {
+      onUpdateSegment(segment.id, { rivalryId, participantIds: [...rivalry.participantIds] });
+      return;
+    }
+
+    onSetSegmentRivalry(segment.id, rivalryId);
+  }
 
   return (
     <main className="app-shell">
@@ -2571,10 +3151,10 @@ function BookingScreen({
           <h2>{calendarWeek.showName}</h2>
           <p className="lede">
             {calendarWeek.showType === "ple"
-              ? "Major-event card. Six segments are available, and every title or rivalry beat lands louder."
+              ? "Major-event card. Shape the live block around enough valid TV time, then let the biggest title and rivalry beats breathe."
               : calendarWeek.isGoHome
-                ? "Go-home broadcast. Set the final tone before the next PLE."
-                : "TV production card. Build stories and protect the locker room."}
+                ? "Go-home broadcast. Build a complete TV block and set the final tone before the next PLE."
+                : "TV production card. Build enough show, leave room to breathe, and protect the locker room."}
           </p>
         </div>
         <button className="primary-action" disabled={!canRunShow} onClick={onRunShow}>
@@ -2584,7 +3164,7 @@ function BookingScreen({
 
       <section className="booking-controls" aria-label="Booking controls">
         {bookingSegmentTypes.map((type) => (
-          <button disabled={game.currentShow.length >= segmentLimit} key={type} onClick={() => onAddSegment(type)}>
+          <button disabled={game.currentShow.length >= maxBookingSegments} key={type} onClick={() => beginAddSegment(type)}>
             Add {type}
           </button>
         ))}
@@ -2594,84 +3174,288 @@ function BookingScreen({
         <button className="secondary-action" onClick={() => onNavigate("rivalries")}>
           View Rivalries
         </button>
-        <span>
-          {validSegments} valid · {game.currentShow.length}/{segmentLimit} segments
-        </span>
+        <span>{readiness.status} · {validRuntimeMinutes}/{showRuntimeTargetMinutes} ready min</span>
       </section>
 
-      <section className="segment-list" aria-label="Current show segments">
-        {game.currentShow.length === 0 ? (
-          <div className="empty-state">The rundown is empty. Add a segment to start building tonight's TV card.</div>
-        ) : (
-          game.currentShow.map((segment, index) => (
-            <article className={`segment ${isValidSegment(segment, game.wrestlers) ? "valid" : ""}`} key={segment.id}>
-              <div className="segment-header">
-                <div>
-                  <p className="eyebrow">Segment {index + 1}</p>
-                  <h3>
-                    {segment.type} <span>{getSegmentRuntime(segment.type)}</span>
-                  </h3>
-                  <p>{getSegmentRequirement(segment.type)}</p>
-                  <p>{getSegmentDescription(segment.type)}</p>
-                </div>
-                <button className="danger-action" onClick={() => onRemoveSegment(segment.id)}>
-                  Remove
-                </button>
-              </div>
+      <section className="booking-rundown-layout" aria-label="Current show rundown">
+        <div className="rundown-column">
+          <section className={`runtime-board readiness-${readiness.tone}`} aria-label="Runtime plan">
+            <div>
+              <p className="eyebrow">Runtime Board</p>
+              <h3>{readiness.status}</h3>
+              <p>{readiness.note}</p>
+            </div>
+            <div className="runtime-meter" aria-label={`${validRuntimeMinutes} of ${showRuntimeTargetMinutes} valid minutes ready`}>
+              <span style={{ width: `${runtimePercent}%` }} />
+            </div>
+            <div className="runtime-numbers">
+              <strong>{validRuntimeMinutes} ready min</strong>
+              <span>{runtimeMinutes} min planned</span>
+              <span>Ready window {showRuntimeMinMinutes}-{tvRuntimeWarningMinutes} min</span>
+            </div>
+          </section>
 
-              <SegmentContext segment={segment} wrestlers={game.wrestlers} bookedCounts={bookedCounts} />
-              <TitleMatchControl
-                championships={game.championships}
-                onSetSegmentChampionship={onSetSegmentChampionship}
-                segment={segment}
-                wrestlers={game.wrestlers}
-              />
-              <RivalryControl
-                onSetSegmentRivalry={onSetSegmentRivalry}
-                rivalries={game.rivalries}
-                segment={segment}
-              />
+          <section className="segment-list" aria-label="Current show segments">
+            {game.currentShow.length === 0 ? (
+              <div className="empty-state">The rundown is empty. Add a segment to start building tonight's TV card.</div>
+            ) : (
+              game.currentShow.map((segment, index) => {
+                const selected = composerSegmentId === segment.id;
+                const valid = isValidSegment(segment, game.wrestlers);
+                const participants = getSegmentParticipants(segment, game.wrestlers);
+                const option = getSegmentCatalogOption(segment);
 
-              <div className="participant-label">
-                <span>{getSegmentPickerLabel(segment.type)}</span>
-                {segment.type === "Open Challenge" ? <strong>Opponent revealed after Run Show</strong> : null}
-              </div>
-              <div className="participant-grid">
-                {game.wrestlers.map((wrestler) => {
-                  const checked = segment.participantIds.includes(wrestler.id);
-                  const limit = getSegmentParticipantLimit(segment.type);
-                  const isUnavailable = wrestler.injuryStatus === "major";
-                  const disabled = (!checked && segment.participantIds.length >= limit) || (!checked && isUnavailable);
-
-                  return (
-                    <div className={`participant-pick ${checked ? "selected" : ""} ${isUnavailable ? "unavailable" : ""}`} key={wrestler.id}>
-                      <label>
-                        <input
-                          checked={checked}
-                          disabled={disabled}
-                          onChange={() => onToggleParticipant(segment.id, wrestler.id)}
-                          type="checkbox"
-                        />
-                        <span>
-                          <strong>{wrestler.name}</strong>
-                          <small>
-                            Mom {wrestler.momentum} · Fat {wrestler.fatigue}
-                            {wrestler.injuryStatus !== "healthy" ? ` · ${getInjuryStatusLabel(wrestler.injuryStatus)}` : ""}
-                          </small>
-                        </span>
-                      </label>
-                      <button className="inline-action" onClick={() => onOpenProfile(wrestler.id)} type="button">
-                        Profile
-                      </button>
+                return (
+                  <article className={`segment rundown-segment ${valid ? "valid" : ""} ${selected ? "selected" : ""}`} key={segment.id}>
+                    <div className="segment-header">
+                      <div>
+                        <p className="eyebrow">Segment {index + 1}</p>
+                        <h3>
+                          {segment.segmentDisplayName ?? segment.type} <span>{getSegmentRuntime(segment)}</span>
+                        </h3>
+                        <div className="segment-badges">
+                          {getSegmentIdentityBadges(segment).map((badge) => (
+                            <span key={badge}>{badge}</span>
+                          ))}
+                        </div>
+                        <p className="segment-cue">{option.productionCue}</p>
+                        <p>{participants.map((wrestler) => wrestler.name).join(" / ") || getSegmentValidationWarning(segment, game.wrestlers)}</p>
+                      </div>
+                      <div className="segment-actions">
+                        <button className="secondary-action" onClick={() => setComposerSegmentId(segment.id)}>
+                          Edit
+                        </button>
+                        <button className="danger-action" onClick={() => removeAndClose(segment.id)}>
+                          Remove
+                        </button>
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            </article>
-          ))
-        )}
+                    <SegmentContext segment={segment} wrestlers={game.wrestlers} bookedCounts={bookedCounts} />
+                  </article>
+                );
+              })
+            )}
+          </section>
+        </div>
+
+        <aside className="composer-panel" aria-label="Segment composer">
+          {composerSegment ? (
+            <SegmentComposer
+              bookedCounts={bookedCounts}
+              championships={game.championships}
+              onApplyCatalogOption={(option) => applyCatalogOption(composerSegment, option)}
+              onClose={() => setComposerSegmentId(undefined)}
+              onOpenProfile={onOpenProfile}
+              onRemoveSegment={() => removeAndClose(composerSegment.id)}
+              onSetDuration={(durationMinutes) => onUpdateSegment(composerSegment.id, { durationMinutes })}
+              onSetSegmentChampionship={onSetSegmentChampionship}
+              onSetSegmentRivalry={(rivalryId) => setComposerRivalry(composerSegment, rivalryId)}
+              onToggleParticipant={onToggleParticipant}
+              rivalries={game.rivalries}
+              segment={composerSegment}
+              wrestlers={game.wrestlers}
+            />
+          ) : (
+            <div className="composer-empty">
+              <p className="eyebrow">Composer</p>
+              <h3>Choose a rundown slot</h3>
+              <p>Add or edit a segment to set the format, time, talent, title context, and story context.</p>
+            </div>
+          )}
+        </aside>
       </section>
     </main>
+  );
+}
+
+function SegmentComposer({
+  bookedCounts,
+  championships,
+  onApplyCatalogOption,
+  onClose,
+  onOpenProfile,
+  onRemoveSegment,
+  onSetDuration,
+  onSetSegmentChampionship,
+  onSetSegmentRivalry,
+  onToggleParticipant,
+  rivalries,
+  segment,
+  wrestlers,
+}: {
+  bookedCounts: Record<string, number>;
+  championships: Championship[];
+  onApplyCatalogOption: (option: SegmentCatalogOption) => void;
+  onClose: () => void;
+  onOpenProfile: (wrestlerId: string) => void;
+  onRemoveSegment: () => void;
+  onSetDuration: (durationMinutes: number) => void;
+  onSetSegmentChampionship: (segmentId: string, championshipId: string) => void;
+  onSetSegmentRivalry: (rivalryId: string) => void;
+  onToggleParticipant: (segmentId: string, wrestlerId: string) => void;
+  rivalries: Rivalry[];
+  segment: Segment;
+  wrestlers: Wrestler[];
+}) {
+  const catalogOptions = getCatalogOptionsForType(segment.type);
+  const selectedOption = getSegmentCatalogOption(segment);
+  const range = getSegmentParticipantRange(segment);
+  const durationMinutes = getSegmentDurationMinutes(segment);
+  const durationMin = Math.max(3, selectedOption.defaultDurationMinutes - 4);
+  const durationMax = 45;
+
+  return (
+    <div className="segment-composer">
+      <div className="composer-head">
+        <div>
+          <p className="eyebrow">Composer · {segment.type}</p>
+          <h3>{segment.segmentDisplayName ?? selectedOption.label}</h3>
+          <p>
+            {selectedOption.variant} · {selectedOption.group}
+          </p>
+          <div className="segment-badges">
+            {getSegmentIdentityBadges(segment).map((badge) => (
+              <span key={badge}>{badge}</span>
+            ))}
+          </div>
+        </div>
+        <button className="secondary-action" onClick={onClose}>
+          Close
+        </button>
+      </div>
+
+      <div className="composer-block">
+        <div className="participant-label compact-label">
+          <span>Format</span>
+          <strong>{getSegmentRequirementForSegment(segment)}</strong>
+        </div>
+        <div className="catalog-grid">
+          {catalogOptions.map((option) => (
+            <button
+              className={segment.segmentCatalogId === option.id ? "active-filter" : ""}
+              key={option.id}
+              onClick={() => onApplyCatalogOption(option)}
+            >
+              <span>{option.label}</span>
+              <small>
+                {option.defaultDurationMinutes} min · {option.minParticipants}
+                {option.minParticipants === option.maxParticipants ? "" : `-${option.maxParticipants}`} talent
+              </small>
+              <small>{option.productionCue}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="composer-block segment-guidance">
+        <div>
+          <span>Segment Intent</span>
+          <strong>{selectedOption.intent}</strong>
+        </div>
+        <div>
+          <span>Production Guidance</span>
+          <strong>{selectedOption.note}</strong>
+        </div>
+        <ul>
+          {getSegmentRequirementDetails(segment).map((detail) => (
+            <li key={detail}>{detail}</li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="composer-block duration-editor">
+        <div>
+          <span>Runtime</span>
+          <strong>{durationMinutes} minutes</strong>
+        </div>
+        <div className="duration-controls">
+          <button
+            className="secondary-action"
+            disabled={durationMinutes <= durationMin}
+            onClick={() => onSetDuration(Math.max(durationMin, durationMinutes - 1))}
+          >
+            Shorter
+          </button>
+          <input
+            max={durationMax}
+            min={durationMin}
+            onChange={(event) => onSetDuration(Number(event.target.value))}
+            type="range"
+            value={durationMinutes}
+          />
+          <button
+            className="secondary-action"
+            disabled={durationMinutes >= durationMax}
+            onClick={() => onSetDuration(Math.min(durationMax, durationMinutes + 1))}
+          >
+            Longer
+          </button>
+        </div>
+      </div>
+
+      <SegmentContext segment={segment} wrestlers={wrestlers} bookedCounts={bookedCounts} />
+      <TitleMatchControl
+        championships={championships}
+        onSetSegmentChampionship={onSetSegmentChampionship}
+        segment={segment}
+        wrestlers={wrestlers}
+      />
+      <RivalryControl
+        onSetSegmentRivalry={(segmentId, rivalryId) => {
+          if (segmentId === segment.id) {
+            onSetSegmentRivalry(rivalryId);
+          }
+        }}
+        rivalries={rivalries}
+        segment={segment}
+      />
+
+      <div className="participant-label">
+        <span>
+          {getSegmentPickerLabel(segment.type)} · {range.min === range.max ? `${range.min} required` : `${range.min}-${range.max} allowed`}
+        </span>
+        {segment.type === "Open Challenge" ? <strong>Opponent revealed after Run Show</strong> : null}
+      </div>
+      <div className="participant-grid composer-participant-grid">
+        {wrestlers.map((wrestler) => {
+          const checked = segment.participantIds.includes(wrestler.id);
+          const isUnavailable = wrestler.injuryStatus === "major";
+          const disabled = (!checked && segment.participantIds.length >= range.max) || (!checked && isUnavailable);
+
+          return (
+            <div className={`participant-pick ${checked ? "selected" : ""} ${isUnavailable ? "unavailable" : ""}`} key={wrestler.id}>
+              <label>
+                <input
+                  checked={checked}
+                  disabled={disabled}
+                  onChange={() => onToggleParticipant(segment.id, wrestler.id)}
+                  type="checkbox"
+                />
+                <span>
+                  <strong>{wrestler.name}</strong>
+                  <small>
+                    Mom {wrestler.momentum} · Fat {wrestler.fatigue}
+                    {wrestler.injuryStatus !== "healthy" ? ` · ${getInjuryStatusLabel(wrestler.injuryStatus)}` : ""}
+                  </small>
+                </span>
+              </label>
+              <button className="inline-action" onClick={() => onOpenProfile(wrestler.id)} type="button">
+                Profile
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="composer-foot">
+        <button className="danger-action" onClick={onRemoveSegment}>
+          Remove Segment
+        </button>
+        <button className="primary-action" disabled={!isValidSegment(segment, wrestlers)} onClick={onClose}>
+          Set Rundown Slot
+        </button>
+      </div>
+    </div>
   );
 }
 

@@ -114,6 +114,11 @@ export type Segment = {
   participantIds: string[];
   championshipId?: string;
   rivalryId?: string;
+  segmentCatalogId?: string;
+  segmentDisplayName?: string;
+  durationMinutes?: number;
+  participantMin?: number;
+  participantMax?: number;
 };
 
 export type Championship = {

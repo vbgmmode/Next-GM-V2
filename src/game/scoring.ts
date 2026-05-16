@@ -103,6 +103,12 @@ export function isValidSegment(segment: Segment, wrestlers: Wrestler[] = []) {
     return false;
   }
 
+  if (segment.participantMin !== undefined || segment.participantMax !== undefined) {
+    const min = segment.participantMin ?? 1;
+    const max = segment.participantMax ?? min;
+    return segment.participantIds.length >= min && segment.participantIds.length <= max;
+  }
+
   switch (segment.type) {
     case "Match":
     case "Contract Signing":
