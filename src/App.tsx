@@ -172,6 +172,48 @@ type TitleScenePressureSnapshot = {
   titleRivalries: Rivalry[];
 };
 
+type RivalryTimingTone = "hot" | "steady" | "watch" | "build";
+
+type RivalryTimingDiagnostic = {
+  id: string;
+  label: string;
+  detail: string;
+  tone: RivalryTimingTone;
+};
+
+type RivalryTimingSnapshot = {
+  primary: RivalryTimingDiagnostic;
+  diagnostics: RivalryTimingDiagnostic[];
+  timingRead: string;
+  producerRead: string;
+  weeksSinceAdvanced: number;
+  weeksUntilPle: number;
+  currentCardBeats: number;
+  currentCardParticipants: number;
+  recentlyPaidOff: boolean;
+};
+
+type BrandPulseTone = "strong" | "steady" | "watch";
+
+type BrandPulseRivalNote = {
+  id: string;
+  brandName: string;
+  label: string;
+  detail: string;
+};
+
+type BrandPulseSnapshot = {
+  headline: string;
+  detail: string;
+  tone: BrandPulseTone;
+  showRead: string;
+  financeRead: string;
+  socialRead: string;
+  titleRead: string;
+  rivalryRead: string;
+  rivalNotes: BrandPulseRivalNote[];
+};
+
 type CauseLedgerTone = "strong" | "steady" | "watch";
 
 type CauseLedgerItem = {
@@ -387,6 +429,81 @@ function getRivalUniverseRead(rivalBrands: RivalBrandState[]) {
   const activityCount = rivalBrands.reduce((sum, brand) => sum + brand.activityHistory.length, 0);
 
   return `${rivalBrands.length} rival brand${rivalBrands.length === 1 ? "" : "s"} assigned. ${rosterCount} rival roster claim${rosterCount === 1 ? "" : "s"} and ${activityCount} activity beat${activityCount === 1 ? "" : "s"} recorded.`;
+}
+
+function getBrandPulseRivalLabel(score: number, socialCount: number, profitLoss: number | undefined, index: number) {
+  if (score >= 88 && socialCount >= 2) {
+    return "Watching Your Momentum";
+  }
+
+  if (score >= 78 || socialCount >= 3) {
+    return "Media Buzz";
+  }
+
+  if (score < 60 || (profitLoss !== undefined && profitLoss < 0 && index === 0)) {
+    return "Pressure Rising";
+  }
+
+  return "Quiet Week";
+}
+
+function getBrandPulseSnapshot(game: GameState, result?: ShowResult): BrandPulseSnapshot | undefined {
+  if (!result) {
+    return undefined;
+  }
+
+  const financeReport = getFinanceReportForResult(game, result);
+  const socialPosts = game.socialPosts.filter((post) => post.seasonNumber === result.seasonNumber && post.weekNumber === result.week);
+  const recentShows = game.showHistory.filter((show) => show.seasonNumber === result.seasonNumber).slice(-3);
+  const recentAverage = recentShows.length
+    ? Math.round(recentShows.reduce((sum, show) => sum + show.totalScore, 0) / recentShows.length)
+    : result.totalScore;
+  const scoreDelta = result.totalScore - recentAverage;
+  const scoreDeltaLabel = scoreDelta >= 4 ? "above recent pace" : scoreDelta <= -4 ? "below recent pace" : "near recent pace";
+  const rivalBrands = game.rivalBrands?.length ? game.rivalBrands : createRivalBrandUniverse(game.rivalGMAssignments);
+  const titlePressure = getChampionshipPressureSnapshots(game)[0];
+  const rivalryTiming = getRivalryTimingSnapshots(game)[0];
+  const nextPle = getNextPle(game.calendar, game.currentWeek);
+  const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
+  const profitLoss = financeReport?.profitLoss;
+  const tone: BrandPulseTone =
+    result.totalScore >= 82 && (profitLoss === undefined || profitLoss >= 0)
+      ? "strong"
+      : result.totalScore < 62 || (profitLoss !== undefined && profitLoss < 0)
+        ? "watch"
+        : "steady";
+  const headline =
+    tone === "strong"
+      ? "Your Brand Owns The Room"
+      : tone === "watch"
+        ? "Office Pressure Is Showing"
+        : "The Brand Holds Position";
+  const pleDetail = nextPle
+    ? weeksUntilPle === 0
+      ? `${nextPle.showName} is this week.`
+      : `${formatWeekCount(weeksUntilPle)} until ${nextPle.showName}.`
+    : "No remaining PLE window on the calendar.";
+
+  return {
+    headline,
+    detail: `${result.showName} landed at ${result.totalScore} (${getShowGrade(result.totalScore)}), ${scoreDeltaLabel}. ${pleDetail}`,
+    tone,
+    showRead: `Last Show · ${result.totalScore} (${getShowGrade(result.totalScore)})`,
+    financeRead: financeReport ? `Brand Office · ${formatMoney(financeReport.profitLoss)}` : "Brand Office · No finance report",
+    socialRead: socialPosts.length ? `IWC Pulse · ${socialPosts.length} post${socialPosts.length === 1 ? "" : "s"}` : "IWC Pulse · Quiet room",
+    titleRead: titlePressure ? `${titlePressure.championship.name} · ${titlePressure.snapshot.primary.label}` : "Titles · No scene read",
+    rivalryRead: rivalryTiming ? `${rivalryTiming.rivalry.name} · ${rivalryTiming.snapshot.primary.label}` : "Rivalries · No active read",
+    rivalNotes: rivalBrands.slice(0, 3).map((rivalBrand, index) => {
+      const label = getBrandPulseRivalLabel(result.totalScore, socialPosts.length, profitLoss, index);
+
+      return {
+        id: rivalBrand.id,
+        brandName: rivalBrand.brandName,
+        label,
+        detail: `${rivalBrand.assignedGMName}'s desk logs this as flavor only; no rival show was simulated.`,
+      };
+    }),
+  };
 }
 
 function formatDateTime(value: string) {
@@ -1512,6 +1629,11 @@ function hasPlePayoff(game: GameState, rivalryId: string) {
   return (game.rivalryHistory ?? []).some((event) => event.rivalryId === rivalryId && event.eventType === "ple_payoff");
 }
 
+function getRivalryHistoryAgeWeeks(game: GameState, event: RivalryHistoryEvent) {
+  const seasonDelta = Math.max(0, game.seasonNumber - event.seasonNumber);
+  return Math.max(0, seasonDelta * 12 + game.currentWeek - event.weekNumber);
+}
+
 function getRivalryStageContext(game: GameState, rivalry: Rivalry) {
   const calendarWeek = getCurrentCalendarWeek(game);
 
@@ -1520,6 +1642,179 @@ function getRivalryStageContext(game: GameState, rivalry: Rivalry) {
     isGoHome: calendarWeek.isGoHome,
     isPle: calendarWeek.showType === "ple",
   });
+}
+
+function getRivalryTimingSnapshot(rivalry: Rivalry, game: GameState): RivalryTimingSnapshot {
+  const calendarWeek = getCurrentCalendarWeek(game);
+  const nextPle = getNextPle(game.calendar, game.currentWeek);
+  const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
+  const history = getRivalryHistory(game, rivalry.id, 20);
+  const latestPlePayoff = history.find((event) => event.eventType === "ple_payoff");
+  const latestHistory = history[0];
+  const latestHistoryAge = latestHistory ? getRivalryHistoryAgeWeeks(game, latestHistory) : Math.max(0, game.currentWeek - 1);
+  const latestPayoffAge = latestPlePayoff ? getRivalryHistoryAgeWeeks(game, latestPlePayoff) : Infinity;
+  const recentlyPaidOff = latestPayoffAge <= 2;
+  const weeksSinceAdvanced = rivalry.lastAdvancedWeek ? Math.max(0, game.currentWeek - rivalry.lastAdvancedWeek) : Math.max(0, game.currentWeek - 1);
+  const currentCardSegments = game.currentShow.filter((segment) => segment.rivalryId === rivalry.id);
+  const currentCardParticipants = new Set(
+    game.currentShow
+      .flatMap((segment) => segment.participantIds)
+      .filter((id) => rivalry.participantIds.includes(id)),
+  );
+  const diagnostics: RivalryTimingDiagnostic[] = [];
+
+  if (recentlyPaidOff) {
+    diagnostics.push({
+      id: "recently-paid-off",
+      label: "Recently Paid Off",
+      detail: `${rivalry.name} hit a PLE checkpoint ${formatWeekCount(latestPayoffAge)} ago.`,
+      tone: "steady",
+    });
+  }
+
+  if (!recentlyPaidOff && rivalry.heat >= 78 && rivalry.weeksActive >= 5 && weeksSinceAdvanced >= 2) {
+    diagnostics.push({
+      id: "payoff-overdue",
+      label: "Payoff Overdue",
+      detail: `High heat, ${formatWeekCount(rivalry.weeksActive)} active, and ${formatWeekCount(weeksSinceAdvanced)} since the last recorded beat.`,
+      tone: "watch",
+    });
+  }
+
+  if (!recentlyPaidOff && (calendarWeek.showType === "ple" || weeksUntilPle <= 1) && rivalry.heat >= 65 && rivalry.weeksActive >= 3 && rivalry.freshness >= 40) {
+    diagnostics.push({
+      id: "ple-ready",
+      label: "PLE-Ready",
+      detail: `${nextPle?.showName ?? calendarWeek.showName} is close, and this feud has enough heat and time on the board for a major payoff if you choose it.`,
+      tone: "hot",
+    });
+  }
+
+  if (rivalry.status === "stale" || rivalry.status === "cooling" || rivalry.freshness <= 35 || rivalry.heat < 45) {
+    diagnostics.push({
+      id: "cooling-off",
+      label: "Cooling Off",
+      detail: `Heat ${rivalry.heat}, freshness ${rivalry.freshness}, and ${formatRivalryStatus(rivalry.status)} status say the room is losing the thread.`,
+      tone: "build",
+    });
+  }
+
+  if (!recentlyPaidOff && currentCardSegments.length === 0 && (weeksSinceAdvanced >= 2 || rivalry.lastAdvancedWeek === 0)) {
+    diagnostics.push({
+      id: "needs-tv",
+      label: "Needs TV",
+      detail: rivalry.lastAdvancedWeek
+        ? `${formatWeekCount(weeksSinceAdvanced)} since the last recorded beat, and no current rundown segment is attached.`
+        : "No recorded TV beat yet, and no current rundown segment is attached.",
+      tone: "watch",
+    });
+  }
+
+  if (rivalry.heat >= 75 && rivalry.freshness >= 50 && !recentlyPaidOff) {
+    diagnostics.push({
+      id: "hot-program",
+      label: "Hot Program",
+      detail: `Heat ${rivalry.heat} with ${rivalry.freshness} freshness gives creative a strong live wire.`,
+      tone: "hot",
+    });
+  }
+
+  if (rivalry.weeksActive <= 1 && latestHistory?.eventType === "started") {
+    diagnostics.push({
+      id: "just-sparked",
+      label: "Just Sparked",
+      detail: "The premise is fresh. A clean TV beat can make the audience understand why it matters.",
+      tone: "build",
+    });
+  } else if (rivalry.heat >= 55 && rivalry.weeksActive <= 4 && rivalry.freshness >= 45) {
+    diagnostics.push({
+      id: "building-heat",
+      label: "Building Heat",
+      detail: `${formatWeekCount(rivalry.weeksActive)} active with enough freshness to keep layering TV beats.`,
+      tone: "steady",
+    });
+  }
+
+  if (currentCardSegments.length) {
+    diagnostics.push({
+      id: "on-card",
+      label: "On Tonight's Board",
+      detail: `${currentCardSegments.length} current segment${currentCardSegments.length === 1 ? "" : "s"} attached, with ${currentCardParticipants.size} participant${currentCardParticipants.size === 1 ? "" : "s"} visible.`,
+      tone: "steady",
+    });
+  }
+
+  if (!diagnostics.length) {
+    diagnostics.push({
+      id: "steady-program",
+      label: "Steady Program",
+      detail: "The feud has readable state and no urgent timing pressure from the current board.",
+      tone: "steady",
+    });
+  }
+
+  const primary =
+    diagnostics.find((item) => item.id === "payoff-overdue") ??
+    diagnostics.find((item) => item.id === "ple-ready") ??
+    diagnostics.find((item) => item.id === "cooling-off") ??
+    diagnostics.find((item) => item.id === "needs-tv") ??
+    diagnostics.find((item) => item.id === "hot-program") ??
+    diagnostics[0];
+  const timingRead = `${formatWeekCount(rivalry.weeksActive)} active · ${rivalry.lastAdvancedWeek ? `${formatWeekCount(weeksSinceAdvanced)} since beat` : "no TV beat yet"} · ${weeksUntilPle === 0 ? "PLE week" : `${formatWeekCount(weeksUntilPle)} to PLE`}`;
+  const producerRead =
+    primary.id === "payoff-overdue"
+      ? "Creative room reads this as high-pressure. Payoff is available, not forced."
+      : primary.id === "ple-ready"
+        ? "Major-event window is open. The final call stays with the GM."
+        : primary.id === "cooling-off"
+          ? "This needs a distinct beat or a deliberate exit plan soon."
+          : primary.id === "needs-tv"
+            ? "The feud needs visibility before the audience loses the thread."
+            : primary.id === "hot-program"
+              ? "Strong program. Feature it, protect it, or let anticipation breathe."
+              : "The feud can keep building at TV pace.";
+
+  return {
+    primary,
+    diagnostics: diagnostics.slice(0, 4),
+    timingRead,
+    producerRead,
+    weeksSinceAdvanced,
+    weeksUntilPle,
+    currentCardBeats: currentCardSegments.length,
+    currentCardParticipants: currentCardParticipants.size,
+    recentlyPaidOff,
+  };
+}
+
+function getRivalryTimingRank(tone: RivalryTimingTone) {
+  if (tone === "watch") {
+    return 4;
+  }
+
+  if (tone === "build") {
+    return 3;
+  }
+
+  if (tone === "hot") {
+    return 2;
+  }
+
+  return 1;
+}
+
+function getRivalryTimingSnapshots(game: GameState) {
+  return game.rivalries
+    .map((rivalry) => ({
+      rivalry,
+      snapshot: getRivalryTimingSnapshot(rivalry, game),
+    }))
+    .sort(
+      (a, b) =>
+        getRivalryTimingRank(b.snapshot.primary.tone) - getRivalryTimingRank(a.snapshot.primary.tone) ||
+        b.rivalry.heat - a.rivalry.heat ||
+        a.rivalry.name.localeCompare(b.rivalry.name),
+    );
 }
 
 function getRivalryTitleRelevance(rivalry: Rivalry, championships: Championship[], wrestlers: Wrestler[]) {
@@ -3824,6 +4119,38 @@ function RivalBrandUniversePanel({
   );
 }
 
+function BrandPulsePanel({ compact = false, snapshot }: { compact?: boolean; snapshot: BrandPulseSnapshot }) {
+  return (
+    <section className={`brand-pulse-panel tone-${snapshot.tone}${compact ? " compact" : ""}`} aria-label="Brand Pulse">
+      <div className="brand-pulse-head">
+        <div>
+          <p className="eyebrow">Brand Pulse</p>
+          <h3>{snapshot.headline}</h3>
+        </div>
+        <strong>{snapshot.showRead}</strong>
+      </div>
+      <p className="brand-pulse-copy">{snapshot.detail}</p>
+      <div className="brand-pulse-grid">
+        <span>{snapshot.financeRead}</span>
+        <span>{snapshot.socialRead}</span>
+        <span>{snapshot.titleRead}</span>
+        <span>{snapshot.rivalryRead}</span>
+      </div>
+      {!compact && snapshot.rivalNotes.length ? (
+        <div className="brand-pulse-rivals" aria-label="Rival brand flavor readout">
+          {snapshot.rivalNotes.map((note) => (
+            <article key={note.id}>
+              <span>{note.brandName}</span>
+              <strong>{note.label}</strong>
+              <small>{note.detail}</small>
+            </article>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function DraftFinanceSummary({ readout }: { readout: DraftFinanceReadout }) {
   const pressureClass = readout.pressureLabel.toLowerCase().replace(/\s+/g, "-");
 
@@ -3953,8 +4280,8 @@ function DashboardScreen({
   const topChampionship = championshipPressureSnapshots[0]?.championship ?? [...game.championships].sort((a, b) => b.prestige - a.prestige)[0];
   const topTitlePressure = championshipPressureSnapshots.find((item) => item.championship.id === topChampionship?.id)?.snapshot;
   const topTitleContenders = topChampionship ? getTopContenders(topChampionship, game.wrestlers, 2) : [];
-  const hottestRivalry = getHottestRivalry(game.rivalries);
-  const coolingRivalry = getCoolingRivalry(game.rivalries);
+  const rivalryTimingSnapshots = getRivalryTimingSnapshots(game);
+  const focusRivalryTiming = rivalryTimingSnapshots[0];
   const currentShow = getCurrentCalendarWeek(game);
   const nextPle = getNextPle(game.calendar, game.currentWeek);
   const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
@@ -3972,6 +4299,7 @@ function DashboardScreen({
   const unavailableCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus === "major").length;
   const latestRecoveryNotes = game.injuryRecoveryNotes.filter((note) => note.weekNumber === game.currentWeek).slice(-3).reverse();
   const rivalBrands = game.rivalBrands ?? createRivalBrandUniverse(game.rivalGMAssignments);
+  const brandPulseSnapshot = getBrandPulseSnapshot(game, lastShow);
 
   return (
     <main className="app-shell">
@@ -4053,6 +4381,8 @@ function DashboardScreen({
       </section>
 
       <RivalBrandUniversePanel className="command-panel rival-universe-dashboard" rivalBrands={rivalBrands} title="Competitive Landscape" />
+
+      {brandPulseSnapshot ? <BrandPulsePanel snapshot={brandPulseSnapshot} /> : null}
 
       <section className="command-panel roster-pressure-panel">
         <div className="section-heading">
@@ -4151,22 +4481,19 @@ function DashboardScreen({
 
       <section className="command-panel rivalry-spotlight">
         <div className="section-heading">
-          <p className="eyebrow">Rivalry Spotlight</p>
-          <h3>{hottestRivalry ? hottestRivalry.name : "No Active Rivalries"}</h3>
+          <p className="eyebrow">Rivalry Timing</p>
+          <h3>{focusRivalryTiming ? focusRivalryTiming.rivalry.name : "No Active Rivalries"}</h3>
         </div>
-        {hottestRivalry ? (
+        {focusRivalryTiming ? (
           <div className="spotlight-grid">
-            <Metric label="Heat" value={`${hottestRivalry.heat}`} detail={formatRivalryStatus(hottestRivalry.status)} />
-            <Metric label="Stakes" value={formatRivalryStakes(hottestRivalry.stakes)} />
-            <Metric
-              label="Warning"
-              value={coolingRivalry ? coolingRivalry.name : "Stories Holding"}
-              detail={coolingRivalry ? formatRivalryStatus(coolingRivalry.status) : "No cooling angles"}
-            />
+            <Metric label="Timing" value={focusRivalryTiming.snapshot.primary.label} detail={focusRivalryTiming.snapshot.primary.detail} />
+            <Metric label="Heat" value={`${focusRivalryTiming.rivalry.heat}`} detail={formatRivalryStatus(focusRivalryTiming.rivalry.status)} />
+            <Metric label="PLE Window" value={focusRivalryTiming.snapshot.weeksUntilPle === 0 ? "This Week" : formatWeekCount(focusRivalryTiming.snapshot.weeksUntilPle)} detail={focusRivalryTiming.snapshot.timingRead} />
           </div>
         ) : (
           <div className="empty-state compact">No rivalries are active. Start one to give weekly TV more story context.</div>
         )}
+        {focusRivalryTiming ? <p className="rivalry-timing-dashboard">{focusRivalryTiming.snapshot.producerRead}</p> : null}
         <button className="secondary-action" onClick={() => onNavigate("rivalries")}>
           View Rivalries
         </button>
@@ -4724,6 +5051,7 @@ function SegmentComposer({
       />
       <RivalryControl
         championships={championships}
+        game={game}
         onSetSegmentRivalry={(segmentId, rivalryId) => {
           if (segmentId === segment.id) {
             onSetSegmentRivalry(rivalryId);
@@ -5411,6 +5739,7 @@ function RivalriesScreen({
             const stage = getRivalryStageContext(game, rivalry);
             const titleRelevance = getRivalryTitleRelevance(rivalry, game.championships, game.wrestlers);
             const rivalryBlocked = isRivalryIntergenderBlocked(rivalry, game.wrestlers);
+            const timingSnapshot = getRivalryTimingSnapshot(rivalry, game);
             const gmRead = getRivalryGMRead(rivalry, {
               hasPlePayoff: plePayoff,
               isGoHome: getCurrentCalendarWeek(game).isGoHome,
@@ -5425,7 +5754,26 @@ function RivalriesScreen({
                     <p className="eyebrow">{formatRivalryStakes(rivalry.stakes)} Stakes · {stage.name}</p>
                     <h3>{rivalry.name}</h3>
                   </div>
-                  <strong>{rivalryBlocked ? "Blocked Context" : plePayoff ? "PLE Payoff" : formatRivalryStatus(rivalry.status)}</strong>
+                  <strong>{rivalryBlocked ? "Blocked Context" : timingSnapshot.primary.label}</strong>
+                </div>
+                <div className="rivalry-timing-board" aria-label={`${rivalry.name} timing diagnostics`}>
+                  <article className={`rivalry-timing-card timing-${timingSnapshot.primary.tone}`}>
+                    <span>Payoff Window</span>
+                    <strong>{timingSnapshot.primary.label}</strong>
+                    <p>{timingSnapshot.primary.detail}</p>
+                  </article>
+                  <article>
+                    <span>Timing Read</span>
+                    <strong>{timingSnapshot.timingRead}</strong>
+                    <p>{timingSnapshot.producerRead}</p>
+                  </article>
+                  {timingSnapshot.diagnostics.filter((diagnostic) => diagnostic.id !== timingSnapshot.primary.id).map((diagnostic) => (
+                    <article className={`rivalry-timing-card timing-${diagnostic.tone}`} key={diagnostic.id}>
+                      <span>{diagnostic.label}</span>
+                      <strong>{diagnostic.tone === "hot" ? "Feature" : diagnostic.tone === "watch" ? "Watch" : diagnostic.tone === "build" ? "Build" : "Hold"}</strong>
+                      <p>{diagnostic.detail}</p>
+                    </article>
+                  ))}
                 </div>
                 <div className="rivalry-story-map">
                   <article>
@@ -5459,6 +5807,7 @@ function RivalriesScreen({
                   <Metric label="Freshness" value={`${rivalry.freshness}`} />
                   <Metric label="Weeks Active" value={`${rivalry.weeksActive}`} />
                   <Metric label="Last Advanced" value={rivalry.lastAdvancedWeek ? `Week ${rivalry.lastAdvancedWeek}` : "Not On TV Yet"} />
+                  <Metric label="Current Card" value={`${timingSnapshot.currentCardBeats} Beat${timingSnapshot.currentCardBeats === 1 ? "" : "s"}`} detail={`${timingSnapshot.currentCardParticipants} participant${timingSnapshot.currentCardParticipants === 1 ? "" : "s"} visible`} />
                   <Metric label="Blowoff Ideas" value={storyline.recommendedBlowoffMatches} />
                 </div>
                 <div className="story-guidance">
@@ -5985,6 +6334,7 @@ function WeekReviewScreen({
   const nextWeek = game.calendar.find((week) => week.weekNumber === result.week + 1);
   const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= result.week + 1 && !week.completed);
   const weeksUntilNextPle = nextPle ? Math.max(0, nextPle.weekNumber - result.week) : 0;
+  const brandPulseSnapshot = getBrandPulseSnapshot(game, result);
 
   return (
     <main className="app-shell">
@@ -6027,6 +6377,8 @@ function WeekReviewScreen({
       ) : null}
 
       <PostShowCauseLedger sections={causeLedger} compact />
+
+      {brandPulseSnapshot ? <BrandPulsePanel compact snapshot={brandPulseSnapshot} /> : null}
 
       <section className="locker-room-fallout" aria-label="Locker room fallout">
         <div className="section-heading">
@@ -6542,12 +6894,14 @@ function TitleMatchControl({
 
 function RivalryControl({
   championships,
+  game,
   onSetSegmentRivalry,
   rivalries,
   segment,
   wrestlers,
 }: {
   championships: Championship[];
+  game: GameState;
   onSetSegmentRivalry: (segmentId: string, rivalryId: string) => void;
   rivalries: Rivalry[];
   segment: Segment;
@@ -6560,6 +6914,7 @@ function RivalryControl({
   const selectedRelationship = selectedRivalry ? getRivalryRelationship(selectedRivalry) : undefined;
   const selectedStage = selectedRivalry ? deriveRivalryStage(selectedRivalry) : undefined;
   const selectedTitleRelevance = selectedRivalry ? getRivalryTitleRelevance(selectedRivalry, championships, wrestlers) : undefined;
+  const selectedTiming = selectedRivalry ? getRivalryTimingSnapshot(selectedRivalry, game) : undefined;
   const selectedRivalryMatchBlocked = Boolean(
     selectedRivalry && segment.type === "Match" && hasIntergenderMatchParticipants({ ...segment, participantIds: selectedRivalry.participantIds }, wrestlers),
   );
@@ -6574,7 +6929,7 @@ function RivalryControl({
               ? `${selectedRivalry.name} is blocked by the no-intergender rivalry rule. Clear it or choose a valid rivalry.`
               : selectedRivalryMatchBlocked
                 ? `${selectedRivalry.name} attached for context. This rivalry works better as a promo or angle under current match rules.`
-                : `${selectedRivalry.name} attached. ${selectedStoryline?.name ?? "Rivalry"} · ${selectedStage?.name ?? formatRivalryStatus(selectedRivalry.status)}.`
+                : `${selectedRivalry.name} attached. ${selectedTiming?.primary.label ?? selectedStage?.name ?? formatRivalryStatus(selectedRivalry.status)}.`
             : eligibleRivalries.length
               ? "Attach an active rivalry when this segment advances a story."
               : "Select a rivalry participant to attach story context."}
@@ -6583,7 +6938,7 @@ function RivalryControl({
           <small>
             {selectedRivalryBlocked
               ? "Legacy context is visible for save safety, but it cannot be used for booking."
-              : `${selectedRelationship.name} · ${selectedStoryline.commonBeats}. ${selectedTitleRelevance ? selectedTitleRelevance.detail : selectedStage.notes}`}
+              : `${selectedRelationship.name} · ${selectedTiming?.timingRead ?? selectedStage.notes}. ${selectedTitleRelevance ? selectedTitleRelevance.detail : selectedTiming?.producerRead ?? selectedStoryline.commonBeats}`}
           </small>
         ) : null}
       </div>
@@ -6594,9 +6949,9 @@ function RivalryControl({
           </button>
           {eligibleRivalries.map((rivalry) => (
             <button className={segment.rivalryId === rivalry.id ? "active-filter" : ""} key={rivalry.id} onClick={() => onSetSegmentRivalry(segment.id, rivalry.id)}>
-              <span>{getRivalryTitleRelevance(rivalry, championships, wrestlers)?.label ?? deriveRivalryStage(rivalry).name}</span>
+              <span>{getRivalryTimingSnapshot(rivalry, game).primary.label}</span>
               <strong>{rivalry.name}</strong>
-              <small>{getRivalryStoryline(rivalry).name}</small>
+              <small>{getRivalryStoryline(rivalry).name} · {getRivalryTimingSnapshot(rivalry, game).timingRead}</small>
             </button>
           ))}
         </div>

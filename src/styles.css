@@ -602,6 +602,114 @@ button:disabled {
   padding: 5px 7px;
 }
 
+.brand-pulse-panel {
+  background:
+    linear-gradient(90deg, rgba(111, 226, 212, 0.12), transparent 48%),
+    linear-gradient(180deg, rgba(246, 193, 86, 0.05), transparent),
+    rgba(14, 17, 24, 0.94);
+  border: 1px solid rgba(111, 226, 212, 0.26);
+  border-left: 4px solid #6fe2d4;
+  border-radius: 8px;
+  box-shadow: 0 22px 52px rgba(0, 0, 0, 0.24);
+  display: grid;
+  gap: 14px;
+  margin: 0 0 18px;
+  padding: 18px;
+}
+
+.brand-pulse-panel.compact {
+  margin-bottom: 18px;
+}
+
+.brand-pulse-panel.tone-strong {
+  border-color: rgba(0, 168, 150, 0.5);
+  border-left-color: #00a896;
+}
+
+.brand-pulse-panel.tone-watch {
+  border-color: rgba(246, 193, 86, 0.48);
+  border-left-color: #f6c156;
+}
+
+.brand-pulse-head {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.brand-pulse-head h3 {
+  margin: 0;
+}
+
+.brand-pulse-head > strong {
+  background: rgba(8, 9, 13, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f6c156;
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 8px 10px;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.brand-pulse-copy {
+  color: #dbe2ef;
+  font-weight: 750;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.brand-pulse-grid,
+.brand-pulse-rivals {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.brand-pulse-grid span {
+  background: rgba(8, 9, 13, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #b9c1cf;
+  font-size: 0.78rem;
+  font-weight: 900;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 10px;
+  text-transform: uppercase;
+}
+
+.brand-pulse-rivals {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.brand-pulse-rivals article {
+  background: rgba(8, 9, 13, 0.54);
+  border: 1px solid rgba(246, 193, 86, 0.16);
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.brand-pulse-rivals span,
+.brand-pulse-rivals small {
+  color: #9ea8ba;
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.brand-pulse-rivals strong {
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
 .draft-panel {
   max-width: none;
 }
@@ -1752,6 +1860,14 @@ h3 {
   padding-left: 10px;
 }
 
+.rivalry-timing-dashboard {
+  border-left: 3px solid #6fe2d4;
+  color: #b9c1cf;
+  line-height: 1.45;
+  margin: 12px 0;
+  padding-left: 10px;
+}
+
 .title-division-builder,
 .title-eligible-readout {
   display: grid;
@@ -1865,7 +1981,56 @@ h3 {
   margin-bottom: 14px;
 }
 
+.rivalry-timing-board {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+.rivalry-timing-board article {
+  background: rgba(8, 9, 13, 0.56);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 3px solid rgba(111, 226, 212, 0.45);
+  border-radius: 6px;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.rivalry-timing-board article.timing-hot {
+  border-left-color: #00a896;
+}
+
+.rivalry-timing-board article.timing-watch {
+  border-left-color: #f6c156;
+}
+
+.rivalry-timing-board article.timing-build {
+  border-left-color: #ff5361;
+}
+
+.rivalry-timing-board span {
+  color: #6fe2d4;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.rivalry-timing-board strong {
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
 .rivalry-story-map p,
+.rivalry-timing-board p,
 .story-guidance p {
   color: #b9c1cf;
   line-height: 1.45;
@@ -2634,7 +2799,8 @@ h3 {
   text-transform: uppercase;
 }
 
-.title-match-control small {
+.title-match-control small,
+.rivalry-control small {
   display: block;
   margin-top: 6px;
 }
@@ -3446,6 +3612,7 @@ h3 {
   .status-grid,
   .spotlight-grid,
   .draft-stat-grid,
+  .brand-pulse-grid,
   .participant-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3543,6 +3710,7 @@ h3 {
   .draft-tools,
   .title-scene-board,
   .title-pressure-deck,
+  .rivalry-timing-board,
   .title-division-builder {
     grid-template-columns: 1fr;
   }
@@ -3592,6 +3760,8 @@ h3 {
 
   .status-grid,
   .booking-rundown-layout,
+  .brand-pulse-grid,
+  .brand-pulse-rivals,
   .command-grid,
   .finance-breakdown-grid,
   .profile-layout,
@@ -3610,6 +3780,15 @@ h3 {
 
   .wrestler-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .brand-pulse-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .brand-pulse-head > strong {
+    text-align: left;
   }
 
   .profile-actions,
