@@ -160,6 +160,9 @@ export type Rivalry = {
   id: string;
   name: string;
   participantIds: string[];
+  storylineId?: string;
+  relationshipTag?: string;
+  stageId?: string;
   heat: number;
   freshness: number;
   weeksActive: number;

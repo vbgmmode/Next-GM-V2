@@ -1,6 +1,7 @@
 import type { Championship, GameDifficulty, GameState, GMStyle, LockerRoomFallout, RivalGMAssignment, Rivalry, Screen, Segment, SegmentType, ShowResult, StartingBudgetTier, Wrestler } from "./types";
 import { createDefaultChampionships, createDefaultRivalries, createSeasonCalendar, defaultCareer, isPrototypeBrand } from "./seed";
 import { applyChampionshipCatalogDefaults } from "./titleCatalog";
+import { applyRivalryCatalogDefaults } from "./rivalryCatalog";
 
 export type GameScreen = Exclude<Screen, "title" | "setup">;
 export type ProfileReturnScreen = Extract<GameScreen, "roster" | "booking">;
@@ -140,6 +141,10 @@ function normalizeChampionships(championships: unknown, wrestlers: Wrestler[], b
     : createDefaultChampionships(wrestlers, brandStyle);
 }
 
+function normalizeRivalries(rivalries: unknown, wrestlers: Wrestler[]) {
+  return Array.isArray(rivalries) ? (rivalries as Rivalry[]).map(applyRivalryCatalogDefaults) : createDefaultRivalries(wrestlers);
+}
+
 function getDefaultSegmentDefaults(type: SegmentType) {
   if (type === "Open Challenge") {
     return { segmentCatalogId: "P007", segmentDisplayName: "Open Challenge", durationMinutes: 7, participantMin: 1, participantMax: 1 };
@@ -220,7 +225,7 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
       money: savedGame.money ?? 250000,
       wrestlers,
       championships: normalizeChampionships(savedGame.championships, wrestlers, brandStyle),
-      rivalries: Array.isArray(savedGame.rivalries) ? (savedGame.rivalries as Rivalry[]) : createDefaultRivalries(wrestlers),
+      rivalries: normalizeRivalries(savedGame.rivalries, wrestlers),
       championshipHistory: Array.isArray(savedGame.championshipHistory) ? savedGame.championshipHistory : [],
       rivalryHistory: Array.isArray(savedGame.rivalryHistory) ? savedGame.rivalryHistory : [],
       calendar: Array.isArray(savedGame.calendar) && savedGame.calendar.length ? savedGame.calendar : createSeasonCalendar(),

@@ -10,6 +10,15 @@ import {
 import { advanceGameWeek, startNextSeason } from "./game/advanceWeek";
 import { getFinancePressureLabel } from "./game/finance";
 import { migrateSavedGameState } from "./game/migration";
+import {
+  applyRivalryCatalogDefaults,
+  deriveRivalryStage,
+  getDefaultStorylineIdForStakes,
+  getRivalryGMRead,
+  getRivalryRelationship,
+  getRivalryStoryline,
+  safeRivalryStorylineOptions,
+} from "./game/rivalryCatalog";
 import { createNewGame, createRivalGMAssignments, defaultCareer, draftPool } from "./game/seed";
 import {
   getBestSegment,
@@ -1204,6 +1213,26 @@ function formatTitleSceneNames(wrestlers: Wrestler[], fallback: string) {
   return wrestlers.length ? wrestlers.map((wrestler) => wrestler.name).join(" / ") : fallback;
 }
 
+function getOtherChampionshipHolderLabels(wrestler: Wrestler, championships: Championship[], currentChampionshipId?: string) {
+  return championships
+    .filter((championship) => championship.id !== currentChampionshipId)
+    .filter((championship) => championship.championIds.includes(wrestler.id))
+    .map((championship) => `${championship.name} holder`);
+}
+
+function formatTitleSceneNamesWithChampionContext(wrestlers: Wrestler[], championships: Championship[], currentChampionshipId: string, fallback: string) {
+  if (!wrestlers.length) {
+    return fallback;
+  }
+
+  return wrestlers
+    .map((wrestler) => {
+      const holderLabels = getOtherChampionshipHolderLabels(wrestler, championships, currentChampionshipId);
+      return holderLabels.length ? `${wrestler.name} (${holderLabels.join(", ")})` : wrestler.name;
+    })
+    .join(" / ");
+}
+
 function getWrestlerTitleSceneRows(wrestler: Wrestler, game: GameState) {
   return game.championships
     .filter((championship) => championship.eligibleMatchScope !== "tag_team")
@@ -1289,6 +1318,47 @@ function formatRivalryEventType(eventType: RivalryHistoryEvent["eventType"]) {
 
 function hasPlePayoff(game: GameState, rivalryId: string) {
   return (game.rivalryHistory ?? []).some((event) => event.rivalryId === rivalryId && event.eventType === "ple_payoff");
+}
+
+function getRivalryStageContext(game: GameState, rivalry: Rivalry) {
+  const calendarWeek = getCurrentCalendarWeek(game);
+
+  return deriveRivalryStage(rivalry, {
+    hasPlePayoff: hasPlePayoff(game, rivalry.id),
+    isGoHome: calendarWeek.isGoHome,
+    isPle: calendarWeek.showType === "ple",
+  });
+}
+
+function getRivalryTitleRelevance(rivalry: Rivalry, championships: Championship[], wrestlers: Wrestler[]) {
+  const storyline = getRivalryStoryline(rivalry);
+  const participantIds = new Set(rivalry.participantIds);
+
+  for (const championship of championships.filter(isSinglesChampionship)) {
+    const championId = championship.championIds[0];
+    const hasChampion = participantIds.has(championId);
+    const eligibleChallengers = rivalry.participantIds
+      .filter((id) => id !== championId)
+      .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
+      .filter((wrestler): wrestler is Wrestler => Boolean(wrestler))
+      .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship));
+
+    if (hasChampion && eligibleChallengers.length) {
+      return {
+        label: storyline.titleFit === "Title" || rivalry.stakes === "title" ? "Title Rivalry" : "Title-Relevant",
+        detail: `${championship.name}: ${getWrestlerNames([championId], wrestlers)} vs ${eligibleChallengers.map((wrestler) => wrestler.name).join(" / ")}`,
+      };
+    }
+  }
+
+  if (storyline.titleFit.includes("Title") || storyline.titleFit.includes("title")) {
+    return {
+      label: "Title-Friendly Story",
+      detail: `${storyline.name} can connect to a title scene when champion and contender fit the same division.`,
+    };
+  }
+
+  return undefined;
 }
 
 function canSegmentAttachRivalry(segment: Segment, rivalry: Rivalry) {
@@ -2422,7 +2492,7 @@ function App() {
     setScreen("dashboard");
   }
 
-  function createRivalry(wrestlerAId: string, wrestlerBId: string, stakes: RivalryStakes) {
+  function createRivalry(wrestlerAId: string, wrestlerBId: string, stakes: RivalryStakes, storylineId?: string) {
     setGame((current) => {
       if (!current || wrestlerAId === wrestlerBId || hasDuplicateRivalry(current.rivalries, wrestlerAId, wrestlerBId)) {
         return current;
@@ -2437,17 +2507,21 @@ function App() {
 
       const heat = getInitialRivalryHeat(wrestlerA, wrestlerB);
       const rivalryId = `rivalry-${Date.now()}`;
-      const rivalry = {
+      const selectedStorylineId = storylineId ?? getDefaultStorylineIdForStakes(stakes);
+      const storyline = getRivalryStoryline({ stakes, storylineId: selectedStorylineId });
+      const rivalry = applyRivalryCatalogDefaults({
         id: rivalryId,
         name: `${wrestlerA.name} vs ${wrestlerB.name}`,
         participantIds: [wrestlerAId, wrestlerBId],
+        storylineId: storyline.id,
+        relationshipTag: storyline.relationshipTag,
         heat,
         freshness: 80,
         weeksActive: 1,
         lastAdvancedWeek: 0,
         status: getRivalryStatus(heat, 80),
         stakes,
-      } satisfies Rivalry;
+      } satisfies Rivalry);
       const startEvent: RivalryHistoryEvent = {
         id: `s${current.seasonNumber}-w${current.currentWeek}-${rivalryId}-started`,
         rivalryId,
@@ -4096,6 +4170,7 @@ function SegmentComposer({
         wrestlers={wrestlers}
       />
       <RivalryControl
+        championships={championships}
         onSetSegmentRivalry={(segmentId, rivalryId) => {
           if (segmentId === segment.id) {
             onSetSegmentRivalry(rivalryId);
@@ -4408,14 +4483,25 @@ function WrestlerProfileScreen({
             </div>
             <div className="profile-list">
               {activeRivalries.length ? (
-                activeRivalries.map((rivalry) => (
-                  <article className="profile-context-row" key={rivalry.id}>
-                    <strong>{rivalry.name}</strong>
-                    <span>
-                      Heat {rivalry.heat} · Freshness {rivalry.freshness} · {formatRivalryStatus(rivalry.status)} · {formatRivalryStakes(rivalry.stakes)}
-                    </span>
-                  </article>
-                ))
+                activeRivalries.map((rivalry) => {
+                  const storyline = getRivalryStoryline(rivalry);
+                  const relationship = getRivalryRelationship(rivalry);
+                  const stage = getRivalryStageContext(game, rivalry);
+                  const titleRelevance = getRivalryTitleRelevance(rivalry, game.championships, game.wrestlers);
+
+                  return (
+                    <article className="profile-context-row" key={rivalry.id}>
+                      <strong>{rivalry.name}</strong>
+                      <span>
+                        {storyline.name} · {stage.name} · {relationship.name}
+                        {titleRelevance ? ` · ${titleRelevance.label}` : ""}
+                      </span>
+                      <p>
+                        Heat {rivalry.heat} · Freshness {rivalry.freshness} · {formatRivalryStatus(rivalry.status)}
+                      </p>
+                    </article>
+                  );
+                })
               ) : (
                 <p className="muted-copy">No active rivalry currently includes {wrestler.name}.</p>
               )}
@@ -4531,16 +4617,16 @@ function ChampionshipsScreen({
                 </article>
                 <article>
                   <span>Top Contenders</span>
-                  <strong>{formatTitleSceneNames(scene.topContenders, "No clear challengers")}</strong>
+                  <strong>{formatTitleSceneNamesWithChampionContext(scene.topContenders, game.championships, championship.id, "No clear challengers")}</strong>
                 </article>
                 <article>
                   <span>Rising Contenders</span>
-                  <strong>{formatTitleSceneNames(scene.risingContenders, "No rising lane yet")}</strong>
+                  <strong>{formatTitleSceneNamesWithChampionContext(scene.risingContenders, game.championships, championship.id, "No rising lane yet")}</strong>
                 </article>
                 <article>
                   <span>Eligible Roster</span>
                   <strong>{scene.eligibleRoster.length} wrestler{scene.eligibleRoster.length === 1 ? "" : "s"}</strong>
-                  <small>{formatTitleSceneNames(scene.eligibleRoster.slice(0, 5), "No eligible roster depth")}</small>
+                  <small>{formatTitleSceneNamesWithChampionContext(scene.eligibleRoster.slice(0, 5), game.championships, championship.id, "No eligible roster depth")}</small>
                 </article>
                 <article>
                   <span>Outside The Division</span>
@@ -4582,22 +4668,24 @@ function RivalriesScreen({
 }: {
   game: GameState;
   latestResult?: ShowResult;
-  onCreateRivalry: (wrestlerAId: string, wrestlerBId: string, stakes: RivalryStakes) => void;
+  onCreateRivalry: (wrestlerAId: string, wrestlerBId: string, stakes: RivalryStakes, storylineId?: string) => void;
   onEndRivalry: (rivalryId: string) => void;
   onNavigate: (screen: GameScreen) => void;
 }) {
   const [wrestlerAId, setWrestlerAId] = useState(game.wrestlers[0]?.id ?? "");
   const [wrestlerBId, setWrestlerBId] = useState(game.wrestlers[1]?.id ?? "");
   const [stakes, setStakes] = useState<RivalryStakes>("personal");
+  const [storylineId, setStorylineId] = useState(getDefaultStorylineIdForStakes("personal"));
   const isDuplicate = hasDuplicateRivalry(game.rivalries, wrestlerAId, wrestlerBId);
   const canCreate = wrestlerAId && wrestlerBId && wrestlerAId !== wrestlerBId && !isDuplicate;
+  const selectedStoryline = getRivalryStoryline({ stakes, storylineId });
 
   function handleCreateRivalry() {
     if (!canCreate) {
       return;
     }
 
-    onCreateRivalry(wrestlerAId, wrestlerBId, stakes);
+    onCreateRivalry(wrestlerAId, wrestlerBId, stakes, storylineId);
   }
 
   return (
@@ -4650,6 +4738,20 @@ function RivalriesScreen({
             ))}
           </select>
         </label>
+        <label>
+          Storyline
+          <select value={storylineId} onChange={(event) => setStorylineId(event.target.value)}>
+            {safeRivalryStorylineOptions.map((storyline) => (
+              <option key={storyline.id} value={storyline.id}>
+                {storyline.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="rivalry-form-read">
+          <span>{selectedStoryline.titleFit}</span>
+          <strong>{selectedStoryline.description}</strong>
+        </div>
         <button className="primary-action" disabled={!canCreate} onClick={handleCreateRivalry}>
           Create Rivalry
         </button>
@@ -4661,15 +4763,47 @@ function RivalriesScreen({
           game.rivalries.map((rivalry) => {
             const recentHistory = getRivalryHistory(game, rivalry.id);
             const plePayoff = hasPlePayoff(game, rivalry.id);
+            const storyline = getRivalryStoryline(rivalry);
+            const relationship = getRivalryRelationship(rivalry);
+            const stage = getRivalryStageContext(game, rivalry);
+            const titleRelevance = getRivalryTitleRelevance(rivalry, game.championships, game.wrestlers);
+            const gmRead = getRivalryGMRead(rivalry, {
+              hasPlePayoff: plePayoff,
+              isGoHome: getCurrentCalendarWeek(game).isGoHome,
+              isPle: getCurrentCalendarWeek(game).showType === "ple",
+              titleRelevant: Boolean(titleRelevance && titleRelevance.label !== "Title-Friendly Story"),
+            });
 
             return (
               <article className={`rivalry-card status-${rivalry.status}`} key={rivalry.id}>
                 <div className="rivalry-head">
                   <div>
-                    <p className="eyebrow">{formatRivalryStakes(rivalry.stakes)} Stakes</p>
+                    <p className="eyebrow">{formatRivalryStakes(rivalry.stakes)} Stakes · {stage.name}</p>
                     <h3>{rivalry.name}</h3>
                   </div>
                   <strong>{plePayoff ? "PLE Payoff" : formatRivalryStatus(rivalry.status)}</strong>
+                </div>
+                <div className="rivalry-story-map">
+                  <article>
+                    <span>Storyline</span>
+                    <strong>{storyline.name}</strong>
+                    <p>{storyline.description}</p>
+                  </article>
+                  <article>
+                    <span>Relationship</span>
+                    <strong>{relationship.name}</strong>
+                    <p>{relationship.description}</p>
+                  </article>
+                  <article>
+                    <span>Lifecycle Stage</span>
+                    <strong>{stage.name}</strong>
+                    <p>{stage.description}</p>
+                  </article>
+                  <article>
+                    <span>GM Read</span>
+                    <strong>{titleRelevance?.label ?? "Creative Direction"}</strong>
+                    <p>{titleRelevance?.detail ?? gmRead}</p>
+                  </article>
                 </div>
                 <div className="spotlight-grid">
                   <Metric label="Participants" value={getRivalryParticipants(rivalry, game.wrestlers).map((wrestler) => wrestler.name).join(" / ")} />
@@ -4677,7 +4811,13 @@ function RivalriesScreen({
                   <Metric label="Freshness" value={`${rivalry.freshness}`} />
                   <Metric label="Weeks Active" value={`${rivalry.weeksActive}`} />
                   <Metric label="Last Advanced" value={rivalry.lastAdvancedWeek ? `Week ${rivalry.lastAdvancedWeek}` : "Not On TV Yet"} />
-                  <Metric label="Stakes" value={formatRivalryStakes(rivalry.stakes)} />
+                  <Metric label="Blowoff Ideas" value={storyline.recommendedBlowoffMatches} />
+                </div>
+                <div className="story-guidance">
+                  <span>Common Beats</span>
+                  <p>{storyline.commonBeats}</p>
+                  <span>Booking Note</span>
+                  <p>{stage.typicalSegmentTypes}. {storyline.bookingNotes}</p>
                 </div>
                 <div className="history-list" aria-label={`${rivalry.name} recent history`}>
                   <span className="history-label">Recent History</span>
@@ -5538,6 +5678,11 @@ function TitleMatchControl({
   const eligibleChampionships = championships.filter((championship) => canSegmentAttachChampionship(segment, championship, wrestlers));
   const selectedChampionship = championships.find((championship) => championship.id === segment.championshipId);
   const isTitleMatch = segment.type === "Match";
+  const singlesChampionships = championships.filter(isSinglesChampionship);
+  const completeMatch = isTitleMatch && segment.participantIds.length === 2;
+  const sameDivisionTitleOptions = completeMatch ? singlesChampionships.filter((championship) => doSegmentParticipantsFitChampionship(segment, championship, wrestlers)) : [];
+  const selectedParticipantNames = getWrestlerNames(segment.participantIds, wrestlers);
+  const titleDefenseOptions = eligibleChampionships.filter((championship) => canSegmentContestChampionship(segment, championship, wrestlers));
   const controlLabel = isTitleMatch ? "Title Match" : "Title Context";
   const clearLabel = isTitleMatch ? "Non-Title" : "No Title Context";
   const emptyMessage =
@@ -5546,13 +5691,40 @@ function TitleMatchControl({
       : segment.type === "Contract Signing"
         ? "Select a current singles champion and same-division talent to attach championship context."
         : "Singles title option opens when a match includes a current champion and same-division challenger.";
+  const titleDefenseStatus = (() => {
+    if (!isTitleMatch) {
+      return selectedChampionship ? "Championship context attached. No title change can happen in this segment format." : emptyMessage;
+    }
+
+    if (!segment.participantIds.length) {
+      return "Select competitors to see whether this can become a sanctioned title defense.";
+    }
+
+    if (!completeMatch) {
+      return "Needs exactly two wrestlers before the title office can sanction a singles defense.";
+    }
+
+    if (titleDefenseOptions.length) {
+      const championship = selectedChampionship && titleDefenseOptions.some((title) => title.id === selectedChampionship.id) ? selectedChampionship : titleDefenseOptions[0];
+      const challengers = segment.participantIds.filter((id) => !championship.championIds.includes(id));
+      return `Sanctioned title defense available: ${getWrestlerNames(championship.championIds, wrestlers)} can defend against ${getWrestlerNames(challengers, wrestlers)}.`;
+    }
+
+    if (sameDivisionTitleOptions.length) {
+      return `Title-adjacent, not a title match: ${selectedParticipantNames} fit the division, but no current champion is in this match.`;
+    }
+
+    return "Title blocked: these competitors do not fit the same current title division.";
+  })();
   const titleContextLine = selectedChampionship
     ? `${selectedChampionship.brand ?? "Brand"} · ${selectedChampionship.division} · ${selectedChampionship.titleLevel ?? "Title"}`
     : "Title office checks champion, participants, and division before sanctioning.";
   const titleSceneSummaries = eligibleChampionships.map((championship) => ({
     championship,
     contenders: getTitleDivisionScene(championship, wrestlers).topContenders,
+    challengers: segment.participantIds.filter((id) => !championship.championIds.includes(id)),
   }));
+  const titleAdjacentSummaries = isTitleMatch && !eligibleChampionships.length ? sameDivisionTitleOptions : [];
 
   return (
     <div className="title-match-control">
@@ -5561,15 +5733,19 @@ function TitleMatchControl({
         <strong>
           {selectedChampionship
             ? isTitleMatch
-              ? `${selectedChampionship.name} at stake. Champion: ${getWrestlerNames(selectedChampionship.championIds, wrestlers)}.`
+              ? `Selected title: ${selectedChampionship.name}. Champion: ${getWrestlerNames(selectedChampionship.championIds, wrestlers)}.`
               : `${selectedChampionship.name} in the frame. Champion: ${getWrestlerNames(selectedChampionship.championIds, wrestlers)}.`
             : eligibleChampionships.length
               ? isTitleMatch
-                ? "This match can be sanctioned for a singles championship."
+                ? "Sanctioned title defense is available."
                 : "Attach championship context without putting the title at stake."
               : emptyMessage}
         </strong>
         <small>{titleContextLine}</small>
+      </div>
+      <div className="title-defense-state">
+        <span>{isTitleMatch ? "Defense Status" : "Title Scene Status"}</span>
+        <strong>{titleDefenseStatus}</strong>
       </div>
       {eligibleChampionships.length ? (
         <div className="title-buttons">
@@ -5582,17 +5758,33 @@ function TitleMatchControl({
               key={championship.id}
               onClick={() => onSetSegmentChampionship(segment.id, championship.id)}
             >
-              {championship.name} · {championship.division}
+              {championship.name} · {isTitleMatch ? "Sanctioned Defense" : championship.division}
             </button>
           ))}
         </div>
       ) : null}
       {titleSceneSummaries.length ? (
         <div className="title-eligible-readout" aria-label="Eligible title challengers">
-          {titleSceneSummaries.map(({ championship, contenders }) => (
+          {titleSceneSummaries.map(({ championship, contenders, challengers }) => (
             <article key={championship.id}>
-              <span>{championship.name}</span>
-              <strong>{formatTitleSceneNames(contenders, "No clear same-division challengers")}</strong>
+              <span>{isTitleMatch ? "Sanctioned title defense" : championship.name}</span>
+              <strong>{championship.name}</strong>
+              <small>
+                Champion: {getWrestlerNames(championship.championIds, wrestlers)}
+                {isTitleMatch && challengers.length ? ` · Eligible challenger: ${getWrestlerNames(challengers, wrestlers)}` : ""}
+              </small>
+              <small>Title scene: {formatTitleSceneNamesWithChampionContext(contenders, championships, championship.id, "No clear same-division challengers")}</small>
+            </article>
+          ))}
+        </div>
+      ) : null}
+      {titleAdjacentSummaries.length ? (
+        <div className="title-eligible-readout" aria-label="Title-adjacent contender context">
+          {titleAdjacentSummaries.map((championship) => (
+            <article key={championship.id}>
+              <span>Title-adjacent, not a defense</span>
+              <strong>{championship.name}</strong>
+              <small>Needs champion: {getWrestlerNames(championship.championIds, wrestlers)}</small>
             </article>
           ))}
         </div>
@@ -5602,11 +5794,13 @@ function TitleMatchControl({
 }
 
 function RivalryControl({
+  championships,
   onSetSegmentRivalry,
   rivalries,
   segment,
   wrestlers,
 }: {
+  championships: Championship[];
   onSetSegmentRivalry: (segmentId: string, rivalryId: string) => void;
   rivalries: Rivalry[];
   segment: Segment;
@@ -5614,6 +5808,10 @@ function RivalryControl({
 }) {
   const eligibleRivalries = rivalries.filter((rivalry) => canSegmentAttachRivalry(segment, rivalry));
   const selectedRivalry = rivalries.find((rivalry) => rivalry.id === segment.rivalryId);
+  const selectedStoryline = selectedRivalry ? getRivalryStoryline(selectedRivalry) : undefined;
+  const selectedRelationship = selectedRivalry ? getRivalryRelationship(selectedRivalry) : undefined;
+  const selectedStage = selectedRivalry ? deriveRivalryStage(selectedRivalry) : undefined;
+  const selectedTitleRelevance = selectedRivalry ? getRivalryTitleRelevance(selectedRivalry, championships, wrestlers) : undefined;
   const selectedRivalryMatchBlocked = Boolean(
     selectedRivalry && segment.type === "Match" && hasIntergenderMatchParticipants({ ...segment, participantIds: selectedRivalry.participantIds }, wrestlers),
   );
@@ -5626,11 +5824,16 @@ function RivalryControl({
           {selectedRivalry
             ? selectedRivalryMatchBlocked
               ? `${selectedRivalry.name} attached for context. This rivalry works better as a promo or angle under current match rules.`
-              : `${selectedRivalry.name} attached. Heat ${selectedRivalry.heat}, ${formatRivalryStatus(selectedRivalry.status)}.`
+              : `${selectedRivalry.name} attached. ${selectedStoryline?.name ?? "Rivalry"} · ${selectedStage?.name ?? formatRivalryStatus(selectedRivalry.status)}.`
             : eligibleRivalries.length
               ? "Attach an active rivalry when this segment advances a story."
               : "Select a rivalry participant to attach story context."}
         </strong>
+        {selectedRivalry && selectedStoryline && selectedStage && selectedRelationship ? (
+          <small>
+            {selectedRelationship.name} · {selectedStoryline.commonBeats}. {selectedTitleRelevance ? selectedTitleRelevance.detail : selectedStage.notes}
+          </small>
+        ) : null}
       </div>
       {eligibleRivalries.length ? (
         <div className="title-buttons">
@@ -5638,12 +5841,10 @@ function RivalryControl({
             No Rivalry
           </button>
           {eligibleRivalries.map((rivalry) => (
-            <button
-              className={segment.rivalryId === rivalry.id ? "active-filter" : ""}
-              key={rivalry.id}
-              onClick={() => onSetSegmentRivalry(segment.id, rivalry.id)}
-            >
-              {rivalry.name}
+            <button className={segment.rivalryId === rivalry.id ? "active-filter" : ""} key={rivalry.id} onClick={() => onSetSegmentRivalry(segment.id, rivalry.id)}>
+              <span>{getRivalryTitleRelevance(rivalry, championships, wrestlers)?.label ?? deriveRivalryStage(rivalry).name}</span>
+              <strong>{rivalry.name}</strong>
+              <small>{getRivalryStoryline(rivalry).name}</small>
             </button>
           ))}
         </div>

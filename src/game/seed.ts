@@ -13,6 +13,7 @@ import type {
   Wrestler,
 } from "./types";
 import { getTitleCatalogEntriesForBrand } from "./titleCatalog";
+import { applyRivalryCatalogDefaults, getDefaultStorylineIdForStakes, getRivalryStoryline } from "./rivalryCatalog";
 import { top200DraftPool } from "./top200DraftPool";
 
 type SeedWrestler = Omit<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek"> &
@@ -211,17 +212,19 @@ function createRivalryFromPair(id: string, wrestlers: Wrestler[], stakes: Rivalr
   const heat = Math.round((first.popularity + first.momentum + second.popularity + second.momentum) / 4);
   const freshness = stakes === "title" ? 78 : stakes === "respect" ? 72 : 66;
 
-  return {
+  return applyRivalryCatalogDefaults({
     id,
     name: `${first.name} vs ${second.name}`,
     participantIds: [first.id, second.id],
+    storylineId: getDefaultStorylineIdForStakes(stakes),
+    relationshipTag: getRivalryStoryline({ stakes, storylineId: getDefaultStorylineIdForStakes(stakes) }).relationshipTag,
     heat,
     freshness,
     weeksActive: 1,
     lastAdvancedWeek: 0,
     status: heat >= 68 ? "rising" : "steady",
     stakes,
-  };
+  });
 }
 
 export function createDefaultRivalries(wrestlers: Wrestler[] = roster): Rivalry[] {
@@ -236,7 +239,7 @@ export function createDefaultRivalries(wrestlers: Wrestler[] = roster): Rivalry[
     return rivalries;
   }
 
-  return [
+  const fallbackRivalries: Rivalry[] = [
     {
       id: "rivalry-rex-jax",
       name: "Rex Carter vs Jax Ransom",
@@ -246,6 +249,8 @@ export function createDefaultRivalries(wrestlers: Wrestler[] = roster): Rivalry[
       weeksActive: 1,
       lastAdvancedWeek: 0,
       status: "rising",
+      storylineId: "championship_chase",
+      relationshipTag: "rivals",
       stakes: "title",
     },
     {
@@ -257,6 +262,8 @@ export function createDefaultRivalries(wrestlers: Wrestler[] = roster): Rivalry[
       weeksActive: 1,
       lastAdvancedWeek: 0,
       status: "steady",
+      storylineId: "respect_feud",
+      relationshipTag: "respect",
       stakes: "respect",
     },
     {
@@ -268,9 +275,13 @@ export function createDefaultRivalries(wrestlers: Wrestler[] = roster): Rivalry[
       weeksActive: 1,
       lastAdvancedWeek: 0,
       status: "steady",
+      storylineId: "personal_grudge",
+      relationshipTag: "rivals",
       stakes: "personal",
     },
   ];
+
+  return fallbackRivalries.map(applyRivalryCatalogDefaults);
 }
 
 export function createSeasonCalendar(): CalendarWeek[] {
