@@ -26,6 +26,7 @@ import type {
   Championship,
   ChampionshipHistoryEvent,
   FinanceReport,
+  GameDifficulty,
   GameState,
   GMStyle,
   InjuryStatus,
@@ -40,6 +41,7 @@ import type {
   SocialCategory,
   SocialPost,
   ShowType,
+  StartingBudgetTier,
   Wrestler,
 } from "./game/types";
 import type { GameScreen, ProfileReturnScreen, SavedGameState } from "./game/migration";
@@ -49,7 +51,7 @@ type RosterSort = "popularity" | "momentum" | "fatigue" | "morale";
 type RosterFilter = "All" | "Hot" | "Tired" | "Frustrated";
 type RosterPressureTag = "Overused" | "Underused" | "Protected Star" | "Morale Risk" | "Injury Risk" | "Minor Injury" | "Unavailable";
 type SocialFilter = "All" | "Fan Reaction" | "Dirt Sheets" | "Analyst Takes" | "Title Scene" | "Rivalries";
-type SetupStep = "contract" | "gm" | "brand" | "preview" | "draft" | "review";
+type SetupStep = "contract" | "gm" | "brand" | "rules" | "preview" | "draft" | "review";
 
 type TitleMode = "home" | "load";
 
@@ -143,17 +145,69 @@ const gmStyleOptions: ChoiceOption<GMStyle>[] = [
     description: "Sells premium attractions, business spectacle, and the biggest room possible.",
   },
 ];
-const brandStyles: BrandStyle[] = [
-  "Prime Time Sports Entertainment",
-  "Underground Fight Club",
-  "Workrate Showcase",
-  "Reality Era Chaos",
+const brandStyleOptions: ChoiceOption<BrandStyle>[] = [
+  {
+    label: "Raw",
+    description: "Flagship spectacle with big personalities, weekly pressure, and mainstream sports-entertainment energy.",
+  },
+  {
+    label: "SmackDown",
+    description: "Sharp blue-brand identity with star power, athletic confidence, and prime-time polish.",
+  },
+  {
+    label: "NXT",
+    description: "Hungry prospects, breakout performances, developmental pressure, and future-stars atmosphere.",
+  },
+  {
+    label: "AEW",
+    description: "Alternative wrestling identity with workrate credibility, fan-driven buzz, and unpredictable edge.",
+  },
+];
+const difficultyOptions: ChoiceOption<GameDifficulty>[] = [
+  {
+    label: "Easy",
+    description: "More forgiving first-season pressure while you find your GM rhythm.",
+  },
+  {
+    label: "Medium",
+    description: "Balanced GM challenge with enough pressure to make every week matter.",
+  },
+  {
+    label: "Hard",
+    description: "Tighter margins and less room for mistakes once the show goes live.",
+  },
+  {
+    label: "Legendary",
+    description: "Ruthless expectations for players who want pressure immediately.",
+  },
+];
+const budgetOptions: ChoiceOption<StartingBudgetTier>[] = [
+  {
+    label: "$1M",
+    description: "Scrappy startup pressure with every signing feeling expensive.",
+  },
+  {
+    label: "$2M",
+    description: "Balanced standard war chest for a focused first season.",
+  },
+  {
+    label: "$4M",
+    description: "Big launch backing for a loaded opening draft board.",
+  },
+  {
+    label: "Unlimited",
+    description: "Sandbox-style money for fantasy booking and experimentation.",
+  },
 ];
 const bookingSegmentTypes: SegmentType[] = ["Match", "Promo", "Backstage Angle", "Contract Signing", "Open Challenge"];
 
 function formatMoney(amount: number) {
   const sign = amount < 0 ? "-" : "";
   return `${sign}$${Math.abs(amount).toLocaleString()}`;
+}
+
+function formatBudgetTier(tier: StartingBudgetTier) {
+  return tier === "Unlimited" ? "Unlimited" : tier;
 }
 
 function formatDateTime(value: string) {
@@ -911,6 +965,8 @@ function App() {
     gmStyle: GMStyle;
     brandName: string;
     brandStyle: BrandStyle;
+    difficulty: GameDifficulty;
+    startingBudgetTier: StartingBudgetTier;
     draftedWrestlers: Wrestler[];
   }) {
     const newGame = createNewGame(career);
@@ -1558,15 +1614,28 @@ function NewGameSetupScreen({
   onStartCareer,
 }: {
   onCancel: () => void;
-  onStartCareer: (career: { gmName: string; gmStyle: GMStyle; brandName: string; brandStyle: BrandStyle; draftedWrestlers: Wrestler[] }) => void;
+  onStartCareer: (career: {
+    gmName: string;
+    gmStyle: GMStyle;
+    brandName: string;
+    brandStyle: BrandStyle;
+    difficulty: GameDifficulty;
+    startingBudgetTier: StartingBudgetTier;
+    draftedWrestlers: Wrestler[];
+  }) => void;
 }) {
   const [step, setStep] = useState<SetupStep>("contract");
   const [gmName, setGmName] = useState(defaultCareer.gmName);
   const [gmStyle, setGmStyle] = useState<GMStyle>(defaultCareer.gmStyle);
   const [brandName, setBrandName] = useState(defaultCareer.brandName);
   const [brandStyle, setBrandStyle] = useState<BrandStyle>(defaultCareer.brandStyle);
+  const [difficulty, setDifficulty] = useState<GameDifficulty>(defaultCareer.difficulty);
+  const [startingBudgetTier, setStartingBudgetTier] = useState<StartingBudgetTier>(defaultCareer.startingBudgetTier);
   const [draftedWrestlers, setDraftedWrestlers] = useState<Wrestler[]>([]);
   const selectedGmStyle = gmStyleOptions.find((option) => option.label === gmStyle) ?? gmStyleOptions[0];
+  const selectedBrandStyle = brandStyleOptions.find((option) => option.label === brandStyle) ?? brandStyleOptions[0];
+  const selectedDifficulty = difficultyOptions.find((option) => option.label === difficulty) ?? difficultyOptions[1];
+  const selectedBudget = budgetOptions.find((option) => option.label === startingBudgetTier) ?? budgetOptions[1];
   const canPreview = gmName.trim().length > 0 && brandName.trim().length > 0;
   const availableWrestlers = draftPool.filter((wrestler) => !draftedWrestlers.some((drafted) => drafted.id === wrestler.id));
   const topStar = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.popularity + wrestler.momentum);
@@ -1584,6 +1653,8 @@ function NewGameSetupScreen({
       gmStyle,
       brandName: brandName.trim(),
       brandStyle,
+      difficulty,
+      startingBudgetTier,
       draftedWrestlers,
     });
   }
@@ -1600,11 +1671,23 @@ function NewGameSetupScreen({
     setDraftedWrestlers((current) => current.slice(0, -1));
   }
 
+  function selectBrandStyle(choice: string) {
+    const nextBrandStyle = choice as BrandStyle;
+    const currentBrandStyleLabel = brandStyleOptions.find((option) => option.label === brandStyle)?.label ?? defaultCareer.brandName;
+    const shouldSyncBrandName = !brandName.trim() || brandName.trim() === currentBrandStyleLabel || brandName.trim() === defaultCareer.brandName;
+
+    setBrandStyle(nextBrandStyle);
+
+    if (shouldSyncBrandName) {
+      setBrandName(choice);
+    }
+  }
+
   return (
     <main className="setup-screen">
       <section className="setup-shell">
         <div className="setup-progress" aria-label="Setup progress">
-          {["contract", "gm", "brand", "preview", "draft", "review"].map((item, index) => (
+          {["contract", "rules", "gm", "brand", "preview", "draft", "review"].map((item, index) => (
             <span className={step === item ? "active-step" : ""} key={item}>
               {index + 1}
             </span>
@@ -1619,7 +1702,7 @@ function NewGameSetupScreen({
               A national broadcast window is open, the roster is restless, and ownership wants a GM who can build more than one hot night. Take the chair and turn this brand into a lasting force.
             </p>
             <div className="title-actions">
-              <button className="primary-action" onClick={() => setStep("gm")}>
+              <button className="primary-action" onClick={() => setStep("rules")}>
                 Accept The Job
               </button>
               <button className="secondary-action" onClick={onCancel}>
@@ -1649,7 +1732,7 @@ function NewGameSetupScreen({
               <p>{selectedGmStyle.description} This is roleplay framing for your GM fantasy, not a hidden bonus.</p>
             </div>
             <div className="title-actions">
-              <button className="secondary-action" onClick={() => setStep("contract")}>
+              <button className="secondary-action" onClick={() => setStep("rules")}>
                 Back
               </button>
               <button className="primary-action" disabled={!gmName.trim()} onClick={() => setStep("brand")}>
@@ -1661,17 +1744,23 @@ function NewGameSetupScreen({
 
         {step === "brand" ? (
           <div className="setup-panel">
-            <p className="eyebrow">Choose Brand Fantasy</p>
-            <h2>What Does TV Feel Like?</h2>
+            <p className="eyebrow">Choose Your Brand</p>
+            <h2>Which Show Are You Taking Over?</h2>
             <label className="setup-field">
               Brand Name
               <input value={brandName} onChange={(event) => setBrandName(event.target.value)} />
             </label>
             <ChoiceGrid
-              choices={brandStyles}
+              choices={brandStyleOptions}
               selected={brandStyle}
-              onSelect={(choice) => setBrandStyle(choice as BrandStyle)}
+              onSelect={selectBrandStyle}
+              variant="identity"
             />
+            <div className="identity-note">
+              <p className="eyebrow">Selected Prototype Brand</p>
+              <strong>{selectedBrandStyle.label}</strong>
+              <p>{selectedBrandStyle.description} This selects the show you want to run in the prototype, not a hidden gameplay modifier.</p>
+            </div>
             <div className="title-actions">
               <button className="secondary-action" onClick={() => setStep("gm")}>
                 Back
@@ -1683,15 +1772,60 @@ function NewGameSetupScreen({
           </div>
         ) : null}
 
+        {step === "rules" ? (
+          <div className="setup-panel">
+            <p className="eyebrow">Game Rules</p>
+            <h2>Set The Pressure Level</h2>
+            <p className="lede">Lock the shape of this career before Draft Night. Difficulty is challenge framing for now; budget sets your opening war chest.</p>
+            <div className="rules-grid">
+              <section>
+                <p className="eyebrow">Difficulty</p>
+                <ChoiceGrid
+                  choices={difficultyOptions}
+                  selected={difficulty}
+                  onSelect={(choice) => setDifficulty(choice as GameDifficulty)}
+                  variant="identity"
+                />
+              </section>
+              <section>
+                <p className="eyebrow">Starting Budget</p>
+                <ChoiceGrid
+                  choices={budgetOptions}
+                  selected={startingBudgetTier}
+                  onSelect={(choice) => setStartingBudgetTier(choice as StartingBudgetTier)}
+                  variant="identity"
+                />
+              </section>
+            </div>
+            <div className="identity-note">
+              <p className="eyebrow">Selected Rules</p>
+              <strong>
+                {difficulty} / {formatBudgetTier(startingBudgetTier)}
+              </strong>
+              <p>{selectedDifficulty.description} {selectedBudget.description}</p>
+            </div>
+            <div className="title-actions">
+              <button className="secondary-action" onClick={() => setStep("contract")}>
+                Back
+              </button>
+              <button className="primary-action" onClick={() => setStep("gm")}>
+                Choose GM Identity
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {step === "preview" ? (
           <div className="setup-panel">
             <p className="eyebrow">Career Preview</p>
             <h2>{brandName.trim() || defaultCareer.brandName}</h2>
             <div className="status-grid setup-summary">
               <Metric label="GM" value={gmName.trim() || defaultCareer.gmName} detail={gmStyle} />
-              <Metric label="Brand Style" value={brandStyle} />
-              <Metric label="Starting Money" value={formatMoney(250000)} />
+              <Metric label="Selected Brand" value={brandStyle} detail={selectedBrandStyle.description} />
+              <Metric label="Difficulty" value={difficulty} detail="Challenge framing; no hidden tuning yet" />
+              <Metric label="Starting Budget" value={formatBudgetTier(startingBudgetTier)} detail={selectedBudget.description} />
               <Metric label="First Season" value="12 Weeks" detail="PLEs in Weeks 4, 8, and 12" />
+              <Metric label="Next Step" value="Draft Night" detail="Build the first locker room" />
             </div>
             <p className="lede">
               Week 1 opens on TV. This first campaign starts with Collision Course in Week 4, and ownership expects momentum before the road reaches Final Bell.

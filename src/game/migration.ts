@@ -1,4 +1,4 @@
-import type { Championship, GameState, LockerRoomFallout, Rivalry, Screen, ShowResult, Wrestler } from "./types";
+import type { Championship, GameDifficulty, GameState, LockerRoomFallout, Rivalry, Screen, ShowResult, StartingBudgetTier, Wrestler } from "./types";
 import { createDefaultChampionships, createDefaultRivalries, createSeasonCalendar, defaultCareer } from "./seed";
 
 export type GameScreen = Exclude<Screen, "title" | "setup">;
@@ -35,6 +35,14 @@ type SavedGameCandidate = {
 
 function isGameScreen(value: unknown): value is GameScreen {
   return typeof value === "string" && savedGameScreens.includes(value as GameScreen);
+}
+
+function isGameDifficulty(value: unknown): value is GameDifficulty {
+  return value === "Easy" || value === "Medium" || value === "Hard" || value === "Legendary";
+}
+
+function isStartingBudgetTier(value: unknown): value is StartingBudgetTier {
+  return value === "$1M" || value === "$2M" || value === "$4M" || value === "Unlimited";
 }
 
 function isProfileReturnScreen(value: unknown): value is ProfileReturnScreen {
@@ -120,6 +128,8 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
       gmStyle: savedGame.gmStyle ?? defaultCareer.gmStyle,
       brandName: savedGame.brandName ?? defaultCareer.brandName,
       brandStyle: savedGame.brandStyle ?? defaultCareer.brandStyle,
+      difficulty: isGameDifficulty(savedGame.difficulty) ? savedGame.difficulty : defaultCareer.difficulty,
+      startingBudgetTier: isStartingBudgetTier(savedGame.startingBudgetTier) ? savedGame.startingBudgetTier : defaultCareer.startingBudgetTier,
       createdAt: savedGame.createdAt ?? new Date().toISOString(),
       money: savedGame.money ?? 250000,
       wrestlers,

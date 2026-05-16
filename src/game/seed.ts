@@ -1,4 +1,4 @@
-import type { BrandStyle, CalendarWeek, Championship, GameState, GMStyle, Rivalry, RivalryStakes, Wrestler } from "./types";
+import type { BrandStyle, CalendarWeek, Championship, GameDifficulty, GameState, GMStyle, Rivalry, RivalryStakes, StartingBudgetTier, Wrestler } from "./types";
 
 type SeedWrestler = Omit<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek"> &
   Partial<Pick<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek">>;
@@ -8,15 +8,34 @@ export type NewCareerOptions = {
   gmStyle?: GMStyle;
   brandName?: string;
   brandStyle?: BrandStyle;
+  difficulty?: GameDifficulty;
+  startingBudgetTier?: StartingBudgetTier;
   draftedWrestlers?: Wrestler[];
 };
 
 export const defaultCareer: Required<Omit<NewCareerOptions, "draftedWrestlers">> = {
   gmName: "Alex Monroe",
   gmStyle: "Creative Visionary",
-  brandName: "Neon Harbor Wrestling",
-  brandStyle: "Prime Time Sports Entertainment",
+  brandName: "Raw",
+  brandStyle: "Raw",
+  difficulty: "Medium",
+  startingBudgetTier: "$2M",
 };
+
+export const unlimitedStartingBudget = 999999999;
+
+export function getStartingBudgetAmount(tier: StartingBudgetTier) {
+  switch (tier) {
+    case "$1M":
+      return 1000000;
+    case "$2M":
+      return 2000000;
+    case "$4M":
+      return 4000000;
+    case "Unlimited":
+      return unlimitedStartingBudget;
+  }
+}
 
 const baseRoster: SeedWrestler[] = [
   { id: "jax-ransom", name: "Jax Ransom", popularity: 72, momentum: 58, fatigue: 18, morale: 65, ringSkill: 79, promoSkill: 61 },
@@ -204,17 +223,20 @@ export function createSeasonCalendar(): CalendarWeek[] {
 export function createNewGame(options: NewCareerOptions = {}): GameState {
   const career = { ...defaultCareer, ...options };
   const startingRoster = cloneWrestlers(options.draftedWrestlers?.length ? options.draftedWrestlers : roster);
+  const startingMoney = getStartingBudgetAmount(career.startingBudgetTier);
 
   return {
     seasonNumber: 1,
-    seasonStartingMoney: 250000,
+    seasonStartingMoney: startingMoney,
     currentWeek: 1,
     gmName: career.gmName.trim() || defaultCareer.gmName,
     gmStyle: career.gmStyle,
     brandName: career.brandName.trim() || defaultCareer.brandName,
     brandStyle: career.brandStyle,
+    difficulty: career.difficulty,
+    startingBudgetTier: career.startingBudgetTier,
     createdAt: new Date().toISOString(),
-    money: 250000,
+    money: startingMoney,
     wrestlers: startingRoster,
     championships: createDefaultChampionships(startingRoster),
     rivalries: createDefaultRivalries(startingRoster),

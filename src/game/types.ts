@@ -18,6 +18,10 @@ export type SegmentType = "Match" | "Promo" | "Backstage Angle" | "Contract Sign
 
 export type ShowType = "tv" | "ple";
 
+export type GameDifficulty = "Easy" | "Medium" | "Hard" | "Legendary";
+
+export type StartingBudgetTier = "$1M" | "$2M" | "$4M" | "Unlimited";
+
 export type GMStyle =
   | "Creative Visionary"
   | "Talent Developer"
@@ -33,6 +37,10 @@ export type GMStyle =
   | "Big Money Promoter";
 
 export type BrandStyle =
+  | "Raw"
+  | "SmackDown"
+  | "NXT"
+  | "AEW"
   | "Prime Time Sports Entertainment"
   | "Underground Fight Club"
   | "Workrate Showcase"
@@ -272,6 +280,8 @@ export type GameState = {
   gmStyle: GMStyle;
   brandName: string;
   brandStyle: BrandStyle;
+  difficulty: GameDifficulty;
+  startingBudgetTier: StartingBudgetTier;
   createdAt: string;
   money: number;
   wrestlers: Wrestler[];
