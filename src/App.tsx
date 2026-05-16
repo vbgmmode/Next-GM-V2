@@ -1,5 +1,12 @@
 import { useMemo, useState } from "react";
-import { clearGameState, loadGameState, saveGameState } from "./gameStorage";
+import {
+  MAX_SAVE_SLOTS,
+  createSaveRecord,
+  deleteSaveRecord,
+  loadSaveRecords,
+  renameSaveRecord,
+  updateSaveRecord,
+} from "./gameStorage";
 import { advanceGameWeek, startNextSeason } from "./game/advanceWeek";
 import { getFinancePressureLabel } from "./game/finance";
 import { migrateSavedGameState } from "./game/migration";
@@ -36,12 +43,33 @@ import type {
   Wrestler,
 } from "./game/types";
 import type { GameScreen, ProfileReturnScreen, SavedGameState } from "./game/migration";
+import type { StoredSaveRecord } from "./gameStorage";
 
 type RosterSort = "popularity" | "momentum" | "fatigue" | "morale";
 type RosterFilter = "All" | "Hot" | "Tired" | "Frustrated";
 type RosterPressureTag = "Overused" | "Underused" | "Protected Star" | "Morale Risk" | "Injury Risk" | "Minor Injury" | "Unavailable";
 type SocialFilter = "All" | "Fan Reaction" | "Dirt Sheets" | "Analyst Takes" | "Title Scene" | "Rivalries";
 type SetupStep = "contract" | "gm" | "brand" | "preview" | "draft" | "review";
+
+type TitleMode = "home" | "load";
+
+type CareerPreview = {
+  brandName: string;
+  gmName: string;
+  money: number;
+  screen: GameScreen;
+  seasonNumber: number;
+  week: number;
+};
+
+type CareerSave = {
+  id: string;
+  name: string;
+  createdAt: string;
+  lastPlayedAt: string;
+  state: SavedGameState;
+  preview: CareerPreview;
+};
 
 type WrestlerAppearance = {
   id: string;
@@ -72,6 +100,38 @@ const bookingSegmentTypes: SegmentType[] = ["Match", "Promo", "Backstage Angle",
 function formatMoney(amount: number) {
   const sign = amount < 0 ? "-" : "";
   return `${sign}$${Math.abs(amount).toLocaleString()}`;
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function formatLocationLabel(screen: GameScreen) {
+  const labels: Record<GameScreen, string> = {
+    booking: "Booking Desk",
+    calendar: "Calendar",
+    championships: "Title Office",
+    dashboard: "Brand HQ",
+    finance: "Finance & Pressure",
+    profile: "Talent Profile",
+    results: "Show Recap",
+    rivalries: "Rivalry Desk",
+    roster: "Locker Room",
+    seasonReview: "Season Review",
+    social: "IWC Pulse",
+    weekReview: "Week Review",
+  };
+
+  return labels[screen];
 }
 
 function formatPressureLabel(label: PressureLabel) {
@@ -677,43 +737,118 @@ function buildBroadcastRecap(result: ShowResult) {
   return `${showFrame} in Week ${result.week}. ${bestNames} delivered the strongest ${bestSegment.type.toLowerCase()} at ${bestSegment.score}. ${result.biggestMomentumGain.name} gained the most momentum, while ${result.biggestFatigueIncrease.name} took the biggest fatigue hit.${titleFallout}${rivalryFallout}`;
 }
 
-function saveSnapshot(game: GameState, screen: SavedGameState["screen"], profileState?: Pick<SavedGameState, "profileReturnScreen" | "profileWrestlerId">) {
-  saveGameState({ game, screen, ...profileState });
+function buildSavedGameState(
+  game: GameState,
+  screen: SavedGameState["screen"],
+  profileState?: Pick<SavedGameState, "profileReturnScreen" | "profileWrestlerId">,
+): SavedGameState {
+  return { game, screen, ...profileState };
 }
 
-function loadSavedGame() {
-  const savedState = loadGameState();
+function buildCareerPreview(state: SavedGameState): CareerPreview {
+  return {
+    brandName: state.game.brandName,
+    gmName: state.game.gmName,
+    money: state.game.money,
+    screen: state.screen,
+    seasonNumber: state.game.seasonNumber,
+    week: state.game.currentWeek,
+  };
+}
 
-  if (!savedState) {
-    return null;
-  }
-
-  const migratedState = migrateSavedGameState(savedState);
+function normalizeCareerSave(record: StoredSaveRecord): CareerSave | null {
+  const migratedState = migrateSavedGameState(record.state);
 
   if (!migratedState) {
-    console.warn("Saved game state is invalid.");
+    console.warn("Saved career state is invalid.");
     return null;
   }
 
-  return migratedState;
+  return {
+    id: record.id,
+    name: record.name,
+    createdAt: record.createdAt,
+    lastPlayedAt: record.lastPlayedAt,
+    state: migratedState,
+    preview: buildCareerPreview(migratedState),
+  };
 }
 
-function App() {
-  const [savedGame, setSavedGame] = useState<SavedGameState | null>(() => loadSavedGame());
-  const [screen, setScreen] = useState<Screen>("title");
-  const [game, setGame] = useState<GameState | null>(null);
-  const [profileWrestlerId, setProfileWrestlerId] = useState<string | undefined>(() => savedGame?.profileWrestlerId);
-  const [profileReturnScreen, setProfileReturnScreen] = useState<ProfileReturnScreen>(() => savedGame?.profileReturnScreen ?? "roster");
-  const latestResult = game?.showHistory[game.showHistory.length - 1];
+function loadCareerSaves() {
+  const careerSaves: CareerSave[] = [];
 
-  function startNewGame() {
-    if (savedGame && !window.confirm("Start a new game and overwrite the existing save?")) {
+  loadSaveRecords().forEach((record) => {
+    const careerSave = normalizeCareerSave(record);
+
+    if (careerSave) {
+      careerSaves.push(careerSave);
       return;
     }
 
+    deleteSaveRecord(record.id);
+  });
+
+  return careerSaves;
+}
+
+function getMostRecentCareer(careerSaves: CareerSave[]) {
+  return careerSaves[0] ?? null;
+}
+
+function App() {
+  const [careerSaves, setCareerSaves] = useState<CareerSave[]>(() => loadCareerSaves());
+  const [savedGame, setSavedGame] = useState<SavedGameState | null>(null);
+  const [activeSaveId, setActiveSaveId] = useState<string | undefined>();
+  const [screen, setScreen] = useState<Screen>("title");
+  const [titleMode, setTitleMode] = useState<TitleMode>("home");
+  const [game, setGame] = useState<GameState | null>(null);
+  const [profileWrestlerId, setProfileWrestlerId] = useState<string | undefined>();
+  const [profileReturnScreen, setProfileReturnScreen] = useState<ProfileReturnScreen>("roster");
+  const latestResult = game?.showHistory[game.showHistory.length - 1];
+  const recentCareer = getMostRecentCareer(careerSaves);
+
+  function refreshCareerSaves() {
+    const updatedCareerSaves = loadCareerSaves();
+    setCareerSaves(updatedCareerSaves);
+    return updatedCareerSaves;
+  }
+
+  function persistGameSnapshot(
+    nextGame: GameState,
+    nextScreen: SavedGameState["screen"],
+    profileState?: Pick<SavedGameState, "profileReturnScreen" | "profileWrestlerId">,
+  ) {
+    const nextSavedGame = buildSavedGameState(nextGame, nextScreen, profileState);
+
+    if (!activeSaveId) {
+      console.warn("Could not save career because no active save is selected.");
+      setSavedGame(nextSavedGame);
+      return nextSavedGame;
+    }
+
+    const updatedRecord = updateSaveRecord(activeSaveId, nextSavedGame);
+
+    if (!updatedRecord) {
+      console.warn("Could not update the active career save.");
+    }
+
+    refreshCareerSaves();
+    setSavedGame(nextSavedGame);
+    return nextSavedGame;
+  }
+
+  function startNewGame() {
+    if (careerSaves.length >= MAX_SAVE_SLOTS) {
+      window.alert(`You already have ${MAX_SAVE_SLOTS} careers. Delete a career from Load Careers before starting a new one.`);
+      return;
+    }
+
+    setActiveSaveId(undefined);
+    setSavedGame(null);
     setGame(null);
     setProfileWrestlerId(undefined);
     setProfileReturnScreen("roster");
+    setTitleMode("home");
     setScreen("setup");
   }
 
@@ -725,36 +860,80 @@ function App() {
     draftedWrestlers: Wrestler[];
   }) {
     const newGame = createNewGame(career);
-    saveSnapshot(newGame, "dashboard");
-    setSavedGame({ game: newGame, screen: "dashboard" });
+    const nextSavedGame = buildSavedGameState(newGame, "dashboard");
+    const createdRecord = createSaveRecord(nextSavedGame, `${career.brandName} Career`);
+
+    if (!createdRecord) {
+      window.alert(`You already have ${MAX_SAVE_SLOTS} careers. Delete a career from Load Careers before starting a new one.`);
+      setScreen("title");
+      return;
+    }
+
+    setActiveSaveId(createdRecord.id);
+    refreshCareerSaves();
+    setSavedGame(nextSavedGame);
     setGame(newGame);
     setProfileWrestlerId(undefined);
     setProfileReturnScreen("roster");
     setScreen("dashboard");
   }
 
-  function continueGame() {
-    if (!savedGame) {
-      return;
-    }
-
-    setGame(savedGame.game);
-    setProfileWrestlerId(savedGame.profileWrestlerId);
-    setProfileReturnScreen(savedGame.profileReturnScreen ?? "roster");
-    setScreen(savedGame.screen);
+  function loadCareer(careerSave: CareerSave) {
+    updateSaveRecord(careerSave.id, careerSave.state);
+    refreshCareerSaves();
+    setActiveSaveId(careerSave.id);
+    setSavedGame(careerSave.state);
+    setGame(careerSave.state.game);
+    setProfileWrestlerId(careerSave.state.profileWrestlerId);
+    setProfileReturnScreen(careerSave.state.profileReturnScreen ?? "roster");
+    setTitleMode("home");
+    setScreen(careerSave.state.screen);
   }
 
-  function resetSave() {
-    if (!window.confirm("Delete the saved game?")) {
+  function continueGame() {
+    if (!recentCareer) {
       return;
     }
 
-    clearGameState();
-    setSavedGame(null);
-    setGame(null);
-    setProfileWrestlerId(undefined);
-    setProfileReturnScreen("roster");
-    setScreen("title");
+    loadCareer(recentCareer);
+  }
+
+  function renameCareer(careerSave: CareerSave) {
+    const nextName = window.prompt("Rename career save", careerSave.name);
+
+    if (nextName === null) {
+      return;
+    }
+
+    const renamedRecord = renameSaveRecord(careerSave.id, nextName);
+
+    if (!renamedRecord) {
+      return;
+    }
+
+    refreshCareerSaves();
+  }
+
+  function deleteCareer(careerSave: CareerSave) {
+    if (!window.confirm(`Delete "${careerSave.name}"? This cannot be undone.`)) {
+      return;
+    }
+
+    deleteSaveRecord(careerSave.id);
+    const updatedCareerSaves = refreshCareerSaves();
+
+    if (careerSave.id === activeSaveId) {
+      setActiveSaveId(undefined);
+      setSavedGame(null);
+      setGame(null);
+      setProfileWrestlerId(undefined);
+      setProfileReturnScreen("roster");
+      setScreen("title");
+    }
+
+    if (!updatedCareerSaves.length) {
+      setTitleMode("home");
+    }
   }
 
   function navigateTo(nextScreen: GameScreen) {
@@ -762,8 +941,7 @@ function App() {
       return;
     }
 
-    saveSnapshot(game, nextScreen);
-    setSavedGame({ game, screen: nextScreen });
+    persistGameSnapshot(game, nextScreen);
     setProfileWrestlerId(undefined);
     setProfileReturnScreen(nextScreen === "booking" ? "booking" : "roster");
     setScreen(nextScreen);
@@ -775,8 +953,7 @@ function App() {
     }
 
     const profileState = { profileReturnScreen: returnScreen, profileWrestlerId: wrestlerId };
-    saveSnapshot(game, "profile", profileState);
-    setSavedGame({ game, screen: "profile", ...profileState });
+    persistGameSnapshot(game, "profile", profileState);
     setProfileWrestlerId(wrestlerId);
     setProfileReturnScreen(returnScreen);
     setScreen("profile");
@@ -787,8 +964,7 @@ function App() {
       return;
     }
 
-    saveSnapshot(game, returnScreen);
-    setSavedGame({ game, screen: returnScreen });
+    persistGameSnapshot(game, returnScreen);
     setProfileWrestlerId(undefined);
     setProfileReturnScreen(returnScreen);
     setScreen(returnScreen);
@@ -812,8 +988,7 @@ function App() {
         ],
       };
 
-      saveSnapshot(updatedGame, "booking");
-      setSavedGame({ game: updatedGame, screen: "booking" });
+      persistGameSnapshot(updatedGame, "booking");
       return updatedGame;
     });
   }
@@ -841,8 +1016,7 @@ function App() {
         }),
       };
 
-      saveSnapshot(updatedGame, "booking");
-      setSavedGame({ game: updatedGame, screen: "booking" });
+      persistGameSnapshot(updatedGame, "booking");
       return updatedGame;
     });
   }
@@ -870,8 +1044,7 @@ function App() {
         }),
       };
 
-      saveSnapshot(updatedGame, "booking");
-      setSavedGame({ game: updatedGame, screen: "booking" });
+      persistGameSnapshot(updatedGame, "booking");
       return updatedGame;
     });
   }
@@ -883,8 +1056,7 @@ function App() {
       }
 
       const updatedGame = { ...current, currentShow: current.currentShow.filter((segment) => segment.id !== id) };
-      saveSnapshot(updatedGame, "booking");
-      setSavedGame({ game: updatedGame, screen: "booking" });
+      persistGameSnapshot(updatedGame, "booking");
       return updatedGame;
     });
   }
@@ -937,8 +1109,7 @@ function App() {
         }),
       };
 
-      saveSnapshot(updatedGame, "booking");
-      setSavedGame({ game: updatedGame, screen: "booking" });
+      persistGameSnapshot(updatedGame, "booking");
       return updatedGame;
     });
   }
@@ -949,8 +1120,7 @@ function App() {
     }
 
     const resolvedShow = runShow(game);
-    saveSnapshot(resolvedShow.game, "results");
-    setSavedGame({ game: resolvedShow.game, screen: "results" });
+    persistGameSnapshot(resolvedShow.game, "results");
     setGame(resolvedShow.game);
     setScreen("results");
   }
@@ -964,8 +1134,7 @@ function App() {
       const updatedGame = advanceGameWeek(current);
       const nextScreen = current.currentWeek >= 12 ? "seasonReview" : "dashboard";
 
-      saveSnapshot(updatedGame, nextScreen);
-      setSavedGame({ game: updatedGame, screen: nextScreen });
+      persistGameSnapshot(updatedGame, nextScreen);
       return updatedGame;
     });
     setScreen(game?.currentWeek === 12 ? "seasonReview" : "dashboard");
@@ -978,8 +1147,7 @@ function App() {
       }
 
       const updatedGame = startNextSeason(current);
-      saveSnapshot(updatedGame, "dashboard");
-      setSavedGame({ game: updatedGame, screen: "dashboard" });
+      persistGameSnapshot(updatedGame, "dashboard");
       return updatedGame;
     });
     setScreen("dashboard");
@@ -1030,8 +1198,7 @@ function App() {
         rivalryHistory: [...(current.rivalryHistory ?? []), startEvent],
       };
 
-      saveSnapshot(updatedGame, "rivalries");
-      setSavedGame({ game: updatedGame, screen: "rivalries" });
+      persistGameSnapshot(updatedGame, "rivalries");
       return updatedGame;
     });
   }
@@ -1067,8 +1234,7 @@ function App() {
         ),
       };
 
-      saveSnapshot(updatedGame, "rivalries");
-      setSavedGame({ game: updatedGame, screen: "rivalries" });
+      persistGameSnapshot(updatedGame, "rivalries");
       return updatedGame;
     });
   }
@@ -1078,7 +1244,19 @@ function App() {
   }
 
   if (screen === "title" || !game) {
-    return <TitleScreen hasSave={Boolean(savedGame)} onContinue={continueGame} onResetSave={resetSave} onStart={startNewGame} />;
+    return (
+      <TitleScreen
+        careerSaves={careerSaves}
+        recentCareer={recentCareer}
+        titleMode={titleMode}
+        onContinue={continueGame}
+        onDeleteCareer={deleteCareer}
+        onLoadCareer={loadCareer}
+        onRenameCareer={renameCareer}
+        onSetTitleMode={setTitleMode}
+        onStart={startNewGame}
+      />
+    );
   }
 
   if (screen === "booking") {
@@ -1172,39 +1350,152 @@ function App() {
 }
 
 function TitleScreen({
-  hasSave,
+  careerSaves,
+  recentCareer,
+  titleMode,
   onContinue,
-  onResetSave,
+  onDeleteCareer,
+  onLoadCareer,
+  onRenameCareer,
+  onSetTitleMode,
   onStart,
 }: {
-  hasSave: boolean;
+  careerSaves: CareerSave[];
+  recentCareer: CareerSave | null;
+  titleMode: TitleMode;
   onContinue: () => void;
-  onResetSave: () => void;
+  onDeleteCareer: (careerSave: CareerSave) => void;
+  onLoadCareer: (careerSave: CareerSave) => void;
+  onRenameCareer: (careerSave: CareerSave) => void;
+  onSetTitleMode: (mode: TitleMode) => void;
   onStart: () => void;
 }) {
+  const hasSaves = careerSaves.length > 0;
+  const isAtSaveLimit = careerSaves.length >= MAX_SAVE_SLOTS;
+
   return (
     <main className="title-screen">
-      <div className="title-copy">
-        <p className="eyebrow">Offline GM Command</p>
-        <h1>Next GM</h1>
-        <p className="lede">Book the card, run the show, read the fallout, and carry the roster into next week.</p>
-        <div className="title-actions">
-          {hasSave ? (
-            <button className="primary-action" onClick={onContinue}>
-              Continue
+      <div className="title-shell">
+        <section className="title-copy" aria-label="Next GM command center">
+          <p className="eyebrow">Offline GM Command Center</p>
+          <h1>Next GM</h1>
+          <p className="lede">Enter the brand headquarters, book the card, run the show, and carry the locker room fallout into next week.</p>
+          <div className="title-command-strip" aria-label="Career save status">
+            <span>{careerSaves.length}/{MAX_SAVE_SLOTS} Careers</span>
+            <span>Offline Career Mode</span>
+            <span>Local Save Deck</span>
+          </div>
+          <div className="title-actions">
+            {hasSaves ? (
+              <button className="primary-action" onClick={onContinue}>
+                Continue Career
+              </button>
+            ) : null}
+            <button className="primary-action" disabled={isAtSaveLimit} onClick={onStart}>
+              New Career
             </button>
-          ) : null}
-          <button className="primary-action" onClick={onStart}>
-            New Game
-          </button>
-          {hasSave ? (
-            <button className="secondary-action" onClick={onResetSave}>
-              Reset Save
-            </button>
-          ) : null}
-        </div>
+            {hasSaves ? (
+              <button className="secondary-action" onClick={() => onSetTitleMode(titleMode === "load" ? "home" : "load")}>
+                {titleMode === "load" ? "Close Careers" : "Load Careers"}
+              </button>
+            ) : null}
+          </div>
+          {isAtSaveLimit ? <p className="title-limit-note">Save deck full. Delete a career from Load Careers before starting another.</p> : null}
+        </section>
+
+        <aside className="title-career-panel" aria-label={titleMode === "load" ? "Career saves" : "Recent career"}>
+          {titleMode === "load" ? (
+            <>
+              <div className="panel-kicker">
+                <p className="eyebrow">Career Deck</p>
+                <h2>Load Careers</h2>
+              </div>
+              <div className="save-card-list">
+                {careerSaves.map((careerSave) => (
+                  <CareerSaveCard
+                    careerSave={careerSave}
+                    key={careerSave.id}
+                    onDeleteCareer={onDeleteCareer}
+                    onLoadCareer={onLoadCareer}
+                    onRenameCareer={onRenameCareer}
+                  />
+                ))}
+              </div>
+            </>
+          ) : recentCareer ? (
+            <>
+              <div className="panel-kicker">
+                <p className="eyebrow">Most Recent Career</p>
+                <h2>{recentCareer.name}</h2>
+              </div>
+              <CareerSaveSummary careerSave={recentCareer} />
+              <button className="primary-action full-width-action" onClick={onContinue}>
+                Resume {recentCareer.preview.brandName}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="panel-kicker">
+                <p className="eyebrow">Awaiting Contract</p>
+                <h2>No Career Active</h2>
+              </div>
+              <p className="muted-copy">Start a new career to sign the contract, build a roster, and open Week 1 from Brand HQ.</p>
+            </>
+          )}
+        </aside>
       </div>
     </main>
+  );
+}
+
+function CareerSaveSummary({ careerSave }: { careerSave: CareerSave }) {
+  const preview = careerSave.preview;
+
+  return (
+    <div className="save-summary-grid">
+      <Metric label="Brand" value={preview.brandName} />
+      <Metric label="GM" value={preview.gmName} />
+      <Metric label="Season / Week" value={`S${preview.seasonNumber} / W${preview.week}`} />
+      <Metric label="Money" value={formatMoney(preview.money)} />
+      <Metric label="Location" value={formatLocationLabel(preview.screen)} />
+      <Metric label="Last Played" value={formatDateTime(careerSave.lastPlayedAt)} />
+    </div>
+  );
+}
+
+function CareerSaveCard({
+  careerSave,
+  onDeleteCareer,
+  onLoadCareer,
+  onRenameCareer,
+}: {
+  careerSave: CareerSave;
+  onDeleteCareer: (careerSave: CareerSave) => void;
+  onLoadCareer: (careerSave: CareerSave) => void;
+  onRenameCareer: (careerSave: CareerSave) => void;
+}) {
+  return (
+    <article className="save-card">
+      <div className="save-card-top">
+        <div>
+          <p className="eyebrow">{formatLocationLabel(careerSave.preview.screen)}</p>
+          <h3>{careerSave.name}</h3>
+        </div>
+        <span>W{careerSave.preview.week}</span>
+      </div>
+      <CareerSaveSummary careerSave={careerSave} />
+      <div className="save-card-actions">
+        <button className="primary-action" onClick={() => onLoadCareer(careerSave)}>
+          Load
+        </button>
+        <button className="secondary-action" onClick={() => onRenameCareer(careerSave)}>
+          Rename
+        </button>
+        <button className="danger-action" onClick={() => onDeleteCareer(careerSave)}>
+          Delete
+        </button>
+      </div>
+    </article>
   );
 }
 
