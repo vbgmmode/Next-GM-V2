@@ -452,6 +452,7 @@ function isSavedGameState(value: unknown): value is SavedGameState {
       saved.screen === "social" ||
       saved.screen === "finance" ||
       saved.screen === "seasonReview" ||
+      saved.screen === "weekReview" ||
       saved.screen === "results") &&
     Boolean(game) &&
     typeof game?.currentWeek === "number" &&
@@ -865,7 +866,11 @@ function App() {
   }
 
   if (screen === "results" && latestResult) {
-    return <ResultsScreen game={game} result={latestResult} onAdvanceWeek={advanceWeek} onNavigate={navigateTo} />;
+    return <ResultsScreen game={game} result={latestResult} onContinueWeekReview={() => navigateTo("weekReview")} onNavigate={navigateTo} />;
+  }
+
+  if (screen === "weekReview" && latestResult) {
+    return <WeekReviewScreen game={game} onAdvanceWeek={advanceWeek} onNavigate={navigateTo} result={latestResult} />;
   }
 
   if (screen === "seasonReview") {
@@ -2187,26 +2192,16 @@ function FinanceScreen({
 
 function ResultsScreen({
   game,
-  result,
-  onAdvanceWeek,
+  onContinueWeekReview,
   onNavigate,
+  result,
 }: {
   game: GameState;
+  onContinueWeekReview: () => void;
   result: ShowResult;
-  onAdvanceWeek: () => void;
   onNavigate: (screen: GameScreen) => void;
 }) {
   const bestSegment = getBestSegment(result);
-  const buzzPreview = game.socialPosts.filter((post) => post.seasonNumber === result.seasonNumber && post.weekNumber === result.week).slice(-3).reverse();
-  const financeReport = getFinanceReportForResult(game, result);
-  const lockerRoomFalloutItems = result.lockerRoomFallout
-    ? [
-        ...result.lockerRoomFallout.moraleDrops,
-        ...result.lockerRoomFallout.moraleBoosts,
-        ...result.lockerRoomFallout.overuseWarnings,
-        ...result.lockerRoomFallout.underuseWarnings,
-      ]
-    : [];
 
   return (
     <main className="app-shell">
@@ -2222,64 +2217,17 @@ function ResultsScreen({
           </h2>
           <p className="lede">{buildBroadcastRecap(result)}</p>
         </div>
-        <button className="primary-action" onClick={onAdvanceWeek}>
-          {result.week >= 12 ? "Season Review" : "Advance Week"}
+        <button className="primary-action" onClick={onContinueWeekReview}>
+          Continue to Week Review
         </button>
       </section>
 
       <section className="status-grid" aria-label="Show highlights">
         <Metric label="Show Score" value={`${result.totalScore}`} detail={`Grade ${getShowGrade(result.totalScore)}`} />
         <Metric label="Best Segment" value={`${bestSegment.score}`} detail={bestSegment.participantNames.join(" / ")} />
-        <Metric label="Momentum Gain" value={result.biggestMomentumGain.name} detail={`+${result.biggestMomentumGain.amount}`} />
-        <Metric label="Fatigue Hit" value={result.biggestFatigueIncrease.name} detail={`+${result.biggestFatigueIncrease.amount}`} />
+        <Metric label="Segments" value={`${result.segmentResults.length}`} detail={result.showType === "ple" ? "Major event" : "TV card"} />
+        <Metric label="Best Type" value={bestSegment.type} detail={bestSegment.participantNames.join(" / ")} />
       </section>
-
-      {result.lockerRoomFallout && lockerRoomFalloutItems.length ? (
-        <section className="locker-room-fallout" aria-label="Locker room fallout">
-          <div className="section-heading">
-            <p className="eyebrow">Locker Room Fallout</p>
-            <h3>Roster Pressure</h3>
-          </div>
-          <div className="fallout-grid">
-            {result.lockerRoomFallout.moraleDrops.length ? (
-              <div>
-                <span>Morale Drops</span>
-                {result.lockerRoomFallout.moraleDrops.map((item) => (
-                  <p key={`${item.wrestlerId}-drop`}>
-                    {item.note} {item.moraleChange ? `(${item.moraleChange})` : ""}
-                  </p>
-                ))}
-              </div>
-            ) : null}
-            {result.lockerRoomFallout.moraleBoosts.length ? (
-              <div>
-                <span>Morale Boosts</span>
-                {result.lockerRoomFallout.moraleBoosts.map((item) => (
-                  <p key={`${item.wrestlerId}-boost`}>
-                    {item.note} {item.moraleChange ? `(+${item.moraleChange})` : ""}
-                  </p>
-                ))}
-              </div>
-            ) : null}
-            {result.lockerRoomFallout.overuseWarnings.length ? (
-              <div>
-                <span>Overuse Warnings</span>
-                {result.lockerRoomFallout.overuseWarnings.map((item) => (
-                  <p key={`${item.wrestlerId}-overuse`}>{item.note}</p>
-                ))}
-              </div>
-            ) : null}
-            {result.lockerRoomFallout.underuseWarnings.length ? (
-              <div>
-                <span>Underuse Warnings</span>
-                {result.lockerRoomFallout.underuseWarnings.map((item) => (
-                  <p key={`${item.wrestlerId}-underuse`}>{item.note}</p>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
 
       {result.titleNotes?.length ? (
         <section className="title-fallout" aria-label="Title fallout">
@@ -2305,44 +2253,6 @@ function ResultsScreen({
         </section>
       ) : null}
 
-      {buzzPreview.length ? (
-        <section className="social-buzz" aria-label="IWC buzz preview">
-          <div className="section-heading">
-            <p className="eyebrow">IWC Buzz</p>
-            <h3>Post-Show Reaction</h3>
-          </div>
-          <div className="social-preview-grid">
-            {buzzPreview.map((post) => (
-              <article className="social-preview" key={post.id}>
-                <span>{formatSocialCategory(post.category)}</span>
-                <strong>{post.author}</strong>
-                <p>{post.text}</p>
-              </article>
-            ))}
-          </div>
-          <button className="secondary-action" onClick={() => onNavigate("social")}>
-            View Social
-          </button>
-        </section>
-      ) : null}
-
-      {financeReport ? (
-        <section className="finance-fallout" aria-label="Financial fallout">
-          <div className="section-heading">
-            <p className="eyebrow">Financial Fallout</p>
-            <h3>Brand Office Close</h3>
-          </div>
-          <div className="spotlight-grid">
-            <Metric label="Attendance" value={financeReport.attendance.toLocaleString()} />
-            <Metric label="Revenue" value={formatMoney(financeReport.ticketRevenue + financeReport.merchRevenue + financeReport.mediaRevenue)} />
-            <Metric label="Costs" value={formatMoney(financeReport.talentCost + financeReport.productionCost)} />
-            <Metric label="Profit/Loss" value={formatMoney(financeReport.profitLoss)} />
-            <Metric label="Ending Money" value={formatMoney(financeReport.endingMoney)} />
-            <Metric label="Pressure" value={getFinancePressureLabel(financeReport.endingMoney, financeReport.profitLoss)} />
-          </div>
-        </section>
-      ) : null}
-
       <section className="results-list" aria-label="Segment results">
         <div className="section-heading">
           <p className="eyebrow">Broadcast Breakdown</p>
@@ -2365,6 +2275,200 @@ function ResultsScreen({
             <strong>{segment.score}</strong>
           </article>
         ))}
+      </section>
+    </main>
+  );
+}
+
+function WeekReviewScreen({
+  game,
+  onAdvanceWeek,
+  onNavigate,
+  result,
+}: {
+  game: GameState;
+  onAdvanceWeek: () => void;
+  onNavigate: (screen: GameScreen) => void;
+  result: ShowResult;
+}) {
+  const bestSegment = getBestSegment(result);
+  const financeReport = getFinanceReportForResult(game, result);
+  const buzzPreview = game.socialPosts.filter((post) => post.seasonNumber === result.seasonNumber && post.weekNumber === result.week).slice(-3).reverse();
+  const bookedIds = [...new Set(result.segmentResults.flatMap((segment) => segment.participantIds))];
+  const injuryRiskWrestlers = game.wrestlers.filter(
+    (wrestler) => bookedIds.includes(wrestler.id) && getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk"),
+  );
+  const rivalryIds = [...new Set(result.segmentResults.map((segment) => segment.rivalryId).filter((id): id is string => Boolean(id)))];
+  const reviewedRivalries = rivalryIds
+    .map((id) => game.rivalries.find((rivalry) => rivalry.id === id))
+    .filter((rivalry): rivalry is Rivalry => Boolean(rivalry));
+  const nextWeek = game.calendar.find((week) => week.weekNumber === result.week + 1);
+  const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= result.week + 1 && !week.completed);
+  const weeksUntilNextPle = nextPle ? Math.max(0, nextPle.weekNumber - result.week) : 0;
+
+  return (
+    <main className="app-shell">
+      <Header game={game} />
+      <GameNav currentScreen="weekReview" hasResults onNavigate={onNavigate} />
+      <section className="results-hero week-review-hero">
+        <div>
+          <p className="eyebrow">
+            Season {result.seasonNumber} · Week {result.week} Review
+          </p>
+          <h2>Week Review</h2>
+          <p className="lede">The broadcast is in the books. Review the actual fallout before moving the calendar forward.</p>
+        </div>
+        <button className="primary-action" onClick={onAdvanceWeek}>
+          {result.week >= 12 ? "Season Review" : "Advance Week"}
+        </button>
+      </section>
+
+      <section className="status-grid" aria-label="Week review show outcome">
+        <Metric label="Show Score" value={`${result.totalScore}`} detail={`Grade ${getShowGrade(result.totalScore)}`} />
+        <Metric label="Best Segment" value={`${bestSegment.score}`} detail={bestSegment.participantNames.join(" / ")} />
+        <Metric label="Best Type" value={bestSegment.type} />
+        <Metric label="Show" value={result.showName} detail={getShowTypeLabel(result.showType)} />
+      </section>
+
+      <section className="locker-room-fallout" aria-label="Locker room fallout">
+        <div className="section-heading">
+          <p className="eyebrow">Roster Fallout</p>
+          <h3>Locker Room Pressure</h3>
+        </div>
+        <div className="fallout-grid">
+          {result.lockerRoomFallout?.moraleDrops.length ? (
+            <div>
+              <span>Morale Drops</span>
+              {result.lockerRoomFallout.moraleDrops.map((item) => (
+                <p key={`${item.wrestlerId}-drop`}>
+                  {item.note} {item.moraleChange ? `(${item.moraleChange})` : ""}
+                </p>
+              ))}
+            </div>
+          ) : null}
+          {result.lockerRoomFallout?.moraleBoosts.length ? (
+            <div>
+              <span>Morale Boosts</span>
+              {result.lockerRoomFallout.moraleBoosts.map((item) => (
+                <p key={`${item.wrestlerId}-boost`}>
+                  {item.note} {item.moraleChange ? `(+${item.moraleChange})` : ""}
+                </p>
+              ))}
+            </div>
+          ) : null}
+          {result.lockerRoomFallout?.overuseWarnings.length ? (
+            <div>
+              <span>Overuse Warnings</span>
+              {result.lockerRoomFallout.overuseWarnings.map((item) => (
+                <p key={`${item.wrestlerId}-overuse`}>{item.note}</p>
+              ))}
+            </div>
+          ) : null}
+          {result.lockerRoomFallout?.underuseWarnings.length ? (
+            <div>
+              <span>Underuse Warnings</span>
+              {result.lockerRoomFallout.underuseWarnings.map((item) => (
+                <p key={`${item.wrestlerId}-underuse`}>{item.note}</p>
+              ))}
+            </div>
+          ) : null}
+          {injuryRiskWrestlers.length ? (
+            <div>
+              <span>Injury Risk Warnings</span>
+              {injuryRiskWrestlers.map((wrestler) => (
+                <p key={`${wrestler.id}-injury-risk`}>
+                  {wrestler.name} finished the show at {wrestler.fatigue} fatigue.
+                </p>
+              ))}
+            </div>
+          ) : null}
+          {!result.lockerRoomFallout?.moraleDrops.length &&
+          !result.lockerRoomFallout?.moraleBoosts.length &&
+          !result.lockerRoomFallout?.overuseWarnings.length &&
+          !result.lockerRoomFallout?.underuseWarnings.length &&
+          !injuryRiskWrestlers.length ? (
+            <div>
+              <span>Locker Room</span>
+              <p>No major roster pressure moved after this show.</p>
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="title-fallout" aria-label="Championship fallout">
+        <div className="section-heading">
+          <p className="eyebrow">Championship Fallout</p>
+          <h3>Title Picture</h3>
+        </div>
+        {result.titleNotes.length ? result.titleNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>) : <p>No championship changes or defenses.</p>}
+      </section>
+
+      <section className="story-fallout" aria-label="Rivalry fallout">
+        <div className="section-heading">
+          <p className="eyebrow">Rivalry Fallout</p>
+          <h3>Story Movement</h3>
+        </div>
+        {result.rivalryNotes.length ? result.rivalryNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>) : <p>No attached rivalry movement.</p>}
+        {reviewedRivalries.length ? (
+          <div className="spotlight-grid compact-grid">
+            {reviewedRivalries.map((rivalry) => (
+              <Metric
+                detail={`Freshness ${rivalry.freshness} · ${formatRivalryStatus(rivalry.status)}`}
+                key={rivalry.id}
+                label={rivalry.name}
+                value={`Heat ${rivalry.heat}`}
+              />
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      {buzzPreview.length ? (
+        <section className="social-buzz" aria-label="Week review social buzz">
+          <div className="section-heading">
+            <p className="eyebrow">Social Buzz</p>
+            <h3>IWC Readout</h3>
+          </div>
+          <div className="social-preview-grid">
+            {buzzPreview.map((post) => (
+              <article className="social-preview" key={post.id}>
+                <span>{formatSocialCategory(post.category)}</span>
+                <strong>{post.author}</strong>
+                <p>{post.text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {financeReport ? (
+        <section className="finance-fallout" aria-label="Week review financial fallout">
+          <div className="section-heading">
+            <p className="eyebrow">Finance Fallout</p>
+            <h3>Brand Office Close</h3>
+          </div>
+          <div className="spotlight-grid">
+            <Metric label="Profit/Loss" value={formatMoney(financeReport.profitLoss)} />
+            <Metric label="Attendance" value={financeReport.attendance.toLocaleString()} />
+            <Metric label="Ending Money" value={formatMoney(financeReport.endingMoney)} />
+          </div>
+        </section>
+      ) : null}
+
+      <section className="command-panel calendar-spotlight" aria-label="Next week teaser">
+        <div className="section-heading">
+          <p className="eyebrow">Next Week</p>
+          <h3>{nextWeek ? nextWeek.showName : "Season Review"}</h3>
+        </div>
+        <div className="spotlight-grid">
+          <Metric label="Next Show" value={nextWeek ? nextWeek.showName : "Season Complete"} detail={nextWeek ? getShowTypeLabel(nextWeek.showType) : "Review the year"} />
+          <Metric
+            label="Next PLE"
+            value={nextPle ? nextPle.showName : "None"}
+            detail={nextPle ? `${weeksUntilNextPle} week${weeksUntilNextPle === 1 ? "" : "s"} away` : "No remaining PLE"}
+          />
+          <Metric label="Action" value={result.week >= 12 ? "Review Season" : "Advance Week"} detail="Calendar moves after this screen" />
+        </div>
       </section>
     </main>
   );
@@ -2631,6 +2735,11 @@ function GameNav({
       {hasResults ? (
         <button className={currentScreen === "results" ? "active-filter" : ""} onClick={() => onNavigate("results")}>
           Results
+        </button>
+      ) : null}
+      {hasResults ? (
+        <button className={currentScreen === "weekReview" ? "active-filter" : ""} onClick={() => onNavigate("weekReview")}>
+          Week Review
         </button>
       ) : null}
     </nav>

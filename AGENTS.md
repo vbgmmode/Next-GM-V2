@@ -50,8 +50,11 @@ The game currently supports:
 - Singles title matches that can change championships
 - Rivalry context attached to eligible segments
 - Run Show
-- Results with broadcast recap, segment scores, momentum/fatigue fallout, title fallout, rivalry fallout, locker room fallout, social buzz, and finance fallout
-- Advance Week
+- Results focused on broadcast recap, segment scores, and major title/rivalry/Open Challenge notes
+- Dedicated Week Review screen before Advance Week
+- Results → Week Review → Advance Week flow
+- Week Review summary of show outcome, roster fallout, championships, rivalries, social buzz, finance fallout, and next week teaser
+- Persisted Week Review screen state
 - TV-time tracking with appearances this season, last booked week, and consecutive weeks booked
 - Open Challenge resolved opponents count as booked after the show
 - Roster pressure labels for overused, underused, protected star, morale risk, and injury risk states
@@ -68,15 +71,20 @@ The game currently supports:
 - Finance & Brand Pressure
 
 ## Core Playable Loop
-New Game
-→ Setup Career
-→ Draft Roster
-→ Dashboard
+Title
+→ New Game / Continue
+→ Sign Contract
+→ GM Identity
+→ Brand Fantasy
+→ Career Preview
+→ Draft Night
+→ Draft Review
+→ Week 1 Dashboard
 → Booking
 → Run Show
 → Results
+→ Week Review
 → Advance Week
-→ Next Week Dashboard
 
 The loop must remain playable after every change.
 
@@ -91,6 +99,9 @@ The loop must remain playable after every change.
 - Roster pressure should come from actual booking choices.
 - Morale and fatigue fallout should be revealed after the show, not before.
 - Booking can show context and warnings, but not predicted fallout.
+- Results should focus on broadcast recap.
+- Week Review should connect consequences before advancing.
+- Advance Week should happen after the player has seen the week's fallout.
 - The UI can warn, summarize, and provide context, but it should not secretly decide for the player.
 - Big moments deserve stronger presentation.
 - Dashboard should orient the player.
@@ -112,11 +123,11 @@ Current priority:
 Deepen the post-draft solo career by improving booking stakes, roster pressure, consequence clarity, social/finance feedback, and season review value.
 
 Upcoming Direction:
-- Polish post-show fallout so results, social, finance, and rivalry movement feel sharper.
 - Run a booking balance pass across segment value, fatigue, morale, and card composition.
 - Add injury system v1 when explicitly requested by an active ticket.
-- Strengthen season review and next-season carryover without adding infrastructure complexity.
+- Add richer wrestler profiles.
 - Consider save slots or a data persistence upgrade later, only if explicitly requested.
+- Strengthen season review and next-season carryover without adding infrastructure complexity.
 - Keep setup and draft bounded unless an active ticket asks to expand them.
 
 ## Current Phase Scope Rules

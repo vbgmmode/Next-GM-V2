@@ -10,6 +10,7 @@ export type Screen =
   | "social"
   | "finance"
   | "results"
+  | "weekReview"
   | "seasonReview";
 
 export type SegmentType = "Match" | "Promo" | "Backstage Angle" | "Contract Signing" | "Open Challenge";
