@@ -1566,6 +1566,7 @@ function NewGameSetupScreen({
   const [brandName, setBrandName] = useState(defaultCareer.brandName);
   const [brandStyle, setBrandStyle] = useState<BrandStyle>(defaultCareer.brandStyle);
   const [draftedWrestlers, setDraftedWrestlers] = useState<Wrestler[]>([]);
+  const selectedGmStyle = gmStyleOptions.find((option) => option.label === gmStyle) ?? gmStyleOptions[0];
   const canPreview = gmName.trim().length > 0 && brandName.trim().length > 0;
   const availableWrestlers = draftPool.filter((wrestler) => !draftedWrestlers.some((drafted) => drafted.id === wrestler.id));
   const topStar = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.popularity + wrestler.momentum);
@@ -1637,10 +1638,16 @@ function NewGameSetupScreen({
               <input value={gmName} onChange={(event) => setGmName(event.target.value)} />
             </label>
             <ChoiceGrid
-              choices={gmStyles}
+              choices={gmStyleOptions}
               selected={gmStyle}
               onSelect={(choice) => setGmStyle(choice as GMStyle)}
+              variant="identity"
             />
+            <div className="identity-note">
+              <p className="eyebrow">Selected Identity</p>
+              <strong>{selectedGmStyle.label}</strong>
+              <p>{selectedGmStyle.description} This is roleplay framing for your GM fantasy, not a hidden bonus.</p>
+            </div>
             <div className="title-actions">
               <button className="secondary-action" onClick={() => setStep("contract")}>
                 Back
@@ -1835,18 +1842,25 @@ function ChoiceGrid({
   choices,
   selected,
   onSelect,
+  variant = "default",
 }: {
-  choices: string[];
+  choices: Array<string | ChoiceOption>;
   selected: string;
   onSelect: (choice: string) => void;
+  variant?: "default" | "identity";
 }) {
   return (
-    <div className="choice-grid">
-      {choices.map((choice) => (
-        <button className={selected === choice ? "active-filter" : ""} key={choice} onClick={() => onSelect(choice)}>
-          {choice}
+    <div className={`choice-grid${variant === "identity" ? " identity-grid" : ""}`}>
+      {choices.map((choice) => {
+        const option = typeof choice === "string" ? { label: choice } : choice;
+
+        return (
+          <button className={selected === option.label ? "active-filter" : ""} key={option.label} onClick={() => onSelect(option.label)}>
+            <span>{option.label}</span>
+            {option.description ? <small>{option.description}</small> : null}
         </button>
-      ))}
+        );
+      })}
     </div>
   );
 }
