@@ -602,6 +602,109 @@ button:disabled {
   padding: 5px 7px;
 }
 
+.rival-draft-panel {
+  background:
+    linear-gradient(90deg, rgba(216, 35, 50, 0.1), rgba(111, 226, 212, 0.08)),
+    rgba(8, 9, 13, 0.56);
+  border: 1px solid rgba(246, 193, 86, 0.16);
+  border-left: 4px solid #f6c156;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  margin: 14px 0 0;
+  padding: 14px;
+}
+
+.rival-draft-panel.tone-watch {
+  border-color: rgba(246, 193, 86, 0.32);
+}
+
+.rival-draft-panel.tone-aggressive {
+  border-color: rgba(255, 83, 97, 0.35);
+  border-left-color: #ff5361;
+}
+
+.rival-draft-panel.tone-burst {
+  border-color: rgba(111, 226, 212, 0.36);
+  border-left-color: #6fe2d4;
+}
+
+.rival-draft-panel.tone-quiet {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.rival-draft-head {
+  align-items: start;
+  display: flex;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.rival-draft-head h3 {
+  margin: 0;
+}
+
+.rival-draft-copy {
+  color: #dbe2ef;
+  font-size: 0.86rem;
+  font-weight: 750;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.rival-draft-notes {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.rival-draft-note {
+  background: rgba(14, 17, 24, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.rival-draft-note.tone-watch {
+  border-color: rgba(246, 193, 86, 0.28);
+}
+
+.rival-draft-note.tone-aggressive {
+  border-color: rgba(255, 83, 97, 0.32);
+}
+
+.rival-draft-note.tone-burst {
+  border-color: rgba(111, 226, 212, 0.34);
+}
+
+.rival-draft-note span,
+.rival-draft-note small {
+  color: #9ea8ba;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.rival-draft-note strong {
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.rival-draft-note p {
+  color: #c9d1dc;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.35;
+  margin: 0;
+}
+
 .brand-pulse-panel {
   background:
     linear-gradient(90deg, rgba(111, 226, 212, 0.12), transparent 48%),
@@ -3613,6 +3716,7 @@ h3 {
   .spotlight-grid,
   .draft-stat-grid,
   .brand-pulse-grid,
+  .rival-draft-notes,
   .participant-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3706,6 +3810,7 @@ h3 {
   .draft-review-grid,
   .draft-review-summary,
   .draft-review-breakdown,
+  .rival-draft-notes,
   .draft-stat-grid,
   .draft-tools,
   .title-scene-board,

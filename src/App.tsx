@@ -214,6 +214,24 @@ type BrandPulseSnapshot = {
   rivalNotes: BrandPulseRivalNote[];
 };
 
+type RivalDraftActivityTone = "quiet" | "watch" | "aggressive" | "burst";
+
+type RivalDraftActivityNote = {
+  id: string;
+  brandName: string;
+  gmName: string;
+  label: string;
+  detail: string;
+  tone: RivalDraftActivityTone;
+};
+
+type RivalDraftActivitySnapshot = {
+  headline: string;
+  detail: string;
+  tone: RivalDraftActivityTone;
+  notes: RivalDraftActivityNote[];
+};
+
 type CauseLedgerTone = "strong" | "steady" | "watch";
 
 type CauseLedgerItem = {
@@ -429,6 +447,91 @@ function getRivalUniverseRead(rivalBrands: RivalBrandState[]) {
   const activityCount = rivalBrands.reduce((sum, brand) => sum + brand.activityHistory.length, 0);
 
   return `${rivalBrands.length} rival brand${rivalBrands.length === 1 ? "" : "s"} assigned. ${rosterCount} rival roster claim${rosterCount === 1 ? "" : "s"} and ${activityCount} activity beat${activityCount === 1 ? "" : "s"} recorded.`;
+}
+
+function getRivalDraftActivitySnapshot(
+  rivalBrands: RivalBrandState[],
+  draftedCount: number,
+  maxDraftCount = draftPickCount,
+): RivalDraftActivitySnapshot | undefined {
+  if (!rivalBrands.length) {
+    return undefined;
+  }
+
+  const safeDraftedCount = Math.max(0, Math.min(maxDraftCount, draftedCount));
+  const rankedBrands = [...rivalBrands].sort((a, b) => {
+    const aSignal = a.activityHistory.length + a.rosterWrestlerIds.length * 0.6;
+    const bSignal = b.activityHistory.length + b.rosterWrestlerIds.length * 0.6;
+
+    return bSignal - aSignal || a.brandName.localeCompare(b.brandName);
+  });
+
+  const tone: RivalDraftActivityTone =
+    safeDraftedCount >= maxDraftCount
+      ? "burst"
+      : safeDraftedCount >= Math.floor(maxDraftCount * 0.8)
+        ? "aggressive"
+        : safeDraftedCount >= Math.floor(maxDraftCount * 0.4)
+          ? "watch"
+          : "quiet";
+
+  const headline =
+    safeDraftedCount === 0
+      ? "The Other Desks Are Quietly Watching"
+      : safeDraftedCount < 4
+        ? "Rival Desks Hold"
+        : safeDraftedCount < maxDraftCount - 2
+          ? "Rival Desks Are Tracking the Draft"
+          : "Rival Draft Activity Is Peaking";
+
+  const detail =
+    safeDraftedCount === 0
+      ? "Draft Night has opened, but rival desks are still framing this board as watch-only noise."
+      : `You are at pick ${safeDraftedCount}/${maxDraftCount}; rival desks stay active as flavor-only readouts around your live build.`;
+
+  const notes: RivalDraftActivityNote[] = rankedBrands.slice(0, 3).map((brand) => {
+    const activityCount = brand.activityHistory.length;
+    const brandRosterClaims = brand.rosterWrestlerIds.length;
+    const latestActivity = brand.activityHistory.at(-1);
+
+    const noteTone: RivalDraftActivityTone =
+      activityCount >= 3
+        ? "aggressive"
+        : safeDraftedCount >= maxDraftCount - 1 && brandRosterClaims >= 2
+          ? "aggressive"
+          : safeDraftedCount >= Math.floor(maxDraftCount / 2)
+            ? "watch"
+            : "quiet";
+
+    const label =
+      safeDraftedCount < 3
+        ? "Quiet War Room"
+        : activityCount >= 2
+          ? "Scouting Aggressively"
+          : safeDraftedCount >= maxDraftCount - 1
+            ? "Building Around Star Power"
+            : "Watching The Board";
+
+    const activityNote = latestActivity
+      ? `Recent desk read: ${latestActivity.label.toLowerCase()} · ${latestActivity.note}`
+      : `No logged movement yet; desk is monitoring ${brandRosterClaims ? "roster claims" : "board position"}.`;
+
+    return {
+      id: `${brand.id}-${safeDraftedCount}`,
+      brandName: brand.brandName,
+      gmName: brand.assignedGMName,
+      label,
+      detail: `${brand.assignedGMName} (${brand.assignedGMStyle}) is ${safeDraftedCount < 5 ? "monitoring" : "pushing context"}: ${activityNote}`,
+      tone: noteTone,
+    };
+  });
+
+  return {
+    headline,
+    detail,
+    tone,
+    notes,
+  };
 }
 
 function getBrandPulseRivalLabel(score: number, socialCount: number, profitLoss: number | undefined, index: number) {
@@ -3648,6 +3751,7 @@ function NewGameSetupScreen({
   const draftDivisionCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.division);
   const draftSourceBrandCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.sourceBrand);
   const previewRivalBrands = createRivalBrandUniverse(rivalGMAssignments);
+  const rivalDraftActivity = getRivalDraftActivitySnapshot(previewRivalBrands, draftedWrestlers.length, draftPickCount);
 
   function startCareer() {
     if (!canPreview || draftedWrestlers.length !== draftPickCount) {
@@ -3849,6 +3953,7 @@ function NewGameSetupScreen({
               <Metric label="Next Step" value="Draft Night" detail="Build the first locker room" />
             </div>
             <RivalBrandUniversePanel rivalBrands={previewRivalBrands} title="The Other Chairs Are Filled" />
+            {rivalDraftActivity ? <RivalDraftActivityPanel snapshot={rivalDraftActivity} /> : null}
             <p className="lede">
               Week 1 opens on TV. This first campaign starts with Collision Course in Week 4, and ownership expects momentum before the road reaches Final Bell.
             </p>
@@ -3876,6 +3981,7 @@ function NewGameSetupScreen({
               <span>{draftedWrestlers.length}/{draftPickCount} Signed</span>
               <span>{activeDraftFilters.length ? activeDraftFilters.join(" / ") : "Open Board"}</span>
             </div>
+            {rivalDraftActivity ? <RivalDraftActivityPanel snapshot={rivalDraftActivity} /> : null}
             <DraftFinanceSummary readout={draftFinanceReadout} />
             <div className="draft-board">
               <section className="draft-column">
@@ -4032,6 +4138,7 @@ function NewGameSetupScreen({
               </div>
               <p>{draftReviewRead}</p>
             </section>
+            {rivalDraftActivity ? <RivalDraftActivityPanel snapshot={rivalDraftActivity} /> : null}
             <section className="draft-review-breakdown" aria-label="Drafted roster shape">
               <article>
                 <span>Tier Mix</span>
@@ -4174,6 +4281,32 @@ function DraftFinanceSummary({ readout }: { readout: DraftFinanceReadout }) {
         <Metric label="Reserve Pressure" value={readout.pressureLabel} detail="Readout only; no pick is blocked" />
       </div>
       <p>{getDraftFinanceNote(readout)}</p>
+    </section>
+  );
+}
+
+function RivalDraftActivityPanel({ snapshot }: { snapshot: RivalDraftActivitySnapshot }) {
+  return (
+    <section className={`rival-draft-panel tone-${snapshot.tone}`} aria-label="Rival draft activity">
+      <div className="rival-draft-head">
+        <div>
+          <p className="eyebrow">Rival Draft Activity</p>
+          <h3>{snapshot.headline}</h3>
+        </div>
+      </div>
+      <p className="rival-draft-copy">{snapshot.detail}</p>
+      {snapshot.notes.length ? (
+        <div className="rival-draft-notes">
+          {snapshot.notes.map((note) => (
+            <article key={note.id} className={`rival-draft-note tone-${note.tone}`}>
+              <span>{note.brandName}</span>
+              <small>{note.gmName}</small>
+              <strong>{note.label}</strong>
+              <p>{note.detail}</p>
+            </article>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -51,6 +51,7 @@ The game currently supports:
 - Title Scene Pressure v1 with read-only championship diagnostics derived from current title, roster, rivalry, booking, calendar, and history state
 - Rivalry Payoff Window v1 with read-only rivalry timing diagnostics derived from current heat, freshness, history, booking, and PLE calendar state
 - Brand Pulse v1 with read-only, non-simulated post-show brand pressure diagnostics derived from player results and static rival brand flavor
+- Non-Blocking Rival Draft Activity v1 with read-only draft-week flavor diagnostics for rival-brand setup context
 - Top 200 open draft pool staged from data/rosters and activated through src/game/top200DraftPool.ts
 - 199 game-eligible performers available by default in Draft Night
 - Open Draft Night availability across source brands; source/current brand does not restrict draft availability
@@ -181,6 +182,7 @@ Completed stabilization passes:
 - Title Scene Pressure v1
 - Rivalry Payoff Window v1
 - Brand Pulse v1
+- Non-Blocking Rival Draft Activity v1
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
