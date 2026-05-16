@@ -1,4 +1,18 @@
-import type { CalendarWeek, Championship, GameState, Rivalry, Wrestler } from "./types";
+import type { BrandStyle, CalendarWeek, Championship, GameState, GMStyle, Rivalry, Wrestler } from "./types";
+
+export type NewCareerOptions = {
+  gmName?: string;
+  gmStyle?: GMStyle;
+  brandName?: string;
+  brandStyle?: BrandStyle;
+};
+
+export const defaultCareer: Required<NewCareerOptions> = {
+  gmName: "Alex Monroe",
+  gmStyle: "Creative Visionary",
+  brandName: "Neon Harbor Wrestling",
+  brandStyle: "Prime Time Sports Entertainment",
+};
 
 export const roster: Wrestler[] = [
   { id: "jax-ransom", name: "Jax Ransom", popularity: 72, momentum: 58, fatigue: 18, morale: 65, ringSkill: 79, promoSkill: 61 },
@@ -102,17 +116,25 @@ export function createSeasonCalendar(): CalendarWeek[] {
   ];
 }
 
-export function createNewGame(): GameState {
+export function createNewGame(options: NewCareerOptions = {}): GameState {
+  const career = { ...defaultCareer, ...options };
+
   return {
     seasonNumber: 1,
+    seasonStartingMoney: 250000,
     currentWeek: 1,
-    brandName: "Neon Harbor Wrestling",
+    gmName: career.gmName.trim() || defaultCareer.gmName,
+    gmStyle: career.gmStyle,
+    brandName: career.brandName.trim() || defaultCareer.brandName,
+    brandStyle: career.brandStyle,
+    createdAt: new Date().toISOString(),
     money: 250000,
     wrestlers: roster.map((wrestler) => ({ ...wrestler })),
     championships: createDefaultChampionships(),
     rivalries: createDefaultRivalries(),
     calendar: createSeasonCalendar(),
     socialPosts: [],
+    financeReports: [],
     currentShow: [],
     showHistory: [],
   };

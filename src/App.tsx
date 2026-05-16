@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { clearGameState, loadGameState, saveGameState } from "./gameStorage";
 import { advanceGameWeek, startNextSeason } from "./game/advanceWeek";
-import { createDefaultChampionships, createDefaultRivalries, createNewGame, createSeasonCalendar } from "./game/seed";
+import { getFinancePressureLabel } from "./game/finance";
+import { createDefaultChampionships, createDefaultRivalries, createNewGame, createSeasonCalendar, defaultCareer } from "./game/seed";
 import {
   getBestSegment,
   getCurrentCalendarWeek,
@@ -13,8 +14,12 @@ import {
 } from "./game/scoring";
 import type {
   CalendarWeek,
+  BrandStyle,
   Championship,
+  FinanceReport,
   GameState,
+  GMStyle,
+  PressureLabel,
   Rivalry,
   RivalryStakes,
   Screen,
@@ -27,14 +32,34 @@ import type {
   Wrestler,
 } from "./game/types";
 
+type GameScreen = Exclude<Screen, "title" | "setup">;
+
 type SavedGameState = {
   game: GameState;
-  screen: Exclude<Screen, "title">;
+  screen: GameScreen;
 };
 
 type RosterSort = "popularity" | "momentum" | "fatigue" | "morale";
 type RosterFilter = "All" | "Hot" | "Tired" | "Frustrated";
 type SocialFilter = "All" | "Fan Reaction" | "Dirt Sheets" | "Analyst Takes" | "Title Scene" | "Rivalries";
+type SetupStep = "contract" | "gm" | "brand" | "preview";
+
+const gmStyles: GMStyle[] = ["Creative Visionary", "Talent Developer", "Ruthless Executive", "Ratings Chaser"];
+const brandStyles: BrandStyle[] = [
+  "Prime Time Sports Entertainment",
+  "Underground Fight Club",
+  "Workrate Showcase",
+  "Reality Era Chaos",
+];
+
+function formatMoney(amount: number) {
+  const sign = amount < 0 ? "-" : "";
+  return `${sign}$${Math.abs(amount).toLocaleString()}`;
+}
+
+function formatPressureLabel(label: PressureLabel) {
+  return label;
+}
 
 function getSegmentRuntime(type: SegmentType) {
   return type === "Match" ? "12 min TV time" : "6 min TV time";
@@ -154,6 +179,30 @@ function getBestShow(showHistory: ShowResult[], seasonNumber?: number) {
   return results.reduce<ShowResult | undefined>((best, result) => (!best || result.totalScore > best.totalScore ? result : best), undefined);
 }
 
+function getLatestFinanceReport(game: GameState) {
+  return game.financeReports[game.financeReports.length - 1];
+}
+
+function getFinanceReportForResult(game: GameState, result: ShowResult) {
+  return game.financeReports.find((report) => report.id === `${result.id}-finance`);
+}
+
+function getSeasonFinanceReports(game: GameState) {
+  return game.financeReports.filter((report) => report.seasonNumber === game.seasonNumber);
+}
+
+function getBestRevenueReport(reports: FinanceReport[]) {
+  return reports.reduce<FinanceReport | undefined>((best, report) => {
+    const revenue = report.ticketRevenue + report.merchRevenue + report.mediaRevenue;
+    const bestRevenue = best ? best.ticketRevenue + best.merchRevenue + best.mediaRevenue : -Infinity;
+    return revenue > bestRevenue ? report : best;
+  }, undefined);
+}
+
+function getWorstProfitReport(reports: FinanceReport[]) {
+  return reports.reduce<FinanceReport | undefined>((worst, report) => (!worst || report.profitLoss < worst.profitLoss ? report : worst), undefined);
+}
+
 function formatSocialCategory(category: SocialCategory) {
   return category
     .split("_")
@@ -226,6 +275,7 @@ function isSavedGameState(value: unknown): value is SavedGameState {
       saved.screen === "rivalries" ||
       saved.screen === "calendar" ||
       saved.screen === "social" ||
+      saved.screen === "finance" ||
       saved.screen === "seasonReview" ||
       saved.screen === "results") &&
     Boolean(game) &&
@@ -268,6 +318,12 @@ function loadSavedGame() {
           ? savedState.game.calendar
           : createSeasonCalendar(),
       socialPosts: Array.isArray(savedState.game.socialPosts) ? savedState.game.socialPosts : [],
+      financeReports: Array.isArray(savedState.game.financeReports) ? savedState.game.financeReports : [],
+      seasonStartingMoney: savedState.game.seasonStartingMoney ?? savedState.game.money,
+      gmName: savedState.game.gmName ?? defaultCareer.gmName,
+      gmStyle: savedState.game.gmStyle ?? defaultCareer.gmStyle,
+      brandStyle: savedState.game.brandStyle ?? defaultCareer.brandStyle,
+      createdAt: savedState.game.createdAt ?? new Date().toISOString(),
     },
   };
 }
@@ -283,7 +339,17 @@ function App() {
       return;
     }
 
-    const newGame = createNewGame();
+    setGame(null);
+    setScreen("setup");
+  }
+
+  function startCareer(career: {
+    gmName: string;
+    gmStyle: GMStyle;
+    brandName: string;
+    brandStyle: BrandStyle;
+  }) {
+    const newGame = createNewGame(career);
     saveSnapshot(newGame, "dashboard");
     setSavedGame({ game: newGame, screen: "dashboard" });
     setGame(newGame);
@@ -310,7 +376,7 @@ function App() {
     setScreen("title");
   }
 
-  function navigateTo(nextScreen: Exclude<Screen, "title">) {
+  function navigateTo(nextScreen: GameScreen) {
     if (!game) {
       return;
     }
@@ -563,6 +629,10 @@ function App() {
     });
   }
 
+  if (screen === "setup") {
+    return <NewGameSetupScreen onCancel={() => setScreen("title")} onStartCareer={startCareer} />;
+  }
+
   if (screen === "title" || !game) {
     return <TitleScreen hasSave={Boolean(savedGame)} onContinue={continueGame} onResetSave={resetSave} onStart={startNewGame} />;
   }
@@ -609,6 +679,10 @@ function App() {
 
   if (screen === "social") {
     return <SocialScreen game={game} latestResult={latestResult} onNavigate={navigateTo} />;
+  }
+
+  if (screen === "finance") {
+    return <FinanceScreen game={game} latestResult={latestResult} onNavigate={navigateTo} />;
   }
 
   if (screen === "results" && latestResult) {
@@ -665,6 +739,158 @@ function TitleScreen({
   );
 }
 
+function NewGameSetupScreen({
+  onCancel,
+  onStartCareer,
+}: {
+  onCancel: () => void;
+  onStartCareer: (career: { gmName: string; gmStyle: GMStyle; brandName: string; brandStyle: BrandStyle }) => void;
+}) {
+  const [step, setStep] = useState<SetupStep>("contract");
+  const [gmName, setGmName] = useState(defaultCareer.gmName);
+  const [gmStyle, setGmStyle] = useState<GMStyle>(defaultCareer.gmStyle);
+  const [brandName, setBrandName] = useState(defaultCareer.brandName);
+  const [brandStyle, setBrandStyle] = useState<BrandStyle>(defaultCareer.brandStyle);
+  const canPreview = gmName.trim().length > 0 && brandName.trim().length > 0;
+
+  function startCareer() {
+    if (!canPreview) {
+      return;
+    }
+
+    onStartCareer({
+      gmName: gmName.trim(),
+      gmStyle,
+      brandName: brandName.trim(),
+      brandStyle,
+    });
+  }
+
+  return (
+    <main className="setup-screen">
+      <section className="setup-shell">
+        <div className="setup-progress" aria-label="Setup progress">
+          {["contract", "gm", "brand", "preview"].map((item, index) => (
+            <span className={step === item ? "active-step" : ""} key={item}>
+              {index + 1}
+            </span>
+          ))}
+        </div>
+
+        {step === "contract" ? (
+          <div className="setup-panel">
+            <p className="eyebrow">Sign The Contract</p>
+            <h1>You're Hired</h1>
+            <p className="lede">
+              A national broadcast window is open, the roster is restless, and ownership wants a 12-week road that feels like appointment TV.
+            </p>
+            <div className="title-actions">
+              <button className="primary-action" onClick={() => setStep("gm")}>
+                Accept The Job
+              </button>
+              <button className="secondary-action" onClick={onCancel}>
+                Back
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {step === "gm" ? (
+          <div className="setup-panel">
+            <p className="eyebrow">Choose GM Identity</p>
+            <h2>Who Runs The Room?</h2>
+            <label className="setup-field">
+              GM Name
+              <input value={gmName} onChange={(event) => setGmName(event.target.value)} />
+            </label>
+            <ChoiceGrid
+              choices={gmStyles}
+              selected={gmStyle}
+              onSelect={(choice) => setGmStyle(choice as GMStyle)}
+            />
+            <div className="title-actions">
+              <button className="secondary-action" onClick={() => setStep("contract")}>
+                Back
+              </button>
+              <button className="primary-action" disabled={!gmName.trim()} onClick={() => setStep("brand")}>
+                Continue
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {step === "brand" ? (
+          <div className="setup-panel">
+            <p className="eyebrow">Choose Brand Fantasy</p>
+            <h2>What Does TV Feel Like?</h2>
+            <label className="setup-field">
+              Brand Name
+              <input value={brandName} onChange={(event) => setBrandName(event.target.value)} />
+            </label>
+            <ChoiceGrid
+              choices={brandStyles}
+              selected={brandStyle}
+              onSelect={(choice) => setBrandStyle(choice as BrandStyle)}
+            />
+            <div className="title-actions">
+              <button className="secondary-action" onClick={() => setStep("gm")}>
+                Back
+              </button>
+              <button className="primary-action" disabled={!canPreview} onClick={() => setStep("preview")}>
+                Preview Career
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {step === "preview" ? (
+          <div className="setup-panel">
+            <p className="eyebrow">Career Preview</p>
+            <h2>{brandName.trim() || defaultCareer.brandName}</h2>
+            <div className="status-grid setup-summary">
+              <Metric label="GM" value={gmName.trim() || defaultCareer.gmName} detail={gmStyle} />
+              <Metric label="Brand Style" value={brandStyle} />
+              <Metric label="Starting Money" value={formatMoney(250000)} />
+              <Metric label="Season" value="12 Weeks" detail="PLEs in Weeks 4, 8, and 12" />
+            </div>
+            <p className="lede">
+              Week 1 opens on TV. The first PLE is Collision Course in Week 4, and ownership expects momentum before the road reaches Final Bell.
+            </p>
+            <div className="title-actions">
+              <button className="secondary-action" onClick={() => setStep("brand")}>
+                Back
+              </button>
+              <button className="primary-action" onClick={startCareer}>
+                Start Career
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </section>
+    </main>
+  );
+}
+
+function ChoiceGrid({
+  choices,
+  selected,
+  onSelect,
+}: {
+  choices: string[];
+  selected: string;
+  onSelect: (choice: string) => void;
+}) {
+  return (
+    <div className="choice-grid">
+      {choices.map((choice) => (
+        <button className={selected === choice ? "active-filter" : ""} key={choice} onClick={() => onSelect(choice)}>
+          {choice}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function DashboardScreen({
   game,
   latestResult,
@@ -672,7 +898,7 @@ function DashboardScreen({
 }: {
   game: GameState;
   latestResult?: ShowResult;
-  onNavigate: (screen: Exclude<Screen, "title">) => void;
+  onNavigate: (screen: GameScreen) => void;
 }) {
   const hotTalent = useMemo(
     () => [...game.wrestlers].sort((a, b) => b.momentum + b.popularity - (a.momentum + a.popularity)).slice(0, 3),
@@ -698,6 +924,8 @@ function DashboardScreen({
   const nextPle = getNextPle(game.calendar, game.currentWeek);
   const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
   const latestSocialPost = game.socialPosts[game.socialPosts.length - 1];
+  const latestFinanceReport = getLatestFinanceReport(game);
+  const pressureLabel = getFinancePressureLabel(game.money, latestFinanceReport?.profitLoss ?? 0);
 
   return (
     <main className="app-shell">
@@ -707,6 +935,11 @@ function DashboardScreen({
         <div>
           <p className="eyebrow">Season {game.seasonNumber} · Week {game.currentWeek} Dashboard</p>
           <h2>{game.brandName}</h2>
+          <div className="identity-strip">
+            <span>GM {game.gmName}</span>
+            <span>{game.gmStyle}</span>
+            <span>{game.brandStyle}</span>
+          </div>
           <p className="lede">
             {currentShow.showName} is a {getShowTypeLabel(currentShow.showType)} stop
             {currentShow.isGoHome ? " and the final broadcast before the next PLE." : " on the road to the next major event."}
@@ -767,10 +1000,25 @@ function DashboardScreen({
       </section>
 
       <section className="status-grid" aria-label="Brand pulse">
-        <Metric label="Money" value={`$${game.money.toLocaleString()}`} />
+        <Metric label="Money" value={formatMoney(game.money)} />
         <Metric label="Last Show" value={lastShow ? `${lastShow.totalScore} (${getShowGrade(lastShow.totalScore)})` : "No Result"} />
         <Metric label="Avg Fatigue" value={`${averageFatigue}`} detail={averageFatigue >= 45 ? "Roster needs rest" : "Manageable load"} />
         <Metric label="Top Momentum" value={`${topMomentumTalent.momentum}`} detail={topMomentumTalent.name} />
+      </section>
+
+      <section className={`command-panel finance-spotlight pressure-${pressureLabel.toLowerCase()}`}>
+        <div className="section-heading">
+          <p className="eyebrow">Brand Pressure</p>
+          <h3>{formatPressureLabel(pressureLabel)}</h3>
+        </div>
+        <div className="spotlight-grid">
+          <Metric label="Current Money" value={formatMoney(game.money)} />
+          <Metric label="Latest P/L" value={latestFinanceReport ? formatMoney(latestFinanceReport.profitLoss) : "No Report"} />
+          <Metric label="Latest Gate" value={latestFinanceReport ? latestFinanceReport.attendance.toLocaleString() : "No Show"} detail={latestFinanceReport?.showName} />
+        </div>
+        <button className="secondary-action" onClick={() => onNavigate("finance")}>
+          View Finance
+        </button>
       </section>
 
       <section className={`command-panel calendar-spotlight ${currentShow.showType === "ple" ? "ple-panel" : ""}`}>
@@ -929,7 +1177,7 @@ function BookingScreen({
   game: GameState;
   onAddSegment: (type: SegmentType) => void;
   onBack: () => void;
-  onNavigate: (screen: Exclude<Screen, "title">) => void;
+  onNavigate: (screen: GameScreen) => void;
   onRemoveSegment: (id: string) => void;
   onRunShow: () => void;
   onSetSegmentChampionship: (segmentId: string, championshipId: string) => void;
@@ -1062,7 +1310,7 @@ function RosterScreen({
 }: {
   game: GameState;
   latestResult?: ShowResult;
-  onNavigate: (screen: Exclude<Screen, "title">) => void;
+  onNavigate: (screen: GameScreen) => void;
 }) {
   const [sortBy, setSortBy] = useState<RosterSort>("momentum");
   const [filter, setFilter] = useState<RosterFilter>("All");
@@ -1124,7 +1372,7 @@ function ChampionshipsScreen({
 }: {
   game: GameState;
   latestResult?: ShowResult;
-  onNavigate: (screen: Exclude<Screen, "title">) => void;
+  onNavigate: (screen: GameScreen) => void;
 }) {
   return (
     <main className="app-shell">
@@ -1182,7 +1430,7 @@ function RivalriesScreen({
   latestResult?: ShowResult;
   onCreateRivalry: (wrestlerAId: string, wrestlerBId: string, stakes: RivalryStakes) => void;
   onEndRivalry: (rivalryId: string) => void;
-  onNavigate: (screen: Exclude<Screen, "title">) => void;
+  onNavigate: (screen: GameScreen) => void;
 }) {
   const [wrestlerAId, setWrestlerAId] = useState(game.wrestlers[0]?.id ?? "");
   const [wrestlerBId, setWrestlerBId] = useState(game.wrestlers[1]?.id ?? "");
@@ -1293,7 +1541,7 @@ function CalendarScreen({
 }: {
   game: GameState;
   latestResult?: ShowResult;
-  onNavigate: (screen: Exclude<Screen, "title">) => void;
+  onNavigate: (screen: GameScreen) => void;
 }) {
   const currentShow = getCurrentCalendarWeek(game);
   const nextPle = getNextPle(game.calendar, game.currentWeek);
@@ -1374,7 +1622,7 @@ function SocialScreen({
 }: {
   game: GameState;
   latestResult?: ShowResult;
-  onNavigate: (screen: Exclude<Screen, "title">) => void;
+  onNavigate: (screen: GameScreen) => void;
 }) {
   const [filter, setFilter] = useState<SocialFilter>("All");
   const categories = getSocialFilterCategory(filter);
@@ -1440,6 +1688,117 @@ function SocialScreen({
   );
 }
 
+function FinanceScreen({
+  game,
+  latestResult,
+  onNavigate,
+}: {
+  game: GameState;
+  latestResult?: ShowResult;
+  onNavigate: (screen: GameScreen) => void;
+}) {
+  const latestReport = getLatestFinanceReport(game);
+  const seasonReports = getSeasonFinanceReports(game);
+  const totalProfitLoss = seasonReports.reduce((sum, report) => sum + report.profitLoss, 0);
+  const bestRevenueReport = getBestRevenueReport(seasonReports);
+  const worstProfitReport = getWorstProfitReport(seasonReports);
+  const pressureLabel = getFinancePressureLabel(game.money, latestReport?.profitLoss ?? 0);
+
+  return (
+    <main className="app-shell">
+      <Header game={game} />
+      <GameNav currentScreen="finance" hasResults={Boolean(latestResult)} onNavigate={onNavigate} />
+      <section className="dashboard-hero">
+        <div>
+          <p className="eyebrow">Brand Office</p>
+          <h2>Finance</h2>
+          <p className="lede">Cash pressure, weekly business, and show fallout. No forecasts here, just what the last broadcast actually did.</p>
+        </div>
+        <button className="primary-action" onClick={() => onNavigate("booking")}>
+          Book Show
+        </button>
+      </section>
+
+      <section className="status-grid" aria-label="Finance summary">
+        <Metric label="Current Money" value={formatMoney(game.money)} />
+        <Metric label="Pressure" value={pressureLabel} />
+        <Metric label="Season P/L" value={formatMoney(totalProfitLoss)} />
+        <Metric label="Reports" value={`${game.financeReports.length}`} />
+      </section>
+
+      {latestReport ? (
+        <section className="finance-report-card">
+          <div className="section-heading">
+            <p className="eyebrow">
+              Latest Report · {getShowTypeLabel(latestReport.showType)}
+            </p>
+            <h3>{latestReport.showName}</h3>
+          </div>
+          <div className="spotlight-grid">
+            <Metric label="Attendance" value={latestReport.attendance.toLocaleString()} />
+            <Metric label="Revenue" value={formatMoney(latestReport.ticketRevenue + latestReport.merchRevenue + latestReport.mediaRevenue)} />
+            <Metric label="Costs" value={formatMoney(latestReport.talentCost + latestReport.productionCost)} />
+            <Metric label="Profit/Loss" value={formatMoney(latestReport.profitLoss)} />
+            <Metric label="Ending Money" value={formatMoney(latestReport.endingMoney)} />
+            <Metric label="Show Score" value={`${latestReport.showScore}`} />
+          </div>
+          <div className="finance-notes">
+            {latestReport.notes.map((note) => (
+              <p key={note}>{note}</p>
+            ))}
+          </div>
+        </section>
+      ) : (
+        <div className="empty-state">No finance reports yet. Run a show and the brand office will close the books after results.</div>
+      )}
+
+      {seasonReports.length ? (
+        <section className="command-grid">
+          <article className="command-panel">
+            <div className="section-heading">
+              <p className="eyebrow">Best Revenue Week</p>
+              <h3>{bestRevenueReport?.showName ?? "None"}</h3>
+            </div>
+            <p className="social-preview-text">
+              {bestRevenueReport
+                ? `${formatMoney(bestRevenueReport.ticketRevenue + bestRevenueReport.merchRevenue + bestRevenueReport.mediaRevenue)} revenue in Week ${bestRevenueReport.weekNumber}.`
+                : "No revenue booked yet."}
+            </p>
+          </article>
+          <article className="command-panel">
+            <div className="section-heading">
+              <p className="eyebrow">Worst Profit/Loss</p>
+              <h3>{worstProfitReport?.showName ?? "None"}</h3>
+            </div>
+            <p className="social-preview-text">
+              {worstProfitReport ? `${formatMoney(worstProfitReport.profitLoss)} in Week ${worstProfitReport.weekNumber}.` : "No report yet."}
+            </p>
+          </article>
+        </section>
+      ) : null}
+
+      <section className="finance-history" aria-label="Finance history">
+        {game.financeReports.length ? (
+          [...game.financeReports].reverse().map((report) => (
+            <article className="finance-history-row" key={report.id}>
+              <div>
+                <p className="eyebrow">
+                  Season {report.seasonNumber} · Week {report.weekNumber} · {getShowTypeLabel(report.showType)}
+                </p>
+                <h3>{report.showName}</h3>
+              </div>
+              <div className="finance-row-numbers">
+                <span>Attendance {report.attendance.toLocaleString()}</span>
+                <strong>{formatMoney(report.profitLoss)}</strong>
+              </div>
+            </article>
+          ))
+        ) : null}
+      </section>
+    </main>
+  );
+}
+
 function ResultsScreen({
   game,
   result,
@@ -1449,10 +1808,11 @@ function ResultsScreen({
   game: GameState;
   result: ShowResult;
   onAdvanceWeek: () => void;
-  onNavigate: (screen: Exclude<Screen, "title">) => void;
+  onNavigate: (screen: GameScreen) => void;
 }) {
   const bestSegment = getBestSegment(result);
   const buzzPreview = game.socialPosts.filter((post) => post.seasonNumber === result.seasonNumber && post.weekNumber === result.week).slice(-3).reverse();
+  const financeReport = getFinanceReportForResult(game, result);
 
   return (
     <main className="app-shell">
@@ -1525,6 +1885,23 @@ function ResultsScreen({
         </section>
       ) : null}
 
+      {financeReport ? (
+        <section className="finance-fallout" aria-label="Financial fallout">
+          <div className="section-heading">
+            <p className="eyebrow">Financial Fallout</p>
+            <h3>Brand Office Close</h3>
+          </div>
+          <div className="spotlight-grid">
+            <Metric label="Attendance" value={financeReport.attendance.toLocaleString()} />
+            <Metric label="Revenue" value={formatMoney(financeReport.ticketRevenue + financeReport.merchRevenue + financeReport.mediaRevenue)} />
+            <Metric label="Costs" value={formatMoney(financeReport.talentCost + financeReport.productionCost)} />
+            <Metric label="Profit/Loss" value={formatMoney(financeReport.profitLoss)} />
+            <Metric label="Ending Money" value={formatMoney(financeReport.endingMoney)} />
+            <Metric label="Pressure" value={getFinancePressureLabel(financeReport.endingMoney, financeReport.profitLoss)} />
+          </div>
+        </section>
+      ) : null}
+
       <section className="results-list" aria-label="Segment results">
         <div className="section-heading">
           <p className="eyebrow">Broadcast Breakdown</p>
@@ -1562,6 +1939,10 @@ function SeasonReviewScreen({
   const topMomentum = [...game.wrestlers].sort((a, b) => b.momentum - a.momentum)[0];
   const mostFatigued = [...game.wrestlers].sort((a, b) => b.fatigue - a.fatigue)[0];
   const hottestRivalry = getHottestRivalry(game.rivalries);
+  const seasonReports = getSeasonFinanceReports(game);
+  const seasonProfitLoss = game.money - game.seasonStartingMoney;
+  const bestRevenueReport = getBestRevenueReport(seasonReports);
+  const worstProfitReport = getWorstProfitReport(seasonReports);
 
   return (
     <main className="app-shell">
@@ -1578,10 +1959,21 @@ function SeasonReviewScreen({
       </section>
 
       <section className="status-grid" aria-label="Season review">
-        <Metric label="Final Money" value={`$${game.money.toLocaleString()}`} />
+        <Metric label="Starting Money" value={formatMoney(game.seasonStartingMoney)} />
+        <Metric label="Final Money" value={formatMoney(game.money)} />
+        <Metric label="Season P/L" value={formatMoney(seasonProfitLoss)} />
         <Metric label="Best Show" value={bestShow ? bestShow.showName : "No Shows"} detail={bestShow ? `${bestShow.totalScore} (${getShowGrade(bestShow.totalScore)})` : undefined} />
+      </section>
+
+      <section className="status-grid" aria-label="Season roster review">
         <Metric label="Top Momentum" value={topMomentum.name} detail={`${topMomentum.momentum}`} />
         <Metric label="Most Fatigued" value={mostFatigued.name} detail={`${mostFatigued.fatigue}`} />
+        <Metric
+          label="Best Revenue"
+          value={bestRevenueReport ? bestRevenueReport.showName : "No Report"}
+          detail={bestRevenueReport ? formatMoney(bestRevenueReport.ticketRevenue + bestRevenueReport.merchRevenue + bestRevenueReport.mediaRevenue) : undefined}
+        />
+        <Metric label="Worst P/L" value={worstProfitReport ? worstProfitReport.showName : "No Report"} detail={worstProfitReport ? formatMoney(worstProfitReport.profitLoss) : undefined} />
       </section>
 
       <section className="command-panel rivalry-spotlight">
@@ -1743,9 +2135,9 @@ function GameNav({
   hasResults,
   onNavigate,
 }: {
-  currentScreen: Exclude<Screen, "title">;
+  currentScreen: GameScreen;
   hasResults: boolean;
-  onNavigate: (screen: Exclude<Screen, "title">) => void;
+  onNavigate: (screen: GameScreen) => void;
 }) {
   return (
     <nav className="game-nav" aria-label="Game navigation">
@@ -1769,6 +2161,9 @@ function GameNav({
       </button>
       <button className={currentScreen === "social" ? "active-filter" : ""} onClick={() => onNavigate("social")}>
         Social
+      </button>
+      <button className={currentScreen === "finance" ? "active-filter" : ""} onClick={() => onNavigate("finance")}>
+        Finance
       </button>
       {hasResults ? (
         <button className={currentScreen === "results" ? "active-filter" : ""} onClick={() => onNavigate("results")}>
@@ -1836,7 +2231,9 @@ function Header({ game }: { game: GameState }) {
   return (
     <header className="top-bar">
       <strong>Next GM</strong>
-      <span>{game.brandName}</span>
+      <span>
+        {game.brandName} · GM {game.gmName}
+      </span>
       <span>
         Season {game.seasonNumber} · Week {game.currentWeek}
       </span>

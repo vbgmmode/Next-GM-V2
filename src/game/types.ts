@@ -1,5 +1,6 @@
 export type Screen =
   | "title"
+  | "setup"
   | "dashboard"
   | "booking"
   | "roster"
@@ -7,12 +8,21 @@ export type Screen =
   | "rivalries"
   | "calendar"
   | "social"
+  | "finance"
   | "results"
   | "seasonReview";
 
 export type SegmentType = "Match" | "Promo";
 
 export type ShowType = "tv" | "ple";
+
+export type GMStyle = "Creative Visionary" | "Talent Developer" | "Ruthless Executive" | "Ratings Chaser";
+
+export type BrandStyle =
+  | "Prime Time Sports Entertainment"
+  | "Underground Fight Club"
+  | "Workrate Showcase"
+  | "Reality Era Chaos";
 
 export type RivalryStatus = "rising" | "steady" | "cooling" | "stale";
 
@@ -30,6 +40,8 @@ export type SocialCategory =
   | "ple_reaction";
 
 export type SocialTone = "excited" | "angry" | "skeptical" | "impressed" | "chaotic" | "analytical";
+
+export type PressureLabel = "Stable" | "Tight" | "Critical" | "Surging";
 
 export type Wrestler = {
   id: string;
@@ -95,6 +107,24 @@ export type SocialPost = {
   relatedChampionshipIds?: string[];
 };
 
+export type FinanceReport = {
+  id: string;
+  seasonNumber: number;
+  weekNumber: number;
+  showName: string;
+  showType: ShowType;
+  showScore: number;
+  attendance: number;
+  ticketRevenue: number;
+  merchRevenue: number;
+  mediaRevenue: number;
+  talentCost: number;
+  productionCost: number;
+  profitLoss: number;
+  endingMoney: number;
+  notes: string[];
+};
+
 export type SegmentResult = {
   segmentId: string;
   type: SegmentType;
@@ -132,14 +162,20 @@ export type ShowResult = {
 
 export type GameState = {
   seasonNumber: number;
+  seasonStartingMoney: number;
   currentWeek: number;
+  gmName: string;
+  gmStyle: GMStyle;
   brandName: string;
+  brandStyle: BrandStyle;
+  createdAt: string;
   money: number;
   wrestlers: Wrestler[];
   championships: Championship[];
   rivalries: Rivalry[];
   calendar: CalendarWeek[];
   socialPosts: SocialPost[];
+  financeReports: FinanceReport[];
   currentShow: Segment[];
   showHistory: ShowResult[];
 };

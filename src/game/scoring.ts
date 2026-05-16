@@ -1,4 +1,5 @@
 import type { CalendarWeek, Championship, GameState, Rivalry, RivalryStatus, Segment, ShowResult, Wrestler } from "./types";
+import { generateFinanceReport } from "./finance";
 import { generateSocialPosts } from "./social";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
@@ -112,15 +113,18 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
     fatigue: clamp(wrestler.fatigue + (fatigueTotals[wrestler.id] ?? 0)),
     morale: clamp(wrestler.morale + (momentumTotals[wrestler.id] ? 1 : 0)),
   }));
+  const financeReport = generateFinanceReport(result, game);
 
   return {
     result,
     game: {
       ...game,
+      money: financeReport.endingMoney,
       wrestlers: updatedWrestlers,
       championships: updatedChampionships,
       rivalries: updatedRivalries,
       socialPosts: [...game.socialPosts, ...generateSocialPosts(result, game)],
+      financeReports: [...game.financeReports, financeReport],
       showHistory: [...game.showHistory, result],
     },
   };

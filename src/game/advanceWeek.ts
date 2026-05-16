@@ -47,6 +47,7 @@ export function startNextSeason(game: GameState): GameState {
   return {
     ...game,
     seasonNumber: game.seasonNumber + 1,
+    seasonStartingMoney: game.money,
     currentWeek: 1,
     calendar: createSeasonCalendar(),
     currentShow: [],
