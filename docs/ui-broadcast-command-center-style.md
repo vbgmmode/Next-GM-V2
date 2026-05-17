@@ -363,7 +363,13 @@ Wrestler Profile:
 Championships:
 
 - Should feel prestigious.
-- Spotlight champions, reigns, defenses, contenders, division health, title history, and upcoming opportunity.
+- Use a Champion Wall or equivalent title wall so every active belt is visible and treated as important.
+- Use a selected-title workspace for the active belt, with focused views for Scene, Contenders, and History.
+- Spotlight champion state, vacancy, reign, defenses, current scene pressure, selected-title contenders, division health, and title history.
+- Keep contender boards scoped to the selected title. Do not show every division or every eligible pool when the player is focused on one belt.
+- Contender controls should be direct GM tools: edit, add, remove, and reorder. The game may suggest same-division contenders, but it should not auto-place current champions from other titles into another title's contender lane.
+- Vacant titles should expose assignment as a clear player action. Revocations and assignments should appear in title history.
+- Avoid redundant advisory grids and explanatory copy when the selected title workspace already carries the decision context.
 
 Rivalries:
 

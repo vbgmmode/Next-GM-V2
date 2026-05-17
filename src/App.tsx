@@ -106,6 +106,7 @@ import type {
   RivalBrandState,
   Rivalry,
   RivalryHistoryEvent,
+  RivalryStructure,
   RivalryStakes,
   RivalGMAssignment,
   Screen,
@@ -133,6 +134,12 @@ type IwcMoodTone = SocialPost["tone"];
 type SetupStep = "contract" | "gm" | "brand" | "rules" | "preview" | "draft" | "review";
 type DraftSort = "rank" | "starPower" | "popularity" | "momentum" | "ringSkill" | "promoSkill" | "fatigue";
 type DraftReservePressure = "Healthy" | "Tight" | "Over Budget";
+type RivalryCreateInput = {
+  participantIds: string[];
+  structure: RivalryStructure;
+  stakes: RivalryStakes;
+  storylineId?: string;
+};
 
 type TitleMode = "home" | "load";
 
@@ -3105,11 +3112,28 @@ function getRivalryTitleRelevance(rivalry: Rivalry, championships: Championship[
 }
 
 function canSegmentAttachRivalry(segment: Segment, rivalry: Rivalry, wrestlers: Wrestler[] = []) {
-  return (
-    segment.type !== "Open Challenge" &&
-    !isRivalryIntergenderBlocked(rivalry, wrestlers) &&
-    (!segment.participantIds.length || segment.participantIds.some((id) => rivalry.participantIds.includes(id)))
-  );
+  if (segment.type === "Open Challenge" || isRivalryIntergenderBlocked(rivalry, wrestlers)) {
+    return false;
+  }
+
+  const structure = getRivalryStructure(rivalry);
+  const range = getSegmentParticipantRange(segment);
+  const hasOverlap = !segment.participantIds.length || segment.participantIds.some((id) => rivalry.participantIds.includes(id));
+
+  if (!hasOverlap) {
+    return false;
+  }
+
+  if (structure === "singles") {
+    return range.max >= 2;
+  }
+
+  if (structure === "tag_team") {
+    return (segment.type === "Match" && segment.segmentCatalogId === "M020") || (segment.type !== "Match" && range.max >= 4);
+  }
+
+  const option = getSegmentCatalogOption(segment);
+  return range.max >= 3 && (segment.type !== "Contract Signing" || Boolean(option?.rivalryRelevant));
 }
 
 function isSmartRundownAvailable(wrestler: Wrestler) {
@@ -3406,22 +3430,102 @@ function getRivalryParticipants(rivalry: Rivalry, wrestlers: Wrestler[]) {
     .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
 }
 
+function getRivalryStructure(rivalry: Rivalry): RivalryStructure {
+  return rivalry.structure ?? "singles";
+}
+
+function formatRivalryStructure(structure: RivalryStructure) {
+  switch (structure) {
+    case "tag_team":
+      return "Tag 2v2";
+    case "multi_person":
+      return "Multi";
+    default:
+      return "Singles";
+  }
+}
+
+function getRivalryStructureParticipantRange(structure: RivalryStructure) {
+  if (structure === "tag_team") {
+    return { min: 4, max: 4 };
+  }
+
+  if (structure === "multi_person") {
+    return { min: 3, max: 4 };
+  }
+
+  return { min: 2, max: 2 };
+}
+
+function getDefaultRivalryComposerParticipantIds(wrestlers: Wrestler[]) {
+  const compatibleGroup = wrestlers.find((wrestler, index) => wrestlers.slice(index + 1).some((candidate) => canWrestlersShareMatch([wrestler, candidate])));
+  const compatiblePeers = compatibleGroup ? wrestlers.filter((wrestler) => canWrestlersShareMatch([compatibleGroup, wrestler])) : wrestlers;
+  const selected = compatiblePeers.slice(0, 4).map((wrestler) => wrestler.id);
+
+  return [...selected, "", "", "", ""].slice(0, 4);
+}
+
+function getRivalryStructureKey(structure: RivalryStructure, participantIds: string[]) {
+  if (structure === "tag_team" && participantIds.length === 4) {
+    const firstSide = participantIds.slice(0, 2).sort().join("+");
+    const secondSide = participantIds.slice(2, 4).sort().join("+");
+    return [firstSide, secondSide].sort().join("|");
+  }
+
+  return [...participantIds].sort().join("|");
+}
+
+function formatRivalryParticipantsForStructure(rivalry: Rivalry, wrestlers: Wrestler[]) {
+  if (getRivalryStructure(rivalry) === "tag_team" && rivalry.participantIds.length === 4) {
+    return `${getWrestlerNames(rivalry.participantIds.slice(0, 2), wrestlers)} vs ${getWrestlerNames(rivalry.participantIds.slice(2, 4), wrestlers)}`;
+  }
+
+  return getWrestlerNames(rivalry.participantIds, wrestlers);
+}
+
 function isRivalryIntergenderBlocked(rivalry: Rivalry, wrestlers: Wrestler[]) {
   const participants = getRivalryParticipants(rivalry, wrestlers);
 
   return participants.length > 1 && !canWrestlersShareMatch(participants);
 }
 
-function getRivalryCreationBlockReason(wrestlerAId: string, wrestlerBId: string, wrestlers: Wrestler[]) {
-  if (!wrestlerAId || !wrestlerBId || wrestlerAId === wrestlerBId) {
+function getRivalryCreationBlockReason(structure: RivalryStructure, participantIds: string[], wrestlers: Wrestler[]) {
+  const selectedIds = participantIds.filter(Boolean);
+  const range = getRivalryStructureParticipantRange(structure);
+
+  if (selectedIds.length < range.min) {
     return "";
   }
 
-  const participants = [wrestlers.find((wrestler) => wrestler.id === wrestlerAId), wrestlers.find((wrestler) => wrestler.id === wrestlerBId)].filter(
-    (wrestler): wrestler is Wrestler => Boolean(wrestler),
-  );
+  if (selectedIds.length > range.max) {
+    return `${formatRivalryStructure(structure)} rivalries can use at most ${range.max} wrestlers.`;
+  }
 
-  if (participants.length === 2 && !canWrestlersShareMatch(participants)) {
+  if (new Set(selectedIds).size !== selectedIds.length) {
+    return "Each wrestler can only appear once in a rivalry.";
+  }
+
+  if (structure === "tag_team" && selectedIds.length !== 4) {
+    return "Tag rivalries need exactly two wrestlers on each side.";
+  }
+
+  if (structure === "singles" && selectedIds.length !== 2) {
+    return "Singles rivalries need exactly two wrestlers.";
+  }
+
+  if (structure === "multi_person" && (selectedIds.length < 3 || selectedIds.length > 4)) {
+    return "Multi rivalries need three or four wrestlers.";
+  }
+
+  const participants = selectedIds
+    .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
+    .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
+
+  if (participants.length !== selectedIds.length) {
+    return "";
+  }
+
+  if (!canWrestlersShareMatch(participants)) {
     return "Rivalry blocked: this build follows the same no-intergender boundary as match booking. Choose wrestlers from the same division.";
   }
 
@@ -3436,17 +3540,21 @@ function getCoolingRivalry(rivalries: Rivalry[]) {
   return rivalries.find((rivalry) => rivalry.status === "stale") ?? rivalries.find((rivalry) => rivalry.status === "cooling");
 }
 
-function hasDuplicateRivalry(rivalries: Rivalry[], wrestlerAId: string, wrestlerBId: string) {
-  const pair = [wrestlerAId, wrestlerBId].sort().join("|");
-  return rivalries.some((rivalry) => [...rivalry.participantIds].sort().join("|") === pair);
+function hasDuplicateRivalry(rivalries: Rivalry[], structure: RivalryStructure, participantIds: string[]) {
+  const key = getRivalryStructureKey(structure, participantIds);
+  return rivalries.some((rivalry) => getRivalryStructureKey(getRivalryStructure(rivalry), rivalry.participantIds) === key);
 }
 
 function formatRivalryStakes(stakes: RivalryStakes) {
   return stakes.charAt(0).toUpperCase() + stakes.slice(1);
 }
 
-function getInitialRivalryHeat(wrestlerA: Wrestler, wrestlerB: Wrestler) {
-  return Math.round((wrestlerA.popularity + wrestlerB.popularity + wrestlerA.momentum + wrestlerB.momentum) / 4);
+function getInitialRivalryHeat(wrestlers: Wrestler[]) {
+  if (!wrestlers.length) {
+    return 50;
+  }
+
+  return Math.round(wrestlers.reduce((total, wrestler) => total + wrestler.popularity + wrestler.momentum, 0) / (wrestlers.length * 2));
 }
 
 function getShowTypeLabel(showType: ShowType) {
@@ -5362,31 +5470,42 @@ function App() {
     setScreen("dashboard");
   }
 
-  function createRivalry(wrestlerAId: string, wrestlerBId: string, stakes: RivalryStakes, storylineId?: string) {
+  function createRivalry({ participantIds, structure, stakes, storylineId }: RivalryCreateInput) {
     setGame((current) => {
-      if (!current || wrestlerAId === wrestlerBId || hasDuplicateRivalry(current.rivalries, wrestlerAId, wrestlerBId)) {
+      const selectedIds = participantIds.filter(Boolean);
+
+      if (!current || hasDuplicateRivalry(current.rivalries, structure, selectedIds) || getRivalryCreationBlockReason(structure, selectedIds, current.wrestlers)) {
         return current;
       }
 
-      const wrestlerA = current.wrestlers.find((wrestler) => wrestler.id === wrestlerAId);
-      const wrestlerB = current.wrestlers.find((wrestler) => wrestler.id === wrestlerBId);
+      const participants = selectedIds
+        .map((id) => current.wrestlers.find((wrestler) => wrestler.id === id))
+        .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
+      const range = getRivalryStructureParticipantRange(structure);
 
-      if (!wrestlerA || !wrestlerB) {
+      if (participants.length !== selectedIds.length || selectedIds.length < range.min || selectedIds.length > range.max) {
         return current;
       }
 
-      if (!canWrestlersShareMatch([wrestlerA, wrestlerB])) {
+      if (!canWrestlersShareMatch(participants)) {
         return current;
       }
 
-      const heat = getInitialRivalryHeat(wrestlerA, wrestlerB);
+      const heat = getInitialRivalryHeat(participants);
       const rivalryId = `rivalry-${Date.now()}`;
       const selectedStorylineId = storylineId ?? getDefaultStorylineIdForStakes(stakes);
       const storyline = getRivalryStoryline({ stakes, storylineId: selectedStorylineId });
+      const rivalryName =
+        structure === "tag_team" && selectedIds.length === 4
+          ? `${getWrestlerNames(selectedIds.slice(0, 2), current.wrestlers)} vs ${getWrestlerNames(selectedIds.slice(2, 4), current.wrestlers)}`
+          : structure === "multi_person"
+            ? `${getWrestlerNames(selectedIds, current.wrestlers)} collision`
+            : `${participants[0].name} vs ${participants[1].name}`;
       const rivalry = applyRivalryCatalogDefaults({
         id: rivalryId,
-        name: `${wrestlerA.name} vs ${wrestlerB.name}`,
-        participantIds: [wrestlerAId, wrestlerBId],
+        name: rivalryName,
+        participantIds: selectedIds,
+        structure,
         storylineId: storyline.id,
         relationshipTag: storyline.relationshipTag,
         heat,
@@ -7201,11 +7320,11 @@ function BookingScreen({
   function setComposerRivalry(segment: Segment, rivalryId: string) {
     const rivalry = game.rivalries.find((activeRivalry) => activeRivalry.id === rivalryId);
     const range = getSegmentParticipantRange(segment);
+    const participantsFit = rivalry ? rivalry.participantIds.length >= range.min && rivalry.participantIds.length <= range.max : false;
     const canPrefill =
-      segment.type === "Match" &&
-      rivalry?.participantIds.length === 2 &&
-      range.min <= 2 &&
-      range.max >= 2 &&
+      rivalry &&
+      segment.type !== "Open Challenge" &&
+      participantsFit &&
       !isRivalryIntergenderBlocked(rivalry, game.wrestlers) &&
       rivalry.participantIds.every((id) => game.wrestlers.some((wrestler) => wrestler.id === id && wrestler.injuryStatus !== "major")) &&
       !hasIntergenderMatchParticipants({ ...segment, participantIds: rivalry.participantIds }, game.wrestlers);
@@ -8879,247 +8998,373 @@ function RivalriesScreen({
 }: {
   game: GameState;
   latestResult?: ShowResult;
-  onCreateRivalry: (wrestlerAId: string, wrestlerBId: string, stakes: RivalryStakes, storylineId?: string) => void;
+  onCreateRivalry: (input: RivalryCreateInput) => void;
   onEndRivalry: (rivalryId: string) => void;
   onNavigate: (screen: GameScreen) => void;
 }) {
-  const [wrestlerAId, setWrestlerAId] = useState(game.wrestlers[0]?.id ?? "");
-  const [wrestlerBId, setWrestlerBId] = useState(game.wrestlers[1]?.id ?? "");
+  const [selectedRivalryId, setSelectedRivalryId] = useState(game.rivalries[0]?.id ?? "");
+  const [structure, setStructure] = useState<RivalryStructure>("singles");
+  const [participantIds, setParticipantIds] = useState<string[]>(() => getDefaultRivalryComposerParticipantIds(game.wrestlers));
   const [stakes, setStakes] = useState<RivalryStakes>("personal");
   const [storylineId, setStorylineId] = useState(getDefaultStorylineIdForStakes("personal"));
-  const isDuplicate = hasDuplicateRivalry(game.rivalries, wrestlerAId, wrestlerBId);
-  const rivalryBlockReason = getRivalryCreationBlockReason(wrestlerAId, wrestlerBId, game.wrestlers);
-  const canCreate = wrestlerAId && wrestlerBId && wrestlerAId !== wrestlerBId && !isDuplicate && !rivalryBlockReason;
+  const range = getRivalryStructureParticipantRange(structure);
+  const composerParticipantIds = participantIds.slice(0, range.max).filter(Boolean);
+  const isDuplicate = composerParticipantIds.length >= range.min && hasDuplicateRivalry(game.rivalries, structure, composerParticipantIds);
+  const rivalryBlockReason = getRivalryCreationBlockReason(structure, composerParticipantIds, game.wrestlers);
+  const canCreate = composerParticipantIds.length >= range.min && composerParticipantIds.length <= range.max && !isDuplicate && !rivalryBlockReason;
   const selectedStoryline = getRivalryStoryline({ stakes, storylineId });
   const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
   const creativeDesk = getRivalryCreativeDeskRead(game);
+  const selectedRivalry = game.rivalries.find((rivalry) => rivalry.id === selectedRivalryId) ?? game.rivalries[0];
+  const currentWeek = getCurrentCalendarWeek(game);
+  const rivalrySnapshots = getRivalryTimingSnapshots(game);
+  const selectedSnapshot = selectedRivalry ? getRivalryTimingSnapshot(selectedRivalry, game) : undefined;
+  const selectedHistory = selectedRivalry ? getRivalryHistory(game, selectedRivalry.id) : [];
+  const selectedParticipantReads = selectedRivalry ? getRivalryParticipantReads(selectedRivalry, game) : [];
+  const selectedStoryRoomRead =
+    selectedRivalry && selectedSnapshot ? getRivalryStoryRoomRead(selectedRivalry, selectedSnapshot, selectedParticipantReads, selectedHistory[0]) : undefined;
+  const selectedStorylineRead = selectedRivalry ? getRivalryStoryline(selectedRivalry) : undefined;
+  const selectedRelationship = selectedRivalry ? getRivalryRelationship(selectedRivalry) : undefined;
+  const selectedStage = selectedRivalry ? getRivalryStageContext(game, selectedRivalry) : undefined;
+  const selectedTitleRelevance = selectedRivalry ? getRivalryTitleRelevance(selectedRivalry, game.championships, game.wrestlers) : undefined;
+  const selectedGmRead =
+    selectedRivalry && selectedStage
+      ? getRivalryGMRead(selectedRivalry, {
+          hasPlePayoff: hasPlePayoff(game, selectedRivalry.id),
+          isGoHome: currentWeek.isGoHome,
+          isPle: currentWeek.showType === "ple",
+          titleRelevant: Boolean(selectedTitleRelevance && selectedTitleRelevance.label !== "Title-Friendly Story"),
+        })
+      : "";
+  const structureCounts = game.rivalries.reduce<Record<RivalryStructure, number>>(
+    (counts, rivalry) => {
+      counts[getRivalryStructure(rivalry)] += 1;
+      return counts;
+    },
+    { singles: 0, tag_team: 0, multi_person: 0 },
+  );
+  const blockedRivalries = game.rivalries.filter((rivalry) => isRivalryIntergenderBlocked(rivalry, game.wrestlers));
+  const staleRivalries = game.rivalries.filter((rivalry) => rivalry.status === "stale" || rivalry.freshness <= 35);
+  const offCardPressure = rivalrySnapshots.filter(({ snapshot }) => snapshot.currentCardBeats === 0 && snapshot.primary.tone !== "hot").slice(0, 2);
+
+  useEffect(() => {
+    if (!game.rivalries.length) {
+      setSelectedRivalryId("");
+      return;
+    }
+
+    if (!game.rivalries.some((rivalry) => rivalry.id === selectedRivalryId)) {
+      setSelectedRivalryId(game.rivalries[0].id);
+    }
+  }, [game.rivalries, selectedRivalryId]);
+
+  function updateParticipantSlot(index: number, wrestlerId: string) {
+    setParticipantIds((current) => {
+      const next = [...current];
+      next[index] = wrestlerId;
+      return next;
+    });
+  }
 
   function handleCreateRivalry() {
     if (!canCreate) {
       return;
     }
 
-    onCreateRivalry(wrestlerAId, wrestlerBId, stakes, storylineId);
+    onCreateRivalry({ participantIds: composerParticipantIds, structure, stakes, storylineId });
   }
 
   return (
     <main className="app-shell">
       <Header game={game} />
       <GameNav currentScreen="rivalries" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
-      <section className="dashboard-hero">
+      <section className="rivalry-command-hero">
         <div>
-          <p className="eyebrow">Story Room</p>
-          <h2>Rivalries</h2>
-          <p className="lede">Run the creative room for stories that give TV bite. The desk reads heat, freshness, timing, and recent beats; the GM still decides what gets protected, escalated, or ended.</p>
+          <p className="eyebrow">Creative Room</p>
+          <h2>Rivalry Desk</h2>
+          <p className="lede">Shape singles feuds, tag-team stories, and multi-person conflicts from current heat, freshness, timing, and resolved history. The desk gives context; outcomes stay hidden until the show runs.</p>
         </div>
-        <button className="primary-action" onClick={() => onNavigate("booking")}>
-          Book Show
-        </button>
+        <div className="rivalry-command-scoreboard" aria-label="Rivalry desk summary">
+          <Metric label="Active" value={`${game.rivalries.length}`} detail="Stories on the board" />
+          <Metric label="Avg Heat" value={game.rivalries.length ? `${Math.round(game.rivalries.reduce((total, rivalry) => total + rivalry.heat, 0) / game.rivalries.length)}` : "0"} detail="Current heat" />
+          <Metric label="Tag/Multi" value={`${structureCounts.tag_team + structureCounts.multi_person}`} detail="Expanded structures" />
+          <button className="primary-action" onClick={() => onNavigate("booking")}>
+            Book Show
+          </button>
+        </div>
       </section>
 
-      <section className={`rivalry-creative-desk creative-${creativeDesk.tone}`} aria-label="Rivalry story room pulse">
-        <div className="rivalry-creative-head">
-          <div>
-            <p className="eyebrow">Creative Desk</p>
-            <h3>{creativeDesk.headline}</h3>
-            <p>{creativeDesk.detail}</p>
+      <section className="rivalry-command-desk" aria-label="Rivalry command desk">
+        <aside className="rivalry-active-rail" aria-label="Active rivalries">
+          <div className="section-heading">
+            <p className="eyebrow">Active Rivalries</p>
+            <h3>{game.rivalries.length} Stories</h3>
           </div>
-          <strong>{creativeDesk.focusLabel}</strong>
-        </div>
-        <div className="rivalry-creative-grid">
-          {creativeDesk.items.map((item) => (
-            <article className={`creative-${item.tone}`} key={item.label}>
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
-              <p>{item.detail}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+          <div className="rivalry-active-list">
+            {game.rivalries.length ? (
+              game.rivalries.map((rivalry, index) => {
+                const timingSnapshot = getRivalryTimingSnapshot(rivalry, game);
+                const isSelected = selectedRivalry?.id === rivalry.id;
+                const rivalryBlocked = isRivalryIntergenderBlocked(rivalry, game.wrestlers);
+                return (
+                  <button className={`rivalry-active-row status-${rivalry.status} ${isSelected ? "is-selected" : ""}`} key={rivalry.id} onClick={() => setSelectedRivalryId(rivalry.id)}>
+                    <span className="rivalry-row-index">{index + 1}</span>
+                    <span className="rivalry-row-main">
+                      <strong>{rivalry.name}</strong>
+                      <small>{formatRivalryParticipantsForStructure(rivalry, game.wrestlers)}</small>
+                    </span>
+                    <span className="rivalry-row-tags">
+                      <span>{formatRivalryStructure(getRivalryStructure(rivalry))}</span>
+                      <span>{formatRivalryStakes(rivalry.stakes)}</span>
+                      <span>{rivalryBlocked ? "Blocked" : timingSnapshot.primary.label}</span>
+                    </span>
+                    <span className="rivalry-row-meters">
+                      <span>Heat {rivalry.heat}</span>
+                      <span>Fresh {rivalry.freshness}</span>
+                    </span>
+                  </button>
+                );
+              })
+            ) : (
+              <div className="empty-state">No rivalries are active. Start a story to give the next broadcast more context.</div>
+            )}
+          </div>
+        </aside>
 
-      <section className="rivalry-form" aria-label="Create rivalry">
-        <div className="section-heading">
-          <p className="eyebrow">Start Rivalry</p>
-          <h3>Book The Spark</h3>
-        </div>
-        <label>
-          Wrestler A
-          <select value={wrestlerAId} onChange={(event) => setWrestlerAId(event.target.value)}>
-            {game.wrestlers.map((wrestler) => (
-              <option key={wrestler.id} value={wrestler.id}>
-                {wrestler.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Wrestler B
-          <select value={wrestlerBId} onChange={(event) => setWrestlerBId(event.target.value)}>
-            {game.wrestlers.map((wrestler) => (
-              <option key={wrestler.id} value={wrestler.id}>
-                {wrestler.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Stakes
-          <select value={stakes} onChange={(event) => setStakes(event.target.value as RivalryStakes)}>
-            {(["personal", "title", "respect", "revenge"] as RivalryStakes[]).map((option) => (
-              <option key={option} value={option}>
-                {formatRivalryStakes(option)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Storyline
-          <select value={storylineId} onChange={(event) => setStorylineId(event.target.value)}>
-            {safeRivalryStorylineOptions.map((storyline) => (
-              <option key={storyline.id} value={storyline.id}>
-                {storyline.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="rivalry-form-read">
-          <span>{selectedStoryline.titleFit}</span>
-          <strong>{selectedStoryline.description}</strong>
-        </div>
-        <button className="primary-action" disabled={!canCreate} onClick={handleCreateRivalry}>
-          Create Rivalry
-        </button>
-        {isDuplicate ? <p className="form-warning">Duplicate active rivalry already exists.</p> : null}
-        {rivalryBlockReason ? <p className="form-warning">{rivalryBlockReason}</p> : null}
-      </section>
-
-      <section className="rivalry-grid" aria-label="Active rivalries">
-        {game.rivalries.length ? (
-          game.rivalries.map((rivalry) => {
-            const recentHistory = getRivalryHistory(game, rivalry.id);
-            const plePayoff = hasPlePayoff(game, rivalry.id);
-            const storyline = getRivalryStoryline(rivalry);
-            const relationship = getRivalryRelationship(rivalry);
-            const stage = getRivalryStageContext(game, rivalry);
-            const titleRelevance = getRivalryTitleRelevance(rivalry, game.championships, game.wrestlers);
-            const rivalryBlocked = isRivalryIntergenderBlocked(rivalry, game.wrestlers);
-            const timingSnapshot = getRivalryTimingSnapshot(rivalry, game);
-            const participantReads = getRivalryParticipantReads(rivalry, game);
-            const storyRoomRead = getRivalryStoryRoomRead(rivalry, timingSnapshot, participantReads, recentHistory[0]);
-            const gmRead = getRivalryGMRead(rivalry, {
-              hasPlePayoff: plePayoff,
-              isGoHome: getCurrentCalendarWeek(game).isGoHome,
-              isPle: getCurrentCalendarWeek(game).showType === "ple",
-              titleRelevant: Boolean(titleRelevance && titleRelevance.label !== "Title-Friendly Story"),
-            });
-
-            return (
-              <article className={`rivalry-card status-${rivalry.status}`} key={rivalry.id}>
-                <div className="rivalry-head">
-                  <div>
-                    <p className="eyebrow">{formatRivalryStakes(rivalry.stakes)} Stakes · {stage.name}</p>
-                    <h3>{rivalry.name}</h3>
-                  </div>
-                  <strong>{rivalryBlocked ? "Blocked Context" : timingSnapshot.primary.label}</strong>
+        <section className="rivalry-spotlight-stage" aria-label="Selected rivalry spotlight">
+          {selectedRivalry && selectedSnapshot && selectedStorylineRead && selectedRelationship && selectedStage && selectedStoryRoomRead ? (
+            <>
+              <div className="rivalry-spotlight-head">
+                <div>
+                  <p className="eyebrow">{formatRivalryStructure(getRivalryStructure(selectedRivalry))} · {formatRivalryStakes(selectedRivalry.stakes)} Stakes</p>
+                  <h3>{selectedRivalry.name}</h3>
+                  <p>{formatRivalryParticipantsForStructure(selectedRivalry, game.wrestlers)}</p>
                 </div>
-                <div className="rivalry-timing-board" aria-label={`${rivalry.name} timing diagnostics`}>
-                  <article className={`rivalry-timing-card timing-${timingSnapshot.primary.tone}`}>
-                    <span>Payoff Window</span>
-                    <strong>{timingSnapshot.primary.label}</strong>
-                    <p>{timingSnapshot.primary.detail}</p>
-                  </article>
-                  <article>
-                    <span>Timing Read</span>
-                    <strong>{timingSnapshot.timingRead}</strong>
-                    <p>{timingSnapshot.producerRead}</p>
-                  </article>
-                  {timingSnapshot.diagnostics.filter((diagnostic) => diagnostic.id !== timingSnapshot.primary.id).map((diagnostic) => (
-                    <article className={`rivalry-timing-card timing-${diagnostic.tone}`} key={diagnostic.id}>
-                      <span>{diagnostic.label}</span>
-                      <strong>{diagnostic.tone === "hot" ? "Feature" : diagnostic.tone === "watch" ? "Watch" : diagnostic.tone === "build" ? "Build" : "Hold"}</strong>
-                      <p>{diagnostic.detail}</p>
+                <div className="rivalry-spotlight-status">
+                  <strong>{isRivalryIntergenderBlocked(selectedRivalry, game.wrestlers) ? "Blocked Context" : selectedSnapshot.primary.label}</strong>
+                  <span>{selectedSnapshot.timingRead}</span>
+                </div>
+              </div>
+
+              <div className={`rivalry-matchup-stage structure-${getRivalryStructure(selectedRivalry)}`}>
+                {getRivalryStructure(selectedRivalry) === "tag_team" && selectedRivalry.participantIds.length === 4 ? (
+                  <>
+                    <div className="rivalry-side-card">
+                      <span>Team A</span>
+                      <strong>{getWrestlerNames(selectedRivalry.participantIds.slice(0, 2), game.wrestlers)}</strong>
+                    </div>
+                    <div className="rivalry-versus">VS</div>
+                    <div className="rivalry-side-card">
+                      <span>Team B</span>
+                      <strong>{getWrestlerNames(selectedRivalry.participantIds.slice(2, 4), game.wrestlers)}</strong>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {getRivalryParticipants(selectedRivalry, game.wrestlers).slice(0, 4).map((wrestler, index) => (
+                      <div className="rivalry-side-card" key={wrestler.id}>
+                        <span>{getRivalryStructure(selectedRivalry) === "multi_person" ? `Position ${index + 1}` : index === 0 ? "Side A" : "Side B"}</span>
+                        <strong>{wrestler.name}</strong>
+                        <small>Momentum {wrestler.momentum} · Morale {wrestler.morale}</small>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+
+              <div className="rivalry-spotlight-metrics">
+                <article>
+                  <span>Heat</span>
+                  <strong>{selectedRivalry.heat}</strong>
+                  <i style={{ inlineSize: `${selectedRivalry.heat}%` }} />
+                </article>
+                <article>
+                  <span>Freshness</span>
+                  <strong>{selectedRivalry.freshness}</strong>
+                  <i style={{ inlineSize: `${selectedRivalry.freshness}%` }} />
+                </article>
+                <article>
+                  <span>Weeks Active</span>
+                  <strong>{selectedRivalry.weeksActive}</strong>
+                  <small>{selectedRivalry.lastAdvancedWeek ? `Last beat Week ${selectedRivalry.lastAdvancedWeek}` : "No TV beat yet"}</small>
+                </article>
+                <article>
+                  <span>Current Card</span>
+                  <strong>{selectedSnapshot.currentCardBeats} Beat{selectedSnapshot.currentCardBeats === 1 ? "" : "s"}</strong>
+                  <small>{selectedSnapshot.currentCardParticipants} participant{selectedSnapshot.currentCardParticipants === 1 ? "" : "s"} visible</small>
+                </article>
+              </div>
+
+              <section className="rivalry-context-panel" aria-label={`${selectedRivalry.name} story room context`}>
+                <div>
+                  <span>Story Room Read</span>
+                  <strong>{selectedStoryRoomRead.headline}</strong>
+                  <p>{selectedStoryRoomRead.detail}</p>
+                </div>
+                <div className="rivalry-participant-read-grid">
+                  {selectedParticipantReads.slice(0, 4).map((read) => (
+                    <article key={read.wrestler.id}>
+                      <span>{read.wrestler.name}</span>
+                      <strong>{read.labels.length ? read.labels.join(" / ") : "Available"}</strong>
+                      <p>{read.detail}</p>
                     </article>
                   ))}
                 </div>
-                <section className="rivalry-context-panel" aria-label={`${rivalry.name} story room context`}>
-                  <div>
-                    <span>Story Room Read</span>
-                    <strong>{storyRoomRead.headline}</strong>
-                    <p>{storyRoomRead.detail}</p>
-                  </div>
-                  <div className="rivalry-participant-read-grid">
-                    {participantReads.map((read) => (
-                      <article key={read.wrestler.id}>
-                        <span>{read.wrestler.name}</span>
-                        <strong>{read.labels.length ? read.labels.join(" / ") : "Available"}</strong>
-                        <p>{read.detail}</p>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-                <div className="rivalry-story-map">
-                  <article>
-                    <span>Storyline</span>
-                    <strong>{storyline.name}</strong>
-                    <p>{storyline.description}</p>
-                  </article>
-                  <article>
-                    <span>Relationship</span>
-                    <strong>{relationship.name}</strong>
-                    <p>{relationship.description}</p>
-                  </article>
-                  <article>
-                    <span>Lifecycle Stage</span>
-                    <strong>{stage.name}</strong>
-                    <p>{stage.description}</p>
-                  </article>
-                  <article>
-                    <span>GM Read</span>
-                    <strong>{rivalryBlocked ? "Invalid Pairing" : titleRelevance?.label ?? "Creative Direction"}</strong>
-                    <p>
-                      {rivalryBlocked
-                        ? "Legacy rivalry kept for save safety, but it cannot be attached to booking under the current no-intergender rule."
-                        : titleRelevance?.detail ?? gmRead}
-                    </p>
-                  </article>
-                </div>
-                <div className="spotlight-grid">
-                  <Metric label="Participants" value={getRivalryParticipants(rivalry, game.wrestlers).map((wrestler) => wrestler.name).join(" / ")} />
-                  <Metric label="Heat" value={`${rivalry.heat}`} />
-                  <Metric label="Freshness" value={`${rivalry.freshness}`} />
-                  <Metric label="Weeks Active" value={`${rivalry.weeksActive}`} />
-                  <Metric label="Last Advanced" value={rivalry.lastAdvancedWeek ? `Week ${rivalry.lastAdvancedWeek}` : "Not On TV Yet"} />
-                  <Metric label="Current Card" value={`${timingSnapshot.currentCardBeats} Beat${timingSnapshot.currentCardBeats === 1 ? "" : "s"}`} detail={`${timingSnapshot.currentCardParticipants} participant${timingSnapshot.currentCardParticipants === 1 ? "" : "s"} visible`} />
-                  <Metric label="Blowoff Ideas" value={storyline.recommendedBlowoffMatches} />
-                </div>
-                <div className="story-guidance">
-                  <span>Common Beats</span>
-                  <p>{storyline.commonBeats}</p>
-                  <span>Booking Note</span>
-                  <p>{stage.typicalSegmentTypes}. {storyline.bookingNotes}</p>
-                </div>
-                <div className="history-list" aria-label={`${rivalry.name} recent history`}>
-                  <span className="history-label">Recent History</span>
-                  {recentHistory.length ? (
-                    recentHistory.map((event) => (
-                      <article className="history-event" key={event.id}>
-                        <span>{formatRivalryEventType(event.eventType)} · {formatHistoryStamp(event)}</span>
-                        <p>{event.note}</p>
-                      </article>
-                    ))
-                  ) : (
-                    <p className="muted-copy">No rivalry history recorded yet.</p>
-                  )}
-                </div>
-                <button className="danger-action" onClick={() => onEndRivalry(rivalry.id)}>
+              </section>
+
+              <div className="rivalry-story-map">
+                <article>
+                  <span>Storyline</span>
+                  <strong>{selectedStorylineRead.name}</strong>
+                  <p>{selectedStorylineRead.description}</p>
+                </article>
+                <article>
+                  <span>Relationship</span>
+                  <strong>{selectedRelationship.name}</strong>
+                  <p>{selectedRelationship.description}</p>
+                </article>
+                <article>
+                  <span>Lifecycle Stage</span>
+                  <strong>{selectedStage.name}</strong>
+                  <p>{selectedStage.description}</p>
+                </article>
+                <article>
+                  <span>GM Read</span>
+                  <strong>{isRivalryIntergenderBlocked(selectedRivalry, game.wrestlers) ? "Invalid Pairing" : selectedTitleRelevance?.label ?? "Creative Direction"}</strong>
+                  <p>
+                    {isRivalryIntergenderBlocked(selectedRivalry, game.wrestlers)
+                      ? "Legacy rivalry kept for save safety, but it cannot be attached to booking under the current no-intergender rule."
+                      : selectedTitleRelevance?.detail ?? selectedGmRead}
+                  </p>
+                </article>
+              </div>
+
+              <div className="history-list rivalry-history-scroll" aria-label={`${selectedRivalry.name} recent history`}>
+                <span className="history-label">Recent History</span>
+                {selectedHistory.length ? (
+                  selectedHistory.map((event) => (
+                    <article className="history-event" key={event.id}>
+                      <span>{formatRivalryEventType(event.eventType)} · {formatHistoryStamp(event)}</span>
+                      <p>{event.note}</p>
+                    </article>
+                  ))
+                ) : (
+                  <p className="muted-copy">No rivalry history recorded yet.</p>
+                )}
+              </div>
+
+              <div className="rivalry-spotlight-actions">
+                <button className="primary-action" onClick={() => onNavigate("booking")}>
+                  Book This Story
+                </button>
+                <button className="danger-action" onClick={() => onEndRivalry(selectedRivalry.id)}>
                   End Rivalry
                 </button>
+              </div>
+            </>
+          ) : (
+            <div className="empty-state">No selected rivalry. Create a singles, tag, or multi-person story to open the desk.</div>
+          )}
+        </section>
+
+        <aside className="rivalry-composer-panel" aria-label="Rivalry composer">
+          <div className="section-heading">
+            <p className="eyebrow">Rivalry Composer</p>
+            <h3>Start The Spark</h3>
+          </div>
+          <div className="rivalry-mode-toggle" aria-label="Rivalry structure">
+            {(["singles", "tag_team", "multi_person"] as RivalryStructure[]).map((option) => (
+              <button className={structure === option ? "active-filter" : ""} key={option} onClick={() => setStructure(option)}>
+                {formatRivalryStructure(option)}
+              </button>
+            ))}
+          </div>
+          <div className="rivalry-composer-selects">
+            {Array.from({ length: range.max }).map((_, index) => (
+              <label key={`${structure}-${index}`}>
+                {structure === "tag_team" ? `${index < 2 ? "Team A" : "Team B"} Wrestler ${index % 2 + 1}` : structure === "multi_person" ? `Participant ${index + 1}` : `Wrestler ${index + 1}`}
+                <select value={participantIds[index] ?? ""} onChange={(event) => updateParticipantSlot(index, event.target.value)}>
+                  <option value="">Choose wrestler</option>
+                  {game.wrestlers.map((wrestler) => (
+                    <option key={wrestler.id} value={wrestler.id}>
+                      {wrestler.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+          <label>
+            Stakes
+            <select value={stakes} onChange={(event) => setStakes(event.target.value as RivalryStakes)}>
+              {(["personal", "title", "respect", "revenge"] as RivalryStakes[]).map((option) => (
+                <option key={option} value={option}>
+                  {formatRivalryStakes(option)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Storyline
+            <select value={storylineId} onChange={(event) => setStorylineId(event.target.value)}>
+              {safeRivalryStorylineOptions.map((storyline) => (
+                <option key={storyline.id} value={storyline.id}>
+                  {storyline.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="rivalry-form-read">
+            <span>{selectedStoryline.titleFit}</span>
+            <strong>{selectedStoryline.description}</strong>
+            <p>{selectedStoryline.commonBeats}</p>
+          </div>
+          <button className="primary-action" disabled={!canCreate} onClick={handleCreateRivalry}>
+            Start Rivalry
+          </button>
+          {isDuplicate ? <p className="form-warning">Duplicate active rivalry already exists.</p> : null}
+          {rivalryBlockReason ? <p className="form-warning">{rivalryBlockReason}</p> : null}
+        </aside>
+      </section>
+
+      <section className="rivalry-ecosystem-band" aria-label="Rivalry ecosystem">
+        <article className={`rivalry-creative-desk creative-${creativeDesk.tone}`}>
+          <div className="rivalry-creative-head">
+            <div>
+              <p className="eyebrow">Creative Desk</p>
+              <h3>{creativeDesk.headline}</h3>
+              <p>{creativeDesk.detail}</p>
+            </div>
+            <strong>{creativeDesk.focusLabel}</strong>
+          </div>
+          <div className="rivalry-creative-grid">
+            {creativeDesk.items.map((item) => (
+              <article className={`creative-${item.tone}`} key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <p>{item.detail}</p>
               </article>
-            );
-          })
-        ) : (
-          <div className="empty-state">No rivalries are active. Start a two-wrestler story to give the next broadcast more context.</div>
-        )}
+            ))}
+          </div>
+        </article>
+        <article className="rivalry-ecosystem-panel">
+          <p className="eyebrow">Warnings And Notes</p>
+          <div className="rivalry-warning-list">
+            {blockedRivalries.length ? <p>{blockedRivalries.length} legacy rivalry context is blocked by the current match boundary.</p> : null}
+            {staleRivalries.length ? <p>{staleRivalries[0].name} needs a distinct beat or a clean exit.</p> : null}
+            {offCardPressure.length ? <p>{offCardPressure[0].rivalry.name} has pressure but no current-card beat yet.</p> : null}
+            {!blockedRivalries.length && !staleRivalries.length && !offCardPressure.length ? <p>No urgent story-room warnings. Keep the hottest stories visible without spoiling outcomes.</p> : null}
+          </div>
+        </article>
+        <article className="rivalry-template-panel">
+          <p className="eyebrow">Storyline Templates</p>
+          {safeRivalryStorylineOptions.slice(0, 5).map((storyline) => (
+            <div key={storyline.id}>
+              <strong>{storyline.name}</strong>
+              <span>{storyline.participantStructure} · {storyline.titleFit}</span>
+            </div>
+          ))}
+        </article>
       </section>
     </main>
   );

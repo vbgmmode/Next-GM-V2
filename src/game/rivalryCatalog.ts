@@ -339,6 +339,7 @@ export function applyRivalryCatalogDefaults(rivalry: Rivalry): Rivalry {
 
   return {
     ...rivalry,
+    structure: rivalry.structure ?? "singles",
     storylineId: rivalry.storylineId ?? storyline.id,
     relationshipTag: rivalry.relationshipTag ?? relationship.tag,
   };

@@ -44,7 +44,7 @@ When explicitly requested, grow the game through small playable systems:
 - Venue or production decisions that affect show economics.
 - Deeper season archive and career legacy surfaces.
 - Stronger rivalry planning and payoff tools.
-- More interactive championship scene management.
+- Deeper championship scene management beyond the current Champion Wall, vacant-title assignment, revocation, title booking shortcut, and contender edit controls.
 - Tag/faction systems beyond read-only affiliation context.
 
 ## Later Product Growth

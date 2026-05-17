@@ -88,6 +88,8 @@ export type RivalryStatus = "rising" | "steady" | "cooling" | "stale";
 
 export type RivalryStakes = "personal" | "title" | "respect" | "revenge";
 
+export type RivalryStructure = "singles" | "tag_team" | "multi_person";
+
 export type ChampionshipHistoryEventType = "title_change" | "successful_defense" | "revoked" | "assigned";
 
 export type RivalryHistoryEventType =
@@ -204,6 +206,7 @@ export type Rivalry = {
   id: string;
   name: string;
   participantIds: string[];
+  structure?: RivalryStructure;
   storylineId?: string;
   relationshipTag?: string;
   stageId?: string;
