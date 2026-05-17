@@ -103,7 +103,7 @@ The game currently supports:
 - Season Review
 - Start Next Season
 - Social/IWC with existing post feed, filters, and read-only resolved-state IWC mood summary
-- Finance & Brand Pressure
+- Finance & Brand Pressure with a read-only GM Office Pressure surface derived from current money, latest finance report, season finance history, best/worst business weeks, and closed-report cost context
 - FinanceReport legacy-compatible v2 optional fields for future detailed revenue and expense categories
 - Read-only gameplay context helpers extracted into src/game/gameContextReads.ts for recent derived UI snapshots while React screen components remain in src/App.tsx
 
@@ -136,7 +136,7 @@ The loop must remain playable after every change.
 - Championships is the prestige, contender, title-history, and division-health surface.
 - Rivalries is the creative/story room for active feud temperature, timing, stakes, and payoff pressure from existing state.
 - Social/IWC is the resolved audience mood and post-show reaction surface.
-- Finance is the brand-pressure money office with readable report context.
+- Finance is the GM office pressure surface for current money, latest closed business result, season trend, and readable report context.
 - Calendar is the season clock, PLE cadence, and upcoming-show context.
 - Season Review is the end-of-season legacy and continuity recap.
 
@@ -174,6 +174,7 @@ The loop must remain playable after every change.
 - History should come from resolved events, not invented offscreen story.
 - Social/IWC should react to actual outcomes.
 - Finance should be clear, gamey, and decision-focused.
+- Finance should read current and retrospective business pressure only; do not add forecasts, budgets, payroll, sponsorships, ownership objectives, or predictive financial outcomes unless explicitly requested.
 
 ## Current Phase
 Phase: Post-context-pass stabilization and bounded maintenance
@@ -232,6 +233,7 @@ Completed stabilization passes:
 - Setup World Framing Copy Pass v1
 - Laptop UI Readability / Broadcast Hierarchy Pass v1
 - Rivalries Story Room Personality v1
+- Finance GM Office Pressure v1
 - Read-only gameplay context helper extraction to src/game/gameContextReads.ts
 - Tag Division Health Diagnostics v1
 - Stipulation Metadata v1 (implemented)

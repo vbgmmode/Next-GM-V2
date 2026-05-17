@@ -188,6 +188,18 @@ type TalentValuePressure = {
   totalCount: number;
 };
 
+type FinanceOfficeRead = {
+  headline: string;
+  detail: string;
+  focusLabel: string;
+  pressureLabel: PressureLabel;
+  items: {
+    label: string;
+    value: string;
+    detail: string;
+  }[];
+};
+
 type FreeAgentWatchEntry = {
   profile: WrestlerValueProfile;
   wrestler: Wrestler;
@@ -3354,6 +3366,83 @@ function getBestRevenueReport(reports: FinanceReport[]) {
 
 function getWorstProfitReport(reports: FinanceReport[]) {
   return reports.reduce<FinanceReport | undefined>((worst, report) => (!worst || report.profitLoss < worst.profitLoss ? report : worst), undefined);
+}
+
+function getFinanceOfficeRead(game: GameState): FinanceOfficeRead {
+  const latestReport = getLatestFinanceReport(game);
+  const seasonReports = getSeasonFinanceReports(game);
+  const totalProfitLoss = seasonReports.reduce((sum, report) => sum + report.profitLoss, 0);
+  const pressureLabel = getFinancePressureLabel(game.money, latestReport?.profitLoss ?? 0);
+  const bestRevenueReport = getBestRevenueReport(seasonReports);
+  const worstProfitReport = getWorstProfitReport(seasonReports);
+  const profitableWeeks = seasonReports.filter((report) => report.profitLoss >= 0).length;
+  const lossWeeks = seasonReports.length - profitableWeeks;
+  const averageProfitLoss = seasonReports.length ? Math.round(totalProfitLoss / seasonReports.length) : 0;
+  const latestGrossRevenue = latestReport ? getFinanceGrossRevenue(latestReport) : 0;
+  const latestTotalExpenses = latestReport ? getFinanceTotalExpenses(latestReport) : 0;
+  const costRatio = latestGrossRevenue > 0 ? latestTotalExpenses / latestGrossRevenue : 0;
+
+  const headline =
+    pressureLabel === "Critical"
+      ? "Ownership Pressure Is Loud"
+      : pressureLabel === "Tight"
+        ? "Front Office Is Tight"
+        : pressureLabel === "Surging"
+          ? "Business Office Has Room"
+          : "Books Are Stable";
+  const businessFeel =
+    pressureLabel === "Critical"
+      ? "exposed"
+      : pressureLabel === "Tight"
+        ? "tight"
+        : pressureLabel === "Surging"
+          ? "hot"
+          : "stable";
+  const detail = latestReport
+    ? `${latestReport.showName} closed at ${formatMoney(latestReport.profitLoss)}. The brand feels ${businessFeel} with ${formatMoney(game.money)} on hand after ${seasonReports.length} closed report${seasonReports.length === 1 ? "" : "s"}.`
+    : `${formatMoney(game.money)} is on hand and no show books have closed yet. The office read is current cash pressure only until the first report lands.`;
+
+  return {
+    headline,
+    detail,
+    focusLabel: latestReport ? `${latestReport.showName} · ${formatMoney(latestReport.profitLoss)}` : "Books pending",
+    pressureLabel,
+    items: [
+      {
+        label: "Money Pressure",
+        value: pressureLabel,
+        detail: `${formatMoney(game.money)} available. This read uses current cash and the latest closed P/L only.`,
+      },
+      {
+        label: "Latest Close",
+        value: latestReport ? `${formatMoney(latestReport.profitLoss)} · Week ${latestReport.weekNumber}` : "No report yet",
+        detail: latestReport
+          ? `${formatMoney(latestGrossRevenue)} gross against ${formatMoney(latestTotalExpenses)} costs.`
+          : "Run a show to close the first business report.",
+      },
+      {
+        label: "Season Trend",
+        value: seasonReports.length ? formatMoney(totalProfitLoss) : "No ledger",
+        detail: seasonReports.length
+          ? `${profitableWeeks} profitable / ${lossWeeks} loss week${seasonReports.length === 1 ? "" : "s"} · ${formatMoney(averageProfitLoss)} average P/L.`
+          : "Season trend begins after the first completed show.",
+      },
+      {
+        label: "Business Swing",
+        value: bestRevenueReport ? bestRevenueReport.showName : "No swing yet",
+        detail: bestRevenueReport && worstProfitReport
+          ? `Best gross: ${formatMoney(getFinanceGrossRevenue(bestRevenueReport))} in Week ${bestRevenueReport.weekNumber}. Toughest close: ${formatMoney(worstProfitReport.profitLoss)} in Week ${worstProfitReport.weekNumber}.`
+          : "Best and worst week context will appear once reports exist.",
+      },
+      {
+        label: "Cost Control",
+        value: latestReport ? (costRatio >= 0.9 ? "Exposed" : costRatio >= 0.7 ? "Tight" : "Controlled") : "Pending",
+        detail: latestReport
+          ? `${Math.round(costRatio * 100)}% of latest gross went to reported costs. This is a closed-report read, not a forecast.`
+          : "Cost control needs a closed report before the office can read it.",
+      },
+    ],
+  };
 }
 
 function getSeasonTitleHistory(game: GameState) {
@@ -8491,6 +8580,7 @@ function FinanceScreen({
   const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
   const talentValuePressure = getTalentValuePressure(game.wrestlers);
   const venueMarketReadout = getVenueMarketContextReadout(latestReport, seasonReports);
+  const officeRead = getFinanceOfficeRead(game);
 
   return (
     <main className="app-shell">
@@ -8505,6 +8595,26 @@ function FinanceScreen({
         <button className="primary-action" onClick={() => onNavigate("booking")}>
           Book Show
         </button>
+      </section>
+
+      <section className={`finance-office-desk pressure-${officeRead.pressureLabel.toLowerCase()}`} aria-label="Finance GM office pressure">
+        <div className="finance-office-head">
+          <div>
+            <p className="eyebrow">GM Office Pressure</p>
+            <h3>{officeRead.headline}</h3>
+            <p>{officeRead.detail}</p>
+          </div>
+          <strong>{officeRead.focusLabel}</strong>
+        </div>
+        <div className="finance-office-grid">
+          {officeRead.items.map((item) => (
+            <article key={item.label}>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+              <p>{item.detail}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="status-grid" aria-label="Finance summary">
