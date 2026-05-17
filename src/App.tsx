@@ -157,6 +157,13 @@ type GMRead = {
   need: string;
 };
 
+type WrestlerIdentitySnapshot = {
+  labels: string[];
+  roleRead: string;
+  usageRead: string;
+  bookingUseRead: string;
+};
+
 const valueProfileFallbackSummary = financeModelSummaryByRole.reduce(
   (acc, summary) => {
     return {
@@ -3160,6 +3167,57 @@ function getGMRead(wrestler: Wrestler, game: GameState): GMRead {
               : "Can be used for momentum, story texture, or a steady card role.";
 
   return { usefulness, risk, need };
+}
+
+function getWrestlerIdentitySnapshot(wrestler: Wrestler, game: GameState): WrestlerIdentitySnapshot {
+  const identity = getWrestlerIdentityContext(wrestler);
+  const pressureTags = getRosterPressureTags(wrestler, game.currentWeek);
+  const championships = getWrestlerChampionships(wrestler.id, game.championships);
+  const rivalries = getWrestlerRivalries(wrestler.id, game.rivalries);
+  const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, game.currentWeek);
+  const labels = [
+    championships.length ? "Champion" : null,
+    rivalries.length ? "Story Piece" : null,
+    wrestler.popularity >= 72 ? "Attraction" : null,
+    wrestler.promoSkill >= wrestler.ringSkill + 8 ? "Talker" : null,
+    wrestler.ringSkill >= wrestler.promoSkill + 8 ? "Workhorse" : null,
+    wrestler.roleTier?.toLowerCase() === "prospect" ? "Prospect" : null,
+    wrestler.momentum < 45 ? "Cold" : null,
+    ...pressureTags,
+  ].filter((label): label is string => Boolean(label));
+  const uniqueLabels = [...new Set(labels)].slice(0, 6);
+  const roleRead = `${identity.role} · ${identity.wrestlingStyle} · ${identity.promoStyle}`;
+  const usageRead =
+    wrestler.injuryStatus === "major"
+      ? "Unavailable with a major injury."
+      : pressureTags.includes("Overused")
+        ? `Heavy TV load: ${wrestler.fatigue} fatigue and ${wrestler.consecutiveWeeksBooked ?? 0} straight week${(wrestler.consecutiveWeeksBooked ?? 0) === 1 ? "" : "s"} booked.`
+        : pressureTags.includes("Underused")
+          ? `Off the board for ${formatWeekCount(weeksSinceLastBooked)}. Current read is absence pressure, not a hidden penalty.`
+          : wrestler.lastBookedWeek
+            ? `Last booked Week ${wrestler.lastBookedWeek}; current TV streak is ${wrestler.consecutiveWeeksBooked ?? 0}.`
+            : "No TV appearance recorded yet this season.";
+  const bookingUseRead =
+    championships.length
+      ? `Current title-holder context for ${championships.map((championship) => championship.name).join(" / ")}.`
+      : rivalries.length
+        ? `Active story context through ${rivalries[0].name}.`
+        : wrestler.popularity >= 72
+          ? "Useful as a star-power presence when the card needs a recognizable anchor."
+          : wrestler.promoSkill >= wrestler.ringSkill + 8
+            ? "Useful when the card needs talking, character texture, or non-match structure."
+            : wrestler.ringSkill >= wrestler.promoSkill + 8
+              ? "Useful when the card needs in-ring credibility or a steady match lane."
+              : wrestler.roleTier?.toLowerCase() === "prospect"
+                ? "Useful as a developmental TV piece without implying hidden potential."
+                : "Useful as a flexible utility piece when the rundown needs balance.";
+
+  return {
+    labels: uniqueLabels.length ? uniqueLabels : ["Utility Piece"],
+    roleRead,
+    usageRead,
+    bookingUseRead,
+  };
 }
 
 function buildBroadcastRecap(result: ShowResult) {
@@ -6281,6 +6339,7 @@ function RosterScreen({
           visibleWrestlers.map((wrestler) => (
             <WrestlerCard
               currentWeek={game.currentWeek}
+              game={game}
               key={wrestler.id}
               onOpenProfile={onOpenProfile}
               rosterAffiliations={rosterAffiliations}
@@ -6325,6 +6384,7 @@ function WrestlerProfileScreen({
   const gmRead = getGMRead(wrestler, game);
   const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, game.currentWeek);
   const identity = getWrestlerIdentityContext(wrestler);
+  const identitySnapshot = getWrestlerIdentitySnapshot(wrestler, game);
   const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
   const valueProfile = getWrestlerValueProfile(wrestler);
 
@@ -6384,6 +6444,18 @@ function WrestlerProfileScreen({
             <div className="section-heading">
               <p className="eyebrow">GM Read</p>
               <h3>Decision Context</h3>
+            </div>
+            <div className="identity-snapshot-panel" aria-label="Identity snapshot">
+              <div className="pressure-tags">
+                {identitySnapshot.labels.map((label) => (
+                  <span className="identity-chip" key={label}>
+                    {label}
+                  </span>
+                ))}
+              </div>
+              <strong>{identitySnapshot.roleRead}</strong>
+              <p>{identitySnapshot.bookingUseRead}</p>
+              <small>{identitySnapshot.usageRead}</small>
             </div>
             <div className="readout-list">
               <p>
@@ -8011,11 +8083,13 @@ function SeasonReviewScreen({
 
 function WrestlerCard({
   currentWeek,
+  game,
   onOpenProfile,
   rosterAffiliations,
   wrestler,
 }: {
   currentWeek: number;
+  game: GameState;
   onOpenProfile: (wrestlerId: string) => void;
   rosterAffiliations: WrestlerAffiliation[];
   wrestler: Wrestler;
@@ -8025,6 +8099,7 @@ function WrestlerCard({
   const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, currentWeek);
   const affiliations = rosterAffiliations.filter((affiliation) => affiliation.memberWrestlerIds.includes(wrestler.id));
   const valueProfile = getWrestlerValueProfile(wrestler);
+  const identitySnapshot = getWrestlerIdentitySnapshot(wrestler, game);
 
   return (
     <article className={`wrestler-card status-${status.toLowerCase()}`}>
@@ -8041,10 +8116,20 @@ function WrestlerCard({
         </div>
       </div>
       <div className="pressure-tags">
+        {identitySnapshot.labels.slice(0, 3).map((label) => (
+          <span className="identity-chip" key={label}>
+            {label}
+          </span>
+        ))}
         <span className={`value-tier-chip ${valueProfile.contextMode === "missing" ? "value-tier-chip-missing" : ""}`}>
           {valueProfile.valueTierLabel}
         </span>
         {pressureTags.length ? pressureTags.map((tag) => <span key={tag}>{tag}</span>) : <span>Balanced</span>}
+      </div>
+      <div className="wrestler-identity-read" aria-label={`${wrestler.name} identity read`}>
+        <strong>{identitySnapshot.roleRead}</strong>
+        <p>{identitySnapshot.bookingUseRead}</p>
+        <small>{identitySnapshot.usageRead}</small>
       </div>
       {affiliations.length ? (
         <div className="affiliation-strip compact-affiliation-strip" aria-label={`${wrestler.name} affiliation context`}>

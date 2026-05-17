@@ -1814,6 +1814,50 @@ h3 {
   color: #9ea8ba;
 }
 
+.pressure-tags .identity-chip {
+  border-color: rgba(216, 35, 50, 0.36);
+  color: #ff9aa3;
+}
+
+.wrestler-identity-read,
+.identity-snapshot-panel {
+  background: rgba(8, 9, 13, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 3px solid #d82332;
+  border-radius: 6px;
+  display: grid;
+  gap: 7px;
+  margin-bottom: 14px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.wrestler-identity-read strong,
+.identity-snapshot-panel > strong {
+  color: #f4f7fb;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.wrestler-identity-read p,
+.identity-snapshot-panel p {
+  color: #dbe2ef;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.wrestler-identity-read small,
+.identity-snapshot-panel small {
+  color: #9ea8ba;
+  line-height: 1.35;
+}
+
+.identity-snapshot-panel .pressure-tags {
+  margin-bottom: 2px;
+}
+
 .affiliation-strip {
   display: flex;
   flex-wrap: wrap;
