@@ -125,7 +125,8 @@ import type { GameScreen, ProfileReturnScreen, SavedGameState } from "./game/mig
 import type { StoredSaveRecord } from "./gameStorage";
 
 type RosterSort = "popularity" | "momentum" | "fatigue" | "morale";
-type RosterFilter = "All" | "Hot" | "Tired" | "Frustrated";
+type RosterFilter = "all" | "mens" | "womens" | "champions" | "injured" | "hot" | "tired" | "morale" | "underused";
+type RosterStatus = "Hot" | "Tired" | "Frustrated" | "Steady";
 type SocialFilter = "All" | "Fan Reaction" | "Dirt Sheets" | "Analyst Takes" | "Title Scene" | "Rivalries";
 type IwcMoodTone = SocialPost["tone"];
 type SetupStep = "contract" | "gm" | "brand" | "rules" | "preview" | "draft" | "review";
@@ -1442,7 +1443,7 @@ function getInjuryDetail(wrestler: Wrestler) {
   return `${weeks} week${weeks === 1 ? "" : "s"} remaining${wrestler.injuryDescription ? ` · ${wrestler.injuryDescription}` : ""}`;
 }
 
-function getWrestlerStatus(wrestler: Wrestler): Exclude<RosterFilter, "All"> | "Steady" {
+function getWrestlerStatus(wrestler: Wrestler): RosterStatus {
   if (wrestler.injuryStatus === "major") {
     return "Tired";
   }
@@ -1460,6 +1461,113 @@ function getWrestlerStatus(wrestler: Wrestler): Exclude<RosterFilter, "All"> | "
   }
 
   return "Steady";
+}
+
+function getWrestlerOverall(wrestler: Wrestler) {
+  return Math.max(
+    40,
+    Math.min(
+      99,
+      Math.round(
+        wrestler.popularity * 0.24 +
+          wrestler.momentum * 0.22 +
+          wrestler.ringSkill * 0.18 +
+          wrestler.promoSkill * 0.16 +
+          wrestler.morale * 0.12 +
+          (100 - wrestler.fatigue) * 0.08,
+      ),
+    ),
+  );
+}
+
+function getWrestlerInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function getWrestlerDivisionLabel(wrestler: Wrestler) {
+  const division = wrestler.division?.toLowerCase();
+
+  if (division === "mens") {
+    return "Men";
+  }
+
+  if (division === "womens") {
+    return "Women";
+  }
+
+  return wrestler.division ?? "Open";
+}
+
+function getRosterFilterMatch(filter: RosterFilter, wrestler: Wrestler, game: GameState) {
+  const status = getWrestlerStatus(wrestler);
+  const pressureTags = getRosterPressureTags(wrestler, game.currentWeek);
+  const division = wrestler.division?.toLowerCase();
+
+  if (filter === "mens") {
+    return division === "mens";
+  }
+
+  if (filter === "womens") {
+    return division === "womens";
+  }
+
+  if (filter === "champions") {
+    return getWrestlerChampionships(wrestler.id, game.championships).length > 0;
+  }
+
+  if (filter === "injured") {
+    return wrestler.injuryStatus !== "healthy";
+  }
+
+  if (filter === "hot") {
+    return status === "Hot";
+  }
+
+  if (filter === "tired") {
+    return status === "Tired" || pressureTags.includes("Injury Risk") || pressureTags.includes("Overused");
+  }
+
+  if (filter === "morale") {
+    return pressureTags.includes("Morale Risk") || status === "Frustrated";
+  }
+
+  if (filter === "underused") {
+    return pressureTags.includes("Underused");
+  }
+
+  return true;
+}
+
+function getRosterFilterLabel(filter: RosterFilter) {
+  const labels: Record<RosterFilter, string> = {
+    all: "All",
+    mens: "Men",
+    womens: "Women",
+    champions: "Champions",
+    injured: "Injured",
+    hot: "Hot",
+    tired: "Tired",
+    morale: "Morale Risk",
+    underused: "Underused",
+  };
+
+  return labels[filter];
+}
+
+function getRosterSortLabel(sort: RosterSort) {
+  const labels: Record<RosterSort, string> = {
+    popularity: "Popularity",
+    momentum: "Momentum",
+    fatigue: "Fatigue",
+    morale: "Morale",
+  };
+
+  return labels[sort];
 }
 
 function getDraftSortValue(wrestler: Wrestler, sort: DraftSort) {
@@ -7263,186 +7371,274 @@ function RosterScreen({
   onOpenProfile: (wrestlerId: string) => void;
 }) {
   const [sortBy, setSortBy] = useState<RosterSort>("momentum");
-  const [filter, setFilter] = useState<RosterFilter>("All");
+  const [filter, setFilter] = useState<RosterFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedWrestlerId, setSelectedWrestlerId] = useState(game.wrestlers[0]?.id ?? "");
+  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
+  const rosterAffiliations = getRosterAffiliations(game.wrestlers);
   const visibleWrestlers = useMemo(() => {
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+
     return [...game.wrestlers]
-      .filter((wrestler) => filter === "All" || getWrestlerStatus(wrestler) === filter)
+      .filter((wrestler) => getRosterFilterMatch(filter, wrestler, game))
+      .filter((wrestler) => {
+        if (!normalizedSearch) {
+          return true;
+        }
+
+        return [wrestler.name, wrestler.roleTier, wrestler.archetype, wrestler.sourceBrand, wrestler.division]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedSearch);
+      })
       .sort((a, b) => b[sortBy] - a[sortBy]);
-  }, [filter, game.wrestlers, sortBy]);
+  }, [filter, game, searchQuery, sortBy]);
   const topOverused = getTopOverusedWrestler(game.wrestlers);
   const topUnderused = getTopUnderusedWrestler(game.wrestlers, game.currentWeek);
   const moraleRiskCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Morale Risk")).length;
   const injuryRiskCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk")).length;
   const minorInjuryCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus === "minor").length;
   const unavailableCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus === "major").length;
-  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
-  const rosterAffiliations = getRosterAffiliations(game.wrestlers);
   const featuredAffiliations = rosterAffiliations
     .filter((affiliation) => affiliation.memberWrestlerIds.length > 1)
     .slice(0, 3);
   const freeAgentWatch = getFreeAgentWatchlist(game.wrestlers, 8);
   const lockerRoomPulse = getLockerRoomPulse(game);
   const roleStyleFallback = "Role/style not mapped";
+  const selectedWrestler = visibleWrestlers.find((wrestler) => wrestler.id === selectedWrestlerId) ?? visibleWrestlers[0] ?? game.wrestlers[0];
+  const selectedPressureTags = selectedWrestler ? getRosterPressureTags(selectedWrestler, game.currentWeek) : [];
+  const selectedValueProfile = selectedWrestler ? getWrestlerValueProfile(selectedWrestler) : undefined;
+  const selectedIdentity = selectedWrestler ? getWrestlerIdentitySnapshot(selectedWrestler, game) : undefined;
+  const selectedLockerRead = selectedWrestler ? getWrestlerLockerRoomRead(selectedWrestler, game) : undefined;
+  const selectedChampionships = selectedWrestler ? getWrestlerChampionships(selectedWrestler.id, game.championships) : [];
+  const selectedAffiliations = selectedWrestler ? rosterAffiliations.filter((affiliation) => affiliation.memberWrestlerIds.includes(selectedWrestler.id)) : [];
+  const injuryWatch = game.wrestlers
+    .filter((wrestler) => wrestler.injuryStatus !== "healthy" || getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk"))
+    .sort((a, b) => b.fatigue - a.fatigue)
+    .slice(0, 4);
+  const filterOptions: RosterFilter[] = ["all", "mens", "womens", "champions", "injured", "hot", "tired", "morale", "underused"];
+  const sortOptions: RosterSort[] = ["momentum", "popularity", "fatigue", "morale"];
+  const filterCounts = filterOptions.reduce(
+    (counts, option) => ({
+      ...counts,
+      [option]: game.wrestlers.filter((wrestler) => getRosterFilterMatch(option, wrestler, game)).length,
+    }),
+    {} as Record<RosterFilter, number>,
+  );
 
   return (
-    <main className="app-shell">
+    <main className="app-shell roster-command-shell">
       <Header game={game} />
       <GameNav currentScreen="roster" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
-      <section className="dashboard-hero">
-        <div>
-          <p className="eyebrow">Locker Room Report</p>
-          <h2>Roster</h2>
-          <p className="lede">Read the room before you commit TV time. Momentum, fatigue, and morale tell you who is ready for the push.</p>
-        </div>
-        <button className="primary-action" onClick={() => onNavigate("booking")}>
-          Book Show
-        </button>
-      </section>
 
-      <section className="status-grid" aria-label="Roster pressure summary">
-        <Metric
-          label="Top Overused"
-          value={topOverused ? topOverused.name : "None"}
-          detail={topOverused ? `Fat ${topOverused.fatigue} · Streak ${topOverused.consecutiveWeeksBooked ?? 0}` : "No pressure spike"}
-        />
-        <Metric
-          label="Top Underused"
-          value={topUnderused ? topUnderused.name : "None"}
-          detail={topUnderused ? `${getWeeksSinceLastBooked(topUnderused, game.currentWeek)} weeks off TV` : "No long absence"}
-        />
-        <Metric label="Morale Risk" value={`${moraleRiskCount}`} detail={moraleRiskCount ? "Watch the room" : "Stable"} />
-        <Metric label="Injury Risk" value={`${injuryRiskCount}`} detail={injuryRiskCount ? "Protect fatigue" : "Clear"} />
-        <Metric label="Minor Injury" value={`${minorInjuryCount}`} detail={minorInjuryCount ? "Book with warnings" : "None"} />
-        <Metric label="Unavailable" value={`${unavailableCount}`} detail={unavailableCount ? "Major injury block" : "None"} />
-      </section>
-
-      <section className="locker-room-pulse-panel" aria-label="Locker room personality read">
-        <div className="locker-room-pulse-head">
-          <div>
-            <p className="eyebrow">Locker Room Pulse</p>
-            <h3>{lockerRoomPulse.headline}</h3>
+      <section className="roster-command-board" aria-label="Locker Room command board">
+        <aside className="roster-filter-rail" aria-label="Roster filters">
+          <div className="roster-rail-title">
+            <p className="eyebrow">Filters</p>
+            <strong>{game.wrestlers.length} Signed</strong>
           </div>
-          <strong>Read-Only</strong>
-        </div>
-        <p>{lockerRoomPulse.detail}</p>
-        <div className="locker-room-pulse-grid">
-          {lockerRoomPulse.items.map((item) => (
-            <article className={`locker-room-pulse-item tone-${item.tone}`} key={item.id}>
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
-              <p>{item.detail}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+          <div className="roster-filter-stack">
+            {filterOptions.map((option) => (
+              <button className={filter === option ? "active-filter" : ""} key={option} onClick={() => setFilter(option)}>
+                <span>{getRosterFilterLabel(option)}</span>
+                <strong>{filterCounts[option]}</strong>
+              </button>
+            ))}
+          </div>
+          <div className="roster-sort-box">
+            <span>Sort By</span>
+            <select value={sortBy} onChange={(event) => setSortBy(event.target.value as RosterSort)}>
+              {sortOptions.map((option) => (
+                <option key={option} value={option}>
+                  {getRosterSortLabel(option)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="roster-quick-reads">
+            <p className="eyebrow">Quick Reads</p>
+            <span>{topOverused ? `${topOverused.name} needs protection` : "No overuse spike"}</span>
+            <span>{topUnderused ? `${topUnderused.name} needs TV time` : "No long absence"}</span>
+            <span>{featuredAffiliations.length ? `${featuredAffiliations.length} team links visible` : "No team links drafted"}</span>
+          </div>
+        </aside>
 
-      <section className="command-panel affiliation-roster-panel" aria-label="Affiliation intelligence">
-        <div className="section-heading">
-          <p className="eyebrow">Locker Room Links</p>
-          <h3>{rosterAffiliations.length ? "Affiliation Context" : "No Source Affiliations"}</h3>
-        </div>
-        {rosterAffiliations.length ? (
-          <>
-            <div className="spotlight-grid compact-grid">
-              <Metric label="Visible Groups" value={`${rosterAffiliations.length}`} detail="Source roster labels only" />
-              <Metric
-                label="Team/Faction Fits"
-                value={`${featuredAffiliations.length}`}
-                detail={featuredAffiliations.length ? featuredAffiliations.map((affiliation) => affiliation.name).join(" / ") : "No multi-member links drafted"}
-              />
-              <Metric label="Gameplay Status" value="Read-Only" detail="No tag mechanics active" />
+        <section className="roster-board-stage" aria-label="Superstar board">
+          <div className="roster-board-toolbar">
+            <div>
+              <p className="eyebrow">Superstars</p>
+              <h2>{visibleWrestlers.length} On The Board</h2>
             </div>
-            {featuredAffiliations.length ? (
-              <div className="affiliation-strip">
-                {featuredAffiliations.map((affiliation) => (
-                  <span key={affiliation.id}>
-                    {affiliation.name} · {formatAffiliationKind(affiliation.kind)}
-                  </span>
+            <label className="roster-search-field">
+              <span>Search</span>
+              <input
+                aria-label="Search superstars"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search superstars..."
+                type="search"
+                value={searchQuery}
+              />
+            </label>
+          </div>
+
+          <div className="roster-grid" aria-label="Roster list">
+            {visibleWrestlers.length ? (
+              visibleWrestlers.map((wrestler) => (
+                <WrestlerCard
+                  currentWeek={game.currentWeek}
+                  game={game}
+                  isSelected={selectedWrestler?.id === wrestler.id}
+                  key={wrestler.id}
+                  onOpenProfile={onOpenProfile}
+                  onSelectWrestler={setSelectedWrestlerId}
+                  rosterAffiliations={rosterAffiliations}
+                  wrestler={wrestler}
+                />
+              ))
+            ) : (
+              <div className="empty-state">No wrestlers match this board view.</div>
+            )}
+          </div>
+        </section>
+
+        <aside className="roster-pulse-rail" aria-label="Locker room pulse">
+          <section className="roster-side-panel locker-room-pulse-panel">
+            <div className="locker-room-pulse-head">
+              <div>
+                <p className="eyebrow">Locker Room Pulse</p>
+                <h3>{lockerRoomPulse.headline}</h3>
+              </div>
+              <strong>Live Read</strong>
+            </div>
+            <p>{lockerRoomPulse.detail}</p>
+            <div className="roster-pulse-list">
+              {lockerRoomPulse.items.map((item) => (
+                <article className={`locker-room-pulse-item tone-${item.tone}`} key={item.id}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                  <p>{item.detail}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="roster-side-panel" aria-label="Roster pressure summary">
+            <div className="roster-side-heading">
+              <p className="eyebrow">Pressure Board</p>
+              <strong>{moraleRiskCount + injuryRiskCount + unavailableCount} Watch</strong>
+            </div>
+            <div className="roster-pressure-stack">
+              <Metric label="Morale Risk" value={`${moraleRiskCount}`} detail={moraleRiskCount ? "Watch the room" : "Stable"} />
+              <Metric label="Injury Risk" value={`${injuryRiskCount}`} detail={injuryRiskCount ? "Protect fatigue" : "Clear"} />
+              <Metric label="Minor Injury" value={`${minorInjuryCount}`} detail={minorInjuryCount ? "Book with warnings" : "None"} />
+              <Metric label="Unavailable" value={`${unavailableCount}`} detail={unavailableCount ? "Major injury block" : "None"} />
+            </div>
+          </section>
+
+          <section className="roster-side-panel" aria-label="Injury report">
+            <div className="roster-side-heading">
+              <p className="eyebrow">Injury Report</p>
+              <strong>{injuryWatch.length ? `${injuryWatch.length} Flagged` : "Clear"}</strong>
+            </div>
+            <div className="roster-note-list">
+              {injuryWatch.length ? (
+                injuryWatch.map((wrestler) => (
+                  <article key={wrestler.id}>
+                    <strong>{wrestler.name}</strong>
+                    <span>{getInjuryStatusLabel(wrestler.injuryStatus)}</span>
+                    <small>{getInjuryDetail(wrestler)}</small>
+                  </article>
+                ))
+              ) : (
+                <p className="muted-copy">No injury or medical-risk read is leading the board.</p>
+              )}
+            </div>
+          </section>
+
+          <section className="roster-side-panel" aria-label="Free agent watchlist">
+            <div className="roster-side-heading">
+              <p className="eyebrow">Scouting Note</p>
+              <strong>Read-Only</strong>
+            </div>
+            <div className="roster-note-list">
+              {freeAgentWatch.visible.slice(0, 3).map((entry: FreeAgentWatchEntry) => {
+                const roleStyleLabel = [entry.wrestler.roleTier, entry.wrestler.archetype].filter(Boolean).join(" / ") || roleStyleFallback;
+
+                return (
+                  <article key={entry.wrestler.id}>
+                    <strong>{entry.wrestler.name}</strong>
+                    <span>{entry.profile.valueTierLabel}</span>
+                    <small>{roleStyleLabel}</small>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        </aside>
+
+        <section className="roster-selected-dock" aria-label="Selected superstar">
+          {selectedWrestler && selectedValueProfile && selectedIdentity && selectedLockerRead ? (
+            <>
+              <div className="roster-selected-portrait" aria-hidden="true">
+                <span>{getWrestlerInitials(selectedWrestler.name)}</span>
+              </div>
+              <div className="roster-selected-summary">
+                <p className="eyebrow">Selected Superstar</p>
+                <h3>{selectedWrestler.name}</h3>
+                <div className="roster-selected-meta">
+                  <span>{selectedWrestler.roleTier ?? "Roster"}</span>
+                  <span>{selectedWrestler.archetype ?? "Utility"}</span>
+                  <span>{getWrestlerDivisionLabel(selectedWrestler)}</span>
+                  {selectedChampionships.length ? <span>{selectedChampionships.map((championship) => championship.name).join(" / ")}</span> : null}
+                </div>
+              </div>
+              <div className="roster-selected-overall">
+                <span>Overall</span>
+                <strong>{getWrestlerOverall(selectedWrestler)}</strong>
+              </div>
+              <div className="roster-selected-bars">
+                <div>
+                  <span>POP</span>
+                  <b style={{ width: `${selectedWrestler.popularity}%` }} />
+                  <strong>{selectedWrestler.popularity}</strong>
+                </div>
+                <div>
+                  <span>MOR</span>
+                  <b style={{ width: `${selectedWrestler.morale}%` }} />
+                  <strong>{selectedWrestler.morale}</strong>
+                </div>
+                <div>
+                  <span>FAT</span>
+                  <b style={{ width: `${selectedWrestler.fatigue}%` }} />
+                  <strong>{selectedWrestler.fatigue}</strong>
+                </div>
+              </div>
+              <div className={`roster-selected-read tone-${selectedLockerRead.tone}`}>
+                <span>{selectedLockerRead.headline}</span>
+                <p>{selectedLockerRead.detail}</p>
+                <small>{selectedIdentity.usageRead}</small>
+              </div>
+              <div className="roster-selected-tags">
+                <span>{selectedValueProfile.valueTierLabel}</span>
+                {selectedPressureTags.length ? selectedPressureTags.slice(0, 3).map((tag) => <span key={tag}>{tag}</span>) : <span>Balanced</span>}
+                {selectedAffiliations.slice(0, 1).map((affiliation) => (
+                  <span key={affiliation.id}>{affiliation.name}</span>
                 ))}
               </div>
-            ) : null}
-          </>
-        ) : (
-          <div className="empty-state compact">No drafted wrestler has a source team or faction label in the current Top 200 data.</div>
-        )}
-      </section>
-
-      <section className="command-panel free-agent-watchlist-panel" aria-label="Free agent watchlist">
-        <div className="section-heading">
-          <p className="eyebrow">Free Agent Watchlist</p>
-          <h3>{`Top ${freeAgentWatch.visible.length} Draft-Ready Prospects`}</h3>
-        </div>
-        <p className="social-preview-text">
-          Read-only scouting signal: these are undrafted Top 200 wrestlers available for TV context, not an active signing mechanism.
-        </p>
-        {freeAgentWatch.visible.length ? (
-          <div className="free-agent-watch-list">
-            {freeAgentWatch.visible.map((entry: FreeAgentWatchEntry) => {
-              const roleStyleLabel = [entry.wrestler.roleTier, entry.wrestler.archetype].filter(Boolean).join(" / ") || roleStyleFallback;
-
-              return (
-                <article className="free-agent-watch-row" key={entry.wrestler.id}>
-                  <div className="free-agent-watch-row-head">
-                    <strong>{entry.wrestler.name}</strong>
-                    <span className={`watchlist-tier ${entry.profile.contextMode === "missing" ? "watchlist-tier-missing" : ""}`}>
-                      {entry.profile.valueTierLabel}
-                    </span>
-                  </div>
-                  <div className="free-agent-watch-meta">
-                    <span>
-                      {entry.wrestler.sourceBrand ? `${entry.wrestler.sourceBrand} · #${entry.wrestler.draftRank ?? "—"}` : `Top 200 #${entry.wrestler.draftRank ?? "—"}`}
-                    </span>
-                    <span>{roleStyleLabel}</span>
-                    <span>Pop {entry.wrestler.popularity}</span>
-                    <span>Mom {entry.wrestler.momentum}</span>
-                  </div>
-                  <small>{entry.profile.dossierRead}</small>
-                </article>
-              );
-            })}
-            {freeAgentWatch.total.length > freeAgentWatch.visible.length ? (
-              <small className="muted-copy">{freeAgentWatch.total.length - freeAgentWatch.visible.length} more undrafted names are available in the open pool.</small>
-            ) : null}
-          </div>
-        ) : (
-          <div className="empty-state compact">No undrafted Top 200 names available in this watchlist window.</div>
-        )}
-      </section>
-
-      <section className="roster-controls" aria-label="Roster controls">
-        <div>
-          <span>Sort</span>
-          {(["popularity", "momentum", "fatigue", "morale"] as RosterSort[]).map((option) => (
-            <button className={sortBy === option ? "active-filter" : ""} key={option} onClick={() => setSortBy(option)}>
-              {option}
-            </button>
-          ))}
-        </div>
-        <div>
-          <span>Filter</span>
-          {(["All", "Hot", "Tired", "Frustrated"] as RosterFilter[]).map((option) => (
-            <button className={filter === option ? "active-filter" : ""} key={option} onClick={() => setFilter(option)}>
-              {option}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="roster-grid" aria-label="Roster list">
-        {visibleWrestlers.length ? (
-          visibleWrestlers.map((wrestler) => (
-            <WrestlerCard
-              currentWeek={game.currentWeek}
-              game={game}
-              key={wrestler.id}
-              onOpenProfile={onOpenProfile}
-              rosterAffiliations={rosterAffiliations}
-              wrestler={wrestler}
-            />
-          ))
-        ) : (
-          <div className="empty-state">No wrestlers match this filter.</div>
-        )}
+              <div className="roster-selected-actions">
+                <button className="primary-action" onClick={() => onOpenProfile(selectedWrestler.id)}>
+                  View Profile
+                </button>
+                <button className="secondary-action" onClick={() => onNavigate("booking")}>
+                  Book Show
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="empty-state compact">Select a superstar to open the locker room read.</div>
+          )}
+        </section>
       </section>
     </main>
   );
@@ -9437,40 +9633,51 @@ function SeasonReviewScreen({
 function WrestlerCard({
   currentWeek,
   game,
+  isSelected,
   onOpenProfile,
+  onSelectWrestler,
   rosterAffiliations,
   wrestler,
 }: {
   currentWeek: number;
   game: GameState;
+  isSelected: boolean;
   onOpenProfile: (wrestlerId: string) => void;
+  onSelectWrestler: (wrestlerId: string) => void;
   rosterAffiliations: WrestlerAffiliation[];
   wrestler: Wrestler;
 }) {
   const status = getWrestlerStatus(wrestler);
   const pressureTags = getRosterPressureTags(wrestler, currentWeek);
-  const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, currentWeek);
   const affiliations = rosterAffiliations.filter((affiliation) => affiliation.memberWrestlerIds.includes(wrestler.id));
   const valueProfile = getWrestlerValueProfile(wrestler);
   const identitySnapshot = getWrestlerIdentitySnapshot(wrestler, game);
-  const lockerRoomRead = getWrestlerLockerRoomRead(wrestler, game);
+  const championships = getWrestlerChampionships(wrestler.id, game.championships);
+  const roleLabel = wrestler.archetype ?? wrestler.roleTier ?? "Utility";
+  const overall = getWrestlerOverall(wrestler);
+  const primaryPressure = pressureTags[0] ?? status;
 
   return (
-    <article className={`wrestler-card status-${status.toLowerCase()}`}>
+    <article className={`wrestler-card status-${status.toLowerCase()} ${isSelected ? "selected" : ""}`}>
       <div className="wrestler-card-head">
+        <button aria-label={`Select ${wrestler.name}`} className="wrestler-card-select" onClick={() => onSelectWrestler(wrestler.id)} type="button">
+          <span className="wrestler-card-overall">{overall}</span>
+          <span className="wrestler-card-portrait">{getWrestlerInitials(wrestler.name)}</span>
+        </button>
         <div>
-          <p className="eyebrow">Talent File</p>
+          <p className="eyebrow">{getWrestlerDivisionLabel(wrestler)} Talent</p>
           <h3>{wrestler.name}</h3>
+          <small>{roleLabel}</small>
         </div>
         <div className="wrestler-card-actions">
-          <strong>{status}</strong>
-          <button className="secondary-action" onClick={() => onOpenProfile(wrestler.id)}>
-            View Profile
+          {championships.length ? <strong className="prestige-chip">Champion</strong> : <strong>{primaryPressure}</strong>}
+          <button className="inline-action" onClick={() => onOpenProfile(wrestler.id)} type="button">
+            Profile
           </button>
         </div>
       </div>
       <div className="pressure-tags">
-        {identitySnapshot.labels.slice(0, 3).map((label) => (
+        {identitySnapshot.labels.slice(0, 2).map((label) => (
           <span className="identity-chip" key={label}>
             {label}
           </span>
@@ -9478,38 +9685,36 @@ function WrestlerCard({
         <span className={`value-tier-chip ${valueProfile.contextMode === "missing" ? "value-tier-chip-missing" : ""}`}>
           {valueProfile.valueTierLabel}
         </span>
-        {pressureTags.length ? pressureTags.map((tag) => <span key={tag}>{tag}</span>) : <span>Balanced</span>}
-      </div>
-      <div className={`locker-room-card-read tone-${lockerRoomRead.tone}`} aria-label={`${wrestler.name} locker room read`}>
-        <span>{lockerRoomRead.headline}</span>
-        <p>{lockerRoomRead.detail}</p>
-        <small>{lockerRoomRead.note}</small>
-      </div>
-      <div className="wrestler-identity-read" aria-label={`${wrestler.name} identity read`}>
-        <strong>{identitySnapshot.roleRead}</strong>
-        <p>{identitySnapshot.bookingUseRead}</p>
-        <small>{identitySnapshot.usageRead}</small>
       </div>
       {affiliations.length ? (
         <div className="affiliation-strip compact-affiliation-strip" aria-label={`${wrestler.name} affiliation context`}>
-          {affiliations.slice(0, 2).map((affiliation) => (
+          {affiliations.slice(0, 1).map((affiliation) => (
             <span key={affiliation.id}>
               {affiliation.name} · {formatAffiliationKind(affiliation.kind)}
             </span>
           ))}
         </div>
       ) : null}
-      <div className="wrestler-stats">
-        <Metric label="Popularity" value={`${wrestler.popularity}`} />
-        <Metric label="Momentum" value={`${wrestler.momentum}`} />
-        <Metric label="Fatigue" value={`${wrestler.fatigue}`} />
-        <Metric label="Morale" value={`${wrestler.morale}`} />
-        <Metric label="Ring" value={`${wrestler.ringSkill}`} />
-        <Metric label="Promo" value={`${wrestler.promoSkill}`} />
-        <Metric label="Injury" value={getInjuryStatusLabel(wrestler.injuryStatus)} detail={getInjuryDetail(wrestler)} />
-        <Metric label="Appearances" value={`${wrestler.appearancesThisSeason ?? 0}`} detail="This season" />
-        <Metric label="Last Booked" value={wrestler.lastBookedWeek ? `Week ${wrestler.lastBookedWeek}` : "Never"} detail={`${weeksSinceLastBooked} weeks off TV`} />
-        <Metric label="TV Streak" value={`${wrestler.consecutiveWeeksBooked ?? 0}`} detail="Consecutive weeks" />
+      <div className="wrestler-card-bars" aria-label={`${wrestler.name} compact stats`}>
+        <div>
+          <span>POP</span>
+          <b style={{ width: `${wrestler.popularity}%` }} />
+          <strong>{wrestler.popularity}</strong>
+        </div>
+        <div>
+          <span>STA</span>
+          <b style={{ width: `${Math.max(0, 100 - wrestler.fatigue)}%` }} />
+          <strong>{100 - wrestler.fatigue}</strong>
+        </div>
+        <div>
+          <span>MOR</span>
+          <b style={{ width: `${wrestler.morale}%` }} />
+          <strong>{wrestler.morale}</strong>
+        </div>
+      </div>
+      <div className="wrestler-card-foot">
+        <span>{wrestler.lastBookedWeek ? `Week ${wrestler.lastBookedWeek}` : "No TV yet"}</span>
+        <span>{wrestler.injuryStatus !== "healthy" ? getInjuryStatusLabel(wrestler.injuryStatus) : `${wrestler.consecutiveWeeksBooked ?? 0} wk streak`}</span>
       </div>
     </article>
   );

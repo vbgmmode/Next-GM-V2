@@ -21,10 +21,10 @@ Before changing player-facing UI, inspect the relevant current files and docs:
 - docs/playable-new-gm-mode-roadmap.md
 - docs/playable-new-gm-mode-lean-validation-strategy.md
 - Current UI/CSS files affected by the task
-- references/next-gm-design-dna.md
-- references/screen-patterns.md
-- references/anti-patterns.md
-- references/ui-review-checklist.md
+- Skill-local reference: references/next-gm-design-dna.md
+- Skill-local reference: references/screen-patterns.md
+- Skill-local reference: references/anti-patterns.md
+- Skill-local reference: references/ui-review-checklist.md
 
 If docs conflict, prefer the most specific current player-facing product lock / finished-product goal / visual design contract. Call out the conflict in the report instead of silently choosing.
 
