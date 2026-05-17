@@ -150,13 +150,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Non-Title Tag Match Planning v1
+Phase: Tag Championship Planning v1
 
 Goal:
-Define safe boundaries for introducing non-title 2v2 tag booking while preserving the complete offline solo career loop, expanded setup flow, and active Top 200 open draft pool.
+Define a safe, minimal path to adding 2v2 tag championship support while preserving the complete offline solo career loop, expanded setup flow, and active Top 200 open draft pool.
 
 Current priority:
-Define the non-title tag booking implementation gate and keep all existing systems unchanged outside this bounded slice.
+Define the tag championship implementation gate and keep all existing systems unchanged outside this bounded slice.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
