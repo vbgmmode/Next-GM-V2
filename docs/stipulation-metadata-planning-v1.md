@@ -2,7 +2,7 @@
 
 ## 1) Why stipulation metadata belongs next
 
-The current card simulation is stable with core match formats, title/rivalry flow, and diagnostic safety rails already in place.  
+The current card simulation is stable with core match formats, title/rivalry flow, and diagnostic safety rails already in place.
 A stipulation metadata layer is the smallest next step because it can improve card communication and GM choice clarity without changing how outcomes are produced.
 
 Priority for this phase:
@@ -58,7 +58,7 @@ Use existing match format constraints to avoid format-specific outcome branching
   - Allowed: singles matches only in v1
   - Reason: safer for first pass to avoid team-level framing assumptions.
 
-Do **not** introduce new match formats in this ticket.  
+Do **not** introduce new match formats in this ticket.
 Keep stipulations as metadata overlays on existing formats.
 
 ## 5) Booking pre-show UI disclosure (no spoilers)
@@ -121,7 +121,7 @@ Risk controls:
 
 ## 9) Migration/fallback behavior for older saves
 
-No migration required in v1.
+Optional migration/fallback normalization for optional fields is acceptable in v1 for save safety.
 - Older saves without stipulation data should render exactly as current behavior.
 - If a segment/entry lacks stipulation metadata, UI should treat it as default/no-stipulation.
 - If malformed spec appears, silently ignore unsupported attributes and show safe defaults.
@@ -172,6 +172,6 @@ No source behavior changes in this planning slice.
 After this planning document, the next smallest implementation ticket should be:
 - **Stipulation Metadata Catalog + Booking selection scaffolding** for:
   - No Disqualification
-  - Steel Cage  
+  - Steel Cage
   - Submission Match
 - metadata-only attachment on existing singles and M020 matches, with strict format gating and no simulation changes.
