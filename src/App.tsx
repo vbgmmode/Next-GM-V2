@@ -342,6 +342,22 @@ type CauseLedgerSection = {
   items: CauseLedgerItem[];
 };
 
+type BroadcastFalloutTone = "strong" | "steady" | "watch";
+
+type BroadcastFalloutItem = {
+  id: string;
+  label: string;
+  value: string;
+  detail: string;
+  tone: BroadcastFalloutTone;
+};
+
+type BroadcastFalloutSnapshot = {
+  headline: string;
+  detail: string;
+  items: BroadcastFalloutItem[];
+};
+
 type WeeklyDecisionPressureTone = "strong" | "steady" | "watch";
 
 type WeeklyDecisionPressureItem = {
@@ -3667,6 +3683,138 @@ function buildBroadcastRecap(result: ShowResult) {
 
 function getSafeBestSegment(result: ShowResult) {
   return result.segmentResults?.length ? getBestSegment(result) : undefined;
+}
+
+function getScoreFalloutRead(result: ShowResult) {
+  const strongSegments = result.segmentResults.filter((segment) => segment.score >= 85);
+  const coldSegments = result.segmentResults.filter((segment) => segment.score < 60);
+
+  if (result.totalScore >= 85) {
+    return `${strongSegments.length} segment${strongSegments.length === 1 ? "" : "s"} landed at 85+, so the broadcast reads like a premium night.`;
+  }
+
+  if (result.totalScore >= 70) {
+    return coldSegments.length
+      ? `The final grade held up, but ${coldSegments.length} segment${coldSegments.length === 1 ? "" : "s"} finished below 60.`
+      : "The card delivered a controlled result without a major cold segment dragging the show down.";
+  }
+
+  if (result.totalScore >= 55) {
+    return strongSegments.length
+      ? `${strongSegments.length} strong segment${strongSegments.length === 1 ? "" : "s"} gave the night upside, but the total score stayed mixed.`
+      : "The show landed in uneven territory because the card did not produce enough high-end segments.";
+  }
+
+  return coldSegments.length
+    ? `${coldSegments.length} segment${coldSegments.length === 1 ? "" : "s"} finished below 60, which left the broadcast cold.`
+    : "The broadcast finished cold without enough standout scoring to lift the night.";
+}
+
+function buildBroadcastFalloutSnapshot(result: ShowResult): BroadcastFalloutSnapshot {
+  const bestSegment = getSafeBestSegment(result);
+  const titleHistoryEvents = result.titleHistoryEvents ?? [];
+  const titleChanges = titleHistoryEvents.filter((event) => event.eventType === "title_change");
+  const titleDefenses = titleHistoryEvents.filter((event) => event.eventType === "successful_defense");
+  const rivalryHistoryEvents = result.rivalryHistoryEvents ?? [];
+  const injuryNotes = result.lockerRoomFallout?.injuryNotes ?? [];
+  const moraleDrops = result.lockerRoomFallout?.moraleDrops ?? [];
+  const moraleBoosts = result.lockerRoomFallout?.moraleBoosts ?? [];
+  const openChallengeReveals = result.segmentResults.filter((segment) => segment.type === "Open Challenge" && segment.resolvedOpponentName);
+  const headline =
+    result.totalScore >= 85
+      ? "Premium Broadcast Fallout"
+      : result.totalScore >= 70
+        ? "Solid Broadcast Fallout"
+        : result.totalScore >= 55
+          ? "Mixed Broadcast Fallout"
+          : "Cold Broadcast Fallout";
+  const items: BroadcastFalloutItem[] = [
+    {
+      id: "show-read",
+      label: "Show Read",
+      value: `${result.totalScore} ${getShowGrade(result.totalScore)}`,
+      detail: getScoreFalloutRead(result),
+      tone: result.totalScore >= 85 ? "strong" : result.totalScore < 60 ? "watch" : "steady",
+    },
+  ];
+
+  if (bestSegment) {
+    items.push({
+      id: "best-segment",
+      label: "Top Segment",
+      value: `${bestSegment.score}`,
+      detail: `${bestSegment.participantNames.join(" / ") || "The resolved segment"} delivered the strongest ${bestSegment.type.toLowerCase()} on the resolved card.`,
+      tone: bestSegment.score >= 85 ? "strong" : bestSegment.score < 60 ? "watch" : "steady",
+    });
+  }
+
+  items.push({
+    id: "standout-performer",
+    label: "Standout",
+    value: result.biggestMomentumGain.name,
+    detail: `${result.biggestMomentumGain.name} left with the biggest momentum gain at +${result.biggestMomentumGain.amount}. ${result.biggestFatigueIncrease.name} absorbed the heaviest fatigue hit at +${result.biggestFatigueIncrease.amount}.`,
+    tone: result.biggestMomentumGain.amount >= 8 ? "strong" : result.biggestFatigueIncrease.amount >= 12 ? "watch" : "steady",
+  });
+
+  items.push({
+    id: "title-desk",
+    label: "Title Desk",
+    value: titleChanges.length ? `${titleChanges.length} change${titleChanges.length === 1 ? "" : "s"}` : `${titleDefenses.length} defense${titleDefenses.length === 1 ? "" : "s"}`,
+    detail: titleHistoryEvents.length
+      ? titleHistoryEvents
+          .slice(0, 2)
+          .map((event) => `${formatChampionshipEventType(event.eventType)}: ${event.championshipName}`)
+          .join(" / ")
+      : "No title change or successful defense was logged from this result.",
+    tone: titleChanges.length ? "strong" : titleDefenses.length ? "steady" : "watch",
+  });
+
+  items.push({
+    id: "story-desk",
+    label: "Story Desk",
+    value: rivalryHistoryEvents.length ? `${rivalryHistoryEvents.length} move${rivalryHistoryEvents.length === 1 ? "" : "s"}` : "No move",
+    detail: rivalryHistoryEvents.length
+      ? rivalryHistoryEvents
+          .slice(0, 2)
+          .map((event) => `${formatRivalryEventType(event.eventType)}: ${event.rivalryName}`)
+          .join(" / ")
+      : result.rivalryNotes[0] ?? "No rivalry movement was logged from this result.",
+    tone: rivalryHistoryEvents.length ? "strong" : "steady",
+  });
+
+  items.push({
+    id: "locker-room",
+    label: "Locker Room",
+    value: injuryNotes.length ? `${injuryNotes.length} injury` : `${moraleBoosts.length + moraleDrops.length} morale`,
+    detail: injuryNotes.length
+      ? injuryNotes
+          .slice(0, 2)
+          .map((note) => note.note)
+          .join(" / ")
+      : moraleBoosts.length || moraleDrops.length
+        ? `${moraleBoosts.length} morale boost${moraleBoosts.length === 1 ? "" : "s"} and ${moraleDrops.length} morale drop${moraleDrops.length === 1 ? "" : "s"} resolved after the show.`
+        : "No injury or morale fallout note was logged from this result.",
+    tone: injuryNotes.length || moraleDrops.length ? "watch" : moraleBoosts.length ? "strong" : "steady",
+  });
+
+  if (openChallengeReveals.length) {
+    items.push({
+      id: "open-challenge",
+      label: "Open Challenge",
+      value: `${openChallengeReveals.length} reveal${openChallengeReveals.length === 1 ? "" : "s"}`,
+      detail: openChallengeReveals
+        .slice(0, 2)
+        .map((segment) => `${segment.resolvedOpponentName} answered ${segment.participantNames[0] ?? "the challenge"}.`)
+        .join(" "),
+      tone: "strong",
+    });
+  }
+
+  return {
+    headline,
+    detail: "Resolved-only context from the completed broadcast: score shape, standout usage, titles, stories, locker room fallout, and revealed surprises.",
+    items,
+  };
 }
 
 function buildPostShowCauseLedger(game: GameState, result: ShowResult, financeReport?: FinanceReport): CauseLedgerSection[] {
@@ -7923,6 +8071,30 @@ function PostShowCauseLedger({ compact = false, sections }: { compact?: boolean;
   );
 }
 
+function BroadcastFalloutPanel({ snapshot }: { snapshot: BroadcastFalloutSnapshot }) {
+  return (
+    <section className="broadcast-fallout-panel" aria-label="Broadcast fallout">
+      <div className="broadcast-fallout-head">
+        <div>
+          <p className="eyebrow">Broadcast Fallout</p>
+          <h3>{snapshot.headline}</h3>
+        </div>
+        <strong>What Changed</strong>
+      </div>
+      <p className="broadcast-fallout-copy">{snapshot.detail}</p>
+      <div className="broadcast-fallout-grid">
+        {snapshot.items.map((item) => (
+          <article className={`broadcast-fallout-item item-${item.tone}`} key={item.id}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+            <p>{item.detail}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function ResultsScreen({
   game,
   canContinueWeekReview,
@@ -7939,6 +8111,7 @@ function ResultsScreen({
   const bestSegment = getBestSegment(result);
   const financeReport = getFinanceReportForResult(game, result);
   const causeLedger = buildPostShowCauseLedger(game, result, financeReport);
+  const broadcastFallout = buildBroadcastFalloutSnapshot(result);
   const titleHistoryEvents = result.titleHistoryEvents ?? [];
   const titleChanges = titleHistoryEvents.filter((event) => event.eventType === "title_change");
   const isPleResult = result.showType === "ple";
@@ -7978,6 +8151,8 @@ function ResultsScreen({
         />
         <Metric label="Best Type" value={bestSegment.type} detail={getSegmentResultParticipantsLabel(bestSegment, game.wrestlers)} />
       </section>
+
+      <BroadcastFalloutPanel snapshot={broadcastFallout} />
 
       {isPleResult ? (
         <section className="story-fallout" aria-label="PLE recap">

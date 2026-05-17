@@ -3066,6 +3066,98 @@ h3 {
   margin: 0;
 }
 
+.broadcast-fallout-panel {
+  background:
+    linear-gradient(135deg, rgba(216, 35, 50, 0.16), transparent 42%),
+    linear-gradient(90deg, rgba(246, 193, 86, 0.08), transparent 66%),
+    rgba(14, 17, 24, 0.94);
+  border: 1px solid rgba(246, 193, 86, 0.3);
+  border-left: 4px solid #d82332;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 18px;
+}
+
+.broadcast-fallout-head {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.broadcast-fallout-head h3 {
+  line-height: 1.12;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.broadcast-fallout-head > strong {
+  background: rgba(246, 193, 86, 0.12);
+  border: 1px solid rgba(246, 193, 86, 0.28);
+  color: #f6c156;
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 8px 10px;
+  text-transform: uppercase;
+}
+
+.broadcast-fallout-copy,
+.broadcast-fallout-item p {
+  color: #b9c1cf;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.broadcast-fallout-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.broadcast-fallout-item {
+  background: rgba(8, 9, 13, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 3px solid rgba(185, 193, 207, 0.45);
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.broadcast-fallout-item.item-strong {
+  border-left-color: #00a896;
+}
+
+.broadcast-fallout-item.item-steady {
+  border-left-color: #f6c156;
+}
+
+.broadcast-fallout-item.item-watch {
+  border-left-color: #ff5361;
+}
+
+.broadcast-fallout-item span {
+  color: #f6c156;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.broadcast-fallout-item strong {
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
 .finance-history-row {
   align-items: center;
   background: rgba(14, 17, 24, 0.92);
@@ -4526,6 +4618,7 @@ h3 {
   .draft-stat-grid,
   .draft-tools,
   .weekly-pressure-grid,
+  .broadcast-fallout-grid,
   .ple-build-grid,
   .title-scene-board,
   .title-pressure-deck,
@@ -4587,6 +4680,7 @@ h3 {
   .finance-breakdown-grid,
   .profile-layout,
   .cause-ledger-grid,
+  .broadcast-fallout-grid,
   .ple-checklist-items,
   .ple-readiness-summary,
   .spotlight-grid,
@@ -4618,6 +4712,15 @@ h3 {
   }
 
   .weekly-pressure-head > strong {
+    text-align: center;
+  }
+
+  .broadcast-fallout-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .broadcast-fallout-head > strong {
     text-align: center;
   }
 
