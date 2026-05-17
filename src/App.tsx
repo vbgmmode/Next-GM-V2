@@ -3183,6 +3183,7 @@ function App() {
   const [profileWrestlerId, setProfileWrestlerId] = useState<string | undefined>(qaHarnessState?.profileWrestlerId);
   const [profileReturnScreen, setProfileReturnScreen] = useState<ProfileReturnScreen>(qaHarnessState?.profileReturnScreen ?? "roster");
   const latestResult = game?.showHistory[game.showHistory.length - 1];
+  const hasCurrentWeekReview = latestResult ? latestResult.week === game?.currentWeek : false;
   const recentCareer = getMostRecentCareer(careerSaves);
 
   function refreshCareerSaves() {
@@ -3324,6 +3325,14 @@ function App() {
 
   function navigateTo(nextScreen: GameScreen) {
     if (!game) {
+      return;
+    }
+
+    if (nextScreen === "weekReview" && !hasCurrentWeekReview) {
+      persistGameSnapshot(game, "dashboard");
+      setProfileWrestlerId(undefined);
+      setProfileReturnScreen("roster");
+      setScreen("dashboard");
       return;
     }
 
@@ -3823,10 +3832,18 @@ function App() {
   }
 
   if (screen === "results" && latestResult) {
-    return <ResultsScreen game={game} result={latestResult} onContinueWeekReview={() => navigateTo("weekReview")} onNavigate={navigateTo} />;
+    return (
+      <ResultsScreen
+        game={game}
+        canContinueWeekReview={hasCurrentWeekReview}
+        result={latestResult}
+        onContinueWeekReview={() => navigateTo("weekReview")}
+        onNavigate={navigateTo}
+      />
+    );
   }
 
-  if (screen === "weekReview" && latestResult) {
+  if (screen === "weekReview" && latestResult && hasCurrentWeekReview) {
     return <WeekReviewScreen game={game} onAdvanceWeek={advanceWeek} onNavigate={navigateTo} result={latestResult} />;
   }
 
@@ -4725,6 +4742,7 @@ function DashboardScreen({
   const averageFatigue = Math.round(game.wrestlers.reduce((sum, wrestler) => sum + wrestler.fatigue, 0) / game.wrestlers.length);
   const nextAction =
     validSegments >= 2 ? "The rundown can go live when you are ready." : "Book at least 2 valid segments before production can roll.";
+  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
   const championshipPressureSnapshots = getChampionshipPressureSnapshots(game);
   const tagChampionshipSnapshot = championshipPressureSnapshots.find((item) => isTagChampionship(item.championship));
   const tagDivisionAttention = tagChampionshipSnapshot?.snapshot.diagnostics.find((diagnostic) => diagnostic.tone !== "steady");
@@ -4755,7 +4773,7 @@ function DashboardScreen({
   return (
     <main className="app-shell">
       <Header game={game} />
-      <GameNav currentScreen="dashboard" hasResults={Boolean(latestResult)} onNavigate={onNavigate} />
+      <GameNav currentScreen="dashboard" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       <section className="dashboard-hero">
         <div>
           <p className="eyebrow">Season {game.seasonNumber} · Week {game.currentWeek} Dashboard</p>
@@ -5077,6 +5095,7 @@ function BookingScreen({
   const calendarWeek = getCurrentCalendarWeek(game);
   const runtimeMinutes = game.currentShow.reduce((total, segment) => total + getSegmentDurationMinutes(segment), 0);
   const validRuntimeMinutes = validShowSegments.reduce((total, segment) => total + getSegmentDurationMinutes(segment), 0);
+  const hasCurrentWeekReview = game.showHistory[game.showHistory.length - 1]?.week === game.currentWeek;
   const runtimePercent = Math.min(100, Math.round((validRuntimeMinutes / showRuntimeTargetMinutes) * 100));
   const readiness = getShowReadiness(validSegments, invalidSegments, validRuntimeMinutes);
   const broadcastRisk = getBroadcastRuntimeRisk(validRuntimeMinutes);
@@ -5166,7 +5185,7 @@ function BookingScreen({
   return (
     <main className="app-shell">
       <Header game={game} />
-      <GameNav currentScreen="booking" hasResults={Boolean(game.showHistory.length)} onNavigate={onNavigate} />
+      <GameNav currentScreen="booking" hasResults={Boolean(game.showHistory.length)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       {isQaHarness ? (
         <section className="qa-harness-banner" aria-label="QA harness notice">
           <strong>QA Runtime Harness</strong>
@@ -5641,6 +5660,7 @@ function RosterScreen({
   const injuryRiskCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk")).length;
   const minorInjuryCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus === "minor").length;
   const unavailableCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus === "major").length;
+  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
   const rosterAffiliations = getRosterAffiliations(game.wrestlers);
   const featuredAffiliations = rosterAffiliations
     .filter((affiliation) => affiliation.memberWrestlerIds.length > 1)
@@ -5649,7 +5669,7 @@ function RosterScreen({
   return (
     <main className="app-shell">
       <Header game={game} />
-      <GameNav currentScreen="roster" hasResults={Boolean(latestResult)} onNavigate={onNavigate} />
+      <GameNav currentScreen="roster" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       <section className="dashboard-hero">
         <div>
           <p className="eyebrow">Locker Room Report</p>
@@ -5777,11 +5797,12 @@ function WrestlerProfileScreen({
   const gmRead = getGMRead(wrestler, game);
   const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, game.currentWeek);
   const identity = getWrestlerIdentityContext(wrestler);
+  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
 
   return (
     <main className="app-shell">
       <Header game={game} />
-      <GameNav currentScreen="profile" hasResults={Boolean(latestResult)} onNavigate={onNavigate} />
+      <GameNav currentScreen="profile" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       <section className="profile-hero">
         <div>
           <p className="eyebrow">Wrestler Profile</p>
@@ -6017,10 +6038,11 @@ function ChampionshipsScreen({
   latestResult?: ShowResult;
   onNavigate: (screen: GameScreen) => void;
 }) {
+  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
   return (
     <main className="app-shell">
       <Header game={game} />
-      <GameNav currentScreen="championships" hasResults={Boolean(latestResult)} onNavigate={onNavigate} />
+      <GameNav currentScreen="championships" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       <section className="dashboard-hero">
         <div>
           <p className="eyebrow">Title Office</p>
@@ -6171,6 +6193,7 @@ function RivalriesScreen({
   const rivalryBlockReason = getRivalryCreationBlockReason(wrestlerAId, wrestlerBId, game.wrestlers);
   const canCreate = wrestlerAId && wrestlerBId && wrestlerAId !== wrestlerBId && !isDuplicate && !rivalryBlockReason;
   const selectedStoryline = getRivalryStoryline({ stakes, storylineId });
+  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
 
   function handleCreateRivalry() {
     if (!canCreate) {
@@ -6183,7 +6206,7 @@ function RivalriesScreen({
   return (
     <main className="app-shell">
       <Header game={game} />
-      <GameNav currentScreen="rivalries" hasResults={Boolean(latestResult)} onNavigate={onNavigate} />
+      <GameNav currentScreen="rivalries" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       <section className="dashboard-hero">
         <div>
           <p className="eyebrow">Story Room</p>
@@ -6377,6 +6400,7 @@ function CalendarScreen({
   const currentShow = getCurrentCalendarWeek(game);
   const nextPle = getNextPle(game.calendar, game.currentWeek);
   const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
+  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
 
   function getWeekResult(week: CalendarWeek) {
     return game.showHistory.find(
@@ -6389,7 +6413,7 @@ function CalendarScreen({
   return (
     <main className="app-shell">
       <Header game={game} />
-      <GameNav currentScreen="calendar" hasResults={Boolean(latestResult)} onNavigate={onNavigate} />
+      <GameNav currentScreen="calendar" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       <section className="dashboard-hero">
         <div>
           <p className="eyebrow">Season {game.seasonNumber} Calendar</p>
@@ -6460,11 +6484,12 @@ function SocialScreen({
   const visiblePosts = [...game.socialPosts]
     .reverse()
     .filter((post) => !categories || categories.includes(post.category));
+  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
 
   return (
     <main className="app-shell">
       <Header game={game} />
-      <GameNav currentScreen="social" hasResults={Boolean(latestResult)} onNavigate={onNavigate} />
+      <GameNav currentScreen="social" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       <section className="dashboard-hero">
         <div>
           <p className="eyebrow">Post-Show Pulse</p>
@@ -6534,11 +6559,12 @@ function FinanceScreen({
   const bestRevenueReport = getBestRevenueReport(seasonReports);
   const worstProfitReport = getWorstProfitReport(seasonReports);
   const pressureLabel = getFinancePressureLabel(game.money, latestReport?.profitLoss ?? 0);
+  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
 
   return (
     <main className="app-shell">
       <Header game={game} />
-      <GameNav currentScreen="finance" hasResults={Boolean(latestResult)} onNavigate={onNavigate} />
+      <GameNav currentScreen="finance" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       <section className="dashboard-hero">
         <div>
           <p className="eyebrow">Brand Office</p>
@@ -6697,11 +6723,13 @@ function PostShowCauseLedger({ compact = false, sections }: { compact?: boolean;
 
 function ResultsScreen({
   game,
+  canContinueWeekReview,
   onContinueWeekReview,
   onNavigate,
   result,
 }: {
   game: GameState;
+  canContinueWeekReview: boolean;
   onContinueWeekReview: () => void;
   result: ShowResult;
   onNavigate: (screen: GameScreen) => void;
@@ -6713,7 +6741,7 @@ function ResultsScreen({
   return (
     <main className="app-shell">
       <Header game={game} />
-      <GameNav currentScreen="results" hasResults onNavigate={onNavigate} />
+      <GameNav currentScreen="results" hasResults hasWeekReview={canContinueWeekReview} onNavigate={onNavigate} />
       <section className="results-hero">
         <div>
           <p className="eyebrow">
@@ -6724,8 +6752,8 @@ function ResultsScreen({
           </h2>
           <p className="lede">{buildBroadcastRecap(result)}</p>
         </div>
-        <button className="primary-action" onClick={onContinueWeekReview}>
-          Continue to Week Review
+        <button className="primary-action" onClick={onContinueWeekReview} disabled={!canContinueWeekReview}>
+          {canContinueWeekReview ? "Continue to Week Review" : "Week Review Complete"}
         </button>
       </section>
 
@@ -6862,7 +6890,7 @@ function WeekReviewScreen({
   return (
     <main className="app-shell">
       <Header game={game} />
-      <GameNav currentScreen="weekReview" hasResults onNavigate={onNavigate} />
+      <GameNav currentScreen="weekReview" hasResults hasWeekReview={true} onNavigate={onNavigate} />
       <section className="results-hero week-review-hero">
         <div>
           <p className="eyebrow">
@@ -7601,12 +7629,16 @@ function RivalryControl({
 function GameNav({
   currentScreen,
   hasResults,
+  hasWeekReview,
   onNavigate,
 }: {
   currentScreen: GameScreen;
   hasResults: boolean;
+  hasWeekReview?: boolean;
   onNavigate: (screen: GameScreen) => void;
 }) {
+  const showWeekReview = hasWeekReview ?? hasResults;
+
   return (
     <nav className="game-nav" aria-label="Game navigation">
       <button className={currentScreen === "dashboard" ? "active-filter" : ""} onClick={() => onNavigate("dashboard")}>
@@ -7638,7 +7670,7 @@ function GameNav({
           Results
         </button>
       ) : null}
-      {hasResults ? (
+      {showWeekReview ? (
         <button className={currentScreen === "weekReview" ? "active-filter" : ""} onClick={() => onNavigate("weekReview")}>
           Week Review
         </button>
