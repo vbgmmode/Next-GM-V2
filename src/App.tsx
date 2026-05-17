@@ -2685,6 +2685,85 @@ function getFinanceReportModelLabel(report: FinanceReport) {
   return report.modelVersion ? "Legacy-Compatible v2" : "Legacy Report";
 }
 
+function getVenueMarketContextReadout(report: FinanceReport | undefined, seasonReports: FinanceReport[]) {
+  if (!report) {
+    return {
+      label: "Venue context pending",
+      read: "Run a show to close books and get a venue/market read from the actual report.",
+      summary: "No closed reports yet this run.",
+    };
+  }
+
+  const seasonPeerReports = seasonReports.filter((peer) => peer.seasonNumber === report.seasonNumber);
+  const avgAttendance = seasonPeerReports.length
+    ? Math.round(
+        seasonPeerReports.reduce((total, peer) => total + peer.attendance, 0) / Math.max(1, seasonPeerReports.length),
+      )
+    : undefined;
+  const avgGrossRevenue = seasonPeerReports.length
+    ? Math.round(
+        seasonPeerReports.reduce((total, peer) => total + getFinanceGrossRevenue(peer), 0) / Math.max(1, seasonPeerReports.length),
+      )
+    : undefined;
+  const avgProfit = seasonPeerReports.length
+    ? Math.round(
+        seasonPeerReports.reduce((total, peer) => total + peer.profitLoss, 0) / Math.max(1, seasonPeerReports.length),
+      )
+    : undefined;
+  const attendance = report.attendance;
+  const showScore = report.showScore;
+  const gross = getFinanceGrossRevenue(report);
+  const costs = getFinanceTotalExpenses(report);
+  const isStrongCrowd = avgAttendance === undefined ? attendance >= 5500 : attendance >= avgAttendance * 1.2;
+  const isWeakCrowd = avgAttendance === undefined ? attendance <= 2800 : attendance <= avgAttendance * 0.75;
+  const isScoreStrong = showScore >= 82;
+  const isFinanciallyEfficient = avgGrossRevenue === undefined
+    ? report.profitLoss >= 1200
+    : gross >= Math.max(avgGrossRevenue, 1) * 0.78 && report.profitLoss >= 800;
+  const isCostHeavy = isWeakCrowd
+    ? costs >= gross * 1.1 && report.profitLoss < 0
+    : gross > 0
+      ? costs / Math.max(1, gross) >= 0.75
+      : false;
+
+  let label = "Regional TV Market";
+  if (report.showType === "ple") {
+    if (isStrongCrowd && isFinanciallyEfficient && isScoreStrong) {
+      label = "Premium PLE Market";
+    } else if (isCostHeavy) {
+      label = "Costly Production City";
+    } else if (isStrongCrowd || showScore >= 78) {
+      label = "Strong Touring Market";
+    } else {
+      label = "Regional TV Market";
+    }
+  } else if (isCostHeavy) {
+    label = "Costly Production City";
+  } else if (isStrongCrowd && isFinanciallyEfficient && isScoreStrong) {
+    label = "Hot Wrestling Town";
+  } else if (isFinanciallyEfficient && showScore >= 75) {
+    label = "Efficient House";
+  } else if (isStrongCrowd || report.weekNumber % 3 === 0) {
+    label = "Strong Touring Market";
+  } else if (isWeakCrowd) {
+    label = "Regional TV Market";
+  }
+
+  const crowdRead = avgAttendance === undefined
+    ? `Crowd landed at ${attendance.toLocaleString()} checks this board.`
+    : `${attendance.toLocaleString()} attendance vs ${avgAttendance.toLocaleString()} this-season average.`;
+  const moneyRead = avgProfit === undefined
+    ? `Profit/Loss tracked at ${formatMoney(report.profitLoss)} from ${formatMoney(gross)} gross.`
+    : `${formatMoney(report.profitLoss)} closed with a score ${showScore} ${report.profitLoss >= avgProfit ? "above" : "below"} season pace.`;
+  const summary = `${crowdRead} ${moneyRead}`;
+
+  return {
+    label,
+    read: summary,
+    summary,
+  };
+}
+
 function getBestRevenueReport(reports: FinanceReport[]) {
   return reports.reduce<FinanceReport | undefined>((best, report) => {
     const revenue = getFinanceGrossRevenue(report);
@@ -6803,6 +6882,7 @@ function FinanceScreen({
   const pressureLabel = getFinancePressureLabel(game.money, latestReport?.profitLoss ?? 0);
   const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
   const talentValuePressure = getTalentValuePressure(game.wrestlers);
+  const venueMarketReadout = getVenueMarketContextReadout(latestReport, seasonReports);
 
   return (
     <main className="app-shell">
@@ -6851,6 +6931,9 @@ function FinanceScreen({
             </p>
             <h3>{latestReport.showName}</h3>
           </div>
+          <p className="social-preview-text">
+            <strong>{venueMarketReadout.label}</strong> · {venueMarketReadout.read}
+          </p>
           <div className="spotlight-grid">
             <Metric label="Attendance" value={latestReport.attendance.toLocaleString()} />
             <Metric label="Revenue" value={formatMoney(getFinanceGrossRevenue(latestReport))} />
@@ -7140,6 +7223,7 @@ function WeekReviewScreen({
   const reviewedRivalries = rivalryIds
     .map((id) => game.rivalries.find((rivalry) => rivalry.id === id))
     .filter((rivalry): rivalry is Rivalry => Boolean(rivalry));
+  const financeMarketContext = getVenueMarketContextReadout(financeReport, getSeasonFinanceReports(game));
   const titleHistoryEvents = result.titleHistoryEvents ?? [];
   const rivalryHistoryEvents = result.rivalryHistoryEvents ?? [];
   const nextWeek = game.calendar.find((week) => week.weekNumber === result.week + 1);
@@ -7374,6 +7458,7 @@ function WeekReviewScreen({
             <Metric label="Costs" value={formatMoney(getFinanceTotalExpenses(financeReport))} />
             <Metric label="Attendance" value={financeReport.attendance.toLocaleString()} />
             <Metric label="Ending Money" value={formatMoney(financeReport.endingMoney)} />
+            <Metric label="Venue / Market" value={financeMarketContext.label} detail={financeMarketContext.summary} />
           </div>
         </section>
       ) : null}

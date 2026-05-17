@@ -152,13 +152,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Free Agent Watchlist v1 Implementation
+Phase: Venue / Market Context v1 Implementation
 
 Goal:
-Add a compact, read-only Free Agent Watchlist built from existing Top 200 scouting context so players can monitor notable undrafted talent without enabling mechanics.
+Add read-only venue/market context to post-show finance reporting so finance reads as a GM office retrospective, not predictive mechanics.
 
 Current priority:
-Keep scouting context read-only and non-prescriptive. Preserve existing booking, results, contracts, payroll, roster-limit, persistence, and formula behavior. Defer signing, release, and free-agency mechanics.
+Keep venue/market context read-only and retrospective only. Preserve existing booking, results, finance formulas, persistence, and season flow. Defer logistics and venue control mechanics.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -198,6 +198,7 @@ Completed stabilization passes:
 - Finance Talent Value Pressure v1 (implemented)
 - Finance Presence Pass v1 (implemented)
 - Free Agent Watchlist v1 (implemented)
+- Venue / Market Context v1 (implemented)
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
