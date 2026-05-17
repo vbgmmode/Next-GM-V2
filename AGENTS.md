@@ -48,11 +48,15 @@ The game currently supports:
 - Tag Championship Foundation v1 with one tag championship, 2v2 M020 tag title matches only, pair-aware champion/history rendering, and no rankings/team records/team persistence/team-level stats
 - Tag Division Health Diagnostics v1 with read-only, derived tag-division advisories on Championships/Booking/Dashboard and no rankings/team records/team persistence/team-level mechanics
 - Match Format Metadata Foundation v1 with centralized current segment/match format metadata
+- Booking Producer Rundown with read-only production/card structure context
 - PLE Readiness Checklist v1 with non-spoiler major-event booking context
+- PLE Build Pressure v1 with read-only normal TV/go-home/PLE context derived from current calendar, card, roster, rivalry, and title state
 - Post-Show Cause Ledger v1 with retrospective explanation from resolved result data
 - Wrestler Identity Context v1 with non-mechanical identity/context fields added to roster entries (display-only foundation)
+- Roster Identity Context with read-only roster/profile/booking context from existing wrestler identity and current state
 - Title Scene Pressure v1 with read-only championship diagnostics derived from current title, roster, rivalry, booking, calendar, and history state
 - Rivalry Payoff Window v1 with read-only rivalry timing diagnostics derived from current heat, freshness, history, booking, and PLE calendar state
+- Weekly GM Desk Brief with read-only dashboard/week-review staff context from current roster, calendar, finance, title, rivalry, and resolved-show state
 - Brand Pulse v1 with read-only, non-simulated post-show brand pressure diagnostics derived from player results and static rival brand flavor
 - Non-Blocking Rival Draft Activity v1 with read-only draft-week flavor diagnostics for rival-brand setup context
 - Top 200 open draft pool staged from data/rosters and activated through src/game/top200DraftPool.ts
@@ -79,10 +83,10 @@ The game currently supports:
 - Title/Rivalry History v1 with lightweight title changes, defenses, rivalry movement, PLE payoffs, profile context, and season story summaries
 - Rivalry context attached to eligible segments
 - Run Show
-- Results focused on broadcast recap, segment scores, and major title/rivalry/Open Challenge notes
+- Results focused on broadcast recap, Broadcast Fallout, Post-Show Cause Ledger, segment scores, and major title/rivalry/Open Challenge notes from resolved show data
 - Dedicated Week Review screen before Advance Week
 - Results → Week Review → Advance Week flow
-- Week Review summary of show outcome, roster fallout, championships, rivalries, social buzz, finance fallout, and next week teaser
+- Week Review summary of show outcome, GM Handoff / next-week setup, roster fallout, championships, rivalries, social buzz, finance fallout, and next week teaser
 - Persisted Week Review screen state
 - TV-time tracking with appearances this season, last booked week, and consecutive weeks booked
 - Open Challenge resolved opponents count as booked after the show
@@ -101,6 +105,7 @@ The game currently supports:
 - Social/IWC
 - Finance & Brand Pressure
 - FinanceReport legacy-compatible v2 optional fields for future detailed revenue and expense categories
+- Read-only gameplay context helpers extracted into src/game/gameContextReads.ts for recent derived UI snapshots while React screen components remain in src/App.tsx
 
 ## Core Playable Loop
 Title
@@ -152,13 +157,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Season Archive Persistence v1 Implementation
+Phase: Post-context-pass stabilization and bounded maintenance
 
 Goal:
-Add read-only venue/market context to post-show finance reporting so finance reads as a GM office retrospective, not predictive mechanics.
+Keep the recent gameplay-context passes stable, preserve the playable loop, and reduce large-file risk only through bounded, behavior-preserving slices when requested.
 
 Current priority:
-Persist completed-season legacy summaries at Start Next Season. Keep read-only archives available for context only. Preserve existing booking, results, finance formulas, season flow, and persistence behavior. Defer offseason, contracts, and payroll systems.
+Protect the current single-screen game while keeping read-only context derived from existing state/result data. src/game/gameContextReads.ts now owns the recent pure derived read-model helpers; future context work should prefer small extracted helpers over expanding src/App.tsx further. src/App.tsx and src/styles.css are still large, so favor verification or narrowly scoped refactors before adding new UI surface.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -188,6 +193,15 @@ Completed stabilization passes:
 - Brand Pulse v1
 - Non-Blocking Rival Draft Activity v1
 - Wrestler Identity Context v1 (non-mechanical display context layer)
+- Booking Producer Rundown v1
+- Roster Identity Context v1
+- Championship Scene Context v1
+- Rivalry Story Context v1
+- Weekly GM Desk Brief v1
+- PLE Build Pressure v1
+- Show Results Broadcast Fallout v1
+- Week Review GM Handoff v1
+- Read-only gameplay context helper extraction to src/game/gameContextReads.ts
 - Tag Division Health Diagnostics v1
 - Stipulation Metadata v1 (implemented)
 - Read-Only Contract Value Profiles Planning v1
@@ -205,6 +219,9 @@ Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
 - Keep scout/read-only career-memory features bounded while deferring signing, release, and free-agency mechanics.
 - Treat season legacy as read-only narrative continuity first; defer payroll/contract mechanics and offseason systems to future tickets.
+- Keep recent context passes read-only and non-predictive: pre-show surfaces may explain existing pressure, but consequences and outcome language stay retrospective after Run Show.
+- Use src/game/gameContextReads.ts or another src/game read-model module for pure derived gameplay context when a future slice would otherwise add more helper logic to src/App.tsx.
+- Treat src/App.tsx and src/styles.css as high-risk growth areas; prefer bounded extraction, verification, or small focused UI fixes over broad screen rewrites.
 - Before content expansion, define the data category, maximum safe content size, allowed files, migration or fallback needs, and required smoke checks.
 - Future restricted draft modes must be explicit, optional, and requested by an active ticket.
 - Future data expansion or systems work should remain bounded to an accepted ticket.
@@ -292,6 +309,7 @@ When relevant, also smoke-test:
 - Booking at least 2 valid segments
 - Run Show
 - Results
+- Week Review
 - Advance Week
 - Refresh persistence
 - Any screen touched by the ticket
