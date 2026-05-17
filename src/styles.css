@@ -2552,7 +2552,7 @@ h3 {
 }
 
 .dashboard-command-room {
-  grid-template-rows: 86px minmax(0, 1fr) 138px;
+  grid-template-rows: 86px minmax(0, 1fr) 150px;
 }
 
 .dashboard-top-hud {
@@ -2955,12 +2955,22 @@ h3 {
 .dashboard-table-row {
   align-items: center;
   grid-template-columns: 24px minmax(0, 1fr) minmax(84px, 0.5fr);
+  padding-block: 5px;
 }
 
 .dashboard-table-row span {
   color: var(--bc-prestige);
   font-family: var(--bc-font-display);
   font-size: 1rem;
+}
+
+.dashboard-command-room h2,
+.dashboard-command-room strong {
+  line-height: 1.18;
+}
+
+.dashboard-command-room .metric strong {
+  line-height: 1.18;
 }
 
 .spotlight-grid {
@@ -6898,5 +6908,79 @@ h3 {
     align-items: flex-start;
     flex-direction: column;
     padding-block: var(--bc-space-3);
+  }
+}
+
+@media (max-width: 1100px) {
+  .dashboard-command-room {
+    grid-template-rows: 86px minmax(0, 1fr) 150px;
+  }
+
+  .dashboard-top-hud {
+    grid-template-columns: minmax(190px, 0.8fr) minmax(320px, 1.25fr) minmax(220px, 0.82fr) minmax(132px, 0.42fr);
+  }
+
+  .dashboard-main-console {
+    grid-template-columns: minmax(220px, 0.78fr) minmax(0, 1.34fr) minmax(250px, 0.86fr);
+  }
+
+  .dashboard-stage-head h2 {
+    font-size: 2.45rem;
+  }
+
+  .dashboard-stage-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .dashboard-command-room {
+    grid-template-rows: auto;
+  }
+
+  .dashboard-top-hud,
+  .dashboard-main-console,
+  .dashboard-bottom-telemetry,
+  .dashboard-hud-metrics,
+  .dashboard-stage-head,
+  .dashboard-stage-metrics,
+  .dashboard-primary-stage .dashboard-action-bar,
+  .dashboard-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-top-hud {
+    gap: 0;
+  }
+
+  .dashboard-hud-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-side-stack {
+    grid-template-rows: auto;
+  }
+
+  .dashboard-main-console,
+  .dashboard-bottom-telemetry {
+    grid-template-rows: auto;
+  }
+
+  .dashboard-primary-stage {
+    order: -1;
+  }
+
+  .dashboard-show-art-slot {
+    min-height: 82px;
+  }
+
+  .dashboard-rail-panel,
+  .dashboard-primary-stage,
+  .dashboard-telemetry-panel,
+  .dashboard-panel-scroll,
+  .dashboard-decision-list,
+  .dashboard-table-list {
+    max-height: none;
+    overflow: visible;
   }
 }
