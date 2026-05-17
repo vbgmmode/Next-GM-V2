@@ -3324,6 +3324,113 @@ function buildBroadcastRecap(result: ShowResult) {
   return `${showFrame} in Week ${result.week}. ${bestNames} delivered the strongest ${bestSegment.type.toLowerCase()} at ${bestSegment.score}. ${result.biggestMomentumGain.name} gained the most momentum, while ${result.biggestFatigueIncrease.name} took the biggest fatigue hit.${runtimeFallout}${titleFallout}${rivalryFallout}`;
 }
 
+type ResultsRecapTone = "strong" | "title" | "story" | "danger" | "reveal" | "steady" | "quiet";
+
+type ResultsRecapBeat = {
+  id: string;
+  label: string;
+  value: string;
+  detail: string;
+  tone: ResultsRecapTone;
+};
+
+function getOpenChallengeReveals(result: ShowResult) {
+  return result.segmentResults.filter((segment) => segment.type === "Open Challenge" && segment.resolvedOpponentName);
+}
+
+function buildResultsRecapPackage(result: ShowResult, broadcastFallout: BroadcastFalloutSnapshot, causeLedger: CauseLedgerSection[]) {
+  const bestSegment = getBestSegment(result);
+  const titleHistoryEvents = result.titleHistoryEvents ?? [];
+  const titleChanges = titleHistoryEvents.filter((event) => event.eventType === "title_change");
+  const rivalryHistoryEvents = result.rivalryHistoryEvents ?? [];
+  const injuryNotes = result.lockerRoomFallout?.injuryNotes ?? [];
+  const moraleDrops = result.lockerRoomFallout?.moraleDrops ?? [];
+  const moraleBoosts = result.lockerRoomFallout?.moraleBoosts ?? [];
+  const openChallengeReveals = getOpenChallengeReveals(result);
+  const headline: ResultsRecapBeat = titleChanges[0]
+    ? {
+        id: "headline-title",
+        label: "Headline Fallout",
+        value: titleChanges[0].championshipName,
+        detail: titleChanges[0].note,
+        tone: "title",
+      }
+    : injuryNotes[0]
+      ? {
+          id: "headline-injury",
+          label: "Headline Fallout",
+          value: injuryNotes[0].wrestlerName,
+          detail: injuryNotes[0].note,
+          tone: "danger",
+        }
+      : openChallengeReveals[0]
+        ? {
+            id: "headline-open-challenge",
+            label: "Headline Fallout",
+            value: openChallengeReveals[0].resolvedOpponentName ?? "Open Challenge",
+            detail: `${openChallengeReveals[0].resolvedOpponentName} answered ${openChallengeReveals[0].participantNames[0] ?? "the challenge"}.`,
+            tone: "reveal",
+          }
+        : result.rivalryNotes[0]
+          ? {
+              id: "headline-rivalry",
+              label: "Headline Fallout",
+              value: "Story Movement",
+              detail: result.rivalryNotes[0],
+              tone: "story",
+            }
+          : {
+              id: "headline-segment",
+              label: "Biggest Moment",
+              value: bestSegment.participantNames.join(" / ") || bestSegment.type,
+              detail: bestSegment.recapNote ?? `${bestSegment.type} led the card with a ${bestSegment.score}.`,
+              tone: bestSegment.score >= 85 ? "strong" : bestSegment.score < 60 ? "danger" : "steady",
+            };
+
+  const consequenceReel: ResultsRecapBeat[] = [
+    {
+      id: "title-scene",
+      label: "Title Scene",
+      value: titleChanges.length ? `${titleChanges.length} change${titleChanges.length === 1 ? "" : "s"}` : titleHistoryEvents.length ? `${titleHistoryEvents.length} logged` : "Quiet",
+      detail: titleChanges[0]?.note ?? result.titleNotes[0] ?? "No title change or defense fallout was logged from this result.",
+      tone: titleChanges.length ? "title" : titleHistoryEvents.length ? "steady" : "quiet",
+    },
+    {
+      id: "rivalry-heat",
+      label: "Rivalry Heat",
+      value: rivalryHistoryEvents.length ? `${rivalryHistoryEvents.length} move${rivalryHistoryEvents.length === 1 ? "" : "s"}` : result.rivalryNotes.length ? `${result.rivalryNotes.length} note${result.rivalryNotes.length === 1 ? "" : "s"}` : "No move",
+      detail: result.rivalryNotes[0] ?? "No rivalry movement was logged from this result.",
+      tone: rivalryHistoryEvents.length || result.rivalryNotes.length ? "story" : "quiet",
+    },
+    {
+      id: "locker-room",
+      label: "Locker Room",
+      value: injuryNotes.length ? `${injuryNotes.length} injury` : moraleBoosts.length || moraleDrops.length ? `${moraleBoosts.length + moraleDrops.length} morale` : "Level",
+      detail: injuryNotes[0]?.note ?? moraleDrops[0]?.note ?? moraleBoosts[0]?.note ?? "No injury or morale fallout note was logged from this result.",
+      tone: injuryNotes.length ? "danger" : moraleDrops.length ? "story" : moraleBoosts.length ? "strong" : "quiet",
+    },
+    {
+      id: "open-challenge",
+      label: "Open Challenge",
+      value: openChallengeReveals.length ? `${openChallengeReveals.length} reveal${openChallengeReveals.length === 1 ? "" : "s"}` : "None",
+      detail: openChallengeReveals[0]
+        ? `${openChallengeReveals[0].resolvedOpponentName} answered ${openChallengeReveals[0].participantNames[0] ?? "the challenge"}.`
+        : "No Open Challenge reveal was part of this result.",
+      tone: openChallengeReveals.length ? "reveal" : "quiet",
+    },
+  ];
+
+  const causeDriver = causeLedger[0]?.items[0]?.detail;
+  const falloutDriver = broadcastFallout.items[0]?.detail;
+
+  return {
+    verdict: buildBroadcastRecap(result),
+    headline,
+    consequenceReel,
+    whyItMattered: causeDriver ?? falloutDriver ?? `${result.showName} closed at ${result.totalScore} (${getShowGrade(result.totalScore)}), with ${bestSegment.participantNames.join(" / ") || "the top segment"} leading the score shape.`,
+  };
+}
+
 function buildSavedGameState(
   game: GameState,
   screen: SavedGameState["screen"],
@@ -5422,38 +5529,38 @@ function DashboardScreen({
             <p className="dashboard-panel-read">{brandPulseSnapshot?.detail ?? livingWorldPressure.weekRead}</p>
             <div className="dashboard-panel-scroll">
               <div className="dashboard-context-stack">
-                <div>
+                <div className="world-pressure-card office-read">
                   <span>Brand Office</span>
                   <strong>{formatPressureLabel(pressureLabel)}</strong>
                   <small>{financePresenceRead}</small>
                 </div>
-                <div>
+                <div className="world-pressure-card support-read">
                   <span>Latest Gate</span>
                   <strong>{latestFinanceReport ? latestFinanceReport.attendance.toLocaleString() : "No Show"}</strong>
                   <small>{latestFinanceReport ? `Latest P/L ${formatMoney(latestFinanceReport.profitLoss)}` : "Finance report appears after a show runs"}</small>
                 </div>
-                <div>
+                <div className="world-pressure-card primary-read">
                   <span>Living World</span>
                   <strong>{livingWorldPressure.whoIsWatching}</strong>
                   <small>{livingWorldPressure.riskRead}</small>
                 </div>
-                <div>
+                <div className="world-pressure-card next-move-read">
                   <span>Next Move</span>
                   <strong>{livingWorldPressure.nextAction}</strong>
                   <small>{livingWorldPressure.items[0]?.detail ?? "Current-state pressure only"}</small>
                 </div>
-                <div>
+                <div className="world-pressure-card support-read">
                   <span>Rival Landscape</span>
                   <strong>{rivalBrands.length} Chairs</strong>
                   <small>{getRivalUniverseRead(rivalBrands)}</small>
                 </div>
-                <div>
+                <div className="world-pressure-card support-read">
                   <span>PLE Build</span>
                   <strong>{pleBuildPressure.phaseLabel}</strong>
                   <small>{pleBuildPressure.detail}</small>
                 </div>
                 {latestSocialPost ? (
-                  <div>
+                  <div className="world-pressure-card support-read">
                     <span>IWC Buzz</span>
                     <strong>{formatSocialCategory(latestSocialPost.category)}</strong>
                     <small>{latestSocialPost.text} · {formatSocialTone(latestSocialPost.tone)}</small>
@@ -5464,27 +5571,6 @@ function DashboardScreen({
           </article>
         </section>
 
-        <section className="dashboard-bottom-rail" aria-label="Brand HQ quick navigation">
-          <span>{game.brandName} Control Room</span>
-          <button className="secondary-action" onClick={() => onNavigate("roster")}>
-            Roster
-          </button>
-          <button className="secondary-action" onClick={() => onNavigate("championships")}>
-            Championships
-          </button>
-          <button className="secondary-action" onClick={() => onNavigate("rivalries")}>
-            Rivalries
-          </button>
-          <button className="secondary-action" onClick={() => onNavigate("social")}>
-            Social
-          </button>
-          <button className="secondary-action" onClick={() => onNavigate("finance")}>
-            Finance
-          </button>
-          <button className="primary-action" onClick={() => onNavigate("booking")}>
-            {validSegments >= 2 ? "Review Card" : "Book Show"}
-          </button>
-        </section>
       </section>
     </main>
   );
@@ -7448,38 +7534,72 @@ function ResultsScreen({
   const pleResultRead = isPleResult
     ? `Major-event night complete; the room now moves on the fallout instead of the build notes.`
     : `Broadcast locked; review the fallout before calendar movement.`;
+  const recapPackage = buildResultsRecapPackage(result, broadcastFallout, causeLedger);
 
   return (
     <main className="app-shell">
       <Header game={game} />
       <GameNav currentScreen="results" hasResults hasWeekReview={canContinueWeekReview} onNavigate={onNavigate} />
-      <section className="results-hero">
-        <div>
-          <p className="eyebrow">
-            Season {result.seasonNumber} · Week {result.week} · {getShowTypeLabel(result.showType)}
-          </p>
-          <h2>
-            {result.totalScore} <span>{getShowGrade(result.totalScore)}</span>
-          </h2>
-          <p className="lede">
-            {isPleResult ? `${getShowTypeLabel(result.showType)} package locked. ${pleResultRead} ` : ""}
-            {buildBroadcastRecap(result)}
-          </p>
-        </div>
-        <button className="primary-action" onClick={onContinueWeekReview} disabled={!canContinueWeekReview}>
-          {canContinueWeekReview ? "Continue to Week Review" : "Week Review Complete"}
-        </button>
-      </section>
+      <section className={`results-recap-package ${isPleResult ? "ple-panel" : ""}`} aria-label="Broadcast recap package">
+        <section className="results-hero">
+          <div className="results-scoreboard">
+            <p className="eyebrow">
+              Season {result.seasonNumber} · Week {result.week} · {getShowTypeLabel(result.showType)}
+            </p>
+            <h2>
+              {result.totalScore} <span>{getShowGrade(result.totalScore)}</span>
+            </h2>
+            <p className="results-show-name">{result.showName}</p>
+          </div>
+          <div className="results-broadcast-verdict">
+            <p className="eyebrow">{isPleResult ? "Major Event Recap" : "Broadcast Recap"}</p>
+            <h3>{broadcastFallout.headline}</h3>
+            <p>
+              {isPleResult ? `${getShowTypeLabel(result.showType)} package locked. ${pleResultRead} ` : ""}
+              {recapPackage.verdict}
+            </p>
+          </div>
+          <button className="primary-action" onClick={onContinueWeekReview} disabled={!canContinueWeekReview}>
+            {canContinueWeekReview ? "Continue to Week Review" : "Week Review Complete"}
+          </button>
+        </section>
 
-      <section className="status-grid" aria-label="Show highlights">
-        <Metric label="Show Score" value={`${result.totalScore}`} detail={`Grade ${getShowGrade(result.totalScore)}`} />
-        <Metric label="Best Segment" value={`${bestSegment.score}`} detail={getSegmentResultParticipantsLabel(bestSegment, game.wrestlers)} />
-        <Metric
-          label="Runtime"
-          value={result.actualRuntimeMinutes !== undefined ? `${result.actualRuntimeMinutes} min` : "Legacy"}
-          detail={result.plannedRuntimeMinutes !== undefined ? `Planned ${result.plannedRuntimeMinutes} min${result.broadcastOverrunMinutes ? ` · +${result.broadcastOverrunMinutes} over` : ""}` : "No runtime record"}
-        />
-        <Metric label="Best Type" value={bestSegment.type} detail={getSegmentResultParticipantsLabel(bestSegment, game.wrestlers)} />
+        <section className="results-headline-grid" aria-label="Headline fallout">
+          <article className={`results-headline-card tone-${recapPackage.headline.tone}`}>
+            <span>{recapPackage.headline.label}</span>
+            <strong>{recapPackage.headline.value}</strong>
+            <p>{recapPackage.headline.detail}</p>
+          </article>
+          <article className="results-performer-swing">
+            <span>Who Moved</span>
+            <div>
+              <strong>{result.biggestMomentumGain.name}</strong>
+              <small>Momentum +{result.biggestMomentumGain.amount}</small>
+            </div>
+            <div>
+              <strong>{result.biggestFatigueIncrease.name}</strong>
+              <small>Fatigue +{result.biggestFatigueIncrease.amount}</small>
+            </div>
+          </article>
+        </section>
+
+        <section className="results-consequence-reel" aria-label="Consequence reel">
+          {recapPackage.consequenceReel.map((beat) => (
+            <article className={`results-reel-card tone-${beat.tone}`} key={beat.id}>
+              <span>{beat.label}</span>
+              <strong>{beat.value}</strong>
+              <p>{beat.detail}</p>
+            </article>
+          ))}
+        </section>
+
+        <section className="results-why-strip" aria-label="Why this week mattered">
+          <div>
+            <p className="eyebrow">Why This Week Mattered</p>
+            <h3>{bestSegment.participantNames.join(" / ") || bestSegment.type}</h3>
+          </div>
+          <p>{recapPackage.whyItMattered}</p>
+        </section>
       </section>
 
       <BroadcastFalloutPanel snapshot={broadcastFallout} />
