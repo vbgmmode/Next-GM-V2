@@ -3465,6 +3465,36 @@ function getDefaultRivalryComposerParticipantIds(wrestlers: Wrestler[]) {
   return [...selected, "", "", "", ""].slice(0, 4);
 }
 
+function getPreferredTagPartnerId(wrestlerId: string, wrestlers: Wrestler[], excludedIds: string[]) {
+  const wrestler = wrestlers.find((talent) => talent.id === wrestlerId);
+
+  if (!wrestler) {
+    return "";
+  }
+
+  const excluded = new Set(excludedIds.filter((id) => id && id !== wrestlerId));
+  const affiliations = getRosterAffiliations(wrestlers)
+    .filter((affiliation) => affiliation.memberWrestlerIds.includes(wrestlerId))
+    .sort((a, b) => {
+      const aRank = a.kind === "tag_team" ? 0 : a.kind === "faction" ? 1 : 2;
+      const bRank = b.kind === "tag_team" ? 0 : b.kind === "faction" ? 1 : 2;
+      return aRank - bRank || a.name.localeCompare(b.name);
+    });
+
+  for (const affiliation of affiliations) {
+    const partner = affiliation.memberWrestlerIds
+      .map((id) => wrestlers.find((talent) => talent.id === id))
+      .filter((talent): talent is Wrestler => Boolean(talent))
+      .find((candidate) => candidate.id !== wrestlerId && !excluded.has(candidate.id) && canWrestlersShareMatch([wrestler, candidate]));
+
+    if (partner) {
+      return partner.id;
+    }
+  }
+
+  return "";
+}
+
 function getRivalryStructureKey(structure: RivalryStructure, participantIds: string[]) {
   if (structure === "tag_team" && participantIds.length === 4) {
     const firstSide = participantIds.slice(0, 2).sort().join("+");
@@ -6869,7 +6899,7 @@ function DashboardScreen({
   const compactDashboardRead = (read: string, limit = 76) => (read.length > limit ? `${read.slice(0, limit - 3)}...` : read);
 
   return (
-    <main className={`app-shell dashboard-command-shell broadcast-theme-${dashboardTheme}`} data-broadcast-theme={dashboardTheme}>
+    <main className={`app-shell gameplay-command-shell dashboard-command-shell broadcast-theme-${dashboardTheme}`} data-broadcast-theme={dashboardTheme}>
       <Header game={game} />
       <GameNav currentScreen="dashboard" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       <section className="dashboard-command-room" aria-label="Brand HQ command center">
@@ -7367,7 +7397,7 @@ function BookingScreen({
   }
 
   return (
-    <main className={`app-shell booking-app-shell ${productionDetailsOpen ? "producer-note-expanded" : ""}`}>
+    <main className={`app-shell gameplay-command-shell booking-app-shell ${productionDetailsOpen ? "producer-note-expanded" : ""}`}>
       <Header game={game} />
       <GameNav currentScreen="booking" hasResults={Boolean(game.showHistory.length)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       {isQaHarness ? (
@@ -7889,7 +7919,7 @@ function RosterScreen({
   );
 
   return (
-    <main className="app-shell roster-command-shell">
+    <main className="app-shell gameplay-command-shell roster-command-shell">
       <Header game={game} />
       <GameNav currentScreen="roster" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
 
@@ -8591,7 +8621,7 @@ function ChampionshipsScreen({
   }
 
   return (
-    <main className="app-shell championships-command-shell">
+    <main className="app-shell gameplay-command-shell championships-command-shell">
       <Header game={game} />
       <GameNav currentScreen="championships" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       <section className="dashboard-hero">
@@ -9007,6 +9037,7 @@ function RivalriesScreen({
   const [participantIds, setParticipantIds] = useState<string[]>(() => getDefaultRivalryComposerParticipantIds(game.wrestlers));
   const [stakes, setStakes] = useState<RivalryStakes>("personal");
   const [storylineId, setStorylineId] = useState(getDefaultStorylineIdForStakes("personal"));
+  const [isCreativeDeskExpanded, setIsCreativeDeskExpanded] = useState(false);
   const range = getRivalryStructureParticipantRange(structure);
   const composerParticipantIds = participantIds.slice(0, range.max).filter(Boolean);
   const isDuplicate = composerParticipantIds.length >= range.min && hasDuplicateRivalry(game.rivalries, structure, composerParticipantIds);
@@ -9024,7 +9055,6 @@ function RivalriesScreen({
   const selectedStoryRoomRead =
     selectedRivalry && selectedSnapshot ? getRivalryStoryRoomRead(selectedRivalry, selectedSnapshot, selectedParticipantReads, selectedHistory[0]) : undefined;
   const selectedStorylineRead = selectedRivalry ? getRivalryStoryline(selectedRivalry) : undefined;
-  const selectedRelationship = selectedRivalry ? getRivalryRelationship(selectedRivalry) : undefined;
   const selectedStage = selectedRivalry ? getRivalryStageContext(game, selectedRivalry) : undefined;
   const selectedTitleRelevance = selectedRivalry ? getRivalryTitleRelevance(selectedRivalry, game.championships, game.wrestlers) : undefined;
   const selectedGmRead =
@@ -9036,17 +9066,6 @@ function RivalriesScreen({
           titleRelevant: Boolean(selectedTitleRelevance && selectedTitleRelevance.label !== "Title-Friendly Story"),
         })
       : "";
-  const structureCounts = game.rivalries.reduce<Record<RivalryStructure, number>>(
-    (counts, rivalry) => {
-      counts[getRivalryStructure(rivalry)] += 1;
-      return counts;
-    },
-    { singles: 0, tag_team: 0, multi_person: 0 },
-  );
-  const blockedRivalries = game.rivalries.filter((rivalry) => isRivalryIntergenderBlocked(rivalry, game.wrestlers));
-  const staleRivalries = game.rivalries.filter((rivalry) => rivalry.status === "stale" || rivalry.freshness <= 35);
-  const offCardPressure = rivalrySnapshots.filter(({ snapshot }) => snapshot.currentCardBeats === 0 && snapshot.primary.tone !== "hot").slice(0, 2);
-
   useEffect(() => {
     if (!game.rivalries.length) {
       setSelectedRivalryId("");
@@ -9062,6 +9081,20 @@ function RivalriesScreen({
     setParticipantIds((current) => {
       const next = [...current];
       next[index] = wrestlerId;
+
+      if (structure === "tag_team" && wrestlerId) {
+        const sideStart = index < 2 ? 0 : 2;
+        const partnerIndex = index === sideStart ? sideStart + 1 : sideStart;
+
+        if (!next[partnerIndex]) {
+          const partnerId = getPreferredTagPartnerId(wrestlerId, game.wrestlers, next);
+
+          if (partnerId) {
+            next[partnerIndex] = partnerId;
+          }
+        }
+      }
+
       return next;
     });
   }
@@ -9075,24 +9108,9 @@ function RivalriesScreen({
   }
 
   return (
-    <main className="app-shell">
+    <main className="app-shell gameplay-command-shell rivalries-command-shell">
       <Header game={game} />
       <GameNav currentScreen="rivalries" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
-      <section className="rivalry-command-hero">
-        <div>
-          <p className="eyebrow">Creative Room</p>
-          <h2>Rivalry Desk</h2>
-          <p className="lede">Shape singles feuds, tag-team stories, and multi-person conflicts from current heat, freshness, timing, and resolved history. The desk gives context; outcomes stay hidden until the show runs.</p>
-        </div>
-        <div className="rivalry-command-scoreboard" aria-label="Rivalry desk summary">
-          <Metric label="Active" value={`${game.rivalries.length}`} detail="Stories on the board" />
-          <Metric label="Avg Heat" value={game.rivalries.length ? `${Math.round(game.rivalries.reduce((total, rivalry) => total + rivalry.heat, 0) / game.rivalries.length)}` : "0"} detail="Current heat" />
-          <Metric label="Tag/Multi" value={`${structureCounts.tag_team + structureCounts.multi_person}`} detail="Expanded structures" />
-          <button className="primary-action" onClick={() => onNavigate("booking")}>
-            Book Show
-          </button>
-        </div>
-      </section>
 
       <section className="rivalry-command-desk" aria-label="Rivalry command desk">
         <aside className="rivalry-active-rail" aria-label="Active rivalries">
@@ -9111,16 +9129,15 @@ function RivalriesScreen({
                     <span className="rivalry-row-index">{index + 1}</span>
                     <span className="rivalry-row-main">
                       <strong>{rivalry.name}</strong>
-                      <small>{formatRivalryParticipantsForStructure(rivalry, game.wrestlers)}</small>
                     </span>
                     <span className="rivalry-row-tags">
                       <span>{formatRivalryStructure(getRivalryStructure(rivalry))}</span>
                       <span>{formatRivalryStakes(rivalry.stakes)}</span>
                       <span>{rivalryBlocked ? "Blocked" : timingSnapshot.primary.label}</span>
                     </span>
-                    <span className="rivalry-row-meters">
-                      <span>Heat {rivalry.heat}</span>
-                      <span>Fresh {rivalry.freshness}</span>
+                    <span className="rivalry-row-meters" aria-label={`${rivalry.name} heat and freshness`}>
+                      <span>Heat <strong>{rivalry.heat}</strong></span>
+                      <span>Fresh <strong>{rivalry.freshness}</strong></span>
                     </span>
                   </button>
                 );
@@ -9132,17 +9149,24 @@ function RivalriesScreen({
         </aside>
 
         <section className="rivalry-spotlight-stage" aria-label="Selected rivalry spotlight">
-          {selectedRivalry && selectedSnapshot && selectedStorylineRead && selectedRelationship && selectedStage && selectedStoryRoomRead ? (
+          {selectedRivalry && selectedSnapshot && selectedStorylineRead && selectedStage && selectedStoryRoomRead ? (
             <>
               <div className="rivalry-spotlight-head">
                 <div>
                   <p className="eyebrow">{formatRivalryStructure(getRivalryStructure(selectedRivalry))} · {formatRivalryStakes(selectedRivalry.stakes)} Stakes</p>
                   <h3>{selectedRivalry.name}</h3>
-                  <p>{formatRivalryParticipantsForStructure(selectedRivalry, game.wrestlers)}</p>
+                  <div className="rivalry-spotlight-status">
+                    <strong>{isRivalryIntergenderBlocked(selectedRivalry, game.wrestlers) ? "Blocked Context" : selectedSnapshot.primary.label}</strong>
+                    <span>{selectedSnapshot.timingRead}</span>
+                  </div>
                 </div>
-                <div className="rivalry-spotlight-status">
-                  <strong>{isRivalryIntergenderBlocked(selectedRivalry, game.wrestlers) ? "Blocked Context" : selectedSnapshot.primary.label}</strong>
-                  <span>{selectedSnapshot.timingRead}</span>
+                <div className="rivalry-spotlight-actions">
+                  <button className="primary-action" onClick={() => onNavigate("booking")}>
+                    Book This Story
+                  </button>
+                  <button className="danger-action" onClick={() => onEndRivalry(selectedRivalry.id)}>
+                    End Rivalry
+                  </button>
                 </div>
               </div>
 
@@ -9195,33 +9219,11 @@ function RivalriesScreen({
                 </article>
               </div>
 
-              <section className="rivalry-context-panel" aria-label={`${selectedRivalry.name} story room context`}>
-                <div>
-                  <span>Story Room Read</span>
-                  <strong>{selectedStoryRoomRead.headline}</strong>
-                  <p>{selectedStoryRoomRead.detail}</p>
-                </div>
-                <div className="rivalry-participant-read-grid">
-                  {selectedParticipantReads.slice(0, 4).map((read) => (
-                    <article key={read.wrestler.id}>
-                      <span>{read.wrestler.name}</span>
-                      <strong>{read.labels.length ? read.labels.join(" / ") : "Available"}</strong>
-                      <p>{read.detail}</p>
-                    </article>
-                  ))}
-                </div>
-              </section>
-
               <div className="rivalry-story-map">
                 <article>
                   <span>Storyline</span>
                   <strong>{selectedStorylineRead.name}</strong>
                   <p>{selectedStorylineRead.description}</p>
-                </article>
-                <article>
-                  <span>Relationship</span>
-                  <strong>{selectedRelationship.name}</strong>
-                  <p>{selectedRelationship.description}</p>
                 </article>
                 <article>
                   <span>Lifecycle Stage</span>
@@ -9239,28 +9241,18 @@ function RivalriesScreen({
                 </article>
               </div>
 
-              <div className="history-list rivalry-history-scroll" aria-label={`${selectedRivalry.name} recent history`}>
-                <span className="history-label">Recent History</span>
-                {selectedHistory.length ? (
-                  selectedHistory.map((event) => (
+              {selectedHistory.length ? (
+                <div className="history-list rivalry-history-scroll" aria-label={`${selectedRivalry.name} recent history`}>
+                  <span className="history-label">Recent History</span>
+                  {selectedHistory.map((event) => (
                     <article className="history-event" key={event.id}>
                       <span>{formatRivalryEventType(event.eventType)} · {formatHistoryStamp(event)}</span>
                       <p>{event.note}</p>
                     </article>
-                  ))
-                ) : (
-                  <p className="muted-copy">No rivalry history recorded yet.</p>
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : null}
 
-              <div className="rivalry-spotlight-actions">
-                <button className="primary-action" onClick={() => onNavigate("booking")}>
-                  Book This Story
-                </button>
-                <button className="danger-action" onClick={() => onEndRivalry(selectedRivalry.id)}>
-                  End Rivalry
-                </button>
-              </div>
             </>
           ) : (
             <div className="empty-state">No selected rivalry. Create a singles, tag, or multi-person story to open the desk.</div>
@@ -9328,42 +9320,33 @@ function RivalriesScreen({
       </section>
 
       <section className="rivalry-ecosystem-band" aria-label="Rivalry ecosystem">
-        <article className={`rivalry-creative-desk creative-${creativeDesk.tone}`}>
-          <div className="rivalry-creative-head">
+        <article className={`rivalry-creative-desk creative-${creativeDesk.tone} ${isCreativeDeskExpanded ? "is-expanded" : "is-collapsed"}`}>
+          <button
+            className="rivalry-creative-toggle"
+            aria-expanded={isCreativeDeskExpanded}
+            onClick={() => setIsCreativeDeskExpanded((current) => !current)}
+          >
             <div>
               <p className="eyebrow">Creative Desk</p>
               <h3>{creativeDesk.headline}</h3>
-              <p>{creativeDesk.detail}</p>
             </div>
             <strong>{creativeDesk.focusLabel}</strong>
-          </div>
-          <div className="rivalry-creative-grid">
-            {creativeDesk.items.map((item) => (
-              <article className={`creative-${item.tone}`} key={item.label}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <p>{item.detail}</p>
-              </article>
-            ))}
-          </div>
-        </article>
-        <article className="rivalry-ecosystem-panel">
-          <p className="eyebrow">Warnings And Notes</p>
-          <div className="rivalry-warning-list">
-            {blockedRivalries.length ? <p>{blockedRivalries.length} legacy rivalry context is blocked by the current match boundary.</p> : null}
-            {staleRivalries.length ? <p>{staleRivalries[0].name} needs a distinct beat or a clean exit.</p> : null}
-            {offCardPressure.length ? <p>{offCardPressure[0].rivalry.name} has pressure but no current-card beat yet.</p> : null}
-            {!blockedRivalries.length && !staleRivalries.length && !offCardPressure.length ? <p>No urgent story-room warnings. Keep the hottest stories visible without spoiling outcomes.</p> : null}
-          </div>
-        </article>
-        <article className="rivalry-template-panel">
-          <p className="eyebrow">Storyline Templates</p>
-          {safeRivalryStorylineOptions.slice(0, 5).map((storyline) => (
-            <div key={storyline.id}>
-              <strong>{storyline.name}</strong>
-              <span>{storyline.participantStructure} · {storyline.titleFit}</span>
-            </div>
-          ))}
+            <span>{isCreativeDeskExpanded ? "Collapse" : "Expand"}</span>
+          </button>
+          {isCreativeDeskExpanded ? (
+            <>
+              <p className="rivalry-creative-detail">{creativeDesk.detail}</p>
+              <div className="rivalry-creative-grid">
+                {creativeDesk.items.map((item) => (
+                  <article className={`creative-${item.tone}`} key={item.label}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                    <p>{item.detail}</p>
+                  </article>
+                ))}
+              </div>
+            </>
+          ) : null}
         </article>
       </section>
     </main>
@@ -9394,7 +9377,7 @@ function CalendarScreen({
   }
 
   return (
-    <main className="app-shell">
+    <main className="app-shell gameplay-command-shell">
       <Header game={game} />
       <GameNav currentScreen="calendar" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       <section className="dashboard-hero">
@@ -9473,7 +9456,7 @@ function SocialScreen({
   const moodSummary = getIwcMoodSummary(game);
 
   return (
-    <main className="app-shell">
+    <main className="app-shell gameplay-command-shell">
       <Header game={game} />
       <GameNav currentScreen="social" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       <section className="dashboard-hero">
@@ -9573,7 +9556,7 @@ function FinanceScreen({
   const officeRead = getFinanceOfficeRead(game);
 
   return (
-    <main className="app-shell">
+    <main className="app-shell gameplay-command-shell">
       <Header game={game} />
       <GameNav currentScreen="finance" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       <section className="dashboard-hero">
