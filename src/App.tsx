@@ -7148,6 +7148,8 @@ function ResultsScreen({
   const bestSegment = getBestSegment(result);
   const financeReport = getFinanceReportForResult(game, result);
   const causeLedger = buildPostShowCauseLedger(game, result, financeReport);
+  const titleHistoryEvents = result.titleHistoryEvents ?? [];
+  const titleChanges = titleHistoryEvents.filter((event) => event.eventType === "title_change");
 
   return (
     <main className="app-shell">
@@ -7193,15 +7195,24 @@ function ResultsScreen({
         </section>
       ) : null}
 
-      {result.titleNotes?.length ? (
+      {titleChanges.length ? (
         <section className="title-fallout" aria-label="Title fallout">
           <div className="section-heading">
-            <p className="eyebrow">Title Fallout</p>
-            <h3>Championship Stakes</h3>
+            <p className="eyebrow">Crowning Impact</p>
+            <h3>Championships Changed Hands</h3>
           </div>
-          {result.titleNotes.map((note, index) => (
-            <p key={`${note}-${index}`}>{note}</p>
-          ))}
+          <p className="lede">One or more belts moved. The room now lives with a sharper title picture.</p>
+          <div className="history-list">
+            {titleChanges.map((event) => (
+              <article className="history-event" key={`result-${event.id}`}>
+                <span>{event.championshipName} · {formatChampionshipEventType(event.eventType)} · {formatHistoryStamp(event)}</span>
+                <p>
+                  {event.note}
+                  {getChampionshipEventPairLine(event) ? ` ${getChampionshipEventPairLine(event)}.` : ""}
+                </p>
+              </article>
+            ))}
+          </div>
         </section>
       ) : null}
 
@@ -7293,6 +7304,8 @@ function WeekReviewScreen({
     .filter((rivalry): rivalry is Rivalry => Boolean(rivalry));
   const financeMarketContext = getVenueMarketContextReadout(financeReport, getSeasonFinanceReports(game));
   const titleHistoryEvents = result.titleHistoryEvents ?? [];
+  const titleChanges = titleHistoryEvents.filter((event) => event.eventType === "title_change");
+  const titleDefenses = titleHistoryEvents.filter((event) => event.eventType !== "title_change");
   const rivalryHistoryEvents = result.rivalryHistoryEvents ?? [];
   const nextWeek = game.calendar.find((week) => week.weekNumber === result.week + 1);
   const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= result.week + 1 && !week.completed);
@@ -7446,7 +7459,31 @@ function WeekReviewScreen({
           <p className="eyebrow">Championship Fallout</p>
           <h3>Title Picture</h3>
         </div>
-        {titleHistoryEvents.length ? (
+        {titleChanges.length ? (
+          <article className="title-change-callout">
+            <p className="lede">One or more titles changed hands. The champion landscape now carries the full weight of this broadcast.</p>
+            <div className="history-list">
+              {titleChanges.map((event) => (
+                <div className="history-event" key={`week-review-change-${event.id}`}>
+                  <span>{formatChampionshipEventType(event.eventType)} · {event.championshipName} · {formatHistoryStamp(event)}</span>
+                  {getChampionshipEventPairLine(event) ? <strong>{getChampionshipEventPairLine(event)}</strong> : null}
+                  <p>{event.note}</p>
+                </div>
+              ))}
+            </div>
+            {titleDefenses.length ? (
+              <div className="history-list">
+                {titleDefenses.map((event) => (
+                  <div className="history-event" key={`week-review-defense-${event.id}`}>
+                    <span>{formatChampionshipEventType(event.eventType)} · {event.championshipName}</span>
+                    {getChampionshipEventPairLine(event) ? <strong>{getChampionshipEventPairLine(event)}</strong> : null}
+                    <p>{event.note}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </article>
+        ) : titleHistoryEvents.length ? (
           <div className="history-list">
             {titleHistoryEvents.map((event) => (
               <article className="history-event" key={event.id}>
