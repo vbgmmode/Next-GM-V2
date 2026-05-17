@@ -1035,6 +1035,114 @@ function getBroadcastRuntimeRisk(runtimeMinutes: number) {
   return undefined;
 }
 
+function getBookingCardStatus(segmentCount: number, invalidSegments: number, readiness: ReturnType<typeof getShowReadiness>) {
+  if (segmentCount === 0) {
+    return { label: "Empty Card", tone: "empty" };
+  }
+
+  if (readiness.canRun) {
+    return { label: "Ready To Run", tone: "ready" };
+  }
+
+  if (invalidSegments > 0 || readiness.tone === "blocked" || readiness.tone === "overloaded") {
+    return { label: "Needs Attention", tone: "blocked" };
+  }
+
+  return { label: "In Production", tone: "building" };
+}
+
+function getBookingSegmentCoverageChips(segment: Segment, game: GameState) {
+  const chips: string[] = [];
+  const championship = segment.championshipId ? game.championships.find((title) => title.id === segment.championshipId) : undefined;
+  const rivalry = segment.rivalryId ? game.rivalries.find((item) => item.id === segment.rivalryId) : undefined;
+  const majorStars = getSegmentParticipants(segment, game.wrestlers).filter(isMajorEventStar);
+
+  if (championship) {
+    chips.push(`${canSegmentContestChampionship(segment, championship, game.wrestlers) ? "Title Match" : "Title Context"} · ${championship.name}`);
+  }
+
+  if (rivalry) {
+    chips.push(`Rivalry · ${rivalry.name}`);
+  }
+
+  if (majorStars.length) {
+    chips.push(`Star Power · ${majorStars.slice(0, 2).map((wrestler) => wrestler.name).join(" / ")}`);
+  }
+
+  if (segment.type === "Open Challenge") {
+    chips.push("Open Challenge · Opponent hidden until Run Show");
+  }
+
+  if (!isValidSegment(segment, game.wrestlers)) {
+    chips.push("Needs Attention");
+  }
+
+  return chips.length ? chips : [getSegmentRuntime(segment)];
+}
+
+function getBookingWrestlerRiskReads(wrestler: Wrestler, bookedCount: number) {
+  const reads: string[] = [];
+
+  if (wrestler.injuryStatus === "major") {
+    reads.push("major injury unavailable");
+  } else if (wrestler.injuryStatus === "minor") {
+    reads.push("minor injury");
+  }
+
+  if (wrestler.fatigue >= 75) {
+    reads.push(`high fatigue ${wrestler.fatigue}`);
+  } else if (wrestler.fatigue >= 60) {
+    reads.push(`fatigue ${wrestler.fatigue}`);
+  }
+
+  if ((wrestler.consecutiveWeeksBooked ?? 0) >= 3) {
+    reads.push(`${wrestler.consecutiveWeeksBooked} week booking streak`);
+  }
+
+  if (wrestler.morale <= 45) {
+    reads.push(`morale ${wrestler.morale}`);
+  }
+
+  if (bookedCount > 1) {
+    reads.push(`${bookedCount} segments tonight`);
+  }
+
+  return reads;
+}
+
+function getBookingProducerNote({
+  missingMajorStars,
+  readiness,
+  riskCount,
+  segmentCount,
+  titleContextCount,
+  rivalrySegmentCount,
+}: {
+  missingMajorStars: Wrestler[];
+  readiness: ReturnType<typeof getShowReadiness>;
+  riskCount: number;
+  segmentCount: number;
+  titleContextCount: number;
+  rivalrySegmentCount: number;
+}) {
+  if (segmentCount === 0) {
+    return "Production has no opener, middle, or closing block yet. Add segments first; the existing validation path still controls when the show can run.";
+  }
+
+  if (!readiness.canRun) {
+    return readiness.note;
+  }
+
+  const coverageReads = [
+    titleContextCount ? "title context is on the board" : "no title context is attached",
+    rivalrySegmentCount ? "rivalry beats are represented" : "no rivalry beat is attached",
+  ];
+  const riskRead = riskCount ? `${riskCount} current workload flag${riskCount === 1 ? "" : "s"} ${riskCount === 1 ? "needs" : "need"} a producer look` : "no current-card workload flags are surfacing";
+  const missingRead = missingMajorStars.length ? `Top acts off card: ${missingMajorStars.slice(0, 3).map((wrestler) => wrestler.name).join(" / ")}.` : "";
+
+  return `Ready state comes from existing validation: ${coverageReads.join(", ")} and ${riskRead}. ${missingRead}`.trim();
+}
+
 function isMajorEventStar(wrestler: Wrestler) {
   return wrestler.popularity >= 90 || wrestler.momentum >= 90 || wrestler.roleTier?.toLowerCase() === "mainevent";
 }
@@ -5640,6 +5748,16 @@ function BookingScreen({
     });
     return counts;
   }, {});
+  const bookedWrestlerIds = new Set(game.currentShow.flatMap((segment) => segment.participantIds));
+  const bookedWrestlers = game.wrestlers.filter((wrestler) => bookedWrestlerIds.has(wrestler.id));
+  const bookedMajorStars = bookedWrestlers.filter(isMajorEventStar);
+  const missingMajorStars = game.wrestlers.filter((wrestler) => isMajorEventStar(wrestler) && !bookedWrestlerIds.has(wrestler.id));
+  const riskRows = bookedWrestlers
+    .map((wrestler) => ({
+      reads: getBookingWrestlerRiskReads(wrestler, bookedCounts[wrestler.id] ?? 0),
+      wrestler,
+    }))
+    .filter((item) => item.reads.length);
   const segmentTypeCounts = game.currentShow.reduce<Record<SegmentType, number>>(
     (counts, segment) => ({ ...counts, [segment.type]: counts[segment.type] + 1 }),
     {
@@ -5650,17 +5768,50 @@ function BookingScreen({
       "Open Challenge": 0,
     },
   );
-  const bookedRosterCount = new Set(game.currentShow.flatMap((segment) => segment.participantIds)).size;
+  const bookedRosterCount = bookedWrestlerIds.size;
   const unusedRosterCount = Math.max(0, game.wrestlers.length - bookedRosterCount);
   const topUnusedWrestler = getTopUnderusedWrestler(
     game.wrestlers.filter((wrestler) => !bookedCounts[wrestler.id]),
     game.currentWeek,
   );
   const rivalrySegmentCount = game.currentShow.filter((segment) => Boolean(segment.rivalryId)).length;
+  const titleContextCount = game.currentShow.filter((segment) => Boolean(segment.championshipId)).length;
+  const openChallengeCount = game.currentShow.filter((segment) => segment.type === "Open Challenge").length;
   const titleMatchCount = validShowSegments.filter((segment) => {
     const championship = segment.championshipId ? game.championships.find((title) => title.id === segment.championshipId) : undefined;
     return Boolean(championship && canSegmentContestChampionship(segment, championship, game.wrestlers));
   }).length;
+  const cardStatus = getBookingCardStatus(game.currentShow.length, invalidSegments, readiness);
+  const middleSegments = game.currentShow.length > 2 ? game.currentShow.slice(1, -1) : [];
+  const cardSpineRows = [
+    {
+      emptyRead: "Opening block waiting for the first TV beat.",
+      id: "opener",
+      label: "Opener",
+      segment: game.currentShow[0],
+    },
+    ...(middleSegments.length
+      ? middleSegments.map((segment, index) => ({
+          emptyRead: "",
+          id: `middle-${segment.id}`,
+          label: middleSegments.length === 1 ? "Middle" : `Middle ${index + 1}`,
+          segment,
+        }))
+      : [
+          {
+            emptyRead: game.currentShow.length ? "Interior support lane is still open." : "Middle blocks come online after the opener.",
+            id: "middle-empty",
+            label: "Middle",
+            segment: undefined,
+          },
+        ]),
+    {
+      emptyRead: "Closing block waiting for a final beat.",
+      id: "main-event",
+      label: "Main Event",
+      segment: game.currentShow.length > 1 ? game.currentShow[game.currentShow.length - 1] : undefined,
+    },
+  ];
   const mixLine = bookingSegmentTypes
     .filter((type) => segmentTypeCounts[type] > 0)
     .map((type) => `${type.replace("Backstage Angle", "Backstage").replace("Contract Signing", "Contract")}: ${segmentTypeCounts[type]}`)
@@ -5676,6 +5827,14 @@ function BookingScreen({
   const rosterDeskRead = topUnusedWrestler
     ? `${unusedRosterCount} roster member${unusedRosterCount === 1 ? "" : "s"} unused tonight. ${topUnusedWrestler.name} has been off TV for ${formatWeekCount(getWeeksSinceLastBooked(topUnusedWrestler, game.currentWeek))}.`
     : `${unusedRosterCount} roster member${unusedRosterCount === 1 ? "" : "s"} unused tonight. No long-absence pressure is surfacing from current roster history.`;
+  const producerNote = getBookingProducerNote({
+    missingMajorStars,
+    readiness,
+    riskCount: riskRows.length,
+    rivalrySegmentCount,
+    segmentCount: game.currentShow.length,
+    titleContextCount,
+  });
 
   function beginAddSegment(type: SegmentType) {
     const segmentId = `segment-${Date.now()}-${game.currentShow.length}`;
@@ -5808,21 +5967,94 @@ function BookingScreen({
 
       <PleBuildPressurePanel compact snapshot={pleBuildPressure} />
 
-      <section className="producer-rundown-panel" aria-label="Producer rundown">
+      <section className={`producer-rundown-panel card-shape-panel status-${cardStatus.tone}`} aria-label="Production rundown and card shape">
         <div className="producer-rundown-head">
           <div>
-            <p className="eyebrow">Producer Rundown</p>
-            <h3>{calendarWeek.showName} Board Read</h3>
+            <p className="eyebrow">Production Rundown</p>
+            <h3>{calendarWeek.showName} Card Shape</h3>
           </div>
-          <strong>{readiness.status}</strong>
+          <strong>{cardStatus.label}</strong>
         </div>
         <p>{producerRead}</p>
-        <div className="producer-rundown-grid">
-          <Metric label="Segments" value={`${game.currentShow.length}`} detail={`${validSegments} valid / ${invalidSegments} flagged`} />
-          <Metric label="Segment Mix" value={mixLine || "Empty"} detail="Current booked formats only" />
-          <Metric label="Title Coverage" value={`${titleMatchCount}`} detail={titleMatchCount ? "Valid title matches on card" : "No sanctioned title match"} />
-          <Metric label="Story Coverage" value={`${rivalrySegmentCount}`} detail={coverageRead} />
-          <Metric label="Unused Roster" value={`${unusedRosterCount}`} detail={rosterDeskRead} />
+        <div className="card-shape-layout">
+          <div className="card-spine" aria-label="Card spine">
+            {cardSpineRows.map((row) => (
+              <article className={`card-spine-row ${row.segment ? "" : "empty-slot"}`} key={row.id}>
+                <span>{row.label}</span>
+                {row.segment ? (
+                  <>
+                    <strong>{row.segment.segmentDisplayName ?? row.segment.type}</strong>
+                    <p>{getSegmentParticipantsLabel(row.segment, game.wrestlers)}</p>
+                    <div className="card-spine-chips">
+                      {getBookingSegmentCoverageChips(row.segment, game).map((chip) => (
+                        <em key={chip}>{chip}</em>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <strong>Production Slot Open</strong>
+                    <p>{row.emptyRead}</p>
+                  </>
+                )}
+              </article>
+            ))}
+          </div>
+
+          <div className="card-shape-side">
+            <div className="coverage-strip" aria-label="Current card coverage">
+              <div>
+                <span>Segments</span>
+                <strong>{game.currentShow.length}</strong>
+                <small>{validSegments} valid / {invalidSegments} flagged</small>
+              </div>
+              <div>
+                <span>Titles</span>
+                <strong>{titleContextCount ? `${titleContextCount}` : "Quiet"}</strong>
+                <small>{titleMatchCount ? `${titleMatchCount} sanctioned match${titleMatchCount === 1 ? "" : "es"}` : "No title match"}</small>
+              </div>
+              <div>
+                <span>Rivalries</span>
+                <strong>{rivalrySegmentCount ? `${rivalrySegmentCount}` : "Quiet"}</strong>
+                <small>{coverageRead}</small>
+              </div>
+              <div>
+                <span>Stars</span>
+                <strong>{bookedMajorStars.length ? `${bookedMajorStars.length}` : "Light"}</strong>
+                <small>{bookedMajorStars.length ? bookedMajorStars.slice(0, 3).map((wrestler) => wrestler.name).join(" / ") : "No major-star flag yet"}</small>
+              </div>
+              <div>
+                <span>Open Challenge</span>
+                <strong>{openChallengeCount ? `${openChallengeCount}` : "None"}</strong>
+                <small>{openChallengeCount ? "Opponent identity stays hidden until Run Show" : "No mystery slot"}</small>
+              </div>
+            </div>
+
+            <div className="risk-board" aria-label="Current card workload risk">
+              <div className="risk-board-head">
+                <span>Risk Board</span>
+                <strong>{riskRows.length ? `${riskRows.length} Flagged` : "Clear"}</strong>
+              </div>
+              {riskRows.length ? (
+                <div className="risk-row-list">
+                  {riskRows.slice(0, 4).map(({ reads, wrestler }) => (
+                    <div className="risk-row" key={wrestler.id}>
+                      <strong>{wrestler.name}</strong>
+                      <small>{reads.join(" · ")}</small>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p>No current-card fatigue, morale, injury, overuse, or multi-booking flags are surfacing.</p>
+              )}
+            </div>
+
+            <div className="producer-note" aria-label="Producer note">
+              <span>Producer Note</span>
+              <p>{producerNote}</p>
+              {topUnusedWrestler ? <small>{rosterDeskRead}</small> : null}
+            </div>
+          </div>
         </div>
       </section>
 
