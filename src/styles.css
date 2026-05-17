@@ -86,7 +86,12 @@
 }
 
 .roster-selected-dock {
-  grid-template-columns: 78px minmax(190px, 1fr) 76px minmax(165px, 0.7fr) minmax(210px, 0.9fr) minmax(134px, 0.48fr);
+  grid-template-columns: 58px minmax(190px, 1fr) 76px minmax(165px, 0.7fr) minmax(210px, 0.9fr) minmax(134px, 0.48fr);
+}
+
+.roster-selected-portrait {
+  font-size: 1.15rem;
+  width: 58px;
 }
 
 .roster-selected-tags {
@@ -99,7 +104,7 @@
 }
 
 .wrestler-card-head {
-  grid-template-columns: 48px minmax(0, 1fr) 70px;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
 }
 
 .wrestler-card-select {
@@ -117,13 +122,6 @@
   font-size: 0.8rem;
   height: 28px;
   width: 48px;
-}
-
-.wrestler-card-actions .inline-action {
-  font-size: 0.66rem;
-  min-height: 24px;
-  padding: 0 7px;
-  width: 100%;
 }
 
 .wrestler-card-actions > strong {
@@ -393,6 +391,7 @@
   font-size: 0.78rem;
   font-weight: 800;
   line-height: 1.25;
+  text-transform: uppercase;
 }
 
 .roster-board-stage {
@@ -405,22 +404,22 @@
 
 .roster-board-toolbar {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0 0 10px;
+  padding: 0 0 6px;
 }
 
 .roster-board-toolbar h2 {
   color: var(--bc-text-primary);
   font-family: var(--font-display);
-  font-size: clamp(1.3rem, 2vw, 2rem);
+  font-size: clamp(1rem, 1.35vw, 1.35rem);
   letter-spacing: 0;
-  line-height: 0.95;
+  line-height: 1;
   margin: 0;
   text-transform: uppercase;
 }
 
 .roster-search-field {
   display: grid;
-  gap: 5px;
+  gap: 3px;
   min-width: 230px;
 }
 
@@ -437,9 +436,98 @@
 .roster-pulse-rail {
   display: grid;
   gap: 9px;
-  grid-template-rows: minmax(0, 1.1fr) auto auto auto;
+  grid-template-rows: auto auto auto auto auto;
   overflow: hidden;
   padding: 10px;
+}
+
+.roster-pulse-title {
+  min-width: 0;
+}
+
+.roster-pulse-title .locker-room-pulse-head {
+  align-items: start;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding-bottom: 9px;
+}
+
+.roster-pulse-title .locker-room-pulse-head h3 {
+  color: var(--bc-text-primary);
+  font-size: 0.98rem;
+  line-height: 1.05;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.roster-pulse-title .locker-room-pulse-head > strong {
+  background: rgba(246, 193, 86, 0.12);
+  border: 1px solid rgba(246, 193, 86, 0.28);
+  color: var(--bc-prestige);
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 7px 8px;
+  text-transform: uppercase;
+}
+
+.morale-trend-panel {
+  border-left-color: rgba(var(--bc-positive-rgb), 0.58);
+}
+
+.morale-trend-plot {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px) 0 50% / 100% 50%,
+    rgba(8, 9, 13, 0.52);
+  border: 1px solid rgba(var(--bc-positive-rgb), 0.18);
+  height: 54px;
+  overflow: visible;
+  width: 100%;
+}
+
+.morale-trend-plot polyline {
+  fill: none;
+  stroke: var(--bc-positive);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.6;
+}
+
+.morale-trend-plot circle {
+  fill: var(--bc-prestige);
+  stroke: rgba(8, 9, 13, 0.92);
+  stroke-width: 1;
+}
+
+.morale-trend-axis-labels {
+  display: flex;
+  justify-content: space-between;
+}
+
+.morale-trend-axis-labels span {
+  color: var(--bc-text-muted);
+  font-size: 0.58rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.morale-trend-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.morale-trend-labels span {
+  color: var(--bc-text-muted);
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.morale-trend-labels strong {
+  color: var(--bc-text-primary);
 }
 
 .roster-side-panel {
@@ -520,6 +608,24 @@
   padding: 7px 8px;
 }
 
+.roster-note-list article.injury-line-item {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.roster-note-list article.injury-line-item strong,
+.roster-note-list article.injury-line-item span {
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.roster-note-list article.injury-line-item span {
+  color: var(--bc-prestige);
+  flex: 0 0 auto;
+}
+
 .roster-note-list strong {
   color: var(--bc-text-primary);
   font-size: 0.78rem;
@@ -541,7 +647,7 @@
   display: grid;
   gap: 12px;
   grid-column: 2 / 4;
-  grid-template-columns: 96px minmax(190px, 0.95fr) 86px minmax(170px, 0.65fr) minmax(180px, 0.85fr) minmax(130px, 0.55fr) auto;
+  grid-template-columns: 68px minmax(190px, 0.95fr) 86px minmax(170px, 0.65fr) minmax(180px, 0.85fr) minmax(130px, 0.55fr) auto;
   min-height: 0;
   overflow: hidden;
   padding: 10px 12px;
@@ -567,8 +673,8 @@
 
 .roster-selected-portrait {
   aspect-ratio: 1;
-  font-size: 1.9rem;
-  width: 96px;
+  font-size: 1.35rem;
+  width: 68px;
 }
 
 .roster-selected-summary {
@@ -692,6 +798,7 @@
   font-weight: 800;
   line-height: 1.25;
   margin: 0;
+  text-transform: uppercase;
 }
 
 .roster-selected-read small {
@@ -722,11 +829,17 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-left: 3px solid #7f899a;
   border-radius: 2px;
+  cursor: pointer;
   display: grid;
   gap: 8px;
   min-height: 166px;
   min-width: 0;
   padding: 10px;
+}
+
+.wrestler-card:focus-visible {
+  outline: 2px solid var(--bc-brand-selected);
+  outline-offset: 2px;
 }
 
 .wrestler-card.selected {
@@ -774,7 +887,7 @@
 .wrestler-card-head h3 {
   color: var(--bc-text-primary);
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: 1.08rem;
   letter-spacing: 0;
   line-height: 1;
   margin: 0;
@@ -789,6 +902,17 @@
   font-weight: 900;
   margin-top: 4px;
   text-transform: uppercase;
+}
+
+.wrestler-card-meta-line {
+  align-items: center;
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.wrestler-card-meta-line span:first-child {
+  color: var(--bc-text-primary);
 }
 
 .wrestler-card-actions {
@@ -839,6 +963,77 @@
   font-size: 0.65rem;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.wrestler-card-readouts {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.wrestler-card-stamina {
+  align-items: center;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)) 58px 50% / calc(100% - 92px) 6px no-repeat;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 50px minmax(0, 1fr) 26px;
+}
+
+.wrestler-card-stamina span,
+.wrestler-card-morale span {
+  color: var(--bc-text-muted);
+  font-size: 0.65rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.wrestler-card-stamina b {
+  background: linear-gradient(90deg, var(--bc-positive), var(--bc-prestige));
+  display: block;
+  height: 6px;
+  max-width: 100%;
+}
+
+.wrestler-card-stamina strong {
+  color: var(--bc-text-primary);
+  font-size: 0.76rem;
+  text-align: right;
+}
+
+.wrestler-card-morale {
+  align-items: center;
+  background: rgba(8, 9, 13, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  gap: 7px;
+  min-height: 26px;
+  padding: 4px 7px;
+}
+
+.wrestler-card-morale strong {
+  align-items: center;
+  color: var(--bc-text-primary);
+  display: inline-flex;
+  font-size: 1rem;
+  gap: 4px;
+  line-height: 1;
+}
+
+.wrestler-card-morale em {
+  color: var(--bc-text-muted);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.wrestler-card-morale.morale-hot {
+  border-color: rgba(var(--bc-positive-rgb), 0.36);
+}
+
+.wrestler-card-morale.morale-risk {
+  border-color: rgba(255, 83, 97, 0.42);
 }
 
 .wrestler-card-foot {
@@ -4367,12 +4562,29 @@ h3 {
   font-size: 1.25rem;
 }
 
+.profile-stats-panel .wrestler-stats {
+  gap: 6px;
+}
+
+.profile-stats-panel .wrestler-stats .metric {
+  min-height: 76px;
+  padding: 10px;
+}
+
+.profile-stats-panel .wrestler-stats .metric strong {
+  font-size: 1.15rem;
+}
+
 .profile-hero {
   align-items: end;
   display: flex;
   gap: 24px;
   justify-content: space-between;
   padding: 44px 0 28px;
+}
+
+.profile-screen {
+  text-transform: uppercase;
 }
 
 .profile-actions {
@@ -4404,8 +4616,58 @@ h3 {
   padding: 18px;
 }
 
+.profile-stats-panel {
+  align-self: start;
+  padding: 14px;
+}
+
 .profile-stat-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.profile-stat-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.profile-stat-row {
+  align-items: center;
+  background: rgba(12, 15, 22, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  column-gap: 14px;
+  display: grid;
+  grid-template-columns: minmax(120px, 0.9fr) minmax(72px, 0.35fr) minmax(0, 1fr);
+  min-height: 54px;
+  padding: 8px 12px;
+}
+
+.profile-stat-row span {
+  color: var(--bc-text-muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.profile-stat-row strong {
+  color: var(--bc-text-primary);
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.profile-stat-row small {
+  color: var(--bc-text-secondary);
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.2;
+  min-height: 0.9rem;
+  text-align: right;
+}
+
+.profile-stats-panel .profile-stat-grid,
+.profile-stats-panel .wrestler-stats {
+  grid-template-columns: 1fr;
 }
 
 .gm-read-panel {
@@ -8669,7 +8931,7 @@ h3 {
 }
 
 .wrestler-card-head {
-  grid-template-columns: 48px minmax(0, 1fr) 70px;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
 }
 
 .wrestler-card-select {
@@ -8687,13 +8949,6 @@ h3 {
   font-size: 0.8rem;
   height: 28px;
   width: 48px;
-}
-
-.wrestler-card-actions .inline-action {
-  font-size: 0.66rem;
-  min-height: 24px;
-  padding: 0 7px;
-  width: 100%;
 }
 
 .wrestler-card-actions > strong {
