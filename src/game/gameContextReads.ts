@@ -98,6 +98,30 @@ export type WeeklyDecisionPressureSnapshot = {
   items: WeeklyDecisionPressureItem[];
 };
 
+export type LivingWorldPressureVoice = "Ownership" | "Locker Room" | "Fans / IWC" | "Rival Brands" | "Creative Room";
+
+export type LivingWorldPressureTone = "strong" | "steady" | "watch";
+
+export type LivingWorldPressureItem = {
+  id: string;
+  voice: LivingWorldPressureVoice;
+  label: string;
+  value: string;
+  detail: string;
+  action: string;
+  tone: LivingWorldPressureTone;
+  priority: number;
+};
+
+export type LivingWorldPressureSnapshot = {
+  headline: string;
+  weekRead: string;
+  whoIsWatching: string;
+  riskRead: string;
+  nextAction: string;
+  items: LivingWorldPressureItem[];
+};
+
 export type WeekReviewHandoffTone = "strong" | "steady" | "watch";
 
 export type WeekReviewHandoffItem = {
@@ -965,6 +989,191 @@ export function getWeeklyDecisionPressureSnapshot(game: GameState, result?: Show
     headline,
     detail: "Read-only staff context from current roster, rivalry, title, calendar, and finance state. It does not forecast booking outcomes.",
     items,
+  };
+}
+
+function getRivalPressureRead(game: GameState, result?: ShowResult): LivingWorldPressureItem {
+  const rivalBrands = game.rivalBrands.length ? game.rivalBrands : [];
+  const focusRival = rivalBrands[0];
+  const focusStyle = focusRival?.assignedGMStyle ?? game.rivalGMAssignments[0]?.gmStyle;
+  const focusName = focusRival?.assignedGMName ?? game.rivalGMAssignments[0]?.gmName ?? "Rival GMs";
+  const focusBrand = focusRival?.brandName ?? game.rivalGMAssignments[0]?.brand ?? "the other brands";
+  const score = result?.totalScore;
+  const detail =
+    focusStyle === "Ratings Chaser"
+      ? score !== undefined
+        ? `${focusName} is watching whether ${game.brandName}'s last ${score >= 75 ? "strong" : "uneven"} number turns into another loud week.`
+        : `${focusName} is watching the first TV number from ${focusBrand}, but no rival result is being simulated.`
+      : focusStyle === "Talent Developer"
+        ? `${focusName} will notice whether your room creates new momentum or lets underused names drift.`
+        : focusStyle === "Big Money Promoter"
+          ? `${focusName} is watching the business posture around ${game.brandName}, not running a rival ledger.`
+          : focusStyle === "Chaos Booker"
+            ? `${focusName} is waiting for your show to feel dangerous without the game inventing offscreen chaos.`
+            : `${focusName} and ${rivalBrands.length ? `${rivalBrands.length - 1} other rival chair${rivalBrands.length === 2 ? "" : "s"}` : "the other brands"} are positioned as competitive pressure, not CPU-booked shows.`;
+
+  return {
+    id: "rival-brands",
+    voice: "Rival Brands",
+    label: focusBrand,
+    value: focusStyle ?? "Watching",
+    detail,
+    action: "Book a card with a clear brand identity before worrying about simulated standings.",
+    tone: score !== undefined && score < 62 ? "watch" : "steady",
+    priority: score !== undefined && score < 62 ? 74 : 44,
+  };
+}
+
+export function getLivingWorldPressureSnapshot(game: GameState, result?: ShowResult): LivingWorldPressureSnapshot {
+  const currentShow = getCurrentCalendarWeek(game);
+  const nextPle = getNextPle(game.calendar, game.currentWeek);
+  const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
+  const latestReport = result ? getFinanceReportForResult(game, result) : getLatestFinanceReport(game);
+  const financePressure = getFinancePressureLabel(game.money, latestReport?.profitLoss ?? 0);
+  const socialPost = result
+    ? game.socialPosts.filter((post) => post.seasonNumber === result.seasonNumber && post.weekNumber === result.week).slice(-1)[0]
+    : game.socialPosts[game.socialPosts.length - 1];
+  const overused = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Overused"));
+  const underused = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Underused"));
+  const moraleRisk = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Morale Risk"));
+  const injured = game.wrestlers.filter((wrestler) => wrestler.injuryStatus !== "healthy");
+  const topMomentumTalent = [...game.wrestlers].sort((a, b) => b.momentum - a.momentum)[0];
+  const topOverused = getTopOverusedWrestler(game.wrestlers);
+  const topUnderused = getTopUnderusedWrestler(game.wrestlers, game.currentWeek);
+  const focusRivalry = getRivalryTimingSnapshots(game)[0];
+  const focusTitle = getChampionshipPressureSnapshots(game)[0];
+  const cardReady = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers)).length >= 2;
+  const pleClock =
+    currentShow.showType === "ple"
+      ? `${currentShow.showName} is tonight's major-event checkpoint.`
+      : nextPle
+        ? currentShow.isGoHome
+          ? `${currentShow.showName} is the final TV stop before ${nextPle.showName}.`
+          : `${formatWeekCount(weeksUntilPle)} until ${nextPle.showName}.`
+        : "No remaining PLE is on the season calendar.";
+
+  const ownershipPriority = financePressure === "Critical" ? 96 : financePressure === "Tight" ? 84 : currentShow.showType === "ple" || currentShow.isGoHome ? 72 : 48;
+  const ownershipValue = financePressure === "Stable" && (currentShow.showType === "ple" || currentShow.isGoHome) ? "Calendar Pressure" : financePressure;
+  const ownershipDetail =
+    latestReport && result
+      ? `${result.showName} already closed at ${formatMoney(latestReport.profitLoss)}. ${pleClock} Ownership is reading the fallout, not forecasting the next gate.`
+      : latestReport
+        ? `${getFinancePresenceRead(game.money, financePressure, latestReport)} ${pleClock}`
+        : `${formatPressureLabel(financePressure)} pressure with ${formatMoney(game.money)} available. ${pleClock}`;
+
+  const lockerValue = injured.length ? `${injured.length} hurt` : overused.length ? `${overused.length} overused` : moraleRisk.length ? `${moraleRisk.length} morale` : underused.length ? `${underused.length} waiting` : topMomentumTalent?.name ?? "Room Level";
+  const lockerDetail = injured.length
+    ? `${injured.slice(0, 2).map((wrestler) => `${wrestler.name} (${getInjuryStatusLabel(wrestler.injuryStatus)})`).join(" / ")} carry medical status into this week.`
+    : topOverused
+      ? `${topOverused.name} is the clearest workload pressure at ${topOverused.fatigue} fatigue and ${topOverused.consecutiveWeeksBooked ?? 0} straight week${(topOverused.consecutiveWeeksBooked ?? 0) === 1 ? "" : "s"} booked.`
+      : moraleRisk.length
+        ? `${moraleRisk.slice(0, 2).map((wrestler) => `${wrestler.name} morale ${wrestler.morale}`).join(" / ")} need evidence they still matter.`
+        : topUnderused
+          ? `${topUnderused.name} has been off TV for ${formatWeekCount(getWeeksSinceLastBooked(topUnderused, game.currentWeek))}.`
+          : topMomentumTalent
+            ? `${topMomentumTalent.name} is the hottest internal signal at ${topMomentumTalent.momentum} momentum.`
+            : "The room is not surfacing a clear pressure point yet.";
+
+  const creativeTone =
+    focusRivalry?.snapshot.primary.tone === "watch" ||
+    focusRivalry?.snapshot.primary.tone === "build" ||
+    focusTitle?.snapshot.primary.tone === "watch" ||
+    focusTitle?.snapshot.primary.tone === "build"
+      ? "watch"
+      : focusTitle?.snapshot.primary.tone === "hot" || focusRivalry?.snapshot.primary.tone === "hot"
+        ? "strong"
+        : "steady";
+  const creativeValue = focusRivalry ? focusRivalry.snapshot.primary.label : focusTitle ? focusTitle.snapshot.primary.label : "Find The Hook";
+  const creativeDetail = focusRivalry
+    ? `${focusRivalry.rivalry.name}: ${focusRivalry.snapshot.producerRead}`
+    : focusTitle
+      ? `${focusTitle.championship.name}: ${focusTitle.snapshot.producerRead}`
+      : "No title or rivalry desk item is leading the week yet.";
+
+  const items: LivingWorldPressureItem[] = [
+    {
+      id: "ownership",
+      voice: "Ownership",
+      label: currentShow.showType === "ple" ? "Major Event Office" : "Brand Office",
+      value: ownershipValue,
+      detail: ownershipDetail,
+      action: cardReady ? "Review whether the current card fits the office clock." : "Build enough show before the office can judge the week.",
+      tone: financePressure === "Critical" || financePressure === "Tight" || currentShow.showType === "ple" || currentShow.isGoHome ? "watch" : "steady",
+      priority: ownershipPriority,
+    },
+    {
+      id: "locker-room",
+      voice: "Locker Room",
+      label: "Talent Temperature",
+      value: lockerValue,
+      detail: lockerDetail,
+      action: "Use the Roster screen for the full board; this is the one human pressure leading the week.",
+      tone: injured.length || overused.length || moraleRisk.length ? "watch" : topMomentumTalent && topMomentumTalent.momentum >= 70 ? "strong" : "steady",
+      priority: injured.length ? 92 : overused.length ? 86 : moraleRisk.length ? 80 : underused.length ? 68 : 42,
+    },
+    {
+      id: "creative-room",
+      voice: "Creative Room",
+      label: focusRivalry ? "Story Room" : "Title Office",
+      value: creativeValue,
+      detail: creativeDetail,
+      action: "Attach existing story/title context only if it serves the card; no outcome is promised.",
+      tone: creativeTone,
+      priority: creativeTone === "watch" ? 88 : creativeTone === "strong" ? 70 : 46,
+    },
+    getRivalPressureRead(game, result),
+  ];
+
+  if (socialPost && result) {
+    items.push({
+      id: "fans-iwc",
+      voice: "Fans / IWC",
+      label: socialPost.author,
+      value: socialPost.category.replace(/_/g, " "),
+      detail: socialPost.text,
+      action: "Treat this as post-show noise from what already happened, not a prediction of tonight.",
+      tone: socialPost.tone === "angry" || socialPost.tone === "skeptical" ? "watch" : socialPost.tone === "excited" || socialPost.tone === "impressed" ? "strong" : "steady",
+      priority: socialPost.tone === "angry" || socialPost.tone === "skeptical" ? 82 : 62,
+    });
+  } else {
+    items.push({
+      id: "fans-iwc",
+      voice: "Fans / IWC",
+      label: "Audience Waiting",
+      value: "No Tape Yet",
+      detail: "The internet has no current-week result to react to. Run a show before fan buzz becomes consequence.",
+      action: "Create something worth reacting to; do not expect pre-show sentiment.",
+      tone: "steady",
+      priority: game.showHistory.length ? 38 : 58,
+    });
+  }
+
+  const prioritizedItems = items
+    .sort((a, b) => b.priority - a.priority)
+    .slice(0, 5);
+  const watchCount = prioritizedItems.filter((item) => item.tone === "watch").length;
+  const headline =
+    currentShow.showType === "ple"
+      ? "The Whole Room Is Watching Tonight"
+      : currentShow.isGoHome
+        ? "Final TV Before The Pressure Hits"
+        : watchCount
+          ? "This Week Has A Real Dilemma"
+          : result
+            ? "Fallout Needs A Follow-Up"
+            : "Opening Week Needs A Statement";
+  const whoIsWatching = prioritizedItems.map((item) => item.voice).join(" / ");
+  const riskRead = watchCount
+    ? `${watchCount} pressure lane${watchCount === 1 ? "" : "s"} need attention before the week moves.`
+    : "No red alert is leading the room, but the card still needs a point of view.";
+
+  return {
+    headline,
+    weekRead: result ? `${result.showName} is closed. ${currentShow.showName} now needs a next move.` : `${currentShow.showName} is the active booking problem. ${pleClock}`,
+    whoIsWatching,
+    riskRead,
+    nextAction: cardReady ? "Review the card, then run the show when the card has a point of view." : "Book at least 2 valid segments, then decide which pressure lane gets the spotlight.",
+    items: prioritizedItems,
   };
 }
 

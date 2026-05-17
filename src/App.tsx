@@ -30,11 +30,13 @@ import { getWrestlerIdentityContext } from "./game/wrestlerIdentityContext";
 import {
   buildBroadcastFalloutSnapshot,
   buildPostShowCauseLedger,
+  getLivingWorldPressureSnapshot,
   getPleBuildPressureSnapshot,
   getWeeklyDecisionPressureSnapshot,
   getWeekReviewHandoffSnapshot,
   type BroadcastFalloutSnapshot,
   type CauseLedgerSection,
+  type LivingWorldPressureSnapshot,
   type PleBuildPressureSnapshot,
   type WeeklyDecisionPressureSnapshot,
   type WeekReviewHandoffSnapshot,
@@ -4988,6 +4990,36 @@ function WeeklyDecisionPressurePanel({ compact = false, snapshot }: { compact?: 
   );
 }
 
+function LivingWorldPressurePanel({ snapshot }: { snapshot: LivingWorldPressureSnapshot }) {
+  return (
+    <section className="weekly-pressure-panel living-world-pressure-panel" aria-label="Living World Pressure">
+      <div className="weekly-pressure-head">
+        <div>
+          <p className="eyebrow">Living World Pressure</p>
+          <h3>{snapshot.headline}</h3>
+        </div>
+        <strong>Who Is Watching</strong>
+      </div>
+      <p className="weekly-pressure-copy">{snapshot.weekRead}</p>
+      <div className="status-grid" aria-label="Living world summary">
+        <Metric label="Watching" value={snapshot.whoIsWatching} />
+        <Metric label="Risk" value={snapshot.riskRead} />
+        <Metric label="Next Move" value={snapshot.nextAction} />
+      </div>
+      <div className="weekly-pressure-grid">
+        {snapshot.items.map((item) => (
+          <article className={`weekly-pressure-item tone-${item.tone}`} key={item.id}>
+            <span>{item.voice} · {item.label}</span>
+            <strong>{item.value}</strong>
+            <p>{item.detail}</p>
+            <small>{item.action}</small>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function WeekReviewHandoffPanel({ snapshot }: { snapshot: WeekReviewHandoffSnapshot }) {
   return (
     <section className="week-handoff-panel" aria-label="Next week setup">
@@ -5175,22 +5207,10 @@ function DashboardScreen({
   game: GameState;
   latestResult?: ShowResult;
   onNavigate: (screen: GameScreen) => void;
-}) {
-  const hotTalent = useMemo(
-    () => [...game.wrestlers].sort((a, b) => b.momentum + b.popularity - (a.momentum + a.popularity)).slice(0, 3),
-    [game.wrestlers],
-  );
-  const atRisk = useMemo(
-    () => [...game.wrestlers].sort((a, b) => b.fatigue + (100 - b.morale) - (a.fatigue + (100 - a.morale))).slice(0, 3),
-    [game.wrestlers],
-  );
-  const topMomentumTalent = useMemo(
-    () => [...game.wrestlers].sort((a, b) => b.momentum - a.momentum)[0],
-    [game.wrestlers],
-  );
-  const lastShow = game.showHistory[game.showHistory.length - 1];
-  const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers)).length;
-  const averageFatigue = Math.round(game.wrestlers.reduce((sum, wrestler) => sum + wrestler.fatigue, 0) / game.wrestlers.length);
+	}) {
+	  const lastShow = game.showHistory[game.showHistory.length - 1];
+	  const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers)).length;
+	  const averageFatigue = Math.round(game.wrestlers.reduce((sum, wrestler) => sum + wrestler.fatigue, 0) / game.wrestlers.length);
   const nextAction =
     validSegments >= 2 ? "The rundown can go live when you are ready." : "Book at least 2 valid segments before production can roll.";
   const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
@@ -5202,28 +5222,13 @@ function DashboardScreen({
   const topTitleContenders = topChampionship ? getTopContenders(topChampionship, game.wrestlers, 2) : [];
   const rivalryTimingSnapshots = getRivalryTimingSnapshots(game);
   const focusRivalryTiming = rivalryTimingSnapshots[0];
-  const currentShow = getCurrentCalendarWeek(game);
-  const nextPle = getNextPle(game.calendar, game.currentWeek);
-  const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
-  const latestSocialPost = game.socialPosts[game.socialPosts.length - 1];
-  const latestFinanceReport = getLatestFinanceReport(game);
-  const pressureLabel = getFinancePressureLabel(game.money, latestFinanceReport?.profitLoss ?? 0);
-  const financePresenceRead = getFinancePresenceRead(game.money, pressureLabel, latestFinanceReport);
-  const isPleWeek = currentShow.showType === "ple";
-  const topOverused = getTopOverusedWrestler(game.wrestlers);
-  const topUnderused = getTopUnderusedWrestler(game.wrestlers, game.currentWeek);
-  const overusedCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Overused")).length;
-  const underusedCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Underused")).length;
-  const protectedStarCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Protected Star")).length;
-  const moraleRiskCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Morale Risk")).length;
-  const injuryRiskCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk")).length;
-  const minorInjuryCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus === "minor").length;
-  const unavailableCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus === "major").length;
-  const latestRecoveryNotes = game.injuryRecoveryNotes.filter((note) => note.weekNumber === game.currentWeek).slice(-3).reverse();
-  const rivalBrands = game.rivalBrands ?? createRivalBrandUniverse(game.rivalGMAssignments);
-  const brandPulseSnapshot = getBrandPulseSnapshot(game, lastShow);
-  const weeklyDecisionPressure = getWeeklyDecisionPressureSnapshot(game, lastShow);
-  const pleBuildPressure = getPleBuildPressureSnapshot(game);
+	  const currentShow = getCurrentCalendarWeek(game);
+	  const nextPle = getNextPle(game.calendar, game.currentWeek);
+	  const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
+	  const latestFinanceReport = getLatestFinanceReport(game);
+	  const pressureLabel = getFinancePressureLabel(game.money, latestFinanceReport?.profitLoss ?? 0);
+	  const isPleWeek = currentShow.showType === "ple";
+	  const livingWorldPressure = getLivingWorldPressureSnapshot(game, lastShow);
 
   return (
     <main className="app-shell">
