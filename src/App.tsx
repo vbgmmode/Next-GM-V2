@@ -2036,11 +2036,14 @@ function getTagDivisionHealthDiagnostics(championship: Championship, game: GameS
 
   diagnostics.push({
     id: "tag-champion-pair-active",
-    label: "Champion Pair Active",
-    detail: championPairActive
-      ? `The champions, ${getWrestlerNames(championship.championIds, game.wrestlers)}, are active enough to make a credible defense.`
-      : "One or both champions are currently quiet, so momentum checks are advisory only.",
-    tone: championPairActive ? "steady" : "watch",
+    label: scene.champions.length >= 2 ? "Champion Pair Active" : "Champion Pair Needed",
+    detail:
+      scene.champions.length >= 2
+        ? championPairActive
+          ? `The champions, ${getWrestlerNames(championship.championIds, game.wrestlers)}, are active enough to make a credible defense.`
+          : "One or both champions are currently quiet, so momentum checks are advisory only."
+        : "No champion pair is assigned yet, so the tag title needs a GM assignment before it can be defended.",
+    tone: scene.champions.length >= 2 ? (championPairActive ? "steady" : "watch") : "build",
   });
 
   if (challengers.length < 2) {
@@ -2205,12 +2208,14 @@ function getTitleScenePressureSnapshot(championship: Championship, game: GameSta
     diagnostics.push(...getTagDivisionHealthDiagnostics(championship, game).slice(0, 4));
     diagnostics.push({
       id: "tag-scope",
-      label: contenders.length >= 2 ? "Tag Title Ready" : "Needs Challengers",
+      label: scene.champions.length < 2 ? "Champion Pair Needed" : contenders.length >= 2 ? "Tag Title Ready" : "Needs Challengers",
       detail:
-        contenders.length >= 2
+        scene.champions.length < 2
+          ? "Assign a champion pair before this title can become a valid M020 defense."
+          : contenders.length >= 2
           ? "The title can be defended in a valid M020 tag match with the champions together on one side."
           : "The current roster does not have two eligible challengers outside the champion pair.",
-      tone: contenders.length >= 2 ? "steady" : "build",
+      tone: scene.champions.length < 2 ? "build" : contenders.length >= 2 ? "steady" : "build",
     });
   } else if (!scene.champions.length) {
     diagnostics.push({

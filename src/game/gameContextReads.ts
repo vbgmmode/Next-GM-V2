@@ -354,14 +354,23 @@ function getTitleSceneTalentScore(wrestler: Wrestler, championship: Championship
 }
 
 
-function getTitleDivisionScene(championship: Championship, wrestlers: Wrestler[], rivalries: Rivalry[] = [], currentWeek = 1) {
+function getTitleDivisionScene(championship: Championship, wrestlers: Wrestler[], rivalries: Rivalry[] = [], currentWeek = 1, championships: Championship[] = []) {
   const championIds = new Set(championship.championIds);
+  const otherChampionIds = new Set(
+    championships.filter((title) => title.id !== championship.id).flatMap((title) => title.championIds),
+  );
   const champions = championship.championIds.map((id) => wrestlers.find((wrestler) => wrestler.id === id)).filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
+  const manualContenders = (championship.contenderIds ?? [])
+    .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
+    .filter((wrestler): wrestler is Wrestler => Boolean(wrestler && !championIds.has(wrestler.id) && wrestlerFitsChampionshipDivision(wrestler, championship)));
+  const manualContenderIds = new Set(manualContenders.map((wrestler) => wrestler.id));
   const eligibleRoster = wrestlers
     .filter((wrestler) => !championIds.has(wrestler.id))
+    .filter((wrestler) => !otherChampionIds.has(wrestler.id))
     .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship))
     .sort((a, b) => getTitleSceneTalentScore(b, championship, rivalries) - getTitleSceneTalentScore(a, championship, rivalries));
-  const topContenders = eligibleRoster.slice(0, 3);
+  const derivedTopContenders = eligibleRoster.filter((wrestler) => !manualContenderIds.has(wrestler.id)).slice(0, Math.max(0, 3 - manualContenders.length));
+  const topContenders = championship.contenderIds ? manualContenders : [...manualContenders, ...derivedTopContenders].slice(0, 3);
   const topContenderIds = new Set(topContenders.map((wrestler) => wrestler.id));
   const risingContenders = eligibleRoster
     .filter((wrestler) => !topContenderIds.has(wrestler.id))
@@ -408,7 +417,7 @@ function getTagDivisionHealthDiagnostics(championship: Championship, game: GameS
     return [];
   }
 
-  const scene = getTitleDivisionScene(championship, game.wrestlers, game.rivalries, game.currentWeek);
+  const scene = getTitleDivisionScene(championship, game.wrestlers, game.rivalries, game.currentWeek, game.championships);
   const diagnostics: TitleScenePressureDiagnostic[] = [];
   const challengers = scene.eligibleRoster;
   const champions = scene.champions;
@@ -453,11 +462,14 @@ function getTagDivisionHealthDiagnostics(championship: Championship, game: GameS
 
   diagnostics.push({
     id: "tag-champion-pair-active",
-    label: "Champion Pair Active",
-    detail: championPairActive
-      ? `The champions, ${getWrestlerNames(championship.championIds, game.wrestlers)}, are active enough to make a credible defense.`
-      : "One or both champions are currently quiet, so momentum checks are advisory only.",
-    tone: championPairActive ? "steady" : "watch",
+    label: scene.champions.length >= 2 ? "Champion Pair Active" : "Champion Pair Needed",
+    detail:
+      scene.champions.length >= 2
+        ? championPairActive
+          ? `The champions, ${getWrestlerNames(championship.championIds, game.wrestlers)}, are active enough to make a credible defense.`
+          : "One or both champions are currently quiet, so momentum checks are advisory only."
+        : "No champion pair is assigned yet, so the tag title needs a GM assignment before it can be defended.",
+    tone: scene.champions.length >= 2 ? (championPairActive ? "steady" : "watch") : "build",
   });
 
   if (challengers.length < 2) {
@@ -526,7 +538,7 @@ function getTagDivisionHealthDiagnostics(championship: Championship, game: GameS
 
 
 function getTitleScenePressureSnapshot(championship: Championship, game: GameState): TitleScenePressureSnapshot {
-  const scene = getTitleDivisionScene(championship, game.wrestlers, game.rivalries, game.currentWeek);
+  const scene = getTitleDivisionScene(championship, game.wrestlers, game.rivalries, game.currentWeek, game.championships);
   const recentHistory = getChampionshipHistory(game, championship.id, 1);
   const latestTitleEvent = recentHistory[0];
   const defenseWindow = championship.minimumDefenseFrequencyWeeks ?? 6;
@@ -544,12 +556,14 @@ function getTitleScenePressureSnapshot(championship: Championship, game: GameSta
     diagnostics.push(...getTagDivisionHealthDiagnostics(championship, game).slice(0, 4));
     diagnostics.push({
       id: "tag-scope",
-      label: contenders.length >= 2 ? "Tag Title Ready" : "Needs Challengers",
+      label: scene.champions.length < 2 ? "Champion Pair Needed" : contenders.length >= 2 ? "Tag Title Ready" : "Needs Challengers",
       detail:
-        contenders.length >= 2
+        scene.champions.length < 2
+          ? "Assign a champion pair before this title can become a valid M020 defense."
+          : contenders.length >= 2
           ? "The title can be defended in a valid M020 tag match with the champions together on one side."
           : "The current roster does not have two eligible challengers outside the champion pair.",
-      tone: contenders.length >= 2 ? "steady" : "build",
+      tone: scene.champions.length < 2 ? "build" : contenders.length >= 2 ? "steady" : "build",
     });
   } else if (!scene.champions.length) {
     diagnostics.push({
