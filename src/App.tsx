@@ -2931,6 +2931,14 @@ function getTalentValuePressure(wrestlers: Wrestler[]): TalentValuePressure {
   };
 }
 
+function getFinancePresenceRead(money: number, pressureLabel: PressureLabel, latestReport?: FinanceReport) {
+  if (!latestReport) {
+    return `${formatPressureLabel(pressureLabel)} pressure with ${formatMoney(money)} available. No show books have closed yet this season.`;
+  }
+
+  return `${formatPressureLabel(pressureLabel)} pressure with ${formatMoney(money)} available after ${latestReport.showName} closed at ${formatMoney(latestReport.profitLoss)}.`;
+}
+
 function getGMRead(wrestler: Wrestler, game: GameState): GMRead {
   const pressureTags = getRosterPressureTags(wrestler, game.currentWeek);
   const championships = getWrestlerChampionships(wrestler.id, game.championships);
@@ -4888,6 +4896,7 @@ function DashboardScreen({
   const latestSocialPost = game.socialPosts[game.socialPosts.length - 1];
   const latestFinanceReport = getLatestFinanceReport(game);
   const pressureLabel = getFinancePressureLabel(game.money, latestFinanceReport?.profitLoss ?? 0);
+  const financePresenceRead = getFinancePresenceRead(game.money, pressureLabel, latestFinanceReport);
   const topOverused = getTopOverusedWrestler(game.wrestlers);
   const topUnderused = getTopUnderusedWrestler(game.wrestlers, game.currentWeek);
   const overusedCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Overused")).length;
@@ -5035,6 +5044,7 @@ function DashboardScreen({
           <Metric label="Latest P/L" value={latestFinanceReport ? formatMoney(latestFinanceReport.profitLoss) : "No Report"} />
           <Metric label="Latest Gate" value={latestFinanceReport ? latestFinanceReport.attendance.toLocaleString() : "No Show"} detail={latestFinanceReport?.showName} />
         </div>
+        <p className="social-preview-text">{financePresenceRead}</p>
         <button className="secondary-action" onClick={() => onNavigate("finance")}>
           View Finance
         </button>
@@ -5233,6 +5243,10 @@ function BookingScreen({
   const pleReadiness = getPleReadinessSnapshot(game, validShowSegments, calendarWeek);
   const canRunShow = readiness.canRun;
   const composerSegment = game.currentShow.find((segment) => segment.id === composerSegmentId);
+  const latestFinanceReport = getLatestFinanceReport(game);
+  const financePressureLabel = getFinancePressureLabel(game.money, latestFinanceReport?.profitLoss ?? 0);
+  const talentValuePressure = getTalentValuePressure(game.wrestlers);
+  const bookingFinanceRead = `${getFinancePresenceRead(game.money, financePressureLabel, latestFinanceReport)} Roster value map: ${talentValuePressure.premiumCount} premium/high-cost and ${talentValuePressure.bargainCount} bargain/rising profiles.`;
   const bookedCounts = game.currentShow.reduce<Record<string, number>>((counts, segment) => {
     segment.participantIds.forEach((id) => {
       counts[id] = (counts[id] ?? 0) + 1;
@@ -5361,6 +5375,11 @@ function BookingScreen({
           View Rivalries
         </button>
         <span>{readiness.status} · {validRuntimeMinutes}/{showRuntimeTargetMinutes} ready min</span>
+      </section>
+
+      <section className="booking-finance-context" aria-label="Booking finance context">
+        <span>Brand Office</span>
+        <p>{bookingFinanceRead}</p>
       </section>
 
       <section className="booking-rundown-layout" aria-label="Current show rundown">

@@ -152,13 +152,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Finance Talent Value Pressure v1 Implementation
+Phase: Finance Presence Pass v1 Implementation
 
 Goal:
-Surface one compact read-only roster value pressure panel on Finance by reusing the existing Wrestler Profile Contract Value Dossier derivation.
+Make financial pressure visible across the GM loop in small read-only ways using existing money, finance report, and roster value context.
 
 Current priority:
-Keep Finance talent value pressure read-only and contextual. Preserve existing match-result, fallout, finance, booking, persistence, and formula behavior. Defer all contract, payroll, roster-limit, and availability mechanics.
+Keep finance presence read-only, contextual, and non-predictive. Preserve existing match-result, fallout, finance, booking, persistence, and formula behavior. Defer all contract, payroll, roster-limit, and availability mechanics.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -196,6 +196,7 @@ Completed stabilization passes:
 - Season Archive / Legacy Index v1 (implemented)
 - Roster Value-Tier Hints v1 (implemented)
 - Finance Talent Value Pressure v1 (implemented)
+- Finance Presence Pass v1 (implemented)
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.

@@ -2560,6 +2560,34 @@ h3 {
   text-transform: uppercase;
 }
 
+.booking-finance-context {
+  align-items: center;
+  background: rgba(8, 9, 13, 0.72);
+  border: 1px solid rgba(111, 226, 212, 0.22);
+  border-left: 3px solid #6fe2d4;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+}
+
+.booking-finance-context span {
+  color: #6fe2d4;
+  flex: 0 0 auto;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.booking-finance-context p {
+  color: #dce3ef;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.35;
+  margin: 0;
+}
+
 .booking-rundown-layout {
   align-items: start;
   display: grid;
