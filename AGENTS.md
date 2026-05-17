@@ -152,13 +152,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Finance Presence Pass v1 Implementation
+Phase: Free Agent Watchlist v1 Implementation
 
 Goal:
-Make financial pressure visible across the GM loop in small read-only ways using existing money, finance report, and roster value context.
+Add a compact, read-only Free Agent Watchlist built from existing Top 200 scouting context so players can monitor notable undrafted talent without enabling mechanics.
 
 Current priority:
-Keep finance presence read-only, contextual, and non-predictive. Preserve existing match-result, fallout, finance, booking, persistence, and formula behavior. Defer all contract, payroll, roster-limit, and availability mechanics.
+Keep scouting context read-only and non-prescriptive. Preserve existing booking, results, contracts, payroll, roster-limit, persistence, and formula behavior. Defer signing, release, and free-agency mechanics.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -197,11 +197,12 @@ Completed stabilization passes:
 - Roster Value-Tier Hints v1 (implemented)
 - Finance Talent Value Pressure v1 (implemented)
 - Finance Presence Pass v1 (implemented)
+- Free Agent Watchlist v1 (implemented)
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
+- Keep scout/read-only career-memory features bounded while deferring signing, release, and free-agency mechanics.
 - Treat season legacy as read-only narrative continuity first; defer payroll/contract mechanics and offseason systems to future tickets.
-- Data expansion should remain planning-only until a bounded implementation ticket is accepted.
 - Before content expansion, define the data category, maximum safe content size, allowed files, migration or fallback needs, and required smoke checks.
 - Future restricted draft modes must be explicit, optional, and requested by an active ticket.
 - Future data expansion or systems work should remain bounded to an accepted ticket.

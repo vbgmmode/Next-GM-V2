@@ -145,6 +145,11 @@ type TalentValuePressure = {
   totalCount: number;
 };
 
+type FreeAgentWatchEntry = {
+  profile: WrestlerValueProfile;
+  wrestler: Wrestler;
+};
+
 type GMRead = {
   usefulness: string;
   risk: string;
@@ -2928,6 +2933,24 @@ function getTalentValuePressure(wrestlers: Wrestler[]): TalentValuePressure {
     missingCount,
     premiumCount,
     totalCount: profiles.length,
+  };
+}
+
+function getFreeAgentWatchlist(wrestlers: Wrestler[], maxEntries = 8) {
+  const rosterIds = new Set(wrestlers.map((wrestler) => wrestler.id));
+  const allWatch = draftPool
+    .filter((candidate) => !rosterIds.has(candidate.id))
+    .map((wrestler) => ({ wrestler, profile: getWrestlerValueProfile(wrestler) }))
+    .sort(
+      (a, b) =>
+        (a.wrestler.draftRank ?? Number.MAX_SAFE_INTEGER) - (b.wrestler.draftRank ?? Number.MAX_SAFE_INTEGER) ||
+        b.wrestler.popularity - a.wrestler.popularity ||
+        b.wrestler.momentum - a.wrestler.momentum,
+    );
+
+  return {
+    total: allWatch,
+    visible: allWatch.slice(0, maxEntries),
   };
 }
 
@@ -5815,6 +5838,8 @@ function RosterScreen({
   const featuredAffiliations = rosterAffiliations
     .filter((affiliation) => affiliation.memberWrestlerIds.length > 1)
     .slice(0, 3);
+  const freeAgentWatch = getFreeAgentWatchlist(game.wrestlers, 8);
+  const roleStyleFallback = "Role/style not mapped";
 
   return (
     <main className="app-shell">
@@ -5876,6 +5901,48 @@ function RosterScreen({
           </>
         ) : (
           <div className="empty-state compact">No drafted wrestler has a source team or faction label in the current Top 200 data.</div>
+        )}
+      </section>
+
+      <section className="command-panel free-agent-watchlist-panel" aria-label="Free agent watchlist">
+        <div className="section-heading">
+          <p className="eyebrow">Free Agent Watchlist</p>
+          <h3>{`Top ${freeAgentWatch.visible.length} Draft-Ready Prospects`}</h3>
+        </div>
+        <p className="social-preview-text">
+          Read-only scouting signal: these are undrafted Top 200 wrestlers available for TV context, not an active signing mechanism.
+        </p>
+        {freeAgentWatch.visible.length ? (
+          <div className="free-agent-watch-list">
+            {freeAgentWatch.visible.map((entry: FreeAgentWatchEntry) => {
+              const roleStyleLabel = [entry.wrestler.roleTier, entry.wrestler.archetype].filter(Boolean).join(" / ") || roleStyleFallback;
+
+              return (
+                <article className="free-agent-watch-row" key={entry.wrestler.id}>
+                  <div className="free-agent-watch-row-head">
+                    <strong>{entry.wrestler.name}</strong>
+                    <span className={`watchlist-tier ${entry.profile.contextMode === "missing" ? "watchlist-tier-missing" : ""}`}>
+                      {entry.profile.valueTierLabel}
+                    </span>
+                  </div>
+                  <div className="free-agent-watch-meta">
+                    <span>
+                      {entry.wrestler.sourceBrand ? `${entry.wrestler.sourceBrand} · #${entry.wrestler.draftRank ?? "—"}` : `Top 200 #${entry.wrestler.draftRank ?? "—"}`}
+                    </span>
+                    <span>{roleStyleLabel}</span>
+                    <span>Pop {entry.wrestler.popularity}</span>
+                    <span>Mom {entry.wrestler.momentum}</span>
+                  </div>
+                  <small>{entry.profile.dossierRead}</small>
+                </article>
+              );
+            })}
+            {freeAgentWatch.total.length > freeAgentWatch.visible.length ? (
+              <small className="muted-copy">{freeAgentWatch.total.length - freeAgentWatch.visible.length} more undrafted names are available in the open pool.</small>
+            ) : null}
+          </div>
+        ) : (
+          <div className="empty-state compact">No undrafted Top 200 names available in this watchlist window.</div>
         )}
       </section>
 
