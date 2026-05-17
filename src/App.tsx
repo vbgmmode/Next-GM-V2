@@ -136,6 +136,15 @@ type WrestlerValueProfile = {
   costRead: string;
 };
 
+type TalentValuePressure = {
+  bargainCount: number;
+  gmRead: string;
+  mappedCount: number;
+  missingCount: number;
+  premiumCount: number;
+  totalCount: number;
+};
+
 type GMRead = {
   usefulness: string;
   risk: string;
@@ -2892,6 +2901,33 @@ function getWrestlerValueProfile(wrestler: Wrestler): WrestlerValueProfile {
     weeklyValueLabel: `${formatMoney(financeRow.weeklyHireRateUsd)} / week context`,
     dossierRead,
     costRead,
+  };
+}
+
+function getTalentValuePressure(wrestlers: Wrestler[]): TalentValuePressure {
+  const profiles = wrestlers.map(getWrestlerValueProfile);
+  const mappedProfiles = profiles.filter((profile) => profile.contextMode === "active");
+  const premiumLabels = new Set(["Premium Draw", "Main Event Investment", "High-Cost Attraction", "Risky Spend"]);
+  const bargainLabels = new Set(["Bargain Workhorse", "Rising Value"]);
+  const premiumCount = mappedProfiles.filter((profile) => premiumLabels.has(profile.valueTierLabel)).length;
+  const bargainCount = mappedProfiles.filter((profile) => bargainLabels.has(profile.valueTierLabel)).length;
+  const missingCount = profiles.length - mappedProfiles.length;
+  const gmRead =
+    mappedProfiles.length === 0
+      ? "Talent value context is still pending for this roster. Finance pressure should be read from closed show reports until mappings are available."
+      : premiumCount > bargainCount + 2
+        ? "This roster leans top-heavy. The office read is prestige value with elevated weekly-cost pressure, not a payroll restriction."
+        : bargainCount > premiumCount + 2
+          ? "This roster has a strong value base. You have room to shape TV identity without every slot needing a premium draw."
+          : "Roster value is balanced across premium anchors and useful value pieces. Treat this as context for booking emphasis, not an enforced budget gate.";
+
+  return {
+    bargainCount,
+    gmRead,
+    mappedCount: mappedProfiles.length,
+    missingCount,
+    premiumCount,
+    totalCount: profiles.length,
   };
 }
 
@@ -6680,6 +6716,7 @@ function FinanceScreen({
   const worstProfitReport = getWorstProfitReport(seasonReports);
   const pressureLabel = getFinancePressureLabel(game.money, latestReport?.profitLoss ?? 0);
   const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
+  const talentValuePressure = getTalentValuePressure(game.wrestlers);
 
   return (
     <main className="app-shell">
@@ -6701,6 +6738,23 @@ function FinanceScreen({
         <Metric label="Pressure" value={pressureLabel} />
         <Metric label="Season P/L" value={formatMoney(totalProfitLoss)} />
         <Metric label="Reports" value={`${game.financeReports.length}`} />
+      </section>
+
+      <section className="command-panel finance-spotlight talent-value-pressure-panel" aria-label="Talent value pressure">
+        <div className="section-heading">
+          <p className="eyebrow">Talent Value Pressure</p>
+          <h3>Roster Value Read</h3>
+        </div>
+        <div className="spotlight-grid compact-grid">
+          <Metric label="Premium / High-Cost" value={`${talentValuePressure.premiumCount}`} detail="Premium draw lanes" />
+          <Metric label="Bargain / Rising" value={`${talentValuePressure.bargainCount}`} detail="Value-base lanes" />
+          <Metric
+            label="Mapped Profiles"
+            value={`${talentValuePressure.mappedCount}/${talentValuePressure.totalCount}`}
+            detail={talentValuePressure.missingCount ? `${talentValuePressure.missingCount} pending` : "All roster values mapped"}
+          />
+        </div>
+        <p className="social-preview-text">{talentValuePressure.gmRead}</p>
       </section>
 
       {latestReport ? (

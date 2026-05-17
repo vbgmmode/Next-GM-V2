@@ -1427,6 +1427,10 @@ h3 {
   border-color: rgba(0, 168, 150, 0.58);
 }
 
+.talent-value-pressure-panel {
+  border-color: rgba(246, 193, 86, 0.3);
+}
+
 .social-preview-text {
   color: #f4f7fb;
   line-height: 1.5;

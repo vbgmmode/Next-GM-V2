@@ -152,13 +152,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Roster Value-Tier Hints v1 Implementation
+Phase: Finance Talent Value Pressure v1 Implementation
 
 Goal:
-Surface compact read-only value-tier context on Roster cards by reusing the existing Wrestler Profile Contract Value Dossier derivation.
+Surface one compact read-only roster value pressure panel on Finance by reusing the existing Wrestler Profile Contract Value Dossier derivation.
 
 Current priority:
-Keep roster value hints read-only and compact. Preserve existing match-result, fallout, finance, booking, persistence, and formula behavior. Defer all contract, payroll, roster-limit, and availability mechanics.
+Keep Finance talent value pressure read-only and contextual. Preserve existing match-result, fallout, finance, booking, persistence, and formula behavior. Defer all contract, payroll, roster-limit, and availability mechanics.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -195,6 +195,7 @@ Completed stabilization passes:
 - Season Archive / Legacy Index Planning v1
 - Season Archive / Legacy Index v1 (implemented)
 - Roster Value-Tier Hints v1 (implemented)
+- Finance Talent Value Pressure v1 (implemented)
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
