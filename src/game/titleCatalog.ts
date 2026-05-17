@@ -68,6 +68,19 @@ export const titleCatalogEntries: TitleCatalogEntry[] = [
     sceneCopy: "Upper-midcard women's title scene. Best for workhorse features and weekly TV pressure.",
   },
   {
+    catalogId: "raw_tag_team_world_tag_team_championship",
+    canonicalTitleId: "raw_tag_team_championship",
+    brand: "Raw",
+    division: "Tag Team",
+    titleLevel: "Tag",
+    displayName: "World Tag Team Championship",
+    prestige: 84,
+    prestigeTier: "Tag Team",
+    eligibleMatchScope: "tag_team",
+    minimumDefenseFrequencyWeeks: 5,
+    sceneCopy: "Tag title scene. Built for 2v2 M020 title matches with no team records or rankings.",
+  },
+  {
     catalogId: "smackdown_mens_top_undisputed_wwe_championship",
     canonicalTitleId: "undisputed_wwe_championship",
     brand: "SmackDown",
@@ -118,6 +131,19 @@ export const titleCatalogEntries: TitleCatalogEntry[] = [
     eligibleMatchScope: "singles",
     minimumDefenseFrequencyWeeks: 4,
     sceneCopy: "Upper-midcard women's title scene. Best for workhorse features and weekly TV pressure.",
+  },
+  {
+    catalogId: "smackdown_tag_team_wwe_tag_team_championship",
+    canonicalTitleId: "smackdown_tag_team_championship",
+    brand: "SmackDown",
+    division: "Tag Team",
+    titleLevel: "Tag",
+    displayName: "WWE Tag Team Championship",
+    prestige: 84,
+    prestigeTier: "Tag Team",
+    eligibleMatchScope: "tag_team",
+    minimumDefenseFrequencyWeeks: 5,
+    sceneCopy: "Tag title scene. Built for 2v2 M020 title matches with no team records or rankings.",
   },
   {
     catalogId: "nxt_mens_top_nxt_championship",
@@ -172,6 +198,19 @@ export const titleCatalogEntries: TitleCatalogEntry[] = [
     sceneCopy: "Upper-midcard women's title scene. Best for workhorse features and weekly TV pressure.",
   },
   {
+    catalogId: "nxt_tag_team_nxt_tag_team_championship",
+    canonicalTitleId: "nxt_tag_team_championship",
+    brand: "NXT",
+    division: "Tag Team",
+    titleLevel: "Tag",
+    displayName: "NXT Tag Team Championship",
+    prestige: 80,
+    prestigeTier: "Tag Team",
+    eligibleMatchScope: "tag_team",
+    minimumDefenseFrequencyWeeks: 5,
+    sceneCopy: "Tag title scene. Built for 2v2 M020 title matches with no team records or rankings.",
+  },
+  {
     catalogId: "aew_mens_top_aew_world_championship",
     canonicalTitleId: "aew_world_championship",
     brand: "AEW",
@@ -222,6 +261,19 @@ export const titleCatalogEntries: TitleCatalogEntry[] = [
     eligibleMatchScope: "singles",
     minimumDefenseFrequencyWeeks: 4,
     sceneCopy: "Upper-midcard women's title scene. Best for workhorse features and weekly TV pressure.",
+  },
+  {
+    catalogId: "aew_tag_team_aew_world_tag_team_championship",
+    canonicalTitleId: "aew_tag_team_championship",
+    brand: "AEW",
+    division: "Tag Team",
+    titleLevel: "Tag",
+    displayName: "AEW World Tag Team Championship",
+    prestige: 84,
+    prestigeTier: "Tag Team",
+    eligibleMatchScope: "tag_team",
+    minimumDefenseFrequencyWeeks: 5,
+    sceneCopy: "Tag title scene. Built for 2v2 M020 title matches with no team records or rankings.",
   },
 ];
 
@@ -297,7 +349,7 @@ export function applyChampionshipCatalogDefaults(championship: Championship, bra
     titleSceneCopy:
       championship.titleSceneCopy ??
       (isTag
-        ? "Tag title scene. Displayed as championship context while tag-team booking remains outside this pass."
+        ? "Tag title scene. Built for 2v2 M020 title matches with no team records or rankings."
         : "Legacy singles title scene. Champion and contender context is derived from the current roster."),
   };
 }

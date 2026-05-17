@@ -45,6 +45,7 @@ The game currently supports:
 - Rival GM assignments to unselected brands as setup flavor/state only
 - Rival Brand Foundation v1 with typed persisted read-only rival brand state derived from setup assignments
 - Tag Team / Affiliation Foundation v1 with typed read-only roster/profile context derived from Top 200 source metadata
+- Tag Championship Foundation v1 with one tag championship, 2v2 M020 tag title matches only, pair-aware champion/history rendering, and no rankings/team records/team persistence/team-level stats
 - Match Format Metadata Foundation v1 with centralized current segment/match format metadata
 - PLE Readiness Checklist v1 with non-spoiler major-event booking context
 - Post-Show Cause Ledger v1 with retrospective explanation from resolved result data
@@ -150,13 +151,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Tag Championship Planning v1
+Phase: Tag Championship Foundation v1
 
 Goal:
-Define a safe, minimal path to adding 2v2 tag championship support while preserving the complete offline solo career loop, expanded setup flow, and active Top 200 open draft pool.
+Add one bounded 2v2 tag championship foundation while preserving the complete offline solo career loop, expanded setup flow, and active Top 200 open draft pool.
 
 Current priority:
-Define the tag championship implementation gate and keep all existing systems unchanged outside this bounded slice.
+Keep tag championship support limited to one title, M020 tag title matches, pair-aware rendering, and no rankings/team records/team persistence/team-level stats.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -177,6 +178,7 @@ Completed stabilization passes:
 - Finance Integration Checkpoint Report v1
 - Rival Brand Foundation v1
 - Tag Team / Affiliation Foundation v1
+- Tag Championship Foundation v1
 - Match Format Metadata Foundation v1
 - PLE Readiness Checklist v1
 - Post-Show Cause Ledger v1

@@ -194,9 +194,16 @@ function normalizeShowHistory(showHistory: unknown): ShowResult[] {
 }
 
 function normalizeChampionships(championships: unknown, wrestlers: Wrestler[], brandStyle: GameState["brandStyle"]) {
-  return Array.isArray(championships) && championships.length
+  const normalized = Array.isArray(championships) && championships.length
     ? (championships as Championship[]).map((championship) => applyChampionshipCatalogDefaults(championship, brandStyle))
     : createDefaultChampionships(wrestlers, brandStyle);
+
+  if (normalized.some((championship) => championship.eligibleMatchScope === "tag_team" || championship.division === "Tag Team")) {
+    return normalized;
+  }
+
+  const tagTitle = createDefaultChampionships(wrestlers, brandStyle).find((championship) => championship.eligibleMatchScope === "tag_team");
+  return tagTitle ? [...normalized, tagTitle] : normalized;
 }
 
 function normalizeRivalries(rivalries: unknown, wrestlers: Wrestler[]) {

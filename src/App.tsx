@@ -1339,6 +1339,10 @@ function isSinglesChampionship(championship: Championship) {
   return championship.eligibleMatchScope !== "tag_team" && championship.division !== "Tag Team" && championship.championIds.length === 1;
 }
 
+function isTagChampionship(championship: Championship) {
+  return championship.eligibleMatchScope === "tag_team" || championship.division === "Tag Team";
+}
+
 function doSegmentParticipantsFitChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[]) {
   const titleDivision = getChampionshipDivisionGroup(championship);
 
@@ -1349,7 +1353,32 @@ function doSegmentParticipantsFitChampionship(segment: Segment, championship: Ch
   return segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship));
 }
 
+function getTagTitleSides(segment: Segment, championship: Championship) {
+  if (segment.type !== "Match" || segment.segmentCatalogId !== "M020" || segment.participantIds.length !== 4 || championship.championIds.length !== 2) {
+    return undefined;
+  }
+
+  const teamAIds = segment.participantIds.slice(0, 2);
+  const teamBIds = segment.participantIds.slice(2, 4);
+  const championIds = new Set(championship.championIds);
+  const teamAHasChampions = teamAIds.every((id) => championIds.has(id));
+  const teamBHasChampions = teamBIds.every((id) => championIds.has(id));
+
+  if (teamAHasChampions === teamBHasChampions) {
+    return undefined;
+  }
+
+  return {
+    championSideIds: teamAHasChampions ? teamAIds : teamBIds,
+    challengerSideIds: teamAHasChampions ? teamBIds : teamAIds,
+  };
+}
+
 function canSegmentContestChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[] = []) {
+  if (isTagChampionship(championship)) {
+    return Boolean(isValidSegment(segment, wrestlers) && getTagTitleSides(segment, championship));
+  }
+
   return (
     segment.type === "Match" &&
     isValidSegment(segment, wrestlers) &&
@@ -1375,7 +1404,12 @@ function canSegmentAttachChampionship(segment: Segment, championship: Championsh
   }
 
   if (segment.type === "Open Challenge") {
-    return isValidSegment(segment, wrestlers) && championship.championIds.includes(segment.participantIds[0]) && doSegmentParticipantsFitChampionship(segment, championship, wrestlers);
+    return (
+      isValidSegment(segment, wrestlers) &&
+      isSinglesChampionship(championship) &&
+      championship.championIds.includes(segment.participantIds[0]) &&
+      doSegmentParticipantsFitChampionship(segment, championship, wrestlers)
+    );
   }
 
   return false;
@@ -1429,8 +1463,11 @@ function getTitleSceneRead(championship: Championship, wrestlers: Wrestler[], cu
 
   if (championship.eligibleMatchScope === "tag_team") {
     return {
-      label: "Presentation Scene",
-      detail: "Tag title context is tracked, but tag-team title matches are outside this build.",
+      label: contenders.length >= 2 ? "Tag Lane Ready" : "Needs Challengers",
+      detail:
+        contenders.length >= 2
+          ? "The champions have enough roster depth for a 2v2 M020 title defense."
+          : "The tag title needs two available challengers outside the champion pair.",
     };
   }
 
@@ -1520,9 +1557,12 @@ function getTitleScenePressureSnapshot(championship: Championship, game: GameSta
   if (championship.eligibleMatchScope === "tag_team") {
     diagnostics.push({
       id: "tag-scope",
-      label: "Presentation Scene",
-      detail: "Tag title context is visible, but tag title booking is not active in this build.",
-      tone: "steady",
+      label: contenders.length >= 2 ? "Tag Title Ready" : "Needs Challengers",
+      detail:
+        contenders.length >= 2
+          ? "The title can be defended in a valid M020 tag match with the champions together on one side."
+          : "The current roster does not have two eligible challengers outside the champion pair.",
+      tone: contenders.length >= 2 ? "steady" : "build",
     });
   } else if (!scene.champions.length) {
     diagnostics.push({
@@ -1668,7 +1708,7 @@ function getChampionshipPressureSnapshots(game: GameState) {
 
 function getTitleSceneGMRead(championship: Championship, scene: ReturnType<typeof getTitleDivisionScene>) {
   if (championship.eligibleMatchScope === "tag_team") {
-    return "Tag title presentation is tracked, but tag booking is not part of this ruleset yet.";
+    return "Tag title defenses are available only as 2v2 M020 matches with the champion pair together on one side.";
   }
 
   if (scene.eligibleRoster.length < 2) {
@@ -1786,6 +1826,16 @@ function getWrestlerRivalryHistory(game: GameState, wrestlerId: string, limit = 
 function formatHistoryStamp(event: Pick<ChampionshipHistoryEvent | RivalryHistoryEvent, "seasonNumber" | "weekNumber" | "showName" | "showType">) {
   const showLabel = event.showName ? ` · ${event.showName}${event.showType ? ` (${getShowTypeLabel(event.showType)})` : ""}` : "";
   return `S${event.seasonNumber} W${event.weekNumber}${showLabel}`;
+}
+
+function getChampionshipEventPairLine(event: ChampionshipHistoryEvent) {
+  if (!event.winningPairIds?.length && !event.winningPairLabel) {
+    return undefined;
+  }
+
+  const winner = event.winningPairLabel ?? event.winningPairIds?.join(" / ") ?? "Winning pair";
+  const loser = event.losingPairLabel ?? event.losingPairIds?.join(" / ");
+  return loser ? `${winner} over ${loser}` : winner;
 }
 
 function formatChampionshipEventType(eventType: ChampionshipHistoryEvent["eventType"]) {
@@ -5742,6 +5792,7 @@ function ChampionshipsScreen({
           const titleRead = getTitleSceneRead(championship, game.wrestlers, game.currentWeek, game.rivalries);
           const pressureSnapshot = getTitleScenePressureSnapshot(championship, game);
           const gmRead = getTitleSceneGMRead(championship, scene);
+          const isTagTitle = isTagChampionship(championship);
 
           return (
             <article className="championship-card" key={championship.id}>
@@ -5794,12 +5845,12 @@ function ChampionshipsScreen({
                   <strong>{formatTitleSceneNames(scene.champions, "No champion assigned")}</strong>
                 </article>
                 <article>
-                  <span>Top Contenders</span>
-                  <strong>{formatTitleSceneNamesWithChampionContext(scene.topContenders, game.championships, championship.id, "No clear challengers")}</strong>
+                  <span>{isTagTitle ? "Available Challengers" : "Top Contenders"}</span>
+                  <strong>{formatTitleSceneNamesWithChampionContext(scene.topContenders, game.championships, championship.id, isTagTitle ? "No challenger pair depth yet" : "No clear challengers")}</strong>
                 </article>
                 <article>
-                  <span>Rising Contenders</span>
-                  <strong>{formatTitleSceneNamesWithChampionContext(scene.risingContenders, game.championships, championship.id, "No rising lane yet")}</strong>
+                  <span>{isTagTitle ? "Fresh Pair Options" : "Rising Contenders"}</span>
+                  <strong>{formatTitleSceneNamesWithChampionContext(scene.risingContenders, game.championships, championship.id, isTagTitle ? "No fresh pair read yet" : "No rising lane yet")}</strong>
                 </article>
                 <article>
                   <span>Eligible Roster</span>
@@ -5823,6 +5874,7 @@ function ChampionshipsScreen({
                   recentHistory.map((event) => (
                     <article className="history-event" key={event.id}>
                       <span>{formatChampionshipEventType(event.eventType)} · {formatHistoryStamp(event)}</span>
+                      {getChampionshipEventPairLine(event) ? <strong>{getChampionshipEventPairLine(event)}</strong> : null}
                       <p>{event.note}</p>
                     </article>
                   ))
@@ -6676,6 +6728,7 @@ function WeekReviewScreen({
             {titleHistoryEvents.map((event) => (
               <article className="history-event" key={event.id}>
                 <span>{formatChampionshipEventType(event.eventType)} · {event.championshipName}</span>
+                {getChampionshipEventPairLine(event) ? <strong>{getChampionshipEventPairLine(event)}</strong> : null}
                 <p>{event.note}</p>
               </article>
             ))}
@@ -6859,6 +6912,7 @@ function SeasonReviewScreen({
             {biggestTitleChange ? (
               <article className="history-event">
                 <span>Biggest Title Change · {formatHistoryStamp(biggestTitleChange)}</span>
+                {getChampionshipEventPairLine(biggestTitleChange) ? <strong>{getChampionshipEventPairLine(biggestTitleChange)}</strong> : null}
                 <p>{biggestTitleChange.note}</p>
               </article>
             ) : (
@@ -6977,25 +7031,74 @@ function TitleMatchControl({
 
   if (isTagMatch) {
     const participantsLabel = getSegmentParticipantsLabel(segment, wrestlers);
-    const staleChampion = segment.championshipId ? championships.find((championship) => championship.id === segment.championshipId) : undefined;
+    const tagChampionships = championships.filter(isTagChampionship);
+    const eligibleChampionships = tagChampionships.filter((championship) => canSegmentAttachChampionship(segment, championship, wrestlers));
+    const selectedChampionship = championships.find((championship) => championship.id === segment.championshipId);
+    const selectedTagChampionship = selectedChampionship && isTagChampionship(selectedChampionship) ? selectedChampionship : undefined;
+    const selectedSides = selectedTagChampionship ? getTagTitleSides(segment, selectedTagChampionship) : undefined;
+    const tagTitleStatus = (() => {
+      if (!tagChampionships.length) {
+        return "No tag championship is assigned to this brand yet.";
+      }
+
+      if (segment.participantIds.length !== 4) {
+        return "Needs exactly four unique wrestlers before a tag title defense can be sanctioned.";
+      }
+
+      if (!isValidSegment(segment, wrestlers)) {
+        return getSegmentValidationWarning(segment, wrestlers);
+      }
+
+      if (eligibleChampionships.length) {
+        const championship = selectedTagChampionship && eligibleChampionships.some((title) => title.id === selectedTagChampionship.id) ? selectedTagChampionship : eligibleChampionships[0];
+        const sides = getTagTitleSides(segment, championship);
+        return sides
+          ? `Sanctioned tag title defense available: ${getWrestlerNames(sides.championSideIds, wrestlers)} can defend against ${getWrestlerNames(sides.challengerSideIds, wrestlers)}.`
+          : "Tag title defense available when the champion pair is together on one side.";
+      }
+
+      return `Tag title blocked: keep ${tagChampionships.map((championship) => getWrestlerNames(championship.championIds, wrestlers)).join(" / ")} together on Team A or Team B.`;
+    })();
 
     return (
       <div className="title-match-control">
         <div>
           <span>Title Match</span>
-          <strong>Tag Team Match (2v2) is non-title in v1.</strong>
+          <strong>
+            {selectedTagChampionship
+              ? `Selected title: ${selectedTagChampionship.name}. Champions: ${getWrestlerNames(selectedTagChampionship.championIds, wrestlers)}.`
+              : eligibleChampionships.length
+                ? "Tag championship defense is available."
+                : "M020 can become a tag title match only when the champion pair is on one side."}
+          </strong>
           <small>{participantsLabel}</small>
         </div>
         <div className="title-defense-state">
           <span>Title Controls</span>
-          <strong>Sanctioned title defenses stay singles-only in this build.</strong>
+          <strong>{tagTitleStatus}</strong>
         </div>
-        {staleChampion ? (
-          <div className="title-eligible-readout" aria-label="Legacy title context">
+        {eligibleChampionships.length || segment.championshipId ? (
+          <div className="title-buttons">
+            <button className={!segment.championshipId ? "active-filter" : ""} onClick={() => onSetSegmentChampionship(segment.id, "")}>
+              Non-Title
+            </button>
+            {eligibleChampionships.map((championship) => (
+              <button
+                className={segment.championshipId === championship.id ? "active-filter" : ""}
+                key={championship.id}
+                onClick={() => onSetSegmentChampionship(segment.id, championship.id)}
+              >
+                {championship.name} · Tag Defense
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {selectedSides ? (
+          <div className="title-eligible-readout" aria-label="Eligible tag title challengers">
             <article>
-              <span>Legacy context detected</span>
-              <strong>{staleChampion.name}</strong>
-              <small>This segment is a non-title format; legacy title attachment is ignored.</small>
+              <span>Champion Side</span>
+              <strong>{getWrestlerNames(selectedSides.championSideIds, wrestlers)}</strong>
+              <small>Challenger side: {getWrestlerNames(selectedSides.challengerSideIds, wrestlers)}</small>
             </article>
           </div>
         ) : null}

@@ -1002,13 +1002,21 @@ function getRivalrySegmentTypeBonus(segment: Segment) {
 }
 
 function resolveTitleMatch(segment: Segment, championships: Championship[], wrestlers: Wrestler[], context: ResolvedShowContext) {
-  if (!segment.championshipId || segment.type !== "Match" || segment.participantIds.length !== 2) {
+  if (!segment.championshipId || segment.type !== "Match") {
     return undefined;
   }
 
   const championship = championships.find((title) => title.id === segment.championshipId);
 
-  if (!championship || championship.eligibleMatchScope === "tag_team" || championship.division === "Tag Team" || championship.championIds.length !== 1) {
+  if (!championship) {
+    return undefined;
+  }
+
+  if (championship.eligibleMatchScope === "tag_team" || championship.division === "Tag Team") {
+    return resolveTagTitleMatch(segment, championship, wrestlers, context);
+  }
+
+  if (segment.participantIds.length !== 2 || championship.championIds.length !== 1) {
     return undefined;
   }
 
@@ -1076,6 +1084,108 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
       eventType: "title_change",
       championIds: [winner.id],
       previousChampionIds,
+      weekNumber: context.weekNumber,
+      seasonNumber: context.seasonNumber,
+      showName: context.showName,
+      showType: context.showType,
+      segmentId: segment.id,
+      note,
+    } satisfies ChampionshipHistoryEvent,
+  };
+}
+
+function getTeamLabel(ids: string[], wrestlers: Wrestler[]) {
+  return ids.map((id) => wrestlers.find((wrestler) => wrestler.id === id)?.name ?? "Unknown").join(" / ");
+}
+
+function getTagTitleSides(segment: Segment, championship: Championship) {
+  if (segment.segmentCatalogId !== "M020" || segment.participantIds.length !== 4 || championship.championIds.length !== 2) {
+    return undefined;
+  }
+
+  const teamAIds = segment.participantIds.slice(0, 2);
+  const teamBIds = segment.participantIds.slice(2, 4);
+  const championIds = new Set(championship.championIds);
+  const teamAHasChampions = teamAIds.every((id) => championIds.has(id));
+  const teamBHasChampions = teamBIds.every((id) => championIds.has(id));
+
+  if (teamAHasChampions === teamBHasChampions) {
+    return undefined;
+  }
+
+  return {
+    championSideIds: teamAHasChampions ? teamAIds : teamBIds,
+    challengerSideIds: teamAHasChampions ? teamBIds : teamAIds,
+  };
+}
+
+function resolveTagTitleMatch(segment: Segment, championship: Championship, wrestlers: Wrestler[], context: ResolvedShowContext) {
+  const uniqueParticipantCount = new Set(segment.participantIds).size;
+
+  if (segment.segmentCatalogId !== "M020" || segment.participantIds.length !== 4 || uniqueParticipantCount !== 4 || championship.championIds.length !== 2) {
+    return undefined;
+  }
+
+  const sides = getTagTitleSides(segment, championship);
+  const winner = getSegmentWinner(segment, wrestlers);
+
+  if (!sides || !winner) {
+    return undefined;
+  }
+
+  const championRetains = sides.championSideIds.includes(winner.id);
+  const championPairLabel = getTeamLabel(sides.championSideIds, wrestlers);
+  const challengerPairLabel = getTeamLabel(sides.challengerSideIds, wrestlers);
+
+  if (championRetains) {
+    championship.defenses += 1;
+    const note = `${championPairLabel} retained the ${championship.name} against ${challengerPairLabel}${context.showType === "ple" ? " on a major stage" : ""}.`;
+
+    return {
+      note,
+      event: {
+        id: `s${context.seasonNumber}-w${context.weekNumber}-${segment.id}-${championship.id}-successful-defense`,
+        championshipId: championship.id,
+        championshipName: championship.name,
+        eventType: "successful_defense",
+        championIds: [...sides.championSideIds],
+        winningPairIds: [...sides.championSideIds],
+        losingPairIds: [...sides.challengerSideIds],
+        winningPairLabel: championPairLabel,
+        losingPairLabel: challengerPairLabel,
+        weekNumber: context.weekNumber,
+        seasonNumber: context.seasonNumber,
+        showName: context.showName,
+        showType: context.showType,
+        segmentId: segment.id,
+        defenseNumber: championship.defenses,
+        note,
+      } satisfies ChampionshipHistoryEvent,
+    };
+  }
+
+  const previousChampionIds = [...championship.championIds];
+  championship.championIds = [...sides.challengerSideIds];
+  championship.reignStartWeek = context.weekNumber;
+  championship.defenses = 0;
+  const note =
+    context.showType === "ple"
+      ? `${challengerPairLabel} defeated ${championPairLabel} to win the ${championship.name} at a major event. The tag title picture has a new center.`
+      : `${challengerPairLabel} defeated ${championPairLabel} to win the ${championship.name}. The tag title picture has to adjust.`;
+
+  return {
+    note,
+    event: {
+      id: `s${context.seasonNumber}-w${context.weekNumber}-${segment.id}-${championship.id}-title-change`,
+      championshipId: championship.id,
+      championshipName: championship.name,
+      eventType: "title_change",
+      championIds: [...sides.challengerSideIds],
+      previousChampionIds,
+      winningPairIds: [...sides.challengerSideIds],
+      losingPairIds: [...sides.championSideIds],
+      winningPairLabel: challengerPairLabel,
+      losingPairLabel: championPairLabel,
       weekNumber: context.weekNumber,
       seasonNumber: context.seasonNumber,
       showName: context.showName,

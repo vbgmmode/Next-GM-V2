@@ -185,6 +185,10 @@ export type ChampionshipHistoryEvent = {
   eventType: ChampionshipHistoryEventType;
   championIds: string[];
   previousChampionIds?: string[];
+  winningPairIds?: string[];
+  losingPairIds?: string[];
+  winningPairLabel?: string;
+  losingPairLabel?: string;
   weekNumber: number;
   seasonNumber: number;
   showName: string;

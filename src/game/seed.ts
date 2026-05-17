@@ -153,13 +153,15 @@ function getSeedDivisionGroup(wrestler: Wrestler) {
 }
 
 export function createDefaultChampionships(wrestlers: Wrestler[] = roster, brandStyle: BrandStyle = defaultCareer.brandStyle): Championship[] {
-  const catalogTitles = getTitleCatalogEntriesForBrand(brandStyle).filter((title) => title.eligibleMatchScope === "singles");
+  const brandCatalogTitles = getTitleCatalogEntriesForBrand(brandStyle);
+  const catalogTitles = brandCatalogTitles.filter((title) => title.eligibleMatchScope === "singles");
+  const tagCatalogTitle = brandCatalogTitles.find((title) => title.eligibleMatchScope === "tag_team");
 
   if (catalogTitles.length) {
     const ranked = byStarPower(wrestlers);
     const usedChampionIds = new Set<string>();
 
-    return catalogTitles.map((title) => {
+    const championships = catalogTitles.map((title) => {
       const sameDivision = ranked.filter((wrestler) => getSeedDivisionGroup(wrestler) === title.division);
       const champion = sameDivision.find((wrestler) => !usedChampionIds.has(wrestler.id)) ?? sameDivision[0] ?? ranked.find((wrestler) => !usedChampionIds.has(wrestler.id)) ?? ranked[0] ?? roster[0];
 
@@ -184,6 +186,33 @@ export function createDefaultChampionships(wrestlers: Wrestler[] = roster, brand
         defenses: 0,
       };
     });
+
+    if (tagCatalogTitle) {
+      const tagChampions = ranked.filter((wrestler) => !usedChampionIds.has(wrestler.id)).slice(0, 2);
+      const fallbackTagChampions = ranked.slice(0, 2);
+      const championIds = tagChampions.length === 2 ? tagChampions.map((wrestler) => wrestler.id) : fallbackTagChampions.map((wrestler) => wrestler.id);
+
+      championships.push({
+        id: tagCatalogTitle.canonicalTitleId,
+        name: tagCatalogTitle.displayName,
+        division: tagCatalogTitle.division,
+        catalogId: tagCatalogTitle.catalogId,
+        canonicalTitleId: tagCatalogTitle.canonicalTitleId,
+        brand: tagCatalogTitle.brand,
+        titleLevel: tagCatalogTitle.titleLevel,
+        titleType: tagCatalogTitle.prestigeTier,
+        prestigeTier: tagCatalogTitle.prestigeTier,
+        eligibleMatchScope: tagCatalogTitle.eligibleMatchScope,
+        minimumDefenseFrequencyWeeks: tagCatalogTitle.minimumDefenseFrequencyWeeks,
+        titleSceneCopy: tagCatalogTitle.sceneCopy,
+        prestige: tagCatalogTitle.prestige,
+        championIds,
+        reignStartWeek: 1,
+        defenses: 0,
+      });
+    }
+
+    return championships;
   }
 
   const ranked = byStarPower(wrestlers);
@@ -220,6 +249,12 @@ export function createDefaultChampionships(wrestlers: Wrestler[] = roster, brand
       id: "tag-team-championship",
       name: "Tag Team Championship",
       division: "Tag Team",
+      titleLevel: "Tag",
+      titleType: "Tag Team",
+      prestigeTier: "Tag Team",
+      eligibleMatchScope: "tag_team",
+      minimumDefenseFrequencyWeeks: 5,
+      titleSceneCopy: "Tag title scene. Built for 2v2 M020 title matches with no team records or rankings.",
       prestige: 82,
       championIds: tagChampions.length === 2 ? tagChampions.map((wrestler) => wrestler.id) : ranked.slice(0, 2).map((wrestler) => wrestler.id),
       reignStartWeek: 1,
