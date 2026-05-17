@@ -13,7 +13,16 @@ import type {
   StartingBudgetTier,
   Wrestler,
 } from "./types";
-import { createDefaultChampionships, createDefaultRivalries, createRivalBrandUniverse, createRivalGMAssignments, createSeasonCalendar, defaultCareer, isPrototypeBrand } from "./seed";
+import {
+  createDefaultChampionships,
+  createDefaultRivalries,
+  createRivalBrandUniverse,
+  createRivalGMAssignments,
+  createSeasonCalendar,
+  defaultCareer,
+  getStartingBudgetAmount,
+  isPrototypeBrand,
+} from "./seed";
 import { enrichWrestlerIdentityContext } from "./wrestlerIdentityContext";
 import { getSegmentTypeDefaults } from "./matchFormatCatalog";
 import { applyChampionshipCatalogDefaults } from "./titleCatalog";
@@ -272,22 +281,25 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
   const brandStyle = typeof savedGame.brandStyle === "string" ? (savedGame.brandStyle as GameState["brandStyle"]) : defaultCareer.brandStyle;
   const rivalGMAssignments = normalizeRivalGMAssignments(savedGame.rivalGMAssignments);
   const safeRivalGMAssignments = rivalGMAssignments.length ? rivalGMAssignments : createRivalGMAssignments(brandStyle);
+  const startingBudgetTier = isStartingBudgetTier(savedGame.startingBudgetTier) ? savedGame.startingBudgetTier : defaultCareer.startingBudgetTier;
+  const fallbackMoney = getStartingBudgetAmount(startingBudgetTier);
+  const seasonStartingMoney = savedGame.seasonStartingMoney ?? savedGame.money ?? fallbackMoney;
 
   return {
     game: {
       seasonNumber: savedGame.seasonNumber ?? 1,
-      seasonStartingMoney: savedGame.seasonStartingMoney ?? savedGame.money ?? 250000,
+      seasonStartingMoney,
       currentWeek: savedGame.currentWeek ?? 1,
       gmName: savedGame.gmName ?? defaultCareer.gmName,
       gmStyle: savedGame.gmStyle ?? defaultCareer.gmStyle,
       brandName: savedGame.brandName ?? defaultCareer.brandName,
       brandStyle,
       difficulty: isGameDifficulty(savedGame.difficulty) ? savedGame.difficulty : defaultCareer.difficulty,
-      startingBudgetTier: isStartingBudgetTier(savedGame.startingBudgetTier) ? savedGame.startingBudgetTier : defaultCareer.startingBudgetTier,
+      startingBudgetTier,
       rivalGMAssignments: safeRivalGMAssignments,
       rivalBrands: normalizeRivalBrands(savedGame.rivalBrands, safeRivalGMAssignments),
       createdAt: savedGame.createdAt ?? new Date().toISOString(),
-      money: savedGame.money ?? 250000,
+      money: savedGame.money ?? seasonStartingMoney,
       wrestlers,
       championships: normalizeChampionships(savedGame.championships, wrestlers, brandStyle),
       rivalries: normalizeRivalries(savedGame.rivalries, wrestlers),
