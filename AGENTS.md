@@ -96,7 +96,7 @@ The game currently supports:
 - Roster with read-only locker-room personality/status reads from existing momentum, morale, fatigue, injury, title, rivalry, and TV-time state
 - Wrestler Profiles v1 with stats, TV history, pressure labels, championship/rivalry context, social mentions, and deterministic GM Read
 - Championships with title catalog context, champion/contender framing, title scene health, and read-only prestige/division identity
-- Rivalries with heat, freshness, stakes, status, create, and end controls
+- Rivalries with heat, freshness, stakes, status, create/end controls, and a read-only Creative Desk / story-room pulse derived from existing rivalry timing, history, card usage, and PLE context
 - Calendar
 - 12-week season
 - PLEs
@@ -125,6 +125,20 @@ Title
 → Advance Week
 
 The loop must remain playable after every change.
+
+## Current UX Role Map
+- Setup frames the player as a hired GM entering a larger read-only GM universe before Draft Night.
+- Dashboard orients the week through Living World Pressure / Office Pulse, next action, and current brand pressure.
+- Booking is the TV production desk for assembling the current card with context and warnings, not predicted fallout.
+- Results is the resolved broadcast recap and immediate consequence reveal.
+- Week Review is the GM office handoff before advancing the calendar.
+- Roster is the living locker room and wrestler profile surface.
+- Championships is the prestige, contender, title-history, and division-health surface.
+- Rivalries is the creative/story room for active feud temperature, timing, stakes, and payoff pressure from existing state.
+- Social/IWC is the resolved audience mood and post-show reaction surface.
+- Finance is the brand-pressure money office with readable report context.
+- Calendar is the season clock, PLE cadence, and upcoming-show context.
+- Season Review is the end-of-season legacy and continuity recap.
 
 ## Product Principles
 - Player agency first.
@@ -155,6 +169,7 @@ The loop must remain playable after every change.
 - Wrestler profiles should support GM decisions with character context, not become spreadsheet clutter.
 - Championships should feel prestigious.
 - Rivalries should feel elastic and alive.
+- Rivalries should read as a creative story-room surface using existing heat, freshness, timing, card usage, and resolved history; do not imply hidden story simulation.
 - Championships and rivalries should preserve meaningful history from actual gameplay.
 - History should come from resolved events, not invented offscreen story.
 - Social/IWC should react to actual outcomes.
@@ -214,6 +229,9 @@ Completed stabilization passes:
 - Roster Locker Room Personality v1
 - Championships Prestige / Division Identity v1
 - Social / IWC Mood Summary v1
+- Setup World Framing Copy Pass v1
+- Laptop UI Readability / Broadcast Hierarchy Pass v1
+- Rivalries Story Room Personality v1
 - Read-only gameplay context helper extraction to src/game/gameContextReads.ts
 - Tag Division Health Diagnostics v1
 - Stipulation Metadata v1 (implemented)
