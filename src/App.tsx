@@ -324,6 +324,22 @@ type CauseLedgerSection = {
   items: CauseLedgerItem[];
 };
 
+type WeeklyDecisionPressureTone = "strong" | "steady" | "watch";
+
+type WeeklyDecisionPressureItem = {
+  id: string;
+  label: string;
+  value: string;
+  detail: string;
+  tone: WeeklyDecisionPressureTone;
+};
+
+type WeeklyDecisionPressureSnapshot = {
+  headline: string;
+  detail: string;
+  items: WeeklyDecisionPressureItem[];
+};
+
 type QaHarnessMode = "runtime" | "legacy-runtime";
 
 const draftPickCount = 12;
