@@ -5057,6 +5057,255 @@ h3 {
   color: #ff9aa4;
 }
 
+.booking-card-board-panel {
+  background:
+    linear-gradient(135deg, rgba(216, 35, 50, 0.16), transparent 36%),
+    linear-gradient(90deg, rgba(246, 193, 86, 0.06), transparent 68%),
+    rgba(10, 12, 18, 0.96);
+  border: 1px solid rgba(246, 193, 86, 0.24);
+  border-left: 4px solid #d82332;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 18px;
+}
+
+.booking-card-board-panel.status-ready {
+  border-color: rgba(0, 168, 150, 0.48);
+}
+
+.booking-card-board-panel.status-building {
+  border-color: rgba(246, 193, 86, 0.36);
+}
+
+.booking-card-board-panel.status-blocked {
+  border-color: rgba(255, 83, 97, 0.52);
+}
+
+.booking-card-board-panel.status-empty {
+  border-color: rgba(127, 137, 154, 0.34);
+}
+
+.booking-card-board-head,
+.focused-setup-head {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.booking-card-board-head h3,
+.focused-setup-head h3 {
+  line-height: 1.12;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.booking-card-board-head > strong,
+.focused-setup-head > strong {
+  background: rgba(246, 193, 86, 0.12);
+  border: 1px solid rgba(246, 193, 86, 0.28);
+  color: #f6c156;
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 8px 10px;
+  text-transform: uppercase;
+}
+
+.booking-card-board-panel > p,
+.focused-setup-head p,
+.segment-type-stage p {
+  color: #dbe2ef;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.booking-card-board-layout {
+  align-items: start;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+  min-width: 0;
+}
+
+.booking-slot-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.booking-slot {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 46%),
+    rgba(14, 17, 24, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 4px solid rgba(127, 137, 154, 0.66);
+  border-radius: 6px;
+  display: grid;
+  gap: 10px;
+  min-height: 180px;
+  min-width: 0;
+  padding: 13px;
+}
+
+.booking-slot.filled {
+  border-left-color: #f6c156;
+}
+
+.booking-slot.valid {
+  border-color: rgba(0, 168, 150, 0.36);
+  border-left-color: #00a896;
+}
+
+.booking-slot.invalid {
+  border-color: rgba(255, 83, 97, 0.42);
+  border-left-color: #ff5361;
+}
+
+.booking-slot.buildable {
+  background:
+    linear-gradient(135deg, rgba(246, 193, 86, 0.1), transparent 52%),
+    rgba(14, 17, 24, 0.9);
+}
+
+.booking-slot-topline {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.booking-slot-topline span,
+.booking-slot-flags span {
+  color: #f6c156;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.booking-slot-topline strong {
+  color: #f4f7fb;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.booking-slot h3 {
+  line-height: 1.12;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.booking-slot p {
+  color: #b9c1cf;
+  line-height: 1.35;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.booking-slot-flags,
+.booking-slot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+
+.booking-slot-flags span {
+  background: rgba(8, 9, 13, 0.72);
+  border: 1px solid rgba(246, 193, 86, 0.18);
+  color: #dbe2ef;
+  padding: 5px 7px;
+}
+
+.booking-slot-actions {
+  align-self: end;
+}
+
+.booking-slot-actions button,
+.booking-slot > button {
+  min-height: 36px;
+}
+
+.booking-board-support {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
+.booking-board-support > .ple-readiness-panel,
+.booking-board-support > .broadcast-risk-panel {
+  grid-column: 1 / -1;
+}
+
+.focused-setup-shell {
+  background:
+    linear-gradient(135deg, rgba(216, 35, 50, 0.13), transparent 34%),
+    rgba(10, 12, 18, 0.96);
+  border: 1px solid rgba(246, 193, 86, 0.24);
+  border-left: 4px solid #f6c156;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 18px;
+}
+
+.focused-setup-head {
+  background: rgba(8, 9, 13, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 14px;
+}
+
+.segment-type-stage {
+  background: rgba(14, 17, 24, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.segment-type-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.segment-type-grid button {
+  align-items: start;
+  display: grid;
+  gap: 6px;
+  min-height: 120px;
+  padding: 12px;
+  text-align: left;
+}
+
+.segment-type-grid button span {
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.segment-type-grid button small {
+  line-height: 1.3;
+  text-transform: none;
+}
+
+.focused-setup-shell .segment-composer {
+  background: rgba(14, 17, 24, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  max-height: none;
+}
+
 .producer-rundown-panel {
   background:
     linear-gradient(135deg, rgba(216, 35, 50, 0.18), transparent 38%),
@@ -7063,6 +7312,9 @@ h3 {
   }
 
   .status-grid,
+  .booking-card-board-layout,
+  .booking-slot-grid,
+  .booking-board-support,
   .booking-rundown-layout,
   .brand-pulse-grid,
   .brand-pulse-rivals,
@@ -7216,6 +7468,17 @@ h3 {
     flex-direction: column;
   }
 
+  .booking-card-board-head,
+  .focused-setup-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .booking-card-board-head > strong,
+  .focused-setup-head > strong {
+    text-align: center;
+  }
+
   .producer-rundown-head > strong {
     text-align: center;
   }
@@ -7240,6 +7503,7 @@ h3 {
   }
 
   .catalog-grid,
+  .segment-type-grid,
   .duration-editor,
   .duration-controls {
     grid-template-columns: 1fr;
@@ -7453,6 +7717,8 @@ h3 {
 
   .roster-controls,
   .locker-room-pulse-panel,
+  .booking-card-board-panel,
+  .focused-setup-shell,
   .producer-rundown-panel,
   .results-recap-package {
     border-radius: 6px;
