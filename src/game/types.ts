@@ -88,7 +88,7 @@ export type RivalryStatus = "rising" | "steady" | "cooling" | "stale";
 
 export type RivalryStakes = "personal" | "title" | "respect" | "revenge";
 
-export type ChampionshipHistoryEventType = "title_change" | "successful_defense";
+export type ChampionshipHistoryEventType = "title_change" | "successful_defense" | "revoked" | "assigned";
 
 export type RivalryHistoryEventType =
   | "started"
@@ -175,6 +175,7 @@ export type Championship = {
   titleSceneCopy?: string;
   prestige: number;
   championIds: string[];
+  contenderIds?: string[];
   reignStartWeek: number;
   defenses: number;
 };

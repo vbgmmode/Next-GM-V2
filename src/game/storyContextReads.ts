@@ -13,7 +13,19 @@ export function getChampionshipHistoryAgeWeeks(game: GameState, event: Champions
 }
 
 export function formatChampionshipEventType(eventType: ChampionshipHistoryEvent["eventType"]) {
-  return eventType === "title_change" ? "Title Change" : "Successful Defense";
+  if (eventType === "title_change") {
+    return "Title Change";
+  }
+
+  if (eventType === "revoked") {
+    return "Title Revoked";
+  }
+
+  if (eventType === "assigned") {
+    return "Champion Assigned";
+  }
+
+  return "Successful Defense";
 }
 
 export function formatRivalryEventType(eventType: RivalryHistoryEvent["eventType"]) {

@@ -232,8 +232,14 @@ function normalizeShowHistory(showHistory: unknown): ShowResult[] {
 }
 
 function normalizeChampionships(championships: unknown, wrestlers: Wrestler[], brandStyle: GameState["brandStyle"]) {
+  const wrestlerIds = new Set(wrestlers.map((wrestler) => wrestler.id));
   const normalized = Array.isArray(championships) && championships.length
-    ? (championships as Championship[]).map((championship) => applyChampionshipCatalogDefaults(championship, brandStyle))
+    ? (championships as Championship[]).map((championship) => ({
+        ...applyChampionshipCatalogDefaults(championship, brandStyle),
+        contenderIds: Array.isArray(championship.contenderIds)
+          ? championship.contenderIds.filter((id) => wrestlerIds.has(id) && !championship.championIds.includes(id))
+          : undefined,
+      }))
     : createDefaultChampionships(wrestlers, brandStyle);
 
   if (normalized.some((championship) => championship.eligibleMatchScope === "tag_team" || championship.division === "Tag Team")) {

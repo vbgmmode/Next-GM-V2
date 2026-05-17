@@ -95,8 +95,8 @@ The game currently supports:
 - Roster pressure labels for overused, underused, protected star, morale risk, and injury risk states
 - Deterministic locker room fallout after shows
 - Injury System v1 with deterministic minor/major injuries from fatigue and overuse, major-injury booking blocks, recovery on Advance Week, and persisted injury state
-- Roster with read-only locker-room personality/status reads from existing momentum, morale, fatigue, injury, title, rivalry, and TV-time state
-- Wrestler Profiles v1 with stats, TV history, pressure labels, championship/rivalry context, social mentions, and deterministic GM Read
+- Roster command board with compact wrestler cards, selected-superstar dock, morale trend, injury report, and read-only locker-room reads from existing momentum, morale, fatigue, injury, title, rivalry, and TV-time state
+- Wrestler Profiles v1 with compact stat rows, expandable local-state detail panels, pressure labels, GM Read, championship/rivalry/social context, and deterministic read-only decision support
 - Championships with title catalog context, champion/contender framing, title scene health, and read-only prestige/division identity
 - Rivalries with heat, freshness, stakes, status, create/end controls, and a read-only Creative Desk / story-room pulse derived from existing rivalry timing, history, card usage, and PLE context
 - Calendar
@@ -246,6 +246,7 @@ Completed stabilization passes:
 - Season Archive / Legacy Index Planning v1
 - Season Archive / Legacy Index v1 (implemented)
 - Roster Value-Tier Hints v1 (implemented)
+- Roster Command Board / Expandable Profile Polish v1 (implemented)
 - Finance Talent Value Pressure v1 (implemented)
 - Finance Presence Pass v1 (implemented)
 - Free Agent Watchlist v1 (implemented)
