@@ -2120,7 +2120,7 @@ h3 {
   font-family: var(--bc-font-display);
   font-size: clamp(1.8rem, 3.2vw, 2.8rem);
   letter-spacing: 0;
-  line-height: 0.95;
+  line-height: 1.05;
   margin: 0;
   overflow-wrap: anywhere;
   text-transform: uppercase;
