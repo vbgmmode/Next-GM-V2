@@ -86,16 +86,16 @@ The game currently supports:
 - Results with a top broadcast recap package, quiet operational fallout support, Post-Show Cause Ledger, segment scores, and major title/rivalry/Open Challenge notes from resolved show data
 - Dedicated Week Review screen before Advance Week
 - Results → Week Review → Advance Week flow
-- Week Review summary of show outcome, GM Handoff / next-week setup, roster fallout, championships, rivalries, social buzz, finance fallout, and next week teaser
+- Week Review summary of show outcome, GM Office after-action readout, GM Handoff / next-week setup, roster fallout, championships, rivalries, social buzz, finance fallout, and next week teaser
 - Persisted Week Review screen state
 - TV-time tracking with appearances this season, last booked week, and consecutive weeks booked
 - Open Challenge resolved opponents count as booked after the show
 - Roster pressure labels for overused, underused, protected star, morale risk, and injury risk states
 - Deterministic locker room fallout after shows
 - Injury System v1 with deterministic minor/major injuries from fatigue and overuse, major-injury booking blocks, recovery on Advance Week, and persisted injury state
-- Roster
+- Roster with read-only locker-room personality/status reads from existing momentum, morale, fatigue, injury, title, rivalry, and TV-time state
 - Wrestler Profiles v1 with stats, TV history, pressure labels, championship/rivalry context, social mentions, and deterministic GM Read
-- Championships with title catalog context, champion/contender framing, and title scene health
+- Championships with title catalog context, champion/contender framing, title scene health, and read-only prestige/division identity
 - Rivalries with heat, freshness, stakes, status, create, and end controls
 - Calendar
 - 12-week season
@@ -210,6 +210,9 @@ Completed stabilization passes:
 - Results Broadcast Recap Staging v1
 - Results Operational Fallout Quieting v1
 - Week Review GM Handoff v1
+- Week Review Consequence Handoff Polish v1
+- Roster Locker Room Personality v1
+- Championships Prestige / Division Identity v1
 - Read-only gameplay context helper extraction to src/game/gameContextReads.ts
 - Tag Division Health Diagnostics v1
 - Stipulation Metadata v1 (implemented)
@@ -302,6 +305,8 @@ These should only be added when the user explicitly asks for them in the active 
 - Do not refactor unrelated code.
 - Do not rewrite working systems.
 - For player-facing UI work, follow docs/ui-broadcast-command-center-style.md as the operational visual-system guide. It makes docs/ui-ux-doctrine.md implementation-ready without replacing the doctrine.
+- For Next GM broadcast UI implementation, redesign, screen creation, or polish, use the next-gm-broadcast-ui skill. Its canonical artifacts are docs/ui/tokens/next-gm-brand-skins.tokens.yml and docs/ui/screen-templates/brand-hq-command-center/index.html.
+- Treat red, blue, gold, and fight-gold as brand skins for identity. Keep semantic warning, danger, success, and info colors separate from brand color.
 - Keep localStorage persistence working unless the active ticket is specifically about replacing/upgrading persistence.
 - Keep the current playable loop working.
 - Keep TypeScript passing.

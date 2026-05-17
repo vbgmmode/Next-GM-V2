@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 210" role="img" aria-labelledby="title">
+  <title id="title">Rex Valor portrait</title>
+  <defs>
+    <linearGradient id="skin" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#d8b68d"/><stop offset="1" stop-color="#7b5138"/></linearGradient>
+    <linearGradient id="gear" x1="0" x2="1"><stop offset="0" stop-color="#d71920"/><stop offset="1" stop-color="#090b0e"/></linearGradient>
+  </defs>
+  <rect width="160" height="210" fill="#050607"/>
+  <path d="M20 200c8-54 32-82 60-82s52 28 60 82z" fill="url(#gear)"/>
+  <path d="M54 70c0-27 14-45 28-45s28 18 28 45c0 31-12 48-28 48S54 101 54 70z" fill="url(#skin)"/>
+  <path d="M51 54c13-27 48-31 63-4l-8 11c-12-16-35-17-48 2z" fill="#111"/>
+  <path d="M57 142h46l-23 34z" fill="#e9edf2" opacity=".88"/>
+  <path d="M18 20h124l-19 170H18z" fill="none" stroke="#d71920" stroke-width="4"/>
+  <path d="M122 20h20l-18 170h-20z" fill="#d71920" opacity=".42"/>
+</svg>

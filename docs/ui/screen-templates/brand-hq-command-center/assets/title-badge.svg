@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90" role="img" aria-labelledby="title">
+  <title id="title">Championship badge</title>
+  <rect width="90" height="90" fill="#040506"/>
+  <path d="M45 8l30 14v23c0 20-11 32-30 39-19-7-30-19-30-39V22z" fill="#0a0c0f" stroke="#d9a441" stroke-width="4"/>
+  <path d="M27 43h36M35 29h20v28H35z" fill="none" stroke="#ffd36a" stroke-width="4"/>
+  <path d="M18 71h54" stroke="#d71920" stroke-width="4"/>
+</svg>

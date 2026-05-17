@@ -138,6 +138,22 @@ export type WeekReviewHandoffSnapshot = {
   items: WeekReviewHandoffItem[];
 };
 
+export type WeekReviewOfficeTone = "strong" | "steady" | "watch";
+
+export type WeekReviewOfficeItem = {
+  id: string;
+  label: string;
+  value: string;
+  detail: string;
+  tone: WeekReviewOfficeTone;
+};
+
+export type WeekReviewOfficeSnapshot = {
+  headline: string;
+  detail: string;
+  items: WeekReviewOfficeItem[];
+};
+
 
 type TitleScenePressureTone = "hot" | "steady" | "watch" | "build";
 
@@ -883,6 +899,11 @@ function getSafeBestSegment(result: ShowResult) {
 }
 
 
+function getSegmentResultLabel(segment: SegmentResult) {
+  return segment.participantNames.length ? segment.participantNames.join(" / ") : segment.type;
+}
+
+
 function getScoreFalloutRead(result: ShowResult) {
   const strongSegments = result.segmentResults.filter((segment) => segment.score >= 85);
   const coldSegments = result.segmentResults.filter((segment) => segment.score < 60);
@@ -1270,6 +1291,77 @@ export function getWeekReviewHandoffSnapshot(game: GameState, result: ShowResult
     headline,
     detail: "Staff handoff from resolved fallout and current state only. These are context notes for the next booking desk, not projections.",
     items,
+  };
+}
+
+
+export function getWeekReviewOfficeSnapshot(game: GameState, result: ShowResult, financeReport?: FinanceReport): WeekReviewOfficeSnapshot {
+  const bestSegment = getSafeBestSegment(result);
+  const titleEvents = result.titleHistoryEvents ?? [];
+  const titleChanges = titleEvents.filter((event) => event.eventType === "title_change");
+  const rivalryEvents = result.rivalryHistoryEvents ?? [];
+  const moraleMoveCount = (result.lockerRoomFallout?.moraleBoosts.length ?? 0) + (result.lockerRoomFallout?.moraleDrops.length ?? 0);
+  const injuryCount = result.lockerRoomFallout?.injuryNotes.length ?? 0;
+  const overuseCount = result.lockerRoomFallout?.overuseWarnings.length ?? 0;
+  const underuseCount = result.lockerRoomFallout?.underuseWarnings.length ?? 0;
+  const nextWeek = game.calendar.find((week) => week.weekNumber === result.week + 1);
+  const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= result.week + 1 && !week.completed);
+  const weeksUntilNextPle = nextPle ? Math.max(0, nextPle.weekNumber - result.week) : 0;
+  const nextCalendarRead = nextWeek
+    ? nextWeek.showType === "ple"
+      ? `${nextWeek.showName} is next as the major-event follow-up.`
+      : nextWeek.isGoHome
+        ? `${nextWeek.showName} is the next go-home TV checkpoint.`
+        : `${nextWeek.showName} is the next TV desk.`
+    : "The next stop is season review.";
+  const pleClock = nextPle
+    ? weeksUntilNextPle === 0
+      ? `${nextPle.showName} is the next calendar step.`
+      : `${nextPle.showName} is ${formatWeekCount(weeksUntilNextPle)} away.`
+    : "No remaining PLE is on the season calendar.";
+  const titleRead = titleChanges.length
+    ? `${titleChanges.length} title change${titleChanges.length === 1 ? "" : "s"} changed the office board.`
+    : titleEvents.length
+      ? `${titleEvents.length} title event${titleEvents.length === 1 ? "" : "s"} logged without a new champion.`
+      : "No title event changed the office board.";
+  const rivalryRead = rivalryEvents.length
+    ? `${rivalryEvents.length} rivalry event${rivalryEvents.length === 1 ? "" : "s"} moved the story room.`
+    : result.rivalryNotes.length
+      ? `${result.rivalryNotes.length} rivalry note${result.rivalryNotes.length === 1 ? "" : "s"} logged from the broadcast.`
+      : "No rivalry movement was logged.";
+  const rosterRead =
+    moraleMoveCount || injuryCount || overuseCount || underuseCount
+      ? `${moraleMoveCount} morale, ${injuryCount} injury, ${overuseCount} overuse, and ${underuseCount} underuse note${moraleMoveCount + injuryCount + overuseCount + underuseCount === 1 ? "" : "s"} are on the desk.`
+      : `${result.biggestFatigueIncrease.name} took the largest fatigue hit at +${result.biggestFatigueIncrease.amount}.`;
+
+  return {
+    headline: result.showType === "ple" ? "Major-Event After-Action" : "GM Office After-Action",
+    detail: "Resolved fallout only. This is the office handoff between the broadcast payoff and the next Dashboard pressure read.",
+    items: [
+      {
+        id: "show-receipt",
+        label: "What Happened",
+        value: `${result.totalScore} ${getShowGrade(result.totalScore)}`,
+        detail: bestSegment
+          ? `${result.showName} closed with ${getSegmentResultLabel(bestSegment)} as the strongest segment at ${bestSegment.score}.`
+          : `${result.showName} closed and is ready for the office handoff.`,
+        tone: result.totalScore >= 85 ? "strong" : result.totalScore < 62 ? "watch" : "steady",
+      },
+      {
+        id: "fallout-shift",
+        label: "What Changed",
+        value: titleChanges.length ? `${titleChanges.length} title move${titleChanges.length === 1 ? "" : "s"}` : rivalryEvents.length ? `${rivalryEvents.length} story move${rivalryEvents.length === 1 ? "" : "s"}` : "Roster desk",
+        detail: `${titleRead} ${rivalryRead} ${rosterRead}`,
+        tone: titleChanges.length || rivalryEvents.length ? "strong" : moraleMoveCount || injuryCount || overuseCount ? "watch" : "steady",
+      },
+      {
+        id: "next-desk",
+        label: "What It Means",
+        value: nextWeek ? nextWeek.showName : "Season Review",
+        detail: `${nextCalendarRead} ${pleClock} ${financeReport ? `${formatMoney(financeReport.profitLoss)} closed in the books.` : "No finance close is attached."}`,
+        tone: nextWeek?.showType === "ple" || nextWeek?.isGoHome || getFinancePressureLabel(game.money, financeReport?.profitLoss ?? 0) === "Critical" ? "watch" : "steady",
+      },
+    ],
   };
 }
 

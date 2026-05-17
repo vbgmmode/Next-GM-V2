@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 120" role="img" aria-labelledby="title">
+  <title id="title">Next GM brand logo</title>
+  <defs>
+    <linearGradient id="red" x1="0" x2="1">
+      <stop offset="0" stop-color="#5b0508"/>
+      <stop offset=".56" stop-color="#d71920"/>
+      <stop offset="1" stop-color="#ff3434"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" x2="1">
+      <stop offset="0" stop-color="#e9edf2"/>
+      <stop offset=".5" stop-color="#87919c"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+  </defs>
+  <rect width="220" height="120" fill="#020304"/>
+  <path d="M11 16h150l-22 88H11z" fill="url(#red)"/>
+  <path d="M66 16h143l-24 88H42z" fill="#06080a" opacity=".92"/>
+  <path d="M20 25h171M16 96h165" stroke="#e9edf2" stroke-opacity=".22" stroke-width="2"/>
+  <path d="M43 80V38h17l25 42V38h22v42H90L65 39v41z" fill="url(#steel)"/>
+  <path d="M116 80V38h54l-5 15h-27v7h25l-4 13h-21v7z" fill="url(#steel)"/>
+  <path d="M174 38h16l-10 42h-16z" fill="#d9a441"/>
+  <path d="M18 16h190v88H18z" fill="none" stroke="#d71920" stroke-width="3"/>
+</svg>

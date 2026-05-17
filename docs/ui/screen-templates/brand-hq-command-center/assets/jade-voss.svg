@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 210" role="img" aria-labelledby="title">
+  <title id="title">Jade Voss portrait</title>
+  <defs>
+    <linearGradient id="skin" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#d3a17f"/><stop offset="1" stop-color="#70442f"/></linearGradient>
+    <linearGradient id="gear" x1="0" x2="1"><stop offset="0" stop-color="#d9a441"/><stop offset=".55" stop-color="#101318"/><stop offset="1" stop-color="#d71920"/></linearGradient>
+  </defs>
+  <rect width="160" height="210" fill="#050607"/>
+  <path d="M22 202c8-58 30-88 58-88s50 30 58 88z" fill="url(#gear)"/>
+  <path d="M53 70c0-29 14-48 27-48s27 19 27 48c0 31-12 49-27 49S53 101 53 70z" fill="url(#skin)"/>
+  <path d="M50 55c10-29 48-37 61-5 2 17-1 31-7 43-6-20-42-20-49 0-7-13-9-25-5-38z" fill="#111"/>
+  <path d="M49 137h62l-13 43H62z" fill="#d9a441" opacity=".88"/>
+  <path d="M18 20h124l-19 170H18z" fill="none" stroke="#d9a441" stroke-width="4"/>
+  <path d="M122 20h20l-18 170h-20z" fill="#d71920" opacity=".46"/>
+</svg>

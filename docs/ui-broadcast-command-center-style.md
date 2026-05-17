@@ -10,6 +10,18 @@ The goal is a consistent Next GM interface that feels like a premium dark wrestl
 
 This guide is not permission to add systems, screens, game state, data, routing, persistence, backend services, cloud sync, auth, visual assets, fonts, or dependencies.
 
+## Canonical UI Artifacts
+
+Use these artifacts as the source of truth for future Next GM broadcast UI work:
+
+- Brand skin tokens: `docs/ui/tokens/next-gm-brand-skins.tokens.yml`
+- Screen template: `docs/ui/screen-templates/brand-hq-command-center/index.html`
+- Codex skill: `next-gm-broadcast-ui`
+
+The token file owns official red, blue, gold, and fight-gold brand skins plus the shared dark shell values. The screen template is the first runnable Brand HQ example. The skill tells future Codex sessions when and how to apply both.
+
+Brand colors are skins for promotion identity. They should control rails, selected states, hero lighting, active navigation, CTA accents, logo framing, and broadcast tags. They should not replace semantic warning, danger, success, or info colors.
+
 ## Target Vibe
 
 Next GM should feel like the player is running a televised wrestling brand from a live production command center.

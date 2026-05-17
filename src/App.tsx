@@ -34,12 +34,14 @@ import {
   getPleBuildPressureSnapshot,
   getWeeklyDecisionPressureSnapshot,
   getWeekReviewHandoffSnapshot,
+  getWeekReviewOfficeSnapshot,
   type BroadcastFalloutSnapshot,
   type CauseLedgerSection,
   type LivingWorldPressureSnapshot,
   type PleBuildPressureSnapshot,
   type WeeklyDecisionPressureSnapshot,
   type WeekReviewHandoffSnapshot,
+  type WeekReviewOfficeSnapshot,
 } from "./game/gameContextReads";
 import {
   getInjuryStatusLabel,
@@ -196,6 +198,29 @@ type GMRead = {
   need: string;
 };
 
+type LockerRoomTone = "hot" | "steady" | "watch";
+
+type LockerRoomPulseItem = {
+  id: string;
+  label: string;
+  value: string;
+  detail: string;
+  tone: LockerRoomTone;
+};
+
+type LockerRoomPulse = {
+  headline: string;
+  detail: string;
+  items: LockerRoomPulseItem[];
+};
+
+type WrestlerLockerRoomRead = {
+  headline: string;
+  detail: string;
+  note: string;
+  tone: LockerRoomTone;
+};
+
 type WrestlerIdentitySnapshot = {
   labels: string[];
   roleRead: string;
@@ -278,6 +303,31 @@ type ChampionshipSceneDeskRead = {
   contenderReads: TitleSceneTalentRead[];
   recentActivityRead: string;
   pleWindowRead: string;
+};
+
+type TitleSceneIdentityRead = {
+  headline: string;
+  championIdentity: string;
+  divisionRead: string;
+  healthLabel: string;
+  healthDetail: string;
+  heatLabel: string;
+  heatDetail: string;
+  depthLabel: string;
+  depthDetail: string;
+  tone: TitleScenePressureTone;
+};
+
+type ChampionshipsOfficeRead = {
+  headline: string;
+  detail: string;
+  anchorTitle: string;
+  anchorDetail: string;
+  attentionTitle: string;
+  attentionDetail: string;
+  prestigeTitle: string;
+  prestigeDetail: string;
+  tone: TitleScenePressureTone;
 };
 
 type RivalryTimingTone = "hot" | "steady" | "watch" | "build";
@@ -455,6 +505,23 @@ const brandStyleOptions: ChoiceOption<BrandStyle>[] = [
     description: "Alternative wrestling identity with workrate credibility, fan-driven buzz, and unpredictable edge.",
   },
 ];
+
+function getBroadcastThemeForBrandStyle(brandStyle: BrandStyle) {
+  if (brandStyle === "SmackDown") {
+    return "blue";
+  }
+
+  if (brandStyle === "NXT") {
+    return "gold";
+  }
+
+  if (brandStyle === "AEW") {
+    return "fight";
+  }
+
+  return "red";
+}
+
 const difficultyOptions: ChoiceOption<GameDifficulty>[] = [
   {
     label: "Easy",
@@ -2084,6 +2151,166 @@ function getChampionshipSceneDeskRead(
   };
 }
 
+function getChampionIdentityRead(championship: Championship, scene: ReturnType<typeof getTitleDivisionScene>, game: GameState) {
+  if (!scene.champions.length) {
+    return "No champion resolves from the current roster data.";
+  }
+
+  const championNames = formatTitleSceneNames(scene.champions, "No champion assigned");
+  const titleRivalries = getTitleRivalries(championship, game.wrestlers, game.rivalries);
+  const championMomentum = Math.round(scene.champions.reduce((sum, wrestler) => sum + wrestler.momentum, 0) / Math.max(1, scene.champions.length));
+  const championPopularity = Math.round(scene.champions.reduce((sum, wrestler) => sum + wrestler.popularity, 0) / Math.max(1, scene.champions.length));
+  const championRisk = scene.champions.some((wrestler) => wrestler.injuryStatus !== "healthy" || getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk"));
+
+  if (championRisk) {
+    return `${championNames} anchors the belt, but medical/fatigue pressure is visible around the reign.`;
+  }
+
+  if (titleRivalries.length) {
+    return `${championNames} carries active title-story context through ${titleRivalries[0].name}.`;
+  }
+
+  if (championMomentum >= 75 || championPopularity >= 78) {
+    return `${championNames} reads like a prestige centerpiece at ${championMomentum} momentum and ${championPopularity} popularity.`;
+  }
+
+  return `${championNames} gives the division a steady champion identity without forcing a defense.`;
+}
+
+function getTitleSceneIdentityRead(
+  championship: Championship,
+  game: GameState,
+  scene: ReturnType<typeof getTitleDivisionScene>,
+  pressureSnapshot: TitleScenePressureSnapshot,
+): TitleSceneIdentityRead {
+  const titleRivalries = getTitleRivalries(championship, game.wrestlers, game.rivalries);
+  const hotContenders = scene.eligibleRoster.filter((wrestler) => wrestler.momentum >= 75);
+  const championRisk = scene.champions.some((wrestler) => wrestler.injuryStatus !== "healthy" || getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk"));
+  const contenderDepth = scene.eligibleRoster.length;
+  const isTagTitleScene = isTagChampionship(championship);
+  const latestHistory = getChampionshipHistory(game, championship.id, 1)[0];
+  const recentActivity = latestHistory
+    ? `${formatChampionshipEventType(latestHistory.eventType)} at ${formatHistoryStamp(latestHistory)}.`
+    : `No resolved title event yet; the title clock reads ${formatWeekCount(pressureSnapshot.weeksSinceLastTitleEvent)}.`;
+  const healthLabel =
+    pressureSnapshot.primary.tone === "build"
+      ? "Needs Attention"
+      : pressureSnapshot.primary.tone === "watch"
+        ? "Office Watch"
+        : pressureSnapshot.primary.tone === "hot"
+          ? "Hot Scene"
+          : "Stable Scene";
+  const heatLabel = titleRivalries.length ? "Story Heat" : hotContenders.length ? "Contender Heat" : "Quiet Heat";
+  const depthLabel =
+    isTagTitleScene
+      ? contenderDepth >= 4
+        ? "Pair Depth"
+        : contenderDepth >= 2
+          ? "Playable Tag Lane"
+          : "Thin Tag Lane"
+      : contenderDepth >= 7
+        ? "Deep Division"
+        : contenderDepth >= 3
+          ? "Credible Chase"
+          : "Thin Division";
+  const headline =
+    isTagTitleScene
+      ? contenderDepth >= 2
+        ? "Tag Division Identity"
+        : "Tag Division Needs Shape"
+      : titleRivalries.length
+        ? "Title Story Centerpiece"
+        : championRisk
+          ? "Protected Champion Scene"
+          : hotContenders.length >= 2
+            ? "Hot Contender Room"
+            : contenderDepth < 3
+              ? "Thin Title Lane"
+              : "Prestige Division Lane";
+  const divisionRead =
+    titleRivalries.length
+      ? `${titleRivalries[0].name} gives this belt an active story lane.`
+      : hotContenders.length
+        ? `${hotContenders.slice(0, 2).map((wrestler) => wrestler.name).join(" / ")} are carrying visible momentum near the title.`
+        : contenderDepth
+          ? `${formatTitleSceneNames(scene.topContenders, "The contender room")} keeps the belt readable without a forced title beat.`
+          : "No eligible contender room is visible from the current roster.";
+
+  return {
+    headline,
+    championIdentity: getChampionIdentityRead(championship, scene, game),
+    divisionRead,
+    healthLabel,
+    healthDetail: `${pressureSnapshot.primary.detail} ${recentActivity}`,
+    heatLabel,
+    heatDetail: titleRivalries.length
+      ? `Active title-story heat: ${titleRivalries.map((rivalry) => rivalry.name).slice(0, 2).join(" / ")}.`
+      : hotContenders.length
+        ? `${hotContenders.length} hot contender${hotContenders.length === 1 ? "" : "s"} in the current eligible pool.`
+        : "No active title rivalry or hot contender is currently carrying the scene.",
+    depthLabel,
+    depthDetail: `${contenderDepth} eligible challenger${contenderDepth === 1 ? "" : "s"} outside the champion slot; ${scene.risingContenders.length} rising lane${scene.risingContenders.length === 1 ? "" : "s"} visible.`,
+    tone: pressureSnapshot.primary.tone,
+  };
+}
+
+function getTitleOfficeRank(tone: TitleScenePressureTone) {
+  if (tone === "hot") {
+    return 4;
+  }
+
+  if (tone === "steady") {
+    return 3;
+  }
+
+  if (tone === "watch") {
+    return 2;
+  }
+
+  return 1;
+}
+
+function getChampionshipOfficeRead(game: GameState): ChampionshipsOfficeRead {
+  const snapshots = game.championships.map((championship) => {
+    const scene = getTitleDivisionScene(championship, game.wrestlers, game.rivalries, game.currentWeek);
+    const pressureSnapshot = getTitleScenePressureSnapshot(championship, game);
+    const identity = getTitleSceneIdentityRead(championship, game, scene, pressureSnapshot);
+    const championRisk = scene.champions.some((wrestler) => wrestler.injuryStatus !== "healthy" || getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk"));
+    const titleRivalryCount = getTitleRivalries(championship, game.wrestlers, game.rivalries).length;
+    const heatScore = championship.prestige + getTitleOfficeRank(identity.tone) * 18 + titleRivalryCount * 16 + scene.topContenders.filter((wrestler) => wrestler.momentum >= 75).length * 8;
+    const attentionScore =
+      (identity.tone === "build" ? 70 : identity.tone === "watch" ? 45 : 0) +
+      (scene.eligibleRoster.length < (isTagChampionship(championship) ? 2 : 3) ? 35 : 0) +
+      (championRisk ? 25 : 0) +
+      pressureSnapshot.weeksSinceLastTitleEvent * 2;
+
+    return {
+      attentionScore,
+      championship,
+      heatScore,
+      identity,
+      pressureSnapshot,
+      scene,
+    };
+  });
+  const anchor = [...snapshots].sort((a, b) => b.heatScore - a.heatScore || b.championship.prestige - a.championship.prestige)[0];
+  const attention = [...snapshots].sort((a, b) => b.attentionScore - a.attentionScore || b.championship.prestige - a.championship.prestige)[0];
+  const prestige = [...snapshots].sort((a, b) => b.championship.prestige - a.championship.prestige)[0];
+  const watchCount = snapshots.filter((snapshot) => snapshot.identity.tone === "watch" || snapshot.identity.tone === "build").length;
+
+  return {
+    headline: watchCount ? "Title Committee Has Active Decisions" : "Title Committee Has Stable Prestige",
+    detail: "Read-only championship office context from current champions, contender rooms, active title stories, and resolved title history. No rankings or title mechanics are added here.",
+    anchorTitle: anchor?.championship.name ?? "No championship",
+    anchorDetail: anchor ? `${anchor.identity.headline}. ${anchor.identity.divisionRead}` : "No championship data is available.",
+    attentionTitle: attention?.championship.name ?? "No championship",
+    attentionDetail: attention ? `${attention.identity.healthLabel}. ${attention.identity.healthDetail}` : "No title scene needs attention.",
+    prestigeTitle: prestige?.championship.name ?? "No championship",
+    prestigeDetail: prestige ? `Prestige ${prestige.championship.prestige} with ${formatTitleSceneNames(prestige.scene.champions, "no champion assigned")}.` : "No prestige read is available.",
+    tone: watchCount ? "watch" : anchor?.identity.tone ?? "steady",
+  };
+}
+
 function getTitleSceneGMRead(championship: Championship, scene: ReturnType<typeof getTitleDivisionScene>) {
   if (championship.eligibleMatchScope === "tag_team") {
     return "Tag title defenses are available only as 2v2 M020 matches with the champion pair together on one side.";
@@ -3368,6 +3595,178 @@ function getGMRead(wrestler: Wrestler, game: GameState): GMRead {
               : "Can be used for momentum, story texture, or a steady card role.";
 
   return { usefulness, risk, need };
+}
+
+function getWrestlerLockerRoomRead(wrestler: Wrestler, game: GameState): WrestlerLockerRoomRead {
+  const pressureTags = getRosterPressureTags(wrestler, game.currentWeek);
+  const championships = getWrestlerChampionships(wrestler.id, game.championships);
+  const rivalries = getWrestlerRivalries(wrestler.id, game.rivalries);
+  const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, game.currentWeek);
+  const tvLoad = `${wrestler.appearancesThisSeason ?? 0} appearance${(wrestler.appearancesThisSeason ?? 0) === 1 ? "" : "s"} · ${wrestler.consecutiveWeeksBooked ?? 0} week TV streak`;
+
+  if (wrestler.injuryStatus === "major") {
+    return {
+      headline: "Medical Hold",
+      detail: `${wrestler.name} is unavailable until recovery clears.`,
+      note: getInjuryDetail(wrestler),
+      tone: "watch",
+    };
+  }
+
+  if (wrestler.injuryStatus === "minor" || pressureTags.includes("Injury Risk")) {
+    return {
+      headline: "Protect The Body",
+      detail: `${wrestler.name} is carrying ${wrestler.fatigue} fatigue${wrestler.injuryStatus === "minor" ? " with a minor injury" : ""}.`,
+      note: "Use as a protected piece if they stay on TV.",
+      tone: "watch",
+    };
+  }
+
+  if (pressureTags.includes("Overused")) {
+    return {
+      headline: "Overexposed",
+      detail: `${wrestler.name} has been a regular presence and the room can feel the load.`,
+      note: tvLoad,
+      tone: "watch",
+    };
+  }
+
+  if (pressureTags.includes("Underused")) {
+    return {
+      headline: "Wants TV Time",
+      detail: `${wrestler.name} has been off TV for ${formatWeekCount(weeksSinceLastBooked)}.`,
+      note: "Absence pressure is visible, but this is not a demand system.",
+      tone: "watch",
+    };
+  }
+
+  if (pressureTags.includes("Morale Risk")) {
+    return {
+      headline: "Morale Watch",
+      detail: `${wrestler.name} is sitting at ${wrestler.morale} morale.`,
+      note: "A meaningful role can steady the room without guaranteeing fallout.",
+      tone: "watch",
+    };
+  }
+
+  if (championships.length) {
+    return {
+      headline: "Carries Gold",
+      detail: `${wrestler.name} walks in with ${championships.map((championship) => championship.name).join(" / ")} status.`,
+      note: "Title context is current-state prestige, not a required booking.",
+      tone: "hot",
+    };
+  }
+
+  if (rivalries.length) {
+    return {
+      headline: "Story Active",
+      detail: `${wrestler.name} has room heat through ${rivalries[0].name}.`,
+      note: `Heat ${rivalries[0].heat} · Freshness ${rivalries[0].freshness}`,
+      tone: "hot",
+    };
+  }
+
+  if (wrestler.momentum >= 75) {
+    return {
+      headline: "Feels Hot",
+      detail: `${wrestler.name} has ${wrestler.momentum} momentum and reads like a live piece.`,
+      note: tvLoad,
+      tone: "hot",
+    };
+  }
+
+  if (wrestler.momentum < 45) {
+    return {
+      headline: "Losing Steam",
+      detail: `${wrestler.name} is cold at ${wrestler.momentum} momentum.`,
+      note: weeksSinceLastBooked >= 2 ? `${formatWeekCount(weeksSinceLastBooked)} off TV adds to the fade.` : "Current status is visible, not a hidden penalty.",
+      tone: "watch",
+    };
+  }
+
+  if (wrestler.popularity >= 72) {
+    return {
+      headline: "Star Presence",
+      detail: `${wrestler.name} still carries recognizable room status at ${wrestler.popularity} popularity.`,
+      note: tvLoad,
+      tone: "steady",
+    };
+  }
+
+  return {
+    headline: "Steady Hand",
+    detail: `${wrestler.name} is available for utility, texture, or a controlled TV beat.`,
+    note: tvLoad,
+    tone: "steady",
+  };
+}
+
+function getLockerRoomPulse(game: GameState): LockerRoomPulse {
+  const sortedByMomentum = [...game.wrestlers].sort((a, b) => b.momentum - a.momentum || b.popularity - a.popularity);
+  const hotLead = sortedByMomentum[0];
+  const coldLead = [...game.wrestlers].sort((a, b) => a.momentum - b.momentum || a.morale - b.morale)[0];
+  const topOverused = getTopOverusedWrestler(game.wrestlers);
+  const topUnderused = getTopUnderusedWrestler(game.wrestlers, game.currentWeek);
+  const protectionList = game.wrestlers.filter((wrestler) => {
+    const tags = getRosterPressureTags(wrestler, game.currentWeek);
+    return wrestler.injuryStatus !== "healthy" || tags.includes("Injury Risk") || tags.includes("Overused");
+  });
+  const moraleWatch = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Morale Risk"));
+  const averageMorale = Math.round(game.wrestlers.reduce((sum, wrestler) => sum + wrestler.morale, 0) / Math.max(1, game.wrestlers.length));
+  const underusedDetail = topUnderused
+    ? `${topUnderused.name} has been off TV for ${formatWeekCount(getWeeksSinceLastBooked(topUnderused, game.currentWeek))}.`
+    : coldLead
+      ? `${coldLead.name} has the coldest current momentum at ${coldLead.momentum}.`
+      : "No absence or cold read is leading the room.";
+  const protectionDetail = topOverused
+    ? `${topOverused.name} is the loudest protection read at ${topOverused.fatigue} fatigue and ${topOverused.consecutiveWeeksBooked ?? 0} straight week${(topOverused.consecutiveWeeksBooked ?? 0) === 1 ? "" : "s"} booked.`
+    : protectionList.length
+      ? `${protectionList.length} wrestler${protectionList.length === 1 ? "" : "s"} need lighter handling.`
+      : "No major protection read is active.";
+  const headline =
+    protectionList.length >= 3
+      ? "Locker Room Needs Protection"
+      : moraleWatch.length
+        ? "Locker Room Mood Needs Attention"
+        : topUnderused
+          ? "Locker Room Has TV-Time Pressure"
+          : "Locker Room Has A Usable Shape";
+
+  return {
+    headline,
+    detail: "Read-only staff interpretation from current roster state. No contracts, promises, incidents, or morale events are active here.",
+    items: [
+      {
+        id: "hot-hand",
+        label: "Feels Hot",
+        value: hotLead ? hotLead.name : "No read",
+        detail: hotLead ? `${hotLead.momentum} momentum · ${hotLead.popularity} popularity.` : "Roster momentum is unavailable.",
+        tone: hotLead && hotLead.momentum >= 75 ? "hot" : "steady",
+      },
+      {
+        id: "tv-time",
+        label: topUnderused ? "Wants TV Time" : "Cold Watch",
+        value: topUnderused ? topUnderused.name : coldLead ? coldLead.name : "No read",
+        detail: underusedDetail,
+        tone: topUnderused || (coldLead && coldLead.momentum < 45) ? "watch" : "steady",
+      },
+      {
+        id: "protection",
+        label: "Protection Desk",
+        value: protectionList.length ? `${protectionList.length} flagged` : "Clear",
+        detail: protectionDetail,
+        tone: protectionList.length ? "watch" : "steady",
+      },
+      {
+        id: "room-mood",
+        label: "Room Mood",
+        value: moraleWatch.length ? `${moraleWatch.length} morale watch` : `${averageMorale} avg morale`,
+        detail: moraleWatch.length ? `${moraleWatch.map((wrestler) => wrestler.name).slice(0, 2).join(" / ")} need a steadier role.` : "Morale is stable enough for normal TV planning.",
+        tone: moraleWatch.length ? "watch" : "steady",
+      },
+    ],
+  };
 }
 
 function getWrestlerIdentitySnapshot(wrestler: Wrestler, game: GameState): WrestlerIdentitySnapshot {
@@ -5263,6 +5662,30 @@ function WeekReviewHandoffPanel({ snapshot }: { snapshot: WeekReviewHandoffSnaps
   );
 }
 
+function WeekReviewOfficePanel({ snapshot }: { snapshot: WeekReviewOfficeSnapshot }) {
+  return (
+    <section className="week-office-panel" aria-label="GM office after-action">
+      <div className="week-office-head">
+        <div>
+          <p className="eyebrow">GM Office Readout</p>
+          <h3>{snapshot.headline}</h3>
+        </div>
+        <strong>After-Action</strong>
+      </div>
+      <p className="week-office-copy">{snapshot.detail}</p>
+      <div className="week-office-grid">
+        {snapshot.items.map((item) => (
+          <article className={`week-office-item item-${item.tone}`} key={item.id}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+            <p>{item.detail}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function PleBuildPressurePanel({ compact = false, snapshot }: { compact?: boolean; snapshot: PleBuildPressureSnapshot }) {
   return (
     <section className={`ple-build-panel${compact ? " compact" : ""}`} aria-label="PLE build pressure">
@@ -5472,22 +5895,50 @@ function DashboardScreen({
   const atRisk = [...game.wrestlers].sort((a, b) => b.fatigue + (100 - b.morale) - (a.fatigue + (100 - a.morale))).slice(0, 4);
   const currentShowLabel = isPleWeek ? "Major Event" : getShowTypeLabel(currentShow.showType);
   const nextPleLabel = nextPle ? (weeksUntilPle === 0 ? "PLE Week" : `${weeksUntilPle} Week${weeksUntilPle === 1 ? "" : "s"} To ${nextPle.showName}`) : "Season End";
+  const dashboardTheme = getBroadcastThemeForBrandStyle(game.brandStyle);
+  const brandInitials = game.brandName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "HQ";
+  const urgentStatus = hasCurrentWeekReview
+    ? "Week Review Waiting"
+    : validSegments >= 2
+      ? "Card Runnable"
+      : invalidSegments > 0
+        ? "Card Needs Fixes"
+        : "Booking Desk Open";
+  const primaryActionScreen: GameScreen = hasCurrentWeekReview ? "weekReview" : "booking";
+  const primaryActionLabel = hasCurrentWeekReview ? "Review Fallout" : validSegments >= 2 ? "Review Card" : "Book Show";
+  const actionContext = hasCurrentWeekReview
+    ? "Week Review is waiting before the office advances the calendar."
+    : nextAction;
 
   return (
-    <main className="app-shell dashboard-command-shell">
+    <main className={`app-shell dashboard-command-shell broadcast-theme-${dashboardTheme}`} data-broadcast-theme={dashboardTheme}>
       <Header game={game} />
       <GameNav currentScreen="dashboard" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       <section className="dashboard-command-room" aria-label="Brand HQ command center">
         <section className={`dashboard-focus-workspace ${isPleWeek ? "ple-panel" : ""}`} aria-label="Current focus workspace">
           <article className="dashboard-focus-primary">
-            <div>
-              <p className="eyebrow">Season {game.seasonNumber} · Week {game.currentWeek} Brand HQ</p>
-              <h2>{currentShow.showName}</h2>
-              <div className="identity-strip">
-                <span>{game.brandName}</span>
-                <span>GM {game.gmName}</span>
-                <span>{game.gmStyle}</span>
-                <span>{game.brandStyle}</span>
+            <div className="dashboard-scoreboard">
+              <div className="dashboard-brand-plate" aria-label={`${game.brandName} identity slot`}>
+                <span>{brandInitials}</span>
+              </div>
+              <div className="dashboard-scoreboard-main">
+                <p className="eyebrow">Season {game.seasonNumber} · Week {game.currentWeek} Brand HQ</p>
+                <h2>{currentShow.showName}</h2>
+                <div className="identity-strip">
+                  <span>{game.brandName}</span>
+                  <span>GM {game.gmName}</span>
+                  <span>{game.gmStyle}</span>
+                  <span>{game.brandStyle}</span>
+                </div>
+              </div>
+              <div className="dashboard-urgent-chip" data-state={hasCurrentWeekReview || invalidSegments > 0 ? "warning" : "ready"}>
+                <span>Urgent Status</span>
+                <strong>{urgentStatus}</strong>
               </div>
             </div>
             <p className="dashboard-focus-read">
@@ -5505,7 +5956,7 @@ function DashboardScreen({
 
           <aside className="dashboard-next-show-panel" aria-label="Next show action">
             <div>
-              <p className="eyebrow">Selected Focus</p>
+              <p className="eyebrow">Next Player Action</p>
               <h3>{validSegments >= 2 ? (isPleWeek ? "Major-Event Block Live-Ready" : "Card Is Runnable") : isPleWeek ? "Build Major-Event Card" : "Book The Show"}</h3>
             </div>
             <div className="dashboard-readiness-stack">
@@ -5514,10 +5965,10 @@ function DashboardScreen({
               <span>{nextPleLabel}</span>
               <span>{validSegments} Ready / {invalidSegments} Flagged</span>
             </div>
-            <p>{nextAction}</p>
+            <p>{actionContext}</p>
             <div className="dashboard-action-bar">
-              <button className="primary-action" onClick={() => onNavigate("booking")}>
-                {validSegments >= 2 ? "Review Card" : "Book Show"}
+              <button className="primary-action" onClick={() => onNavigate(primaryActionScreen)}>
+                {primaryActionLabel}
               </button>
               <button className="secondary-action" onClick={() => onNavigate("calendar")}>
                 Calendar
@@ -5536,6 +5987,7 @@ function DashboardScreen({
               <span>{currentShowLabel}</span>
               {currentShow.isGoHome ? <span>Go-Home</span> : null}
               <span>{nextPleLabel}</span>
+              <span>{validSegments} Ready / {invalidSegments} Flagged</span>
             </div>
             <div className="dashboard-panel-scroll">
               {game.currentShow.length ? (
@@ -6502,6 +6954,7 @@ function RosterScreen({
     .filter((affiliation) => affiliation.memberWrestlerIds.length > 1)
     .slice(0, 3);
   const freeAgentWatch = getFreeAgentWatchlist(game.wrestlers, 8);
+  const lockerRoomPulse = getLockerRoomPulse(game);
   const roleStyleFallback = "Role/style not mapped";
 
   return (
@@ -6534,6 +6987,26 @@ function RosterScreen({
         <Metric label="Injury Risk" value={`${injuryRiskCount}`} detail={injuryRiskCount ? "Protect fatigue" : "Clear"} />
         <Metric label="Minor Injury" value={`${minorInjuryCount}`} detail={minorInjuryCount ? "Book with warnings" : "None"} />
         <Metric label="Unavailable" value={`${unavailableCount}`} detail={unavailableCount ? "Major injury block" : "None"} />
+      </section>
+
+      <section className="locker-room-pulse-panel" aria-label="Locker room personality read">
+        <div className="locker-room-pulse-head">
+          <div>
+            <p className="eyebrow">Locker Room Pulse</p>
+            <h3>{lockerRoomPulse.headline}</h3>
+          </div>
+          <strong>Read-Only</strong>
+        </div>
+        <p>{lockerRoomPulse.detail}</p>
+        <div className="locker-room-pulse-grid">
+          {lockerRoomPulse.items.map((item) => (
+            <article className={`locker-room-pulse-item tone-${item.tone}`} key={item.id}>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+              <p>{item.detail}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="command-panel affiliation-roster-panel" aria-label="Affiliation intelligence">
@@ -6681,6 +7154,7 @@ function WrestlerProfileScreen({
   const identitySnapshot = getWrestlerIdentitySnapshot(wrestler, game);
   const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
   const valueProfile = getWrestlerValueProfile(wrestler);
+  const lockerRoomRead = getWrestlerLockerRoomRead(wrestler, game);
 
   return (
     <main className="app-shell">
@@ -6750,6 +7224,12 @@ function WrestlerProfileScreen({
               <strong>{identitySnapshot.roleRead}</strong>
               <p>{identitySnapshot.bookingUseRead}</p>
               <small>{identitySnapshot.usageRead}</small>
+            </div>
+            <div className={`locker-room-profile-read tone-${lockerRoomRead.tone}`} aria-label={`${wrestler.name} locker room read`}>
+              <span>Locker Room Read</span>
+              <strong>{lockerRoomRead.headline}</strong>
+              <p>{lockerRoomRead.detail}</p>
+              <small>{lockerRoomRead.note}</small>
             </div>
             <div className="readout-list">
               <p>
@@ -6958,6 +7438,8 @@ function ChampionshipsScreen({
   onNavigate: (screen: GameScreen) => void;
 }) {
   const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
+  const officeRead = getChampionshipOfficeRead(game);
+
   return (
     <main className="app-shell">
       <Header game={game} />
@@ -6975,6 +7457,34 @@ function ChampionshipsScreen({
         </button>
       </section>
 
+      <section className={`title-office-panel tone-${officeRead.tone}`} aria-label="Championship office readout">
+        <div className="title-office-head">
+          <div>
+            <p className="eyebrow">Championship Committee</p>
+            <h3>{officeRead.headline}</h3>
+          </div>
+          <strong>Prestige Desk</strong>
+        </div>
+        <p>{officeRead.detail}</p>
+        <div className="title-office-grid">
+          <article>
+            <span>Brand Anchor</span>
+            <strong>{officeRead.anchorTitle}</strong>
+            <p>{officeRead.anchorDetail}</p>
+          </article>
+          <article>
+            <span>Needs Attention</span>
+            <strong>{officeRead.attentionTitle}</strong>
+            <p>{officeRead.attentionDetail}</p>
+          </article>
+          <article>
+            <span>Prestige Center</span>
+            <strong>{officeRead.prestigeTitle}</strong>
+            <p>{officeRead.prestigeDetail}</p>
+          </article>
+        </div>
+      </section>
+
       <section className="championship-grid" aria-label="Championships">
         {game.championships.map((championship) => {
           const scene = getTitleDivisionScene(championship, game.wrestlers, game.rivalries, game.currentWeek);
@@ -6985,6 +7495,7 @@ function ChampionshipsScreen({
           const isTagTitle = isTagChampionship(championship);
           const tagDivisionHealth = isTagTitle ? getTagDivisionHealthDiagnostics(championship, game) : [];
           const titleDeskRead = getChampionshipSceneDeskRead(championship, game, scene, pressureSnapshot);
+          const identityRead = getTitleSceneIdentityRead(championship, game, scene, pressureSnapshot);
 
           return (
             <article className="championship-card" key={championship.id}>
@@ -6996,6 +7507,28 @@ function ChampionshipsScreen({
                 <strong>Prestige {championship.prestige}</strong>
               </div>
               <p className="title-scene-copy">{championship.titleSceneCopy ?? "Title scene context is derived from the current roster and resolved title history."}</p>
+              <section className={`title-identity-panel tone-${identityRead.tone}`} aria-label={`${championship.name} title scene identity`}>
+                <div>
+                  <span>Title Scene Identity</span>
+                  <strong>{identityRead.headline}</strong>
+                </div>
+                <p>{identityRead.championIdentity}</p>
+                <p>{identityRead.divisionRead}</p>
+                <div className="title-identity-grid">
+                  <article>
+                    <span>{identityRead.healthLabel}</span>
+                    <p>{identityRead.healthDetail}</p>
+                  </article>
+                  <article>
+                    <span>{identityRead.heatLabel}</span>
+                    <p>{identityRead.heatDetail}</p>
+                  </article>
+                  <article>
+                    <span>{identityRead.depthLabel}</span>
+                    <p>{identityRead.depthDetail}</p>
+                  </article>
+                </div>
+              </section>
               <div className="spotlight-grid">
                 <Metric label="Champion" value={getWrestlerNames(championship.championIds, game.wrestlers)} />
                 <Metric label="Reign" value={`${getReignLength(championship, game.currentWeek)} Week${getReignLength(championship, game.currentWeek) === 1 ? "" : "s"}`} />
@@ -7989,12 +8522,12 @@ function WeekReviewScreen({
   const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= result.week + 1 && !week.completed);
   const weeksUntilNextPle = nextPle ? Math.max(0, nextPle.weekNumber - result.week) : 0;
   const brandPulseSnapshot = getBrandPulseSnapshot(game, result);
-  const weeklyDecisionPressure = getWeeklyDecisionPressureSnapshot(game, result);
+  const weekReviewOffice = getWeekReviewOfficeSnapshot(game, result, financeReport);
   const weekReviewHandoff = getWeekReviewHandoffSnapshot(game, result, financeReport);
   const isPleResult = result.showType === "ple";
   const pleAftermathNote = isPleResult
-    ? `${result.showName} was a major event. This review is the full fallout layer, not a pre-show forecast.`
-    : `Review the fallout before moving the season calendar.`;
+    ? `${result.showName} was a major event. Bring the office through the consequences before the calendar moves.`
+    : `Bring the office through what changed before the calendar moves.`;
 
   return (
     <main className="app-shell">
@@ -8003,9 +8536,9 @@ function WeekReviewScreen({
       <section className="results-hero week-review-hero">
         <div>
           <p className="eyebrow">
-            Season {result.seasonNumber} · Week {result.week} Review
+            Season {result.seasonNumber} · Week {result.week} After-Action
           </p>
-          <h2>Week Review</h2>
+          <h2>GM Office Review</h2>
           <p className="lede">{pleAftermathNote}</p>
         </div>
         <button className="primary-action" onClick={onAdvanceWeek}>
@@ -8044,7 +8577,7 @@ function WeekReviewScreen({
         <Metric label="Show" value={result.showName} detail={getShowTypeLabel(result.showType)} />
       </section>
 
-      <WeeklyDecisionPressurePanel compact snapshot={weeklyDecisionPressure} />
+      <WeekReviewOfficePanel snapshot={weekReviewOffice} />
 
       <WeekReviewHandoffPanel snapshot={weekReviewHandoff} />
 
@@ -8528,6 +9061,7 @@ function WrestlerCard({
   const affiliations = rosterAffiliations.filter((affiliation) => affiliation.memberWrestlerIds.includes(wrestler.id));
   const valueProfile = getWrestlerValueProfile(wrestler);
   const identitySnapshot = getWrestlerIdentitySnapshot(wrestler, game);
+  const lockerRoomRead = getWrestlerLockerRoomRead(wrestler, game);
 
   return (
     <article className={`wrestler-card status-${status.toLowerCase()}`}>
@@ -8553,6 +9087,11 @@ function WrestlerCard({
           {valueProfile.valueTierLabel}
         </span>
         {pressureTags.length ? pressureTags.map((tag) => <span key={tag}>{tag}</span>) : <span>Balanced</span>}
+      </div>
+      <div className={`locker-room-card-read tone-${lockerRoomRead.tone}`} aria-label={`${wrestler.name} locker room read`}>
+        <span>{lockerRoomRead.headline}</span>
+        <p>{lockerRoomRead.detail}</p>
+        <small>{lockerRoomRead.note}</small>
       </div>
       <div className="wrestler-identity-read" aria-label={`${wrestler.name} identity read`}>
         <strong>{identitySnapshot.roleRead}</strong>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 210" role="img" aria-labelledby="title">
+  <title id="title">Kane Mercer portrait</title>
+  <defs>
+    <linearGradient id="skin" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#c79a72"/><stop offset="1" stop-color="#55351f"/></linearGradient>
+    <linearGradient id="gear" x1="0" x2="1"><stop offset="0" stop-color="#15191e"/><stop offset="1" stop-color="#d9a441"/></linearGradient>
+  </defs>
+  <rect width="160" height="210" fill="#030405"/>
+  <path d="M15 202c10-60 35-91 65-91s55 31 65 91z" fill="url(#gear)"/>
+  <path d="M49 67c0-30 16-50 31-50s31 20 31 50c0 33-13 51-31 51S49 100 49 67z" fill="url(#skin)"/>
+  <path d="M49 43c16-33 51-31 65 2l-8 18c-12-20-41-20-53 0z" fill="#090909"/>
+  <path d="M43 139h74l-19 55H62z" fill="#090b0e" opacity=".9"/>
+  <path d="M18 20h124l-19 170H18z" fill="none" stroke="#d9a441" stroke-width="4"/>
+  <path d="M122 20h20l-18 170h-20z" fill="#d71920" opacity=".32"/>
+</svg>
