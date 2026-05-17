@@ -1704,6 +1704,14 @@ h3 {
   border-color: rgba(246, 193, 86, 0.3);
 }
 
+.contract-value-panel {
+  border-color: rgba(111, 226, 212, 0.3);
+}
+
+.contract-value-panel-missing {
+  border-style: dashed;
+}
+
 .title-profile-panel {
   border-color: rgba(246, 193, 86, 0.24);
 }
