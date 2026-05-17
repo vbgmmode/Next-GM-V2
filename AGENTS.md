@@ -48,7 +48,7 @@ The game currently supports:
 - Tag Championship Foundation v1 with one tag championship, 2v2 M020 tag title matches only, pair-aware champion/history rendering, and no rankings/team records/team persistence/team-level stats
 - Tag Division Health Diagnostics v1 with read-only, derived tag-division advisories on Championships/Booking/Dashboard and no rankings/team records/team persistence/team-level mechanics
 - Match Format Metadata Foundation v1 with centralized current segment/match format metadata
-- Booking Producer Rundown with read-only production/card structure context
+- Booking Production Rundown / Card Shape v1 with read-only opener/middle/main-event structure, coverage, and workload context
 - PLE Readiness Checklist v1 with non-spoiler major-event booking context
 - PLE Build Pressure v1 with read-only normal TV/go-home/PLE context derived from current calendar, card, roster, rivalry, and title state
 - Post-Show Cause Ledger v1 with retrospective explanation from resolved result data
@@ -72,7 +72,7 @@ The game currently supports:
 - localStorage career-save persistence
 - Save loading with fallbacks for added career fields
 - Save Migration Hardening v1 with centralized defaults for older localStorage saves
-- Dashboard
+- Dashboard with Living World Pressure / Office Pulse as the primary weekly pressure surface
 - Booking with Match, Promo, Backstage Angle, Contract Signing, and Open Challenge segments
 - Booking Balance Pass v1 with distinct segment scoring, lighter normal fatigue gain, deterministic Open Challenge risk, and tuned rivalry/fallout movement
 - Segment validation and minimum-card requirements
@@ -83,7 +83,7 @@ The game currently supports:
 - Title/Rivalry History v1 with lightweight title changes, defenses, rivalry movement, PLE payoffs, profile context, and season story summaries
 - Rivalry context attached to eligible segments
 - Run Show
-- Results focused on broadcast recap, Broadcast Fallout, Post-Show Cause Ledger, segment scores, and major title/rivalry/Open Challenge notes from resolved show data
+- Results with a top broadcast recap package, quiet operational fallout support, Post-Show Cause Ledger, segment scores, and major title/rivalry/Open Challenge notes from resolved show data
 - Dedicated Week Review screen before Advance Week
 - Results → Week Review → Advance Week flow
 - Week Review summary of show outcome, GM Handoff / next-week setup, roster fallout, championships, rivalries, social buzz, finance fallout, and next week teaser
@@ -139,13 +139,17 @@ The loop must remain playable after every change.
 - Major injuries should affect booking availability.
 - Morale and fatigue fallout should be revealed after the show, not before.
 - Booking can show context and warnings, but not predicted fallout.
+- Pre-show surfaces may show current risks, availability, fatigue, morale risk, title/rivalry context, finance state, PLE timing, and card readiness.
+- Pre-show surfaces must not show predicted grades, fan reaction, social buzz, finance fallout, title outcomes, rivalry movement, morale changes, injury outcomes, or Open Challenge opponent identity.
 - Results should focus on broadcast recap.
+- Results operational fallout should remain quieter support below the broadcast recap, not a second headline recap.
 - Week Review should connect consequences before advancing.
 - Advance Week should happen after the player has seen the week's fallout.
 - The UI can warn, summarize, and provide context, but it should not secretly decide for the player.
 - Big moments deserve stronger presentation.
-- Dashboard should orient the player.
+- Dashboard should orient the player through Living World Pressure / Office Pulse, and should not restore a separate duplicate bottom footer or "<Brand> Control Room" rail.
 - Booking should feel like a TV production card.
+- Booking Production Rundown / Card Shape is advisory and must not change validation, Run Show enablement, simulation, or no-spoiler boundaries.
 - Results should feel like a broadcast recap plus consequence screen.
 - Roster should feel like a living locker room.
 - Wrestler profiles should support GM decisions with character context, not become spreadsheet clutter.
@@ -191,15 +195,20 @@ Completed stabilization passes:
 - Title Scene Pressure v1
 - Rivalry Payoff Window v1
 - Brand Pulse v1
+- Living World Pressure v1
+- Dashboard Visual Hierarchy Polish v1
 - Non-Blocking Rival Draft Activity v1
 - Wrestler Identity Context v1 (non-mechanical display context layer)
-- Booking Producer Rundown v1
+- Booking Production Rundown / Card Shape v1
+- Booking Production Rundown Microcopy Cleanup v1
 - Roster Identity Context v1
 - Championship Scene Context v1
 - Rivalry Story Context v1
 - Weekly GM Desk Brief v1
 - PLE Build Pressure v1
 - Show Results Broadcast Fallout v1
+- Results Broadcast Recap Staging v1
+- Results Operational Fallout Quieting v1
 - Week Review GM Handoff v1
 - Read-only gameplay context helper extraction to src/game/gameContextReads.ts
 - Tag Division Health Diagnostics v1
@@ -220,6 +229,7 @@ Upcoming Direction:
 - Keep scout/read-only career-memory features bounded while deferring signing, release, and free-agency mechanics.
 - Treat season legacy as read-only narrative continuity first; defer payroll/contract mechanics and offseason systems to future tickets.
 - Keep recent context passes read-only and non-predictive: pre-show surfaces may explain existing pressure, but consequences and outcome language stay retrospective after Run Show.
+- Keep rival brands as pressure/flavor only unless a future accepted ticket explicitly adds simulation.
 - Use src/game/gameContextReads.ts or another src/game read-model module for pure derived gameplay context when a future slice would otherwise add more helper logic to src/App.tsx.
 - Treat src/App.tsx and src/styles.css as high-risk growth areas; prefer bounded extraction, verification, or small focused UI fixes over broad screen rewrites.
 - Before content expansion, define the data category, maximum safe content size, allowed files, migration or fallback needs, and required smoke checks.
@@ -246,9 +256,11 @@ Unless the active ticket explicitly asks for it, do not add:
 - contract-management systems beyond the current setup framing and Contract Signing segment type
 - draft expansion beyond the current new-game draft flow
 - CPU drafting
+- CPU booking
 - rival rosters
 - rival show simulation
 - brand standings or ratings battles
+- ratings-battle systems
 - salary or contract gameplay systems
 - brand-restricted draft modes
 - complex accounting

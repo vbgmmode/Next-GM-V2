@@ -1143,6 +1143,10 @@ function getBookingProducerNote({
   return `Ready state comes from existing validation: ${coverageReads.join(", ")} and ${riskRead}. ${missingRead}`.trim();
 }
 
+function formatRivalryCount(count: number) {
+  return `${count} active ${count === 1 ? "rivalry" : "rivalries"}`;
+}
+
 function isMajorEventStar(wrestler: Wrestler) {
   return wrestler.popularity >= 90 || wrestler.momentum >= 90 || wrestler.roleTier?.toLowerCase() === "mainevent";
 }
@@ -1193,11 +1197,11 @@ function getPleReadinessSnapshot(game: GameState, validShowSegments: Segment[], 
       label: "Rivalry Payoff",
       status: representedRivalries.length >= 2 ? "Stories represented" : representedRivalries.length === 1 ? "One story beat" : "No active rivalry beat",
       detail: unresolvedRivalries.length
-        ? `${representedRivalries.length} active rivalr${representedRivalries.length === 1 ? "y" : "ies"} on card. Still off card: ${unresolvedRivalries
+        ? `${formatRivalryCount(representedRivalries.length)} on card. Still off card: ${unresolvedRivalries
             .slice(0, 2)
             .map((rivalry) => rivalry.name)
             .join(" / ")}${unresolvedRivalries.length > 2 ? " / more" : ""}.`
-        : `${representedRivalries.length} active rivalr${representedRivalries.length === 1 ? "y" : "ies"} represented on the card.`,
+        : `${formatRivalryCount(representedRivalries.length)} represented on the card.`,
       tone: representedRivalries.length >= 2 ? "ready" : representedRivalries.length === 1 ? "watch" : "build",
     },
     {
@@ -5739,9 +5743,15 @@ function BookingScreen({
   const talentValuePressure = getTalentValuePressure(game.wrestlers);
   const bookingFinanceRead = `${getFinancePresenceRead(game.money, financePressureLabel, latestFinanceReport)} Roster value map: ${talentValuePressure.premiumCount} premium/high-cost and ${talentValuePressure.bargainCount} bargain/rising profiles.`;
   const pleProductionRead =
-    pleReadiness && isPleShow
-      ? `Current card shape: ${pleReadiness.titleMatchCount} title stake segment${pleReadiness.titleMatchCount === 1 ? "" : "s"}, ${pleReadiness.representedRivalries.length} active rivalry${pleReadiness.representedRivalries.length === 1 ? "" : "s"} represented, ${pleReadiness.bookedMajorStars.length} major star${pleReadiness.bookedMajorStars.length === 1 ? "" : "s"} booked.`
+    pleReadiness && isPleShow && validSegments > 0
+      ? `Current card shape: ${pleReadiness.titleMatchCount} title stake segment${pleReadiness.titleMatchCount === 1 ? "" : "s"}, ${formatRivalryCount(pleReadiness.representedRivalries.length)} represented, ${pleReadiness.bookedMajorStars.length} major star${pleReadiness.bookedMajorStars.length === 1 ? "" : "s"} booked.`
+      : pleReadiness && isPleShow
+        ? "No valid segments are booked yet; add the card before production can read PLE support."
       : "Major-event control room context is only available on PLE cards.";
+  const pleFinanceContextRead =
+    pleReadiness && isPleShow && validSegments > 0
+      ? "Current card has PLE support context for the production desk."
+      : "No valid PLE card has been built yet; production support reads will update after booking.";
   const bookedCounts = game.currentShow.reduce<Record<string, number>>((counts, segment) => {
     segment.participantIds.forEach((id) => {
       counts[id] = (counts[id] ?? 0) + 1;
@@ -5962,7 +5972,7 @@ function BookingScreen({
       <section className="booking-finance-context" aria-label="Booking finance context">
         <span>Brand Office</span>
         <p>{bookingFinanceRead}</p>
-        {calendarWeek.showType === "ple" ? <p>{`PLE context: ${isPleShow && pleReadiness ? "Current card support for a major push." : "No card context lock yet."}`}</p> : null}
+        {calendarWeek.showType === "ple" ? <p>{`PLE context: ${pleFinanceContextRead}`}</p> : null}
       </section>
 
       <PleBuildPressurePanel compact snapshot={pleBuildPressure} />
