@@ -20,6 +20,11 @@ import {
   getSegmentParticipantRange,
   type SegmentCatalogOption,
 } from "./game/matchFormatCatalog";
+import {
+  getStipulationsForSegment,
+  getStipulationById,
+  type StipulationCatalogOption,
+} from "./game/stipulationCatalog";
 import { migrateSavedGameState } from "./game/migration";
 import { getWrestlerIdentityContext } from "./game/wrestlerIdentityContext";
 import {
@@ -668,6 +673,35 @@ function getAffiliationMemberNames(affiliation: WrestlerAffiliation, wrestlers: 
 
 function getSegmentDurationMinutes(segment: Segment) {
   return segment.durationMinutes ?? getSegmentCatalogOption(segment)?.defaultDurationMinutes ?? 8;
+}
+
+function getStipulationsForSegmentId(segment: Segment): StipulationCatalogOption[] {
+  return getStipulationsForSegment(segment);
+}
+
+function getSegmentStipulationLabel(segment: Pick<Segment, "stipulationId" | "type" | "segmentCatalogId">) {
+  const stipulation = getStipulationById(segment.stipulationId);
+
+  return stipulation ? stipulation.label : "No stipulation";
+}
+
+function getResolvedSegmentStipulationLabel(segment: Pick<SegmentResult, "stipulationId" | "type" | "segmentCatalogId">) {
+  const stipulation = getStipulationById(segment.stipulationId);
+
+  return stipulation ? stipulation.label : undefined;
+}
+
+function sanitizeSegmentStipulation(segment: Segment) {
+  const allowedStipulations = getStipulationsForSegmentId(segment);
+  if (!segment.stipulationId) {
+    return segment;
+  }
+
+  if (!allowedStipulations.some((option) => option.id === segment.stipulationId)) {
+    return { ...segment, stipulationId: undefined };
+  }
+
+  return segment;
 }
 
 function getSegmentRuntime(segment: Segment) {
@@ -3387,6 +3421,8 @@ function App() {
             updatedSegment = { ...updatedSegment, rivalryId: undefined };
           }
 
+          updatedSegment = sanitizeSegmentStipulation(updatedSegment);
+
           return updatedSegment;
         }),
       };
@@ -3428,6 +3464,37 @@ function App() {
           }
 
           return { ...segment, championshipId };
+        }),
+      };
+
+      persistGameSnapshot(updatedGame, "booking");
+      return updatedGame;
+    });
+  }
+
+  function setSegmentStipulation(segmentId: string, stipulationId: string) {
+    setGame((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const updatedGame = {
+        ...current,
+        currentShow: current.currentShow.map((segment) => {
+          if (segment.id !== segmentId) {
+            return segment;
+          }
+
+          if (!stipulationId) {
+            return { ...segment, stipulationId: undefined };
+          }
+
+          const allowed = getStipulationsForSegmentId({ ...segment });
+          if (!allowed.some((option) => option.id === stipulationId)) {
+            return { ...segment, stipulationId: undefined };
+          }
+
+          return { ...segment, stipulationId };
         }),
       };
 
@@ -3694,6 +3761,7 @@ function App() {
         onRunShow={handleRunShow}
         onOpenProfile={(wrestlerId) => openWrestlerProfile(wrestlerId, "booking")}
         onSetSegmentChampionship={setSegmentChampionship}
+        onSetSegmentStipulation={setSegmentStipulation}
         onSetSegmentRivalry={setSegmentRivalry}
         onToggleParticipant={toggleParticipant}
         onReplaceCurrentShow={replaceCurrentShow}
@@ -4979,6 +5047,7 @@ function BookingScreen({
   onReplaceCurrentShow,
   onRunShow,
   onSetSegmentChampionship,
+  onSetSegmentStipulation,
   onSetSegmentRivalry,
   onToggleParticipant,
   onUpdateSegment,
@@ -4993,6 +5062,7 @@ function BookingScreen({
   onReplaceCurrentShow: (segments: Segment[]) => void;
   onRunShow: () => void;
   onSetSegmentChampionship: (segmentId: string, championshipId: string) => void;
+  onSetSegmentStipulation: (segmentId: string, stipulationId: string) => void;
   onSetSegmentRivalry: (segmentId: string, rivalryId: string) => void;
   onToggleParticipant: (segmentId: string, wrestlerId: string) => void;
   onUpdateSegment: (segmentId: string, updates: Partial<Segment>) => void;
@@ -5035,6 +5105,9 @@ function BookingScreen({
   }
 
   function applyCatalogOption(segment: Segment, option: SegmentCatalogOption) {
+    const allowedStipulations = getStipulationsForSegment({ ...segment, segmentCatalogId: option.id });
+    const hasCompatibleStipulation = segment.stipulationId && allowedStipulations.some((item) => item.id === segment.stipulationId);
+
     onUpdateSegment(segment.id, {
       segmentCatalogId: option.id,
       segmentDisplayName: option.label,
@@ -5042,6 +5115,7 @@ function BookingScreen({
       participantMin: option.minParticipants,
       participantMax: option.maxParticipants,
       championshipId: option.championshipAllowed ? segment.championshipId : undefined,
+      stipulationId: hasCompatibleStipulation ? segment.stipulationId : undefined,
     });
   }
 
@@ -5246,6 +5320,7 @@ function BookingScreen({
               championships={game.championships}
               game={game}
               onApplyCatalogOption={(option) => applyCatalogOption(composerSegment, option)}
+              onSetSegmentStipulation={(segmentId, stipulationId) => onSetSegmentStipulation(segmentId, stipulationId)}
               onClose={() => setComposerSegmentId(undefined)}
               onOpenProfile={onOpenProfile}
               onRemoveSegment={() => removeAndClose(composerSegment.id)}
@@ -5308,6 +5383,7 @@ function SegmentComposer({
   onRemoveSegment,
   onSetDuration,
   onSetSegmentChampionship,
+  onSetSegmentStipulation,
   onSetSegmentRivalry,
   onToggleParticipant,
   rivalries,
@@ -5323,6 +5399,7 @@ function SegmentComposer({
   onRemoveSegment: () => void;
   onSetDuration: (durationMinutes: number) => void;
   onSetSegmentChampionship: (segmentId: string, championshipId: string) => void;
+  onSetSegmentStipulation: (segmentId: string, stipulationId: string) => void;
   onSetSegmentRivalry: (rivalryId: string) => void;
   onToggleParticipant: (segmentId: string, wrestlerId: string) => void;
   rivalries: Rivalry[];
@@ -5335,6 +5412,11 @@ function SegmentComposer({
   const durationMinutes = getSegmentDurationMinutes(segment);
   const durationMin = Math.max(3, selectedOption.defaultDurationMinutes - 4);
   const durationMax = 45;
+  const availableStipulations = getStipulationsForSegmentId(segment);
+  const selectedStipulation = getStipulationById(segment.stipulationId);
+  const stipulationContextLines = selectedStipulation
+    ? [selectedStipulation.riskContext, selectedStipulation.presentationalContext, selectedStipulation.rivalryTone]
+    : [];
 
   return (
     <div className="segment-composer">
@@ -5393,6 +5475,44 @@ function SegmentComposer({
             <li key={detail}>{detail}</li>
           ))}
         </ul>
+      </div>
+
+      <div className="composer-block segment-stipulation">
+        <div>
+          <span>Match Stipulation</span>
+          <strong>{selectedStipulation ? selectedStipulation.label : segment.type === "Match" ? "Optional presentation context only" : "Match-only context layer"}</strong>
+        </div>
+        {segment.type === "Match" ? (
+          <>
+            <p>
+              {selectedStipulation
+                ? selectedStipulation.description
+                : "No stipulation keeps standard match behavior and title/fellout math unchanged."}
+            </p>
+            {selectedStipulation ? <p>{stipulationContextLines.join(" · ")}</p> : null}
+            {availableStipulations.length ? (
+              <div className="title-buttons">
+                <button
+                  className={!segment.stipulationId ? "active-filter" : ""}
+                  onClick={() => onSetSegmentStipulation(segment.id, "")}
+                >
+                  Standard Match
+                </button>
+                {availableStipulations.map((option) => (
+                  <button
+                    className={segment.stipulationId === option.id ? "active-filter" : ""}
+                    key={option.id}
+                    onClick={() => onSetSegmentStipulation(segment.id, option.id)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <p>Stipulation metadata is available on match-format segments only in the current metadata slice.</p>
+        )}
       </div>
 
       <div className="composer-block duration-editor">
@@ -6697,6 +6817,7 @@ function ResultsScreen({
                 {segment.overrunAffected ? " · closing block compressed" : ""}
               </p>
               {segment.recapNote ? <p>{segment.recapNote}</p> : null}
+              {getResolvedSegmentStipulationLabel(segment) ? <p className="title-note">Match stipulation: {getResolvedSegmentStipulationLabel(segment)}</p> : null}
               {segment.titleNote ? <p className="title-note">{segment.titleNote}</p> : null}
               {segment.rivalryNote ? <p className="rivalry-note">{segment.rivalryNote}</p> : null}
             </div>
@@ -6775,6 +6896,28 @@ function WeekReviewScreen({
           {result.broadcastOverrunNotes.map((note, index) => (
             <p key={`${note}-${index}`}>{note}</p>
           ))}
+        </section>
+      ) : null}
+
+      {result.segmentResults.some((segment) => getResolvedSegmentStipulationLabel(segment)) ? (
+        <section className="title-fallout" aria-label="Week review stipulations">
+          <div className="section-heading">
+            <p className="eyebrow">Presentation Context</p>
+            <h3>Match Stipulations</h3>
+          </div>
+          <div className="history-list">
+            {result.segmentResults
+              .map((segment, index) => ({ segment, index, label: getResolvedSegmentStipulationLabel(segment) }))
+              .filter((entry) => entry.label)
+              .map((entry) => (
+                <article className="history-event" key={`${entry.segment.segmentId}-${entry.index}`}>
+                  <span>Segment {entry.index + 1} · {entry.segment.type}</span>
+                  <p>
+                    {entry.label} for {getSegmentResultParticipantsLabel(entry.segment, game.wrestlers)}
+                  </p>
+                </article>
+              ))}
+          </div>
         </section>
       ) : null}
 
@@ -7557,6 +7700,10 @@ function SegmentContext({
       <div>
         <span>Production Note</span>
         <strong>{warnings.length ? warnings[0] : "Ready for the rundown."}</strong>
+      </div>
+      <div>
+        <span>Presentation</span>
+        <strong>{getSegmentStipulationLabel(segment)}</strong>
       </div>
       {warnings.length > 1 ? (
         <ul>

@@ -152,6 +152,7 @@ export type Segment = {
   participantIds: string[];
   championshipId?: string;
   rivalryId?: string;
+  stipulationId?: string;
   segmentCatalogId?: string;
   segmentDisplayName?: string;
   durationMinutes?: number;
@@ -297,6 +298,7 @@ export type SegmentResult = {
   championshipId?: string;
   rivalryId?: string;
   segmentCatalogId?: string;
+  stipulationId?: string;
   winnerId?: string;
   titleNote?: string;
   rivalryNote?: string;

@@ -18,6 +18,7 @@ import { enrichWrestlerIdentityContext } from "./wrestlerIdentityContext";
 import { getSegmentTypeDefaults } from "./matchFormatCatalog";
 import { applyChampionshipCatalogDefaults } from "./titleCatalog";
 import { applyRivalryCatalogDefaults } from "./rivalryCatalog";
+import { getStipulationsForSegment } from "./stipulationCatalog";
 
 export type GameScreen = Exclude<Screen, "title" | "setup">;
 export type ProfileReturnScreen = Extract<GameScreen, "roster" | "booking">;
@@ -175,7 +176,16 @@ function normalizeShowHistory(showHistory: unknown): ShowResult[] {
 
     return {
       ...result,
-      segmentResults: Array.isArray(result.segmentResults) ? result.segmentResults : [],
+      segmentResults: Array.isArray(result.segmentResults)
+        ? result.segmentResults.map((segment) => {
+            const segmentRecord = typeof segment === "object" && segment !== null ? (segment as Record<string, unknown>) : {};
+
+            return {
+              ...segmentRecord,
+              stipulationId: typeof segmentRecord.stipulationId === "string" ? segmentRecord.stipulationId : undefined,
+            };
+          })
+        : [],
       titleNotes: Array.isArray(result.titleNotes) ? result.titleNotes : [],
       rivalryNotes: Array.isArray(result.rivalryNotes) ? result.rivalryNotes : [],
       titleHistoryEvents: Array.isArray(result.titleHistoryEvents) ? result.titleHistoryEvents : [],
@@ -214,6 +224,12 @@ function normalizeCurrentShow(currentShow: unknown): Segment[] {
   return (Array.isArray(currentShow) ? (currentShow as Partial<Segment>[]) : []).map((segment, index) => {
     const type = segment.type ?? "Match";
     const defaults = getSegmentTypeDefaults(type);
+    const candidateFormatId = segment.segmentCatalogId ?? defaults.segmentCatalogId;
+    const normalizedStipulationId =
+      typeof segment.stipulationId === "string" &&
+      getStipulationsForSegment({ type, segmentCatalogId: candidateFormatId }).some((stipulation) => stipulation.id === segment.stipulationId)
+        ? segment.stipulationId
+        : undefined;
 
     return {
       id: segment.id ?? `migrated-segment-${index}`,
@@ -221,7 +237,8 @@ function normalizeCurrentShow(currentShow: unknown): Segment[] {
       participantIds: Array.isArray(segment.participantIds) ? segment.participantIds : [],
       championshipId: segment.championshipId,
       rivalryId: segment.rivalryId,
-      segmentCatalogId: segment.segmentCatalogId ?? defaults.segmentCatalogId,
+      stipulationId: normalizedStipulationId,
+      segmentCatalogId: candidateFormatId,
       segmentDisplayName: segment.segmentDisplayName ?? defaults.segmentDisplayName,
       durationMinutes: segment.durationMinutes ?? defaults.durationMinutes,
       participantMin: segment.participantMin ?? defaults.participantMin,

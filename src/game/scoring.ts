@@ -341,6 +341,7 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
       championshipId: resolvedSegment.championshipId,
       rivalryId: resolvedSegment.rivalryId,
       segmentCatalogId: resolvedSegment.segmentCatalogId,
+      stipulationId: resolvedSegment.stipulationId,
       winnerId,
       titleNote,
       rivalryNote,

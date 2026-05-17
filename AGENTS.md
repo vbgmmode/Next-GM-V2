@@ -152,13 +152,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Tag Division Health Diagnostics v1
+Phase: Stipulation Metadata v1 Implementation
 
 Goal:
-Add read-only, derived tag-division health diagnostics while preserving the complete offline solo career loop and one bounded tag-championship foundation.
+Implement read-only stipulation metadata for eligible matches to improve broadcast context without changing winner resolution, title logic, rivalry logic, scoring, or persistence behavior.
 
 Current priority:
-Keep diagnostics read-only and derived from existing state, with one tag title only, M020 constraints, pair-aware title rendering, and no rankings/team records/team persistence/team-level stats.
+Keep implementation bounded to match-format-safe metadata only, preserve current match-result and fallout behavior, and avoid any title, scoring, social, finance, injury, or rivalry engine rewrites.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -189,6 +189,7 @@ Completed stabilization passes:
 - Non-Blocking Rival Draft Activity v1
 - Wrestler Identity Context v1 (non-mechanical display context layer)
 - Tag Division Health Diagnostics v1
+- Stipulation Metadata v1 (implemented)
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
