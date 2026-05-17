@@ -7489,13 +7489,13 @@ function PostShowCauseLedger({ compact = false, sections }: { compact?: boolean;
 
 function BroadcastFalloutPanel({ snapshot }: { snapshot: BroadcastFalloutSnapshot }) {
   return (
-    <section className="broadcast-fallout-panel" aria-label="Broadcast fallout">
+    <section className="broadcast-fallout-panel" aria-label="Operational fallout log">
       <div className="broadcast-fallout-head">
         <div>
-          <p className="eyebrow">Broadcast Fallout</p>
-          <h3>{snapshot.headline}</h3>
+          <p className="eyebrow">Operational Fallout</p>
+          <h3>Resolved Consequence Notes</h3>
         </div>
-        <strong>What Changed</strong>
+        <strong>Support Log</strong>
       </div>
       <p className="broadcast-fallout-copy">{snapshot.detail}</p>
       <div className="broadcast-fallout-grid">

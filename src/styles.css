@@ -3520,16 +3520,15 @@ h3 {
 
 .broadcast-fallout-panel {
   background:
-    linear-gradient(135deg, rgba(216, 35, 50, 0.16), transparent 42%),
-    linear-gradient(90deg, rgba(246, 193, 86, 0.08), transparent 66%),
-    rgba(14, 17, 24, 0.94);
-  border: 1px solid rgba(246, 193, 86, 0.3);
-  border-left: 4px solid #d82332;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent),
+    rgba(12, 15, 21, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 3px solid rgba(246, 193, 86, 0.48);
   border-radius: 8px;
   display: grid;
-  gap: 14px;
+  gap: 11px;
   margin-bottom: 18px;
-  padding: 18px;
+  padding: 14px;
 }
 
 .broadcast-fallout-head {
@@ -3540,44 +3539,47 @@ h3 {
 }
 
 .broadcast-fallout-head h3 {
+  color: #dbe2ef;
+  font-size: 1rem;
   line-height: 1.12;
   margin: 0;
   overflow-wrap: anywhere;
 }
 
 .broadcast-fallout-head > strong {
-  background: rgba(246, 193, 86, 0.12);
-  border: 1px solid rgba(246, 193, 86, 0.28);
-  color: #f6c156;
+  background: rgba(8, 9, 13, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #aeb7c7;
   flex: 0 0 auto;
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-weight: 900;
-  padding: 8px 10px;
+  padding: 6px 8px;
   text-transform: uppercase;
 }
 
 .broadcast-fallout-copy,
 .broadcast-fallout-item p {
   color: #b9c1cf;
+  font-size: 0.88rem;
   line-height: 1.45;
   margin: 0;
 }
 
 .broadcast-fallout-grid {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .broadcast-fallout-item {
-  background: rgba(8, 9, 13, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-left: 3px solid rgba(185, 193, 207, 0.45);
+  background: rgba(8, 9, 13, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 2px solid rgba(185, 193, 207, 0.42);
   border-radius: 6px;
   display: grid;
-  gap: 6px;
+  gap: 5px;
   min-width: 0;
-  padding: 12px;
+  padding: 9px 10px;
 }
 
 .broadcast-fallout-item.item-strong {
@@ -3593,8 +3595,8 @@ h3 {
 }
 
 .broadcast-fallout-item span {
-  color: #f6c156;
-  font-size: 0.74rem;
+  color: #9ea8ba;
+  font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -3602,7 +3604,7 @@ h3 {
 .broadcast-fallout-item strong {
   color: #f4f7fb;
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 900;
   letter-spacing: 0;
   line-height: 1.15;
