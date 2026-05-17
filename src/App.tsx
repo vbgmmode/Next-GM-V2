@@ -5067,6 +5067,7 @@ function DashboardScreen({
   const latestFinanceReport = getLatestFinanceReport(game);
   const pressureLabel = getFinancePressureLabel(game.money, latestFinanceReport?.profitLoss ?? 0);
   const financePresenceRead = getFinancePresenceRead(game.money, pressureLabel, latestFinanceReport);
+  const isPleWeek = currentShow.showType === "ple";
   const topOverused = getTopOverusedWrestler(game.wrestlers);
   const topUnderused = getTopUnderusedWrestler(game.wrestlers, game.currentWeek);
   const overusedCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Overused")).length;
@@ -5094,8 +5095,9 @@ function DashboardScreen({
             <span>{game.brandStyle}</span>
           </div>
           <p className="lede">
-            {currentShow.showName} is a {getShowTypeLabel(currentShow.showType)} stop
-            {currentShow.isGoHome ? " and the last live wire before the next PLE." : " on the road to the next major event."}
+            {isPleWeek
+              ? `${currentShow.showName} is the season's major-event pulse. This is the room you set up to define this card's legacy.`
+              : `${currentShow.showName} is a ${getShowTypeLabel(currentShow.showType)} stop${currentShow.isGoHome ? " and the last live wire before the next PLE." : " on the road to the next major event."}`}
           </p>
         </div>
         <button className="primary-action" onClick={() => onNavigate("booking")}>
@@ -5110,7 +5112,7 @@ function DashboardScreen({
             <h3>{currentShow.showName}</h3>
           </div>
           <div className="show-strip">
-            <span>{getShowTypeLabel(currentShow.showType)}</span>
+            <span>{isPleWeek ? "Major Event" : getShowTypeLabel(currentShow.showType)}</span>
             {currentShow.isGoHome ? <span>Go-Home</span> : null}
             {nextPle ? <span>{weeksUntilPle === 0 ? "PLE Week" : `${weeksUntilPle} Week${weeksUntilPle === 1 ? "" : "s"} To ${nextPle.showName}`}</span> : null}
           </div>
@@ -5134,7 +5136,7 @@ function DashboardScreen({
         <article className="command-panel next-action-panel">
           <div className="section-heading">
             <p className="eyebrow">Next Action</p>
-            <h3>{validSegments >= 2 ? "Card Is Runnable" : "Book The Show"}</h3>
+            <h3>{validSegments >= 2 ? (isPleWeek ? "Major-Event Block Live-Ready" : "Card Is Runnable") : isPleWeek ? "Build Major-Event Card" : "Book The Show"}</h3>
           </div>
           <p>{nextAction}</p>
           <div className="panel-actions">
@@ -5415,8 +5417,13 @@ function BookingScreen({
   const composerSegment = game.currentShow.find((segment) => segment.id === composerSegmentId);
   const latestFinanceReport = getLatestFinanceReport(game);
   const financePressureLabel = getFinancePressureLabel(game.money, latestFinanceReport?.profitLoss ?? 0);
+  const isPleShow = calendarWeek.showType === "ple";
   const talentValuePressure = getTalentValuePressure(game.wrestlers);
   const bookingFinanceRead = `${getFinancePresenceRead(game.money, financePressureLabel, latestFinanceReport)} Roster value map: ${talentValuePressure.premiumCount} premium/high-cost and ${talentValuePressure.bargainCount} bargain/rising profiles.`;
+  const pleProductionRead =
+    pleReadiness && isPleShow
+      ? `Current card shape: ${pleReadiness.titleMatchCount} title stake segment${pleReadiness.titleMatchCount === 1 ? "" : "s"}, ${pleReadiness.representedRivalries.length} active rivalry${pleReadiness.representedRivalries.length === 1 ? "" : "s"} represented, ${pleReadiness.bookedMajorStars.length} major star${pleReadiness.bookedMajorStars.length === 1 ? "" : "s"} booked.`
+      : "Major-event control room context is only available on PLE cards.";
   const bookedCounts = game.currentShow.reduce<Record<string, number>>((counts, segment) => {
     segment.participantIds.forEach((id) => {
       counts[id] = (counts[id] ?? 0) + 1;
@@ -5518,7 +5525,7 @@ function BookingScreen({
           <h2>{calendarWeek.showName}</h2>
           <p className="lede">
             {calendarWeek.showType === "ple"
-              ? "Major-event card. Shape the live block around enough valid TV time, then let the biggest title and rivalry beats breathe."
+              ? `Major-event card. ${pleProductionRead}`
               : calendarWeek.isGoHome
                 ? "Go-home broadcast. Build a complete TV block and set the final tone before the next PLE."
                 : "TV production card. Build enough show, leave room to breathe, and protect the locker room."}
@@ -5550,6 +5557,7 @@ function BookingScreen({
       <section className="booking-finance-context" aria-label="Booking finance context">
         <span>Brand Office</span>
         <p>{bookingFinanceRead}</p>
+        {calendarWeek.showType === "ple" ? <p>{`PLE context: ${isPleShow && pleReadiness ? "Current card support for a major push." : "No card context lock yet."}`}</p> : null}
       </section>
 
       <section className="booking-rundown-layout" aria-label="Current show rundown">
@@ -7150,6 +7158,10 @@ function ResultsScreen({
   const causeLedger = buildPostShowCauseLedger(game, result, financeReport);
   const titleHistoryEvents = result.titleHistoryEvents ?? [];
   const titleChanges = titleHistoryEvents.filter((event) => event.eventType === "title_change");
+  const isPleResult = result.showType === "ple";
+  const pleResultRead = isPleResult
+    ? `Major-event night complete; the room now moves on the fallout instead of the build notes.`
+    : `Broadcast locked; review the fallout before calendar movement.`;
 
   return (
     <main className="app-shell">
@@ -7163,7 +7175,10 @@ function ResultsScreen({
           <h2>
             {result.totalScore} <span>{getShowGrade(result.totalScore)}</span>
           </h2>
-          <p className="lede">{buildBroadcastRecap(result)}</p>
+          <p className="lede">
+            {isPleResult ? `${getShowTypeLabel(result.showType)} package locked. ${pleResultRead} ` : ""}
+            {buildBroadcastRecap(result)}
+          </p>
         </div>
         <button className="primary-action" onClick={onContinueWeekReview} disabled={!canContinueWeekReview}>
           {canContinueWeekReview ? "Continue to Week Review" : "Week Review Complete"}
@@ -7180,6 +7195,19 @@ function ResultsScreen({
         />
         <Metric label="Best Type" value={bestSegment.type} detail={getSegmentResultParticipantsLabel(bestSegment, game.wrestlers)} />
       </section>
+
+      {isPleResult ? (
+        <section className="story-fallout" aria-label="PLE recap">
+          <div className="section-heading">
+            <p className="eyebrow">Major Event Wrap</p>
+            <h3>{result.showName} Fallout</h3>
+          </div>
+          <p>
+            This major-event broadcast carried {titleChanges.length ? `${titleChanges.length} title change${titleChanges.length === 1 ? "" : "s"}` : "no title changes"} and
+            {result.rivalryHistoryEvents?.length ? ` ${result.rivalryHistoryEvents.length} rivalry movement event${result.rivalryHistoryEvents.length === 1 ? "" : "s"}.` : " no rivalry movement."}
+          </p>
+        </section>
+      ) : null}
 
       <PostShowCauseLedger sections={causeLedger} />
 
@@ -7311,6 +7339,10 @@ function WeekReviewScreen({
   const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= result.week + 1 && !week.completed);
   const weeksUntilNextPle = nextPle ? Math.max(0, nextPle.weekNumber - result.week) : 0;
   const brandPulseSnapshot = getBrandPulseSnapshot(game, result);
+  const isPleResult = result.showType === "ple";
+  const pleAftermathNote = isPleResult
+    ? `${result.showName} was a major event. This review is the full fallout layer, not a pre-show forecast.`
+    : `Review the fallout before moving the season calendar.`;
 
   return (
     <main className="app-shell">
@@ -7322,12 +7354,32 @@ function WeekReviewScreen({
             Season {result.seasonNumber} · Week {result.week} Review
           </p>
           <h2>Week Review</h2>
-          <p className="lede">The broadcast is locked. Read the actual fallout before the office moves the calendar.</p>
+          <p className="lede">{pleAftermathNote}</p>
         </div>
         <button className="primary-action" onClick={onAdvanceWeek}>
           {result.week >= 12 ? "Season Review" : "Advance Week"}
         </button>
       </section>
+
+      {isPleResult ? (
+        <section className="story-fallout" aria-label="PLE week aftermath">
+          <div className="section-heading">
+            <p className="eyebrow">PLE Aftermath</p>
+            <h3>Major-Event Consequences</h3>
+          </div>
+          <p>
+            {financeReport
+              ? `PLE closeout moved through ${financeReport.attendance.toLocaleString()} paid doors and ${formatMoney(financeReport.profitLoss)} net movement on this week in the office books.`
+              : "The office loaded a major-event review without a finance snapshot."}
+          </p>
+          <p>
+            {titleChanges.length
+              ? `${titleChanges.length} title change${titleChanges.length === 1 ? "" : "s"} were logged, alongside ${result.rivalryHistoryEvents?.length ?? 0} rivalry event${(result.rivalryHistoryEvents?.length ?? 0) === 1 ? "" : "s"}`
+              : "No title transitions were logged on this major event."}
+            .
+          </p>
+        </section>
+      ) : null}
 
       <section className="status-grid" aria-label="Week review show outcome">
         <Metric label="Show Score" value={`${result.totalScore}`} detail={`Grade ${getShowGrade(result.totalScore)}`} />
