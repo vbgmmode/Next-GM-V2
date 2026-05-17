@@ -411,6 +411,7 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
     calendar: createSeasonCalendar(),
     socialPosts: [],
     financeReports: [],
+    seasonArchives: [],
     injuryRecoveryNotes: [],
     currentShow: [],
     showHistory: [],

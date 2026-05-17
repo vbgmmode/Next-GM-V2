@@ -9,6 +9,7 @@ import type {
   Rivalry,
   Screen,
   Segment,
+  SeasonArchiveSummary,
   ShowResult,
   StartingBudgetTier,
   Wrestler,
@@ -63,6 +64,24 @@ type SavedGameCandidate = {
 
 function isGameScreen(value: unknown): value is GameScreen {
   return typeof value === "string" && savedGameScreens.includes(value as GameScreen);
+}
+
+function isSeasonArchiveSummary(value: unknown): value is SeasonArchiveSummary {
+  const candidate = value as Partial<SeasonArchiveSummary>;
+
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof candidate.seasonNumber === "number" &&
+    typeof candidate.seasonStartingMoney === "number" &&
+    typeof candidate.seasonDelta === "number" &&
+    typeof candidate.finalMoney === "number" &&
+    Array.isArray(candidate.championsSnapshot)
+  );
+}
+
+function normalizeSeasonArchives(value: unknown): SeasonArchiveSummary[] {
+  return Array.isArray(value) ? value.filter(isSeasonArchiveSummary) : [];
 }
 
 function isGameDifficulty(value: unknown): value is GameDifficulty {
@@ -308,6 +327,7 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
       calendar: Array.isArray(savedGame.calendar) && savedGame.calendar.length ? savedGame.calendar : createSeasonCalendar(),
       socialPosts: Array.isArray(savedGame.socialPosts) ? savedGame.socialPosts : [],
       financeReports: Array.isArray(savedGame.financeReports) ? savedGame.financeReports : [],
+      seasonArchives: normalizeSeasonArchives((savedGame as { seasonArchives?: unknown }).seasonArchives),
       injuryRecoveryNotes: Array.isArray(savedGame.injuryRecoveryNotes) ? savedGame.injuryRecoveryNotes : [],
       currentShow: normalizeCurrentShow(savedGame.currentShow),
       showHistory,

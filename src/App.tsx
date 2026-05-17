@@ -70,6 +70,7 @@ import type {
   Segment,
   SegmentResult,
   SegmentType,
+  SeasonArchiveSummary,
   ShowResult,
   SocialCategory,
   SocialPost,
@@ -2831,6 +2832,72 @@ function getNotablePlePayoff(game: GameState) {
     .sort((a, b) => (b.heat ?? 0) - (a.heat ?? 0) || b.weekNumber - a.weekNumber)[0];
 }
 
+function buildSeasonArchiveSummary(game: GameState): SeasonArchiveSummary {
+  const bestShow = getBestShow(game.showHistory, game.seasonNumber);
+  const topMomentumStar = [...game.wrestlers].sort((a, b) => b.momentum - a.momentum)[0];
+  const mostDefendedChampionship = getMostDefendedChampionship(game);
+  const biggestTitleChange = getBiggestTitleChange(game);
+  const hottestRivalryStory = getHottestRivalryStory(game);
+  const notablePlePayoff = getNotablePlePayoff(game);
+
+  const championsSnapshot = game.championships
+    .filter((championship) => championship.championIds.length > 0)
+    .map((championship) => ({
+      championshipName: championship.name,
+      champions: getWrestlerNames(championship.championIds, game.wrestlers) || "No champion listed",
+    }));
+
+  return {
+    seasonNumber: game.seasonNumber,
+    seasonStartingMoney: game.seasonStartingMoney,
+    seasonDelta: game.money - game.seasonStartingMoney,
+    finalMoney: game.money,
+    bestShow: bestShow
+      ? {
+          name: bestShow.showName,
+          week: bestShow.week,
+          score: bestShow.totalScore,
+          type: bestShow.showType,
+        }
+      : undefined,
+    topMomentumStar: topMomentumStar
+      ? {
+          name: topMomentumStar.name,
+          value: topMomentumStar.momentum,
+        }
+      : undefined,
+    mostDefendedTitle: mostDefendedChampionship
+      ? {
+          championshipName: mostDefendedChampionship.championship.name,
+          defenses: mostDefendedChampionship.count,
+        }
+      : undefined,
+    biggestTitleChange: biggestTitleChange
+      ? {
+          championshipName: biggestTitleChange.championshipName,
+          note: biggestTitleChange.note,
+          showName: biggestTitleChange.showName,
+          week: biggestTitleChange.weekNumber,
+        }
+      : undefined,
+    hottestRivalry: hottestRivalryStory
+      ? {
+          name: hottestRivalryStory.name,
+          heat: hottestRivalryStory.heat,
+        }
+      : undefined,
+    plePayoffHighlight: notablePlePayoff
+      ? {
+          rivalryName: notablePlePayoff.rivalryName,
+          showName: notablePlePayoff.showName ?? "Untitled show",
+          type: notablePlePayoff.showType,
+          week: notablePlePayoff.weekNumber,
+        }
+      : undefined,
+    championsSnapshot,
+  };
+}
+
 function formatSocialCategory(category: SocialCategory) {
   return category
     .split("_")
@@ -3878,7 +3945,8 @@ function App() {
         return current;
       }
 
-      const updatedGame = startNextSeason(current);
+      const completedSeasonArchive = buildSeasonArchiveSummary(current);
+      const updatedGame = startNextSeason(current, completedSeasonArchive);
       persistGameSnapshot(updatedGame, "dashboard");
       return updatedGame;
     });
@@ -7511,6 +7579,7 @@ function SeasonReviewScreen({
     seasonReports.length > 0
       ? `Season finance held at ${seasonReports.length} closed shows with a ${legacyProfitDeltaLabel} cash movement of ${formatMoney(seasonProfitLoss)}.`
       : "No full-season finance ledger was captured yet.";
+  const archivedSeasons = [...game.seasonArchives].reverse();
 
   return (
     <main className="app-shell">
@@ -7573,6 +7642,35 @@ function SeasonReviewScreen({
             detail={topChampions.length ? `Active title holders: ${topChampions.map((championship) => `${championship.name} (${getWrestlerNames(championship.championIds, game.wrestlers)})`).join(" · ")}` : "No current title holders listed"}
           />
         </div>
+      </section>
+
+      <section className="command-panel season-archive-panel" aria-label="Archived seasons">
+        <div className="section-heading">
+          <p className="eyebrow">Season Archive</p>
+          <h3>Carried Legacy Log</h3>
+        </div>
+        {archivedSeasons.length === 0 ? (
+          <p className="lede">No completed seasons are archived yet. This will capture this season when you advance.</p>
+        ) : (
+          <div className="spotlight-grid">
+            {archivedSeasons.map((archive) => (
+              <article key={`archive-${archive.seasonNumber}`} className="card">
+                <p className="eyebrow">Season {archive.seasonNumber}</p>
+                <h4>Closed at Week 12</h4>
+                <div className="archive-metrics">
+                  <Metric label="Final Money" value={formatMoney(archive.finalMoney)} detail={`Started at ${formatMoney(archive.seasonStartingMoney)}`} />
+                  <Metric label="Season Delta" value={formatMoney(archive.seasonDelta)} detail="Read-only season summary" />
+                  <Metric label="Best Show" value={archive.bestShow?.name ?? "No show data"} detail={archive.bestShow ? `${archive.bestShow.score} in week ${archive.bestShow.week}` : "No show closed this season"} />
+                  <Metric
+                    label="Top Momentum"
+                    value={archive.topMomentumStar?.name ?? "No momentum signal"}
+                    detail={archive.topMomentumStar ? `${archive.topMomentumStar.value} momentum` : "No complete momentum snapshots"}
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="status-grid" aria-label="Season review">

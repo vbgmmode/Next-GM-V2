@@ -1,4 +1,4 @@
-import type { GameState, InjuryRecoveryNote, RivalryHistoryEvent, Wrestler } from "./types";
+import type { GameState, InjuryRecoveryNote, RivalryHistoryEvent, SeasonArchiveSummary, Wrestler } from "./types";
 import { getRivalryStatus } from "./scoring";
 import { createSeasonCalendar } from "./seed";
 
@@ -106,9 +106,12 @@ function recoverWrestlerInjury(wrestler: Wrestler, nextWeek: number, recoveryNot
   };
 }
 
-export function startNextSeason(game: GameState): GameState {
+export function startNextSeason(game: GameState, completedSeasonArchive?: SeasonArchiveSummary): GameState {
+  const seasonArchives = completedSeasonArchive ? [...(game.seasonArchives ?? []), completedSeasonArchive] : game.seasonArchives ?? [];
+
   return {
     ...game,
+    seasonArchives,
     seasonNumber: game.seasonNumber + 1,
     seasonStartingMoney: game.money,
     currentWeek: 1,

@@ -152,13 +152,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Venue / Market Context v1 Implementation
+Phase: Season Archive Persistence v1 Implementation
 
 Goal:
 Add read-only venue/market context to post-show finance reporting so finance reads as a GM office retrospective, not predictive mechanics.
 
 Current priority:
-Keep venue/market context read-only and retrospective only. Preserve existing booking, results, finance formulas, persistence, and season flow. Defer logistics and venue control mechanics.
+Persist completed-season legacy summaries at Start Next Season. Keep read-only archives available for context only. Preserve existing booking, results, finance formulas, season flow, and persistence behavior. Defer offseason, contracts, and payroll systems.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -199,6 +199,7 @@ Completed stabilization passes:
 - Finance Presence Pass v1 (implemented)
 - Free Agent Watchlist v1 (implemented)
 - Venue / Market Context v1 (implemented)
+- Season Archive Persistence v1 (implemented)
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.

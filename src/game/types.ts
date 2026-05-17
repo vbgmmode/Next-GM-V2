@@ -283,6 +283,49 @@ export type FinanceReport = {
   expenseBreakdown?: FinanceReportBreakdownItem[];
 };
 
+export type SeasonArchiveChampionSnapshot = {
+  championshipName: string;
+  champions: string;
+};
+
+export type SeasonArchiveSummary = {
+  seasonNumber: number;
+  seasonStartingMoney: number;
+  seasonDelta: number;
+  finalMoney: number;
+  bestShow?: {
+    name: string;
+    week: number;
+    score: number;
+    type?: ShowType;
+  };
+  topMomentumStar?: {
+    name: string;
+    value: number;
+  };
+  mostDefendedTitle?: {
+    championshipName: string;
+    defenses: number;
+  };
+  biggestTitleChange?: {
+    championshipName: string;
+    note: string;
+    showName: string;
+    week: number;
+  };
+  hottestRivalry?: {
+    name: string;
+    heat: number;
+  };
+  plePayoffHighlight?: {
+    rivalryName: string;
+    showName: string;
+    type?: ShowType;
+    week: number;
+  };
+  championsSnapshot: SeasonArchiveChampionSnapshot[];
+};
+
 export type SegmentResult = {
   segmentId: string;
   type: SegmentType;
@@ -391,6 +434,7 @@ export type GameState = {
   calendar: CalendarWeek[];
   socialPosts: SocialPost[];
   financeReports: FinanceReport[];
+  seasonArchives: SeasonArchiveSummary[];
   injuryRecoveryNotes: InjuryRecoveryNote[];
   currentShow: Segment[];
   showHistory: ShowResult[];
