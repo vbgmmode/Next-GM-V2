@@ -173,15 +173,7 @@ export function createDefaultChampionships(wrestlers: Wrestler[] = roster, brand
   const tagCatalogTitle = brandCatalogTitles.find((title) => title.eligibleMatchScope === "tag_team");
 
   if (catalogTitles.length) {
-    const ranked = byStarPower(wrestlers);
-    const usedChampionIds = new Set<string>();
-
     const championships = catalogTitles.map((title) => {
-      const sameDivision = ranked.filter((wrestler) => getSeedDivisionGroup(wrestler) === title.division);
-      const champion = sameDivision.find((wrestler) => !usedChampionIds.has(wrestler.id)) ?? sameDivision[0] ?? ranked.find((wrestler) => !usedChampionIds.has(wrestler.id)) ?? ranked[0] ?? roster[0];
-
-      usedChampionIds.add(champion.id);
-
       return {
         id: title.canonicalTitleId,
         name: title.displayName,
@@ -196,17 +188,13 @@ export function createDefaultChampionships(wrestlers: Wrestler[] = roster, brand
         minimumDefenseFrequencyWeeks: title.minimumDefenseFrequencyWeeks,
         titleSceneCopy: title.sceneCopy,
         prestige: title.prestige,
-        championIds: [champion.id],
+        championIds: [],
         reignStartWeek: 1,
         defenses: 0,
       };
     });
 
     if (tagCatalogTitle) {
-      const tagChampions = ranked.filter((wrestler) => !usedChampionIds.has(wrestler.id)).slice(0, 2);
-      const fallbackTagChampions = ranked.slice(0, 2);
-      const championIds = tagChampions.length === 2 ? tagChampions.map((wrestler) => wrestler.id) : fallbackTagChampions.map((wrestler) => wrestler.id);
-
       championships.push({
         id: tagCatalogTitle.canonicalTitleId,
         name: tagCatalogTitle.displayName,
@@ -221,7 +209,7 @@ export function createDefaultChampionships(wrestlers: Wrestler[] = roster, brand
         minimumDefenseFrequencyWeeks: tagCatalogTitle.minimumDefenseFrequencyWeeks,
         titleSceneCopy: tagCatalogTitle.sceneCopy,
         prestige: tagCatalogTitle.prestige,
-        championIds,
+        championIds: [],
         reignStartWeek: 1,
         defenses: 0,
       });
@@ -230,24 +218,13 @@ export function createDefaultChampionships(wrestlers: Wrestler[] = roster, brand
     return championships;
   }
 
-  const ranked = byStarPower(wrestlers);
-  const worldChampion = ranked[0] ?? roster[0];
-  const televisionChampion =
-    [...wrestlers].filter((wrestler) => wrestler.id !== worldChampion.id).sort((a, b) => b.momentum + b.promoSkill - (a.momentum + a.promoSkill))[0] ??
-    ranked[1] ??
-    worldChampion;
-  const tagChampions = [...wrestlers]
-    .filter((wrestler) => wrestler.id !== worldChampion.id && wrestler.id !== televisionChampion.id)
-    .sort((a, b) => b.ringSkill + b.popularity - (a.ringSkill + a.popularity))
-    .slice(0, 2);
-
   return [
     {
       id: "world-championship",
       name: "World Championship",
       division: "World",
       prestige: 92,
-      championIds: [worldChampion.id],
+      championIds: [],
       reignStartWeek: 1,
       defenses: 0,
     },
@@ -256,7 +233,7 @@ export function createDefaultChampionships(wrestlers: Wrestler[] = roster, brand
       name: "Television Championship",
       division: "Television",
       prestige: 76,
-      championIds: [televisionChampion.id],
+      championIds: [],
       reignStartWeek: 1,
       defenses: 0,
     },
@@ -271,7 +248,7 @@ export function createDefaultChampionships(wrestlers: Wrestler[] = roster, brand
       minimumDefenseFrequencyWeeks: 5,
       titleSceneCopy: "Tag title scene. Built for 2v2 M020 title matches with no team records or rankings.",
       prestige: 82,
-      championIds: tagChampions.length === 2 ? tagChampions.map((wrestler) => wrestler.id) : ranked.slice(0, 2).map((wrestler) => wrestler.id),
+      championIds: [],
       reignStartWeek: 1,
       defenses: 0,
     },

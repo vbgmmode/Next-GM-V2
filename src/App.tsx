@@ -8531,7 +8531,7 @@ function ChampionshipsScreen({
                   <span className="championship-card-copy">
                     <span>{getChampionshipOfficeLine(championship)}</span>
                     <strong>{championship.name}</strong>
-                    <small>{getWrestlerNames(championship.championIds, game.wrestlers)}</small>
+                    <small>{getWrestlerNames(championship.championIds, game.wrestlers) || "Vacant"}</small>
                   </span>
                   <span className="championship-card-stats" aria-label={`${championship.name} quick read`}>
                     <span>
