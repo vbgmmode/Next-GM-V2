@@ -6653,6 +6653,7 @@ function BookingScreen({
   const [bookingMode, setBookingMode] = useState<"board" | "setup">("board");
   const [setupDraftSegmentId, setSetupDraftSegmentId] = useState<string | undefined>();
   const [setupEmptySlotNumber, setSetupEmptySlotNumber] = useState<number | undefined>();
+  const [productionDetailsOpen, setProductionDetailsOpen] = useState(false);
   const [smartRundownNotes, setSmartRundownNotes] = useState<string[]>([]);
   const [smartRundownError, setSmartRundownError] = useState("");
   const [pendingSmartReplace, setPendingSmartReplace] = useState(false);
@@ -6845,6 +6846,7 @@ function BookingScreen({
       setPendingSmartReplace(true);
       setSmartRundownError("");
       setSmartRundownNotes(["Current rundown detected. Confirm replace to let production draft a fresh editable card."]);
+      setProductionDetailsOpen(true);
       return;
     }
 
@@ -6854,6 +6856,7 @@ function BookingScreen({
       setPendingSmartReplace(false);
       setSmartRundownError(result.error);
       setSmartRundownNotes(result.notes);
+      setProductionDetailsOpen(true);
       return;
     }
 
@@ -6865,6 +6868,7 @@ function BookingScreen({
     setPendingSmartReplace(false);
     setSmartRundownError("");
     setSmartRundownNotes(result.notes);
+    setProductionDetailsOpen(true);
   }
 
   return (
@@ -6907,7 +6911,7 @@ function BookingScreen({
       {bookingMode === "board" ? (
         <>
           <section className="booking-controls" aria-label="Booking controls">
-            <button className="primary-action" onClick={() => generateSmartRundown(false)}>
+            <button className="secondary-action" onClick={() => generateSmartRundown(false)}>
               Generate Smart Rundown
             </button>
             <button className="secondary-action" onClick={() => onNavigate("roster")}>
@@ -6916,16 +6920,7 @@ function BookingScreen({
             <button className="secondary-action" onClick={() => onNavigate("rivalries")}>
               View Rivalries
             </button>
-            <span>{readiness.status} · {validRuntimeMinutes}/{showRuntimeTargetMinutes} ready min</span>
           </section>
-
-          <section className="booking-finance-context" aria-label="Booking finance context">
-            <span>Brand Office</span>
-            <p>{bookingFinanceRead}</p>
-            {calendarWeek.showType === "ple" ? <p>{`PLE context: ${pleFinanceContextRead}`}</p> : null}
-          </section>
-
-          <PleBuildPressurePanel compact snapshot={pleBuildPressure} />
 
           <section className={`booking-card-board-panel status-${cardStatus.tone}`} aria-label="Booking card board">
             <div className="booking-card-board-head">
@@ -6937,56 +6932,92 @@ function BookingScreen({
             </div>
             <p>{producerRead}</p>
 
-            <div className="booking-card-board-layout">
-              <div className="booking-slot-grid" aria-label="Numbered card slots">
+            <div className="booking-board-summary" aria-label="Board summary">
+              <div>
+                <span>Segments</span>
+                <strong>{validSegments}/{game.currentShow.length || 0}</strong>
+                <small>{invalidSegments ? `${invalidSegments} flagged` : "No flags"}</small>
+              </div>
+              <div>
+                <span>Runtime</span>
+                <strong>{validRuntimeMinutes}/{showRuntimeTargetMinutes}</strong>
+                <small>{readiness.status}</small>
+              </div>
+              <div>
+                <span>Coverage</span>
+                <strong>{titleContextCount}T / {rivalrySegmentCount}R / {bookedMajorStars.length}S / {openChallengeCount}OC</strong>
+                <small>Title / rivalry / star / open challenge</small>
+              </div>
+              <div>
+                <span>Workload</span>
+                <strong>{riskRows.length ? `${riskRows.length} flagged` : "Clear"}</strong>
+                <small>{riskRows.length ? "Check details" : "No current-card risk flags"}</small>
+              </div>
+            </div>
+
+            <div className="booking-slot-grid" aria-label="Numbered card slots">
                 {cardBoardSlots.map((slot) => {
                   const segment = slot.segment;
                   const valid = segment ? isValidSegment(segment, game.wrestlers) : false;
-                  const option = segment ? getSegmentCatalogOption(segment) : undefined;
 
                   return (
-                    <article
-                      className={`booking-slot ${segment ? "filled" : "empty"} ${valid ? "valid" : ""} ${segment && !valid ? "invalid" : ""} ${slot.isBuildable ? "buildable" : ""}`}
-                      key={slot.id}
-                    >
-                      <div className="booking-slot-topline">
-                        <span>Slot {String(slot.slotNumber).padStart(2, "0")}</span>
-                        <strong>{segment ? (valid ? "Ready" : "Needs Fix") : slot.isBuildable ? "Open" : "Queued"}</strong>
-                      </div>
-                      {segment ? (
-                        <>
-                          <h3>{segment.segmentDisplayName ?? segment.type}</h3>
-                          <p className="segment-cue">{option?.productionCue}</p>
-                          <p>{getSegmentParticipantsLabel(segment, game.wrestlers) || getSegmentValidationWarning(segment, game.wrestlers)}</p>
-                          <div className="booking-slot-flags">
-                            {getBookingSegmentBoardFlags(segment, game).map((flag) => (
-                              <span key={flag}>{flag}</span>
-                            ))}
-                          </div>
-                          <div className="booking-slot-actions">
-                            <button className="secondary-action" onClick={() => openExistingSegment(segment.id)}>
-                              Edit Slot
-                            </button>
-                            <button className="danger-action" onClick={() => removeAndClose(segment.id)}>
-                              Remove
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <h3>{slot.isBuildable ? "Open Card Position" : "Standby Position"}</h3>
-                          <p>{slot.isBuildable ? "Choose this slot to set up the next segment." : "This position opens after the previous slot is booked."}</p>
-                          <button className="primary-action" disabled={!slot.isBuildable} onClick={() => openEmptySlot(slot.slotNumber)}>
-                            Build Slot {slot.slotNumber}
+                  <article
+                    className={`booking-slot ${segment ? "filled" : "empty"} ${valid ? "valid" : ""} ${segment && !valid ? "invalid" : ""} ${slot.isBuildable ? "buildable" : ""}`}
+                    key={slot.id}
+                  >
+                    <div className="booking-slot-topline">
+                      <span>Slot {String(slot.slotNumber).padStart(2, "0")}</span>
+                      <strong>{segment ? (valid ? "Ready" : "Needs Fix") : slot.isBuildable ? "Open" : "Queued"}</strong>
+                    </div>
+                    {segment ? (
+                      <>
+                        <h3>{segment.segmentDisplayName ?? segment.type}</h3>
+                        <p>{getSegmentParticipantsLabel(segment, game.wrestlers) || getSegmentValidationWarning(segment, game.wrestlers)}</p>
+                        <div className="booking-slot-flags">
+                          {getBookingSegmentBoardFlags(segment, game).map((flag) => (
+                            <span key={flag}>{flag}</span>
+                          ))}
+                        </div>
+                        <div className="booking-slot-actions">
+                          <button className="secondary-action" onClick={() => openExistingSegment(segment.id)}>
+                            Edit Slot
                           </button>
-                        </>
-                      )}
-                    </article>
-                  );
-                })}
-              </div>
+                          <button className="danger-action" onClick={() => removeAndClose(segment.id)}>
+                            Remove
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <h3>{slot.isBuildable ? "Open Card Position" : "Standby Position"}</h3>
+                        <p>{slot.isBuildable ? "Choose this slot to set up the next segment." : "This position opens after the previous slot is booked."}</p>
+                        <button className="primary-action" disabled={!slot.isBuildable} onClick={() => openEmptySlot(slot.slotNumber)}>
+                          Build Slot {slot.slotNumber}
+                        </button>
+                      </>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
 
-              <div className="card-shape-side">
+          <section className={`production-details-panel ${productionDetailsOpen ? "open" : ""}`} aria-label="Production details">
+            <button className="production-details-toggle" onClick={() => setProductionDetailsOpen((open) => !open)} type="button">
+              <span>Production Details</span>
+              <strong>{productionDetailsOpen ? "Hide" : "Show"}</strong>
+            </button>
+
+            {productionDetailsOpen ? (
+              <div className="production-details-grid">
+                <section className="booking-finance-context" aria-label="Booking finance context">
+                  <span>Brand Office</span>
+                  <p>{bookingFinanceRead}</p>
+                  {calendarWeek.showType === "ple" ? <p>{`PLE context: ${pleFinanceContextRead}`}</p> : null}
+                </section>
+
+                <PleBuildPressurePanel compact snapshot={pleBuildPressure} />
+
                 <div className="coverage-strip" aria-label="Current card coverage">
                   <div>
                     <span>Segments</span>
@@ -7039,64 +7070,62 @@ function BookingScreen({
                   <p>{producerNote}</p>
                   {topUnusedWrestler ? <small>{rosterDeskRead}</small> : null}
                 </div>
-              </div>
-            </div>
-          </section>
 
-          <section className="booking-board-support" aria-label="Card board support reads">
-            {(pendingSmartReplace || smartRundownNotes.length || smartRundownError) ? (
-              <section className={`smart-rundown-panel ${smartRundownError ? "error" : pendingSmartReplace ? "warning" : ""}`} aria-label="Smart rundown production logic">
-                <div className="section-heading">
-                  <p className="eyebrow">{pendingSmartReplace ? "Replace Rundown?" : "Production Logic"}</p>
-                  <h3>{pendingSmartReplace ? "Current Card Has Work On It" : smartRundownError ? "Draft Blocked" : "Why This Card?"}</h3>
-                </div>
-                {smartRundownError ? <p>{smartRundownError}</p> : null}
-                {smartRundownNotes.length ? (
-                  <ul>
-                    {smartRundownNotes.map((note) => (
-                      <li key={note}>{note}</li>
-                    ))}
-                  </ul>
+                {(pendingSmartReplace || smartRundownNotes.length || smartRundownError) ? (
+                  <section className={`smart-rundown-panel ${smartRundownError ? "error" : pendingSmartReplace ? "warning" : ""}`} aria-label="Smart rundown production logic">
+                    <div className="section-heading">
+                      <p className="eyebrow">{pendingSmartReplace ? "Replace Rundown?" : "Production Logic"}</p>
+                      <h3>{pendingSmartReplace ? "Current Card Has Work On It" : smartRundownError ? "Draft Blocked" : "Why This Card?"}</h3>
+                    </div>
+                    {smartRundownError ? <p>{smartRundownError}</p> : null}
+                    {smartRundownNotes.length ? (
+                      <ul>
+                        {smartRundownNotes.map((note) => (
+                          <li key={note}>{note}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {pendingSmartReplace ? (
+                      <div className="smart-rundown-actions">
+                        <button className="primary-action" onClick={() => generateSmartRundown(true)}>
+                          Confirm Replace Rundown
+                        </button>
+                        <button className="secondary-action" onClick={() => setPendingSmartReplace(false)}>
+                          Keep Current
+                        </button>
+                      </div>
+                    ) : null}
+                  </section>
                 ) : null}
-                {pendingSmartReplace ? (
-                  <div className="smart-rundown-actions">
-                    <button className="primary-action" onClick={() => generateSmartRundown(true)}>
-                      Confirm Replace Rundown
-                    </button>
-                    <button className="secondary-action" onClick={() => setPendingSmartReplace(false)}>
-                      Keep Current
-                    </button>
+
+                <section className={`runtime-board readiness-${readiness.tone}`} aria-label="Runtime plan">
+                  <div>
+                    <p className="eyebrow">Runtime Board</p>
+                    <h3>{readiness.status}</h3>
+                    <p>{readiness.note}</p>
                   </div>
+                  <div className="runtime-meter" aria-label={`${validRuntimeMinutes} of ${showRuntimeTargetMinutes} valid minutes ready`}>
+                    <span style={{ width: `${runtimePercent}%` }} />
+                  </div>
+                  <div className="runtime-numbers">
+                    <strong>{validRuntimeMinutes} ready min</strong>
+                    <span>{runtimeMinutes} min planned</span>
+                    <span>Ready window {showRuntimeMinMinutes}-{tvRuntimeWarningMinutes} min</span>
+                  </div>
+                </section>
+
+                {pleReadiness ? <PleReadinessChecklist calendarWeek={calendarWeek} snapshot={pleReadiness} /> : null}
+
+                {broadcastRisk ? (
+                  <section className={`broadcast-risk-panel risk-${broadcastRisk.tone}`} aria-label="Broadcast runtime risk">
+                    <div className="section-heading">
+                      <p className="eyebrow">Live TV Timing</p>
+                      <h3>{broadcastRisk.title}</h3>
+                    </div>
+                    <p>{broadcastRisk.note}</p>
+                  </section>
                 ) : null}
-              </section>
-            ) : null}
-
-            <section className={`runtime-board readiness-${readiness.tone}`} aria-label="Runtime plan">
-              <div>
-                <p className="eyebrow">Runtime Board</p>
-                <h3>{readiness.status}</h3>
-                <p>{readiness.note}</p>
               </div>
-              <div className="runtime-meter" aria-label={`${validRuntimeMinutes} of ${showRuntimeTargetMinutes} valid minutes ready`}>
-                <span style={{ width: `${runtimePercent}%` }} />
-              </div>
-              <div className="runtime-numbers">
-                <strong>{validRuntimeMinutes} ready min</strong>
-                <span>{runtimeMinutes} min planned</span>
-                <span>Ready window {showRuntimeMinMinutes}-{tvRuntimeWarningMinutes} min</span>
-              </div>
-            </section>
-
-            {pleReadiness ? <PleReadinessChecklist calendarWeek={calendarWeek} snapshot={pleReadiness} /> : null}
-
-            {broadcastRisk ? (
-              <section className={`broadcast-risk-panel risk-${broadcastRisk.tone}`} aria-label="Broadcast runtime risk">
-                <div className="section-heading">
-                  <p className="eyebrow">Live TV Timing</p>
-                  <h3>{broadcastRisk.title}</h3>
-                </div>
-                <p>{broadcastRisk.note}</p>
-              </section>
             ) : null}
           </section>
         </>

@@ -50,6 +50,7 @@ The game currently supports:
 - Match Format Metadata Foundation v1 with centralized current segment/match format metadata
 - Booking Production Rundown / Card Shape v1 with read-only card coverage, readiness, and workload context
 - Booking Card Board + Focused Segment Setup v1 with numbered card slots and focused segment setup mode inside Booking
+- Booking Default Board Compression v1 with compact board summary and collapsed Production Details context on Booking
 - PLE Readiness Checklist v1 with non-spoiler major-event booking context
 - PLE Build Pressure v1 with read-only normal TV/go-home/PLE context derived from current calendar, card, roster, rivalry, and title state
 - Post-Show Cause Ledger v1 with retrospective explanation from resolved result data
@@ -219,6 +220,7 @@ Completed stabilization passes:
 - Booking Production Rundown / Card Shape v1
 - Booking Production Rundown Microcopy Cleanup v1
 - Booking Card Board + Focused Segment Setup v1
+- Booking Default Board Compression v1
 - Roster Identity Context v1
 - Championship Scene Context v1
 - Rivalry Story Context v1
