@@ -5532,6 +5532,42 @@ function BookingScreen({
     });
     return counts;
   }, {});
+  const segmentTypeCounts = game.currentShow.reduce<Record<SegmentType, number>>(
+    (counts, segment) => ({ ...counts, [segment.type]: counts[segment.type] + 1 }),
+    {
+      Match: 0,
+      Promo: 0,
+      "Backstage Angle": 0,
+      "Contract Signing": 0,
+      "Open Challenge": 0,
+    },
+  );
+  const bookedRosterCount = new Set(game.currentShow.flatMap((segment) => segment.participantIds)).size;
+  const unusedRosterCount = Math.max(0, game.wrestlers.length - bookedRosterCount);
+  const topUnusedWrestler = getTopUnderusedWrestler(
+    game.wrestlers.filter((wrestler) => !bookedCounts[wrestler.id]),
+    game.currentWeek,
+  );
+  const rivalrySegmentCount = game.currentShow.filter((segment) => Boolean(segment.rivalryId)).length;
+  const titleMatchCount = validShowSegments.filter((segment) => {
+    const championship = segment.championshipId ? game.championships.find((title) => title.id === segment.championshipId) : undefined;
+    return Boolean(championship && canSegmentContestChampionship(segment, championship, game.wrestlers));
+  }).length;
+  const mixLine = bookingSegmentTypes
+    .filter((type) => segmentTypeCounts[type] > 0)
+    .map((type) => `${type.replace("Backstage Angle", "Backstage").replace("Contract Signing", "Contract")}: ${segmentTypeCounts[type]}`)
+    .join(" / ");
+  const producerRead =
+    game.currentShow.length === 0
+      ? "No segments booked. Production is waiting on the first live-TV block."
+      : `${game.currentShow.length} segment${game.currentShow.length === 1 ? "" : "s"} on the board with ${validSegments} cleared for TV and ${invalidSegments} needing attention. ${mixLine || "No segment mix yet."}`;
+  const coverageRead =
+    titleMatchCount || rivalrySegmentCount
+      ? `${titleMatchCount} title match${titleMatchCount === 1 ? "" : "es"} and ${rivalrySegmentCount} rivalry beat${rivalrySegmentCount === 1 ? "" : "s"} attached to the current card.`
+      : "No title match or rivalry beat attached yet. This is context only, not a forecast.";
+  const rosterDeskRead = topUnusedWrestler
+    ? `${unusedRosterCount} roster member${unusedRosterCount === 1 ? "" : "s"} unused tonight. ${topUnusedWrestler.name} has been off TV for ${formatWeekCount(getWeeksSinceLastBooked(topUnusedWrestler, game.currentWeek))}.`
+    : `${unusedRosterCount} roster member${unusedRosterCount === 1 ? "" : "s"} unused tonight. No long-absence pressure is surfacing from current roster history.`;
 
   function beginAddSegment(type: SegmentType) {
     const segmentId = `segment-${Date.now()}-${game.currentShow.length}`;
@@ -5660,6 +5696,24 @@ function BookingScreen({
         <span>Brand Office</span>
         <p>{bookingFinanceRead}</p>
         {calendarWeek.showType === "ple" ? <p>{`PLE context: ${isPleShow && pleReadiness ? "Current card support for a major push." : "No card context lock yet."}`}</p> : null}
+      </section>
+
+      <section className="producer-rundown-panel" aria-label="Producer rundown">
+        <div className="producer-rundown-head">
+          <div>
+            <p className="eyebrow">Producer Rundown</p>
+            <h3>{calendarWeek.showName} Board Read</h3>
+          </div>
+          <strong>{readiness.status}</strong>
+        </div>
+        <p>{producerRead}</p>
+        <div className="producer-rundown-grid">
+          <Metric label="Segments" value={`${game.currentShow.length}`} detail={`${validSegments} valid / ${invalidSegments} flagged`} />
+          <Metric label="Segment Mix" value={mixLine || "Empty"} detail="Current booked formats only" />
+          <Metric label="Title Coverage" value={`${titleMatchCount}`} detail={titleMatchCount ? "Valid title matches on card" : "No sanctioned title match"} />
+          <Metric label="Story Coverage" value={`${rivalrySegmentCount}`} detail={coverageRead} />
+          <Metric label="Unused Roster" value={`${unusedRosterCount}`} detail={rosterDeskRead} />
+        </div>
       </section>
 
       <section className="booking-rundown-layout" aria-label="Current show rundown">

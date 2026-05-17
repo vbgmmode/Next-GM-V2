@@ -2795,6 +2795,74 @@ h3 {
   margin: 0;
 }
 
+.producer-rundown-panel {
+  background:
+    linear-gradient(135deg, rgba(216, 35, 50, 0.18), transparent 38%),
+    linear-gradient(90deg, rgba(246, 193, 86, 0.08), transparent 64%),
+    rgba(14, 17, 24, 0.94);
+  border: 1px solid rgba(246, 193, 86, 0.28);
+  border-left: 4px solid #d82332;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 18px;
+}
+
+.producer-rundown-head {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.producer-rundown-head h3 {
+  line-height: 1.12;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.producer-rundown-head > strong {
+  background: rgba(246, 193, 86, 0.12);
+  border: 1px solid rgba(246, 193, 86, 0.28);
+  color: #f6c156;
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 8px 10px;
+  text-transform: uppercase;
+}
+
+.producer-rundown-panel > p {
+  color: #dbe2ef;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.producer-rundown-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.producer-rundown-grid .metric {
+  background: rgba(8, 9, 13, 0.62);
+  min-height: 126px;
+  padding: 14px;
+}
+
+.producer-rundown-grid .metric strong {
+  font-size: 1.15rem;
+  line-height: 1.16;
+}
+
+.producer-rundown-grid .metric small {
+  line-height: 1.32;
+  text-transform: none;
+}
+
 .booking-rundown-layout {
   align-items: start;
   display: grid;
@@ -4190,6 +4258,19 @@ h3 {
 
   .booking-controls span {
     margin-left: 0;
+  }
+
+  .producer-rundown-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .producer-rundown-head > strong {
+    text-align: center;
+  }
+
+  .producer-rundown-grid {
+    grid-template-columns: 1fr;
   }
 
   .composer-panel {
