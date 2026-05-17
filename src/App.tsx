@@ -378,6 +378,21 @@ type RivalryStoryRoomRead = {
   detail: string;
 };
 
+type RivalryCreativeDeskItem = {
+  label: string;
+  value: string;
+  detail: string;
+  tone: RivalryTimingTone;
+};
+
+type RivalryCreativeDeskRead = {
+  headline: string;
+  detail: string;
+  focusLabel: string;
+  tone: RivalryTimingTone;
+  items: RivalryCreativeDeskItem[];
+};
+
 type BrandPulseTone = "strong" | "steady" | "watch";
 
 type BrandPulseRivalNote = {
@@ -2626,6 +2641,118 @@ function getRivalryTimingSnapshots(game: GameState) {
         b.rivalry.heat - a.rivalry.heat ||
         a.rivalry.name.localeCompare(b.rivalry.name),
     );
+}
+
+function getRivalryCreativeDeskRead(game: GameState): RivalryCreativeDeskRead {
+  const rivalrySnapshots = getRivalryTimingSnapshots(game);
+
+  if (!rivalrySnapshots.length) {
+    return {
+      headline: "Creative Room Is Waiting",
+      detail: "No active rivalries are on the board. Start a two-wrestler story when the roster has a conflict worth turning into TV.",
+      focusLabel: "No live program",
+      tone: "build",
+      items: [
+        {
+          label: "Story Count",
+          value: "0 active",
+          detail: "The next rivalry starts from the create desk below.",
+          tone: "build",
+        },
+        {
+          label: "TV Visibility",
+          value: "No beats",
+          detail: "No current rundown segments are attached to rivalries.",
+          tone: "steady",
+        },
+        {
+          label: "Latest Beat",
+          value: "None logged",
+          detail: "Rivalry history will fill in after stories hit TV.",
+          tone: "steady",
+        },
+      ],
+    };
+  }
+
+  const activeRivalryIds = new Set(rivalrySnapshots.map(({ rivalry }) => rivalry.id));
+  const focus = rivalrySnapshots[0];
+  const hotCount = rivalrySnapshots.filter(({ rivalry }) => rivalry.heat >= 75 && rivalry.freshness >= 50).length;
+  const coolingCount = rivalrySnapshots.filter(({ rivalry, snapshot }) =>
+    rivalry.status === "cooling" ||
+    rivalry.status === "stale" ||
+    rivalry.freshness <= 35 ||
+    snapshot.diagnostics.some((diagnostic) => diagnostic.id === "cooling-off"),
+  ).length;
+  const payoffCount = rivalrySnapshots.filter(({ snapshot }) =>
+    snapshot.diagnostics.some((diagnostic) => diagnostic.id === "ple-ready" || diagnostic.id === "payoff-overdue"),
+  ).length;
+  const needsTvCount = rivalrySnapshots.filter(({ snapshot }) =>
+    snapshot.diagnostics.some((diagnostic) => diagnostic.id === "needs-tv"),
+  ).length;
+  const onCardCount = rivalrySnapshots.filter(({ snapshot }) => snapshot.currentCardBeats > 0).length;
+  const latestHistory = [...(game.rivalryHistory ?? [])]
+    .filter((event) => activeRivalryIds.has(event.rivalryId))
+    .sort((a, b) => b.seasonNumber - a.seasonNumber || b.weekNumber - a.weekNumber)[0];
+  const latestBeatValue = latestHistory ? `${latestHistory.rivalryName}: ${formatRivalryEventType(latestHistory.eventType)}` : "No beat logged";
+  const latestBeatDetail = latestHistory
+    ? `${formatHistoryStamp(latestHistory)}. ${latestHistory.note}`
+    : "The room has live rivalries, but no rivalry history has been recorded yet.";
+
+  const headline =
+    payoffCount > 0
+      ? "Payoff Pressure Is On The Board"
+      : hotCount > 0
+        ? "Story Room Has Live Heat"
+        : coolingCount > 0
+          ? "Creative Needs A Fresh Beat"
+          : needsTvCount > 0
+            ? "Stories Need TV Visibility"
+            : "Programs Are Building At TV Pace";
+  const detail = `${rivalrySnapshots.length} active program${rivalrySnapshots.length === 1 ? "" : "s"}. ${focus.rivalry.name} is the loudest room read: ${focus.snapshot.primary.label}. This is advisory context from current heat, freshness, history, card usage, and PLE timing.`;
+
+  return {
+    headline,
+    detail,
+    focusLabel: `${focus.rivalry.name} · ${focus.snapshot.primary.label}`,
+    tone: focus.snapshot.primary.tone,
+    items: [
+      {
+        label: "Feud Temperature",
+        value: `${hotCount} hot / ${coolingCount} cooling`,
+        detail: hotCount
+          ? "At least one story has enough heat and freshness to feel like a live wire."
+          : coolingCount
+            ? "The board has stories losing heat or freshness."
+            : "The room is steady without a clear red-hot program.",
+        tone: hotCount ? "hot" : coolingCount ? "build" : "steady",
+      },
+      {
+        label: "Payoff Watch",
+        value: payoffCount ? `${payoffCount} pressure read${payoffCount === 1 ? "" : "s"}` : "No urgent payoff",
+        detail: payoffCount
+          ? "One or more stories are close to a major-event or overdue payoff window, but nothing is forced."
+          : "No active story is demanding a payoff from current timing reads.",
+        tone: payoffCount ? "watch" : "steady",
+      },
+      {
+        label: "TV Visibility",
+        value: onCardCount ? `${onCardCount} on current card` : `${needsTvCount} need TV`,
+        detail: onCardCount
+          ? "At least one rivalry already has a beat attached to tonight's rundown."
+          : needsTvCount
+            ? "Some stories need screen time before the audience loses the thread."
+            : "No rivalry beat is currently attached, but timing pressure is stable.",
+        tone: onCardCount ? "steady" : needsTvCount ? "watch" : "build",
+      },
+      {
+        label: "Latest Story Beat",
+        value: latestBeatValue,
+        detail: latestBeatDetail,
+        tone: latestHistory ? "steady" : "build",
+      },
+    ],
+  };
 }
 
 function getRivalryParticipantReads(rivalry: Rivalry, game: GameState): RivalryParticipantRead[] {
@@ -7931,6 +8058,7 @@ function RivalriesScreen({
   const canCreate = wrestlerAId && wrestlerBId && wrestlerAId !== wrestlerBId && !isDuplicate && !rivalryBlockReason;
   const selectedStoryline = getRivalryStoryline({ stakes, storylineId });
   const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
+  const creativeDesk = getRivalryCreativeDeskRead(game);
 
   function handleCreateRivalry() {
     if (!canCreate) {
@@ -7948,11 +8076,31 @@ function RivalriesScreen({
         <div>
           <p className="eyebrow">Story Room</p>
           <h2>Rivalries</h2>
-          <p className="lede">Track the stories giving TV some bite. Hot angles deserve time, cooling angles need care, and stale ones need a clean exit.</p>
+          <p className="lede">Run the creative room for stories that give TV bite. The desk reads heat, freshness, timing, and recent beats; the GM still decides what gets protected, escalated, or ended.</p>
         </div>
         <button className="primary-action" onClick={() => onNavigate("booking")}>
           Book Show
         </button>
+      </section>
+
+      <section className={`rivalry-creative-desk creative-${creativeDesk.tone}`} aria-label="Rivalry story room pulse">
+        <div className="rivalry-creative-head">
+          <div>
+            <p className="eyebrow">Creative Desk</p>
+            <h3>{creativeDesk.headline}</h3>
+            <p>{creativeDesk.detail}</p>
+          </div>
+          <strong>{creativeDesk.focusLabel}</strong>
+        </div>
+        <div className="rivalry-creative-grid">
+          {creativeDesk.items.map((item) => (
+            <article className={`creative-${item.tone}`} key={item.label}>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+              <p>{item.detail}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="rivalry-form" aria-label="Create rivalry">

@@ -3960,6 +3960,132 @@ h3 {
   text-transform: uppercase;
 }
 
+.rivalry-creative-desk {
+  background:
+    linear-gradient(135deg, rgba(216, 35, 50, 0.18), rgba(8, 9, 13, 0.2) 36%, rgba(0, 168, 150, 0.12)),
+    rgba(12, 15, 22, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 4px solid #d82332;
+  border-radius: 8px;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.24);
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.rivalry-creative-desk.creative-hot {
+  border-left-color: #00a896;
+}
+
+.rivalry-creative-desk.creative-watch {
+  border-left-color: #f6c156;
+}
+
+.rivalry-creative-desk.creative-build {
+  border-left-color: #ff5361;
+}
+
+.rivalry-creative-head {
+  align-items: start;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.32fr);
+}
+
+.rivalry-creative-head h3 {
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: clamp(1.18rem, 1.8vw, 1.75rem);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.rivalry-creative-head p {
+  color: #b9c1cf;
+  line-height: 1.45;
+  margin: 8px 0 0;
+}
+
+.rivalry-creative-head > strong {
+  align-self: stretch;
+  background:
+    linear-gradient(180deg, rgba(246, 193, 86, 0.14), transparent),
+    rgba(8, 9, 13, 0.58);
+  border: 1px solid rgba(246, 193, 86, 0.28);
+  border-radius: 6px;
+  color: #f6c156;
+  display: grid;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.2;
+  min-width: 0;
+  padding: 12px;
+  place-items: center;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.rivalry-creative-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.rivalry-creative-grid article {
+  background: rgba(8, 9, 13, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 3px solid rgba(111, 226, 212, 0.45);
+  border-radius: 6px;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 11px;
+}
+
+.rivalry-creative-grid article.creative-hot {
+  border-left-color: #00a896;
+}
+
+.rivalry-creative-grid article.creative-watch {
+  border-left-color: #f6c156;
+}
+
+.rivalry-creative-grid article.creative-build {
+  border-left-color: #ff5361;
+}
+
+.rivalry-creative-grid span {
+  color: #ff9aa3;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.rivalry-creative-grid strong {
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.16;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.rivalry-creative-grid p {
+  color: #b9c1cf;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
 .rivalry-form {
   align-items: end;
   display: grid;
@@ -6554,6 +6680,20 @@ h3 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .rivalry-creative-head,
+  .rivalry-creative-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rivalry-creative-head > div {
+    grid-column: 1 / -1;
+  }
+
+  .rivalry-creative-head > strong {
+    place-items: start;
+    text-align: left;
+  }
+
   .rivalry-form button {
     width: 100%;
   }
@@ -6650,6 +6790,8 @@ h3 {
   .title-scene-board,
   .title-pressure-deck,
   .title-desk-talent-grid,
+  .rivalry-creative-head,
+  .rivalry-creative-grid,
   .rivalry-timing-board,
   .rivalry-participant-read-grid,
   .title-division-builder {
