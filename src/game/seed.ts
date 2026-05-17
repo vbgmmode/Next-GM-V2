@@ -17,6 +17,7 @@ import { getTitleCatalogEntriesForBrand } from "./titleCatalog";
 import { applyRivalryCatalogDefaults, getDefaultStorylineIdForStakes, getRivalryStoryline } from "./rivalryCatalog";
 import { top200DraftPool } from "./top200DraftPool";
 import { enrichWrestlerIdentityContext } from "./wrestlerIdentityContext";
+import { getRosterFinanceValueForWrestler } from "./financeCatalog";
 
 type SeedWrestler = Omit<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek"> &
   Partial<Pick<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek">>;
@@ -112,6 +113,20 @@ export function getStartingBudgetAmount(tier: StartingBudgetTier) {
     case "Unlimited":
       return unlimitedStartingBudget;
   }
+}
+
+export function getDraftedRosterValue(wrestlers: Pick<Wrestler, "id">[]) {
+  return wrestlers.reduce((sum, wrestler) => sum + (getRosterFinanceValueForWrestler(wrestler)?.draftValueUsd ?? 0), 0);
+}
+
+export function getOpeningMoneyAfterDraft(startingBudgetTier: StartingBudgetTier, draftedWrestlers: Pick<Wrestler, "id">[] = []) {
+  const startingMoney = getStartingBudgetAmount(startingBudgetTier);
+
+  if (startingBudgetTier === "Unlimited") {
+    return startingMoney;
+  }
+
+  return startingMoney - getDraftedRosterValue(draftedWrestlers);
 }
 
 const defaultRosterSize = 12;
@@ -387,7 +402,7 @@ export function createSeasonCalendar(): CalendarWeek[] {
 export function createNewGame(options: NewCareerOptions = {}): GameState {
   const career = { ...defaultCareer, ...options };
   const startingRoster = cloneWrestlers(options.draftedWrestlers?.length ? options.draftedWrestlers : roster);
-  const startingMoney = getStartingBudgetAmount(career.startingBudgetTier);
+  const startingMoney = getOpeningMoneyAfterDraft(career.startingBudgetTier, options.draftedWrestlers);
 
   return {
     seasonNumber: 1,

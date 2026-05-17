@@ -66,7 +66,15 @@ import {
   getRivalryStoryline,
   safeRivalryStorylineOptions,
 } from "./game/rivalryCatalog";
-import { createNewGame, createRivalBrandUniverse, createRivalGMAssignments, defaultCareer, draftPool, getStartingBudgetAmount } from "./game/seed";
+import {
+  createNewGame,
+  createRivalBrandUniverse,
+  createRivalGMAssignments,
+  defaultCareer,
+  draftPool,
+  getDraftedRosterValue,
+  getStartingBudgetAmount,
+} from "./game/seed";
 import {
   getBestSegment,
   getCurrentCalendarWeek,
@@ -510,7 +518,7 @@ function getDraftFinanceReadout(wrestlers: Wrestler[], startingBudgetTier: Start
     financeRow: getRosterFinanceValueForWrestler(wrestler),
     wrestler,
   }));
-  const rosterValue = financeRows.reduce((sum, { financeRow }) => sum + (financeRow?.draftValueUsd ?? 0), 0);
+  const rosterValue = getDraftedRosterValue(wrestlers);
   const projectedReserve = startingBudgetAmount - rosterValue;
   const isUnlimitedBudget = startingBudgetTier === "Unlimited";
   const tightReserveThreshold = Math.max(250000, Math.round(startingBudgetAmount * 0.15));
@@ -541,7 +549,7 @@ function getDraftFinanceNote(readout: DraftFinanceReadout) {
     ? ` ${readout.missingFinanceRows.length} roster value${readout.missingFinanceRows.length === 1 ? "" : "s"} pending and excluded from this total.`
     : "";
 
-  return `Projected reserve only; draft picks do not spend money or restrict availability in this build.${missingValueNote}`;
+  return `Opening reserve after roster value is carried into Week 1. Draft picks still do not restrict availability in this build.${missingValueNote}`;
 }
 
 function getRivalUniverseRead(rivalBrands: RivalBrandState[]) {
@@ -5048,8 +5056,8 @@ function DraftFinanceSummary({ readout }: { readout: DraftFinanceReadout }) {
           detail={readout.isUnlimitedBudget ? `${formatMoney(readout.startingBudgetAmount)} sandbox reference` : "Current setup selection"}
         />
         <Metric label="Roster Value" value={formatMoney(readout.rosterValue)} detail="Static catalog draft value total" />
-        <Metric label="Projected Reserve" value={formatProjectedReserve(readout)} detail="If roster value were startup cost" />
-        <Metric label="Reserve Pressure" value={readout.pressureLabel} detail="Readout only; no pick is blocked" />
+        <Metric label="Projected Reserve" value={formatProjectedReserve(readout)} detail="Carries into Week 1 money" />
+        <Metric label="Reserve Pressure" value={readout.pressureLabel} detail="No pick is blocked" />
       </div>
       <p>{getDraftFinanceNote(readout)}</p>
     </section>
