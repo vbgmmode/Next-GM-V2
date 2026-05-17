@@ -1455,6 +1455,127 @@ function getTitleDivisionScene(championship: Championship, wrestlers: Wrestler[]
   };
 }
 
+function getTagDivisionHealthDiagnostics(championship: Championship, game: GameState): TitleScenePressureDiagnostic[] {
+  if (!isTagChampionship(championship)) {
+    return [];
+  }
+
+  const scene = getTitleDivisionScene(championship, game.wrestlers, game.rivalries, game.currentWeek);
+  const diagnostics: TitleScenePressureDiagnostic[] = [];
+  const challengers = scene.eligibleRoster;
+  const champions = scene.champions;
+  const championPairActive =
+    champions.length === 2 &&
+    champions.every(
+      (wrestler) => getWeeksSinceLastBooked(wrestler, game.currentWeek) <= 2 && !getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk"),
+    );
+  const restedChallengers = challengers.filter((wrestler) => getWeeksSinceLastBooked(wrestler, game.currentWeek) >= 2);
+  const challengerInjuryRisk = challengers.some(
+    (wrestler) => wrestler.injuryStatus !== "healthy" || getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk"),
+  );
+
+  const hasFreshMatchup = restedChallengers.length >= 2;
+  const hasHotPair = (() => {
+    for (let index = 0; index < challengers.length; index += 1) {
+      const first = challengers[index];
+      for (let next = index + 1; next < challengers.length; next += 1) {
+        const second = challengers[next];
+        if (
+          (first.momentum >= 75 && second.momentum >= 75) ||
+          (first.popularity >= 78 && second.popularity >= 78)
+        ) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  })();
+
+  const championInjuryRisk = champions.some(
+    (wrestler) => wrestler.injuryStatus !== "healthy" || getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk"),
+  );
+  const recentHistory = getChampionshipHistory(game, championship.id, 1);
+  const latestTitleEvent = recentHistory[0];
+  const defenseWindow = championship.minimumDefenseFrequencyWeeks ?? 6;
+  const reignLength = getReignLength(championship, game.currentWeek);
+  const weeksSinceLastTitleEvent = latestTitleEvent
+    ? getChampionshipHistoryAgeWeeks(game, latestTitleEvent)
+    : Math.max(0, reignLength - 1);
+
+  diagnostics.push({
+    id: "tag-champion-pair-active",
+    label: "Champion Pair Active",
+    detail: championPairActive
+      ? `The champions, ${getWrestlerNames(championship.championIds, game.wrestlers)}, are active enough to make a credible defense.`
+      : "One or both champions are currently quiet, so momentum checks are advisory only.",
+    tone: championPairActive ? "steady" : "watch",
+  });
+
+  if (challengers.length < 2) {
+    diagnostics.push({
+      id: "tag-needs-challengers",
+      label: "Needs Challengers",
+      detail: "Two eligible non-champion wrestlers are required to safely build another tag title defense lane.",
+      tone: "build",
+    });
+  } else if (challengers.length < 4) {
+    diagnostics.push({
+      id: "tag-underrepresented",
+      label: "Tag Title Underrepresented",
+      detail: "The challenger pool is thin for repeated title-defenses while keeping rotation variety.",
+      tone: "watch",
+    });
+  }
+
+  if (hasFreshMatchup) {
+    diagnostics.push({
+      id: "tag-fresh-matchup",
+      label: "Fresh Matchup Available",
+      detail: "There are rested challengers available for a fresh 2v2 defense booking.",
+      tone: "hot",
+    });
+  }
+
+  if (hasHotPair) {
+    diagnostics.push({
+      id: "tag-hot-pair",
+      label: "Hot Pair Available",
+      detail: "At least one eligible pair is showing strong momentum/popularity for immediate tag title challenge framing.",
+      tone: "hot",
+    });
+  }
+
+  if (championInjuryRisk || challengerInjuryRisk) {
+    diagnostics.push({
+      id: "tag-injury-risk",
+      label: "Injury Risk Around Champions",
+      detail: "Injury flags around champions/challengers should be checked before deciding the defense lane.",
+      tone: "watch",
+    });
+  }
+
+  if (latestTitleEvent?.eventType === "successful_defense" && weeksSinceLastTitleEvent <= 1) {
+    diagnostics.push({
+      id: "tag-recent-defense",
+      label: "Recently Defended",
+      detail: "The title was actively defended in the latest resolvable title event.",
+      tone: "steady",
+    });
+  }
+
+  if (reignLength >= defenseWindow && championship.defenses === 0) {
+    diagnostics.push({
+      id: "tag-stale-reign",
+      label: "Stale Reign",
+      detail: `${Math.max(weeksSinceLastTitleEvent, defenseWindow)} weeks since last title event. A fresh defense is advisable.`,
+      tone: "build",
+    });
+  }
+
+  return diagnostics;
+}
+
 function getTitleSceneRead(championship: Championship, wrestlers: Wrestler[], currentWeek: number, rivalries: Rivalry[] = []) {
   const scene = getTitleDivisionScene(championship, wrestlers, rivalries, currentWeek);
   const contenders = scene.eligibleRoster;
@@ -1555,6 +1676,7 @@ function getTitleScenePressureSnapshot(championship: Championship, game: GameSta
   const diagnostics: TitleScenePressureDiagnostic[] = [];
 
   if (championship.eligibleMatchScope === "tag_team") {
+    diagnostics.push(...getTagDivisionHealthDiagnostics(championship, game).slice(0, 4));
     diagnostics.push({
       id: "tag-scope",
       label: contenders.length >= 2 ? "Tag Title Ready" : "Needs Challengers",
@@ -4536,6 +4658,8 @@ function DashboardScreen({
   const nextAction =
     validSegments >= 2 ? "The rundown can go live when you are ready." : "Book at least 2 valid segments before production can roll.";
   const championshipPressureSnapshots = getChampionshipPressureSnapshots(game);
+  const tagChampionshipSnapshot = championshipPressureSnapshots.find((item) => isTagChampionship(item.championship));
+  const tagDivisionAttention = tagChampionshipSnapshot?.snapshot.diagnostics.find((diagnostic) => diagnostic.tone !== "steady");
   const topChampionship = championshipPressureSnapshots[0]?.championship ?? [...game.championships].sort((a, b) => b.prestige - a.prestige)[0];
   const topTitlePressure = championshipPressureSnapshots.find((item) => item.championship.id === topChampionship?.id)?.snapshot;
   const topTitleContenders = topChampionship ? getTopContenders(topChampionship, game.wrestlers, 2) : [];
@@ -4728,6 +4852,11 @@ function DashboardScreen({
           <Metric label="Champion" value={topChampionship ? getWrestlerNames(topChampionship.championIds, game.wrestlers) : "None"} />
           <Metric label="Top Contenders" value={topTitleContenders.map((wrestler) => wrestler.name).join(" / ") || "No clear lane"} />
         </div>
+        {tagChampionshipSnapshot && tagDivisionAttention ? (
+          <p className="title-pressure-dashboard">
+            Tag division attention: {tagDivisionAttention.label} · {tagDivisionAttention.detail}
+          </p>
+        ) : null}
         {topTitlePressure ? <p className="title-pressure-dashboard">{topTitlePressure.divisionHealth}</p> : null}
         <button className="secondary-action" onClick={() => onNavigate("championships")}>
           View Championships
@@ -5793,6 +5922,7 @@ function ChampionshipsScreen({
           const pressureSnapshot = getTitleScenePressureSnapshot(championship, game);
           const gmRead = getTitleSceneGMRead(championship, scene);
           const isTagTitle = isTagChampionship(championship);
+          const tagDivisionHealth = isTagTitle ? getTagDivisionHealthDiagnostics(championship, game) : [];
 
           return (
             <article className="championship-card" key={championship.id}>
@@ -5839,6 +5969,16 @@ function ChampionshipsScreen({
                   </article>
                 ))}
               </div>
+              {tagDivisionHealth.length ? (
+                <div className="title-pressure-deck" aria-label={`${championship.name} tag division health`}>
+                  {tagDivisionHealth.slice(0, 4).map((diagnostic) => (
+                    <article className={`title-pressure-chip pressure-${diagnostic.tone}`} key={diagnostic.id}>
+                      <span>{diagnostic.label}</span>
+                      <p>{diagnostic.detail}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
               <div className="title-division-builder" aria-label={`${championship.name} division builder`}>
                 <article>
                   <span>Champion</span>
@@ -7036,6 +7176,8 @@ function TitleMatchControl({
     const selectedChampionship = championships.find((championship) => championship.id === segment.championshipId);
     const selectedTagChampionship = selectedChampionship && isTagChampionship(selectedChampionship) ? selectedChampionship : undefined;
     const selectedSides = selectedTagChampionship ? getTagTitleSides(segment, selectedTagChampionship) : undefined;
+    const tagHealthChampionship = selectedTagChampionship ?? eligibleChampionships[0];
+    const tagHealthDiagnostics = tagHealthChampionship ? getTagDivisionHealthDiagnostics(tagHealthChampionship, game) : [];
     const tagTitleStatus = (() => {
       if (!tagChampionships.length) {
         return "No tag championship is assigned to this brand yet.";
@@ -7100,6 +7242,16 @@ function TitleMatchControl({
               <strong>{getWrestlerNames(selectedSides.championSideIds, wrestlers)}</strong>
               <small>Challenger side: {getWrestlerNames(selectedSides.challengerSideIds, wrestlers)}</small>
             </article>
+          </div>
+        ) : null}
+        {tagHealthDiagnostics.length ? (
+          <div className="title-eligible-readout" aria-label="Tag division health">
+            {tagHealthDiagnostics.slice(0, 3).map((diagnostic) => (
+              <article key={`${diagnostic.id}-${tagHealthChampionship?.id}`}>
+                <span>{diagnostic.label}</span>
+                <small>{diagnostic.detail}</small>
+              </article>
+            ))}
           </div>
         ) : null}
       </div>

@@ -46,6 +46,7 @@ The game currently supports:
 - Rival Brand Foundation v1 with typed persisted read-only rival brand state derived from setup assignments
 - Tag Team / Affiliation Foundation v1 with typed read-only roster/profile context derived from Top 200 source metadata
 - Tag Championship Foundation v1 with one tag championship, 2v2 M020 tag title matches only, pair-aware champion/history rendering, and no rankings/team records/team persistence/team-level stats
+- Tag Division Health Diagnostics v1 with read-only, derived tag-division advisories on Championships/Booking/Dashboard and no rankings/team records/team persistence/team-level mechanics
 - Match Format Metadata Foundation v1 with centralized current segment/match format metadata
 - PLE Readiness Checklist v1 with non-spoiler major-event booking context
 - Post-Show Cause Ledger v1 with retrospective explanation from resolved result data
@@ -151,13 +152,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Tag Championship Foundation v1
+Phase: Tag Division Health Diagnostics v1
 
 Goal:
-Add one bounded 2v2 tag championship foundation while preserving the complete offline solo career loop, expanded setup flow, and active Top 200 open draft pool.
+Add read-only, derived tag-division health diagnostics while preserving the complete offline solo career loop and one bounded tag-championship foundation.
 
 Current priority:
-Keep tag championship support limited to one title, M020 tag title matches, pair-aware rendering, and no rankings/team records/team persistence/team-level stats.
+Keep diagnostics read-only and derived from existing state, with one tag title only, M020 constraints, pair-aware title rendering, and no rankings/team records/team persistence/team-level stats.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -187,6 +188,7 @@ Completed stabilization passes:
 - Brand Pulse v1
 - Non-Blocking Rival Draft Activity v1
 - Wrestler Identity Context v1 (non-mechanical display context layer)
+- Tag Division Health Diagnostics v1
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
