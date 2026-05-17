@@ -102,7 +102,7 @@ The game currently supports:
 - PLEs
 - Season Review
 - Start Next Season
-- Social/IWC
+- Social/IWC with existing post feed, filters, and read-only resolved-state IWC mood summary
 - Finance & Brand Pressure
 - FinanceReport legacy-compatible v2 optional fields for future detailed revenue and expense categories
 - Read-only gameplay context helpers extracted into src/game/gameContextReads.ts for recent derived UI snapshots while React screen components remain in src/App.tsx
@@ -213,6 +213,7 @@ Completed stabilization passes:
 - Week Review Consequence Handoff Polish v1
 - Roster Locker Room Personality v1
 - Championships Prestige / Division Identity v1
+- Social / IWC Mood Summary v1
 - Read-only gameplay context helper extraction to src/game/gameContextReads.ts
 - Tag Division Health Diagnostics v1
 - Stipulation Metadata v1 (implemented)

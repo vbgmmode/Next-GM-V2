@@ -3821,6 +3821,107 @@ h3 {
   padding: 18px;
 }
 
+.iwc-mood-panel {
+  background:
+    linear-gradient(135deg, rgba(216, 35, 50, 0.16), transparent 42%),
+    linear-gradient(90deg, rgba(111, 226, 212, 0.07), transparent 68%),
+    rgba(14, 17, 24, 0.94);
+  border: 1px solid rgba(255, 83, 97, 0.24);
+  border-left: 4px solid #d82332;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  margin: 0 0 18px;
+  padding: 18px;
+}
+
+.iwc-mood-panel.tone-analytical,
+.iwc-mood-panel.tone-impressed {
+  border-left-color: #6fe2d4;
+}
+
+.iwc-mood-panel.tone-skeptical,
+.iwc-mood-panel.tone-angry {
+  border-left-color: #f6c156;
+}
+
+.iwc-mood-panel.tone-chaotic {
+  border-left-color: #ff5361;
+}
+
+.iwc-mood-head {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.iwc-mood-head h3 {
+  line-height: 1.12;
+  margin: 0;
+}
+
+.iwc-mood-head > strong {
+  background: rgba(8, 9, 13, 0.72);
+  border: 1px solid rgba(255, 83, 97, 0.26);
+  color: #f6c156;
+  flex: 0 0 auto;
+  font-size: 0.76rem;
+  font-weight: 900;
+  max-width: 360px;
+  padding: 8px 10px;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.iwc-mood-panel > p {
+  color: #dbe2ef;
+  font-weight: 800;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.iwc-mood-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.iwc-mood-grid article {
+  background: rgba(8, 9, 13, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 3px solid rgba(255, 83, 97, 0.74);
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.iwc-mood-grid span {
+  color: #f6c156;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.iwc-mood-grid strong {
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.iwc-mood-grid p {
+  color: #b9c1cf;
+  line-height: 1.45;
+  margin: 0;
+}
+
 .social-post.tone-analytical,
 .social-post.tone-impressed {
   border-left-color: #6fe2d4;
@@ -5990,6 +6091,7 @@ h3 {
   .brand-pulse-grid,
   .rival-draft-notes,
   .locker-room-pulse-grid,
+  .iwc-mood-grid,
   .title-office-grid,
   .title-identity-grid,
   .week-handoff-grid,
@@ -6188,6 +6290,7 @@ h3 {
   .roster-controls,
   .roster-grid,
   .rivalry-form,
+  .iwc-mood-grid,
   .social-preview-grid,
   .participant-grid {
     grid-template-columns: 1fr;
