@@ -4595,6 +4595,7 @@ h3 {
 }
 
 .profile-layout {
+  align-items: start;
   display: grid;
   gap: 16px;
   grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.7fr);
@@ -4603,6 +4604,7 @@ h3 {
 .profile-main,
 .profile-side,
 .profile-list {
+  align-content: start;
   display: grid;
   gap: 14px;
 }
@@ -4616,9 +4618,90 @@ h3 {
   padding: 18px;
 }
 
+.profile-expandable-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-expandable-panel.collapsed {
+  gap: 6px;
+  padding: 12px 14px;
+}
+
+.profile-expandable-head {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 0;
+  text-align: left;
+  text-transform: uppercase;
+  width: 100%;
+}
+
+.profile-expandable-head span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.profile-expandable-head em {
+  color: var(--bc-prestige);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.profile-expandable-head strong {
+  color: var(--bc-text-primary);
+  font-size: 0.88rem;
+  line-height: 1.15;
+}
+
+.profile-expandable-head b {
+  background: rgba(8, 9, 13, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 3px;
+  color: var(--bc-text-secondary);
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 6px 8px;
+}
+
+.profile-expandable-head:hover b,
+.profile-expandable-head:focus-visible b {
+  border-color: var(--bc-brand-selected);
+  color: var(--bc-text-primary);
+}
+
+.profile-panel-summary {
+  color: var(--bc-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.profile-panel-body {
+  display: grid;
+  gap: 10px;
+}
+
 .profile-stats-panel {
   align-self: start;
   padding: 14px;
+}
+
+.profile-stats-panel.expanded,
+.profile-side .gm-read-panel.expanded {
+  height: 540px;
+  overflow: hidden;
 }
 
 .profile-stat-grid {
@@ -4627,7 +4710,7 @@ h3 {
 
 .profile-stat-rows {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .profile-stat-row {
@@ -4638,8 +4721,8 @@ h3 {
   column-gap: 14px;
   display: grid;
   grid-template-columns: minmax(120px, 0.9fr) minmax(72px, 0.35fr) minmax(0, 1fr);
-  min-height: 54px;
-  padding: 8px 12px;
+  min-height: 42px;
+  padding: 7px 10px;
 }
 
 .profile-stat-row span {
@@ -4672,6 +4755,12 @@ h3 {
 
 .gm-read-panel {
   border-color: rgba(246, 193, 86, 0.3);
+}
+
+.profile-stats-panel.expanded .profile-panel-body,
+.profile-side .gm-read-panel.expanded .profile-panel-body {
+  min-height: 0;
+  overflow: auto;
 }
 
 .contract-value-panel {

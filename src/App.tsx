@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   MAX_SAVE_SLOTS,
   createSaveRecord,
@@ -127,6 +127,7 @@ import type { StoredSaveRecord } from "./gameStorage";
 type RosterSort = "popularity" | "momentum" | "fatigue" | "morale";
 type RosterFilter = "all" | "mens" | "womens" | "champions" | "injured" | "hot" | "tired" | "morale" | "underused";
 type RosterStatus = "Hot" | "Tired" | "Frustrated" | "Steady";
+type ProfilePanelId = "stats" | "gmRead" | "contractValue" | "affiliations" | "showHistory" | "championships" | "rivalries" | "social";
 type SocialFilter = "All" | "Fan Reaction" | "Dirt Sheets" | "Analyst Takes" | "Title Scene" | "Rivalries";
 type IwcMoodTone = SocialPost["tone"];
 type SetupStep = "contract" | "gm" | "brand" | "rules" | "preview" | "draft" | "review";
@@ -7774,6 +7775,7 @@ function WrestlerProfileScreen({
   const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
   const valueProfile = getWrestlerValueProfile(wrestler);
   const lockerRoomRead = getWrestlerLockerRoomRead(wrestler, game);
+  const [expandedProfilePanels, setExpandedProfilePanels] = useState<Set<ProfilePanelId>>(() => new Set(["stats", "gmRead"]));
   const profileStatRows = [
     { label: "Popularity", value: `${wrestler.popularity}` },
     { label: "Momentum", value: `${wrestler.momentum}` },
@@ -7786,6 +7788,33 @@ function WrestlerProfileScreen({
     { label: "Last Booked", value: wrestler.lastBookedWeek ? `Week ${wrestler.lastBookedWeek}` : "Never", note: `${weeksSinceLastBooked} weeks off TV` },
     { label: "TV Streak", value: `${wrestler.consecutiveWeeksBooked ?? 0}`, note: "Consecutive weeks booked" },
   ];
+  const profilePanelExpanded = (panelId: ProfilePanelId) => expandedProfilePanels.has(panelId);
+  const toggleProfilePanel = (panelId: ProfilePanelId) => {
+    setExpandedProfilePanels((currentPanels) => {
+      const nextPanels = new Set(currentPanels);
+      if (nextPanels.has(panelId)) {
+        nextPanels.delete(panelId);
+      } else {
+        nextPanels.add(panelId);
+      }
+      return nextPanels;
+    });
+  };
+  useEffect(() => {
+    setExpandedProfilePanels(new Set(["stats", "gmRead"]));
+  }, [wrestler.id]);
+  const statsSummary = `POP ${wrestler.popularity} / MOM ${wrestler.momentum} / FAT ${wrestler.fatigue} / MOR ${wrestler.morale}`;
+  const gmReadSummary = `${lockerRoomRead.headline}${pressureTags.length ? ` / ${pressureTags.slice(0, 2).join(" / ")}` : " / Balanced"}`;
+  const contractSummary = `${valueProfile.valueTierLabel} / ${valueProfile.weeklyValueLabel}`;
+  const affiliationSummary = affiliations.length ? `${affiliations.length} locker room link${affiliations.length === 1 ? "" : "s"}` : "No source link";
+  const showHistorySummary = recentAppearances.length ? `${recentAppearances.length} recent appearance${recentAppearances.length === 1 ? "" : "s"}` : "No show appearances";
+  const championshipSummary = championships.length
+    ? `${championships.length} current title${championships.length === 1 ? "" : "s"}`
+    : titleSceneRows.length
+      ? `${titleSceneRows.length} title scene fit${titleSceneRows.length === 1 ? "" : "s"}`
+      : "No current title scene";
+  const rivalrySummary = activeRivalries.length ? `${activeRivalries.length} active / ${activeRivalries[0].name}` : "No active rivalry";
+  const socialSummary = recentSocialPosts.length ? `${recentSocialPosts.length} recent mention${recentSocialPosts.length === 1 ? "" : "s"}` : "No recent social mentions";
 
   return (
     <main className="app-shell profile-screen">
@@ -7818,11 +7847,15 @@ function WrestlerProfileScreen({
 
       <section className="profile-layout" aria-label={`${wrestler.name} profile`}>
         <div className="profile-main">
-          <section className="profile-panel profile-stats-panel" aria-label="Wrestler stats">
-            <div className="section-heading">
-              <p className="eyebrow">Current Value</p>
-              <h3>Stats And TV Load</h3>
-            </div>
+          <ProfileExpandablePanel
+            className="profile-stats-panel"
+            expanded={profilePanelExpanded("stats")}
+            eyebrow="Current Value"
+            id="stats"
+            onToggle={toggleProfilePanel}
+            summary={statsSummary}
+            title="Stats And TV Load"
+          >
             <div className="profile-stat-rows">
               {profileStatRows.map((row) => (
                 <article className="profile-stat-row" key={row.label}>
@@ -7832,13 +7865,17 @@ function WrestlerProfileScreen({
                 </article>
               ))}
             </div>
-          </section>
+          </ProfileExpandablePanel>
 
-          <section className={`profile-panel contract-value-panel ${valueProfile.contextMode === "missing" ? "contract-value-panel-missing" : ""}`} aria-label="Contract value context">
-            <div className="section-heading">
-              <p className="eyebrow">Contract Value Dossier</p>
-              <h3>{valueProfile.valueTierLabel}</h3>
-            </div>
+          <ProfileExpandablePanel
+            className={`contract-value-panel ${valueProfile.contextMode === "missing" ? "contract-value-panel-missing" : ""}`}
+            expanded={profilePanelExpanded("contractValue")}
+            eyebrow="Contract Value Dossier"
+            id="contractValue"
+            onToggle={toggleProfilePanel}
+            summary={contractSummary}
+            title={valueProfile.valueTierLabel}
+          >
             <div className="readout-list">
               <p>
                 <strong>Draft profile:</strong> {valueProfile.draftValueLabel}
@@ -7856,13 +7893,17 @@ function WrestlerProfileScreen({
                 Context-only readout. No contract mechanics, payroll locks, or automatic booking restrictions are active in this build.
               </small>
             </div>
-          </section>
+          </ProfileExpandablePanel>
 
-          <section className="profile-panel affiliation-profile-panel" aria-label="Affiliation context">
-            <div className="section-heading">
-              <p className="eyebrow">Affiliation Context</p>
-              <h3>{affiliations.length ? "Locker Room Links" : "No Source Link"}</h3>
-            </div>
+          <ProfileExpandablePanel
+            className="affiliation-profile-panel"
+            expanded={profilePanelExpanded("affiliations")}
+            eyebrow="Affiliation Context"
+            id="affiliations"
+            onToggle={toggleProfilePanel}
+            summary={affiliationSummary}
+            title={affiliations.length ? "Locker Room Links" : "No Source Link"}
+          >
             <div className="profile-list">
               {affiliations.length ? (
                 affiliations.map((affiliation) => (
@@ -7879,13 +7920,16 @@ function WrestlerProfileScreen({
                 <div className="empty-state compact">No team, faction, or affiliation label is available for {wrestler.name} in the current Top 200 source data.</div>
               )}
             </div>
-          </section>
+          </ProfileExpandablePanel>
 
-          <section className="profile-panel" aria-label="Recent show history">
-            <div className="section-heading">
-              <p className="eyebrow">Recent Show History</p>
-              <h3>Last Five Appearances</h3>
-            </div>
+          <ProfileExpandablePanel
+            expanded={profilePanelExpanded("showHistory")}
+            eyebrow="Recent Show History"
+            id="showHistory"
+            onToggle={toggleProfilePanel}
+            summary={showHistorySummary}
+            title="Last Five Appearances"
+          >
             <div className="profile-list">
               {recentAppearances.length ? (
                 recentAppearances.map((appearance) => (
@@ -7904,15 +7948,19 @@ function WrestlerProfileScreen({
                 <div className="empty-state compact">No show appearances recorded yet.</div>
               )}
             </div>
-          </section>
+          </ProfileExpandablePanel>
         </div>
 
         <aside className="profile-side">
-          <section className="profile-panel gm-read-panel" aria-label="GM read">
-            <div className="section-heading">
-              <p className="eyebrow">GM Read</p>
-              <h3>Decision Context</h3>
-            </div>
+          <ProfileExpandablePanel
+            className="gm-read-panel"
+            expanded={profilePanelExpanded("gmRead")}
+            eyebrow="GM Read"
+            id="gmRead"
+            onToggle={toggleProfilePanel}
+            summary={gmReadSummary}
+            title="Decision Context"
+          >
             <div className="identity-snapshot-panel" aria-label="Identity snapshot">
               <div className="pressure-tags">
                 {identitySnapshot.labels.map((label) => (
@@ -7942,13 +7990,17 @@ function WrestlerProfileScreen({
                 <strong>Need:</strong> {gmRead.need}
               </p>
             </div>
-          </section>
+          </ProfileExpandablePanel>
 
-          <section className="profile-panel title-profile-panel" aria-label="Championship context">
-            <div className="section-heading">
-              <p className="eyebrow">Championship Context</p>
-              <h3>{championships.length ? "Current Champion" : titleSceneRows.length ? "Title Scene Fit" : "No Current Title"}</h3>
-            </div>
+          <ProfileExpandablePanel
+            className="title-profile-panel"
+            expanded={profilePanelExpanded("championships")}
+            eyebrow="Championship Context"
+            id="championships"
+            onToggle={toggleProfilePanel}
+            summary={championshipSummary}
+            title={championships.length ? "Current Champion" : titleSceneRows.length ? "Title Scene Fit" : "No Current Title"}
+          >
             <div className="profile-list">
               {titleSceneRows.length ? (
                 titleSceneRows.map(({ championship, detail, relevance }) => (
@@ -7975,13 +8027,17 @@ function WrestlerProfileScreen({
                 <p className="muted-copy">No title history recorded for {wrestler.name} yet.</p>
               )}
             </div>
-          </section>
+          </ProfileExpandablePanel>
 
-          <section className="profile-panel rivalry-profile-panel" aria-label="Active rivalries">
-            <div className="section-heading">
-              <p className="eyebrow">Active Rivalries</p>
-              <h3>{activeRivalries.length ? "Story Pressure" : "No Active Rivalry"}</h3>
-            </div>
+          <ProfileExpandablePanel
+            className="rivalry-profile-panel"
+            expanded={profilePanelExpanded("rivalries")}
+            eyebrow="Active Rivalries"
+            id="rivalries"
+            onToggle={toggleProfilePanel}
+            summary={rivalrySummary}
+            title={activeRivalries.length ? "Story Pressure" : "No Active Rivalry"}
+          >
             <div className="profile-list">
               {activeRivalries.length ? (
                 activeRivalries.map((rivalry) => {
@@ -8022,13 +8078,17 @@ function WrestlerProfileScreen({
                 <p className="muted-copy">No major rivalry history recorded for {wrestler.name} yet.</p>
               )}
             </div>
-          </section>
+          </ProfileExpandablePanel>
 
-          <section className="profile-panel social-profile-panel" aria-label="Recent social mentions">
-            <div className="section-heading">
-              <p className="eyebrow">Social Mentions</p>
-              <h3>Recent IWC Read</h3>
-            </div>
+          <ProfileExpandablePanel
+            className="social-profile-panel"
+            expanded={profilePanelExpanded("social")}
+            eyebrow="Social Mentions"
+            id="social"
+            onToggle={toggleProfilePanel}
+            summary={socialSummary}
+            title="Recent IWC Read"
+          >
             <div className="profile-list">
               {recentSocialPosts.length ? (
                 recentSocialPosts.map((post) => (
@@ -8047,10 +8107,50 @@ function WrestlerProfileScreen({
                 <div className="empty-state compact">No recent social posts mention {wrestler.name}.</div>
               )}
             </div>
-          </section>
+          </ProfileExpandablePanel>
         </aside>
       </section>
     </main>
+  );
+}
+
+function ProfileExpandablePanel({
+  children,
+  className,
+  expanded,
+  eyebrow,
+  id,
+  onToggle,
+  summary,
+  title,
+}: {
+  children: ReactNode;
+  className?: string;
+  expanded: boolean;
+  eyebrow: string;
+  id: ProfilePanelId;
+  onToggle: (id: ProfilePanelId) => void;
+  summary: string;
+  title: string;
+}) {
+  const contentId = `profile-panel-${id}`;
+
+  return (
+    <section className={`profile-panel profile-expandable-panel ${expanded ? "expanded" : "collapsed"} ${className ?? ""}`} aria-label={eyebrow}>
+      <button className="profile-expandable-head" type="button" aria-controls={contentId} aria-expanded={expanded} onClick={() => onToggle(id)}>
+        <span>
+          <em>{eyebrow}</em>
+          <strong>{title}</strong>
+        </span>
+        <b>{expanded ? "Collapse" : "Expand"}</b>
+      </button>
+      <p className="profile-panel-summary">{summary}</p>
+      {expanded ? (
+        <div className="profile-panel-body" id={contentId}>
+          {children}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
