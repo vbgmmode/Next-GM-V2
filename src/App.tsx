@@ -1161,90 +1161,27 @@ function getBookingCardStatus(segmentCount: number, invalidSegments: number, rea
   return { label: "In Production", tone: "building" };
 }
 
-type BookingCardSpineRow = {
-  emptyRead: string;
+type BookingBoardSlot = {
   id: string;
-  label: string;
+  isBuildable: boolean;
   segment?: Segment;
-  tone: "opener" | "middle" | "main-event" | "empty";
+  slotNumber: number;
 };
 
-function getBookingCardSpineRows(currentShow: Segment[]): BookingCardSpineRow[] {
-  if (currentShow.length === 0) {
-    return [
-      {
-        emptyRead: "First live-TV beat is still waiting on the board.",
-        id: "opener-empty",
-        label: "Opener",
-        tone: "opener",
-      },
-      {
-        emptyRead: "The body of the show comes online after the opening block.",
-        id: "middle-empty",
-        label: "Middle",
-        tone: "middle",
-      },
-      {
-        emptyRead: "Closing block needs a final segment before the show has a finish.",
-        id: "main-event-empty",
-        label: "Main Event",
-        tone: "main-event",
-      },
-    ];
-  }
+function getBookingBoardSlots(currentShow: Segment[]): BookingBoardSlot[] {
+  const visibleSlotCount = Math.min(maxBookingSegments, Math.max(3, currentShow.length + (currentShow.length < maxBookingSegments ? 1 : 0)));
 
-  if (currentShow.length === 1) {
-    return [
-      {
-        emptyRead: "",
-        id: "solo-block",
-        label: "Solo TV Block",
-        segment: currentShow[0],
-        tone: "opener",
-      },
-      {
-        emptyRead: "Add another valid segment to give the broadcast a second beat.",
-        id: "second-beat-empty",
-        label: "Next Beat",
-        tone: "empty",
-      },
-    ];
-  }
+  return Array.from({ length: visibleSlotCount }, (_, index) => {
+    const segment = currentShow[index];
+    const slotNumber = index + 1;
 
-  const middleSegments = currentShow.length > 2 ? currentShow.slice(1, -1) : [];
-
-  return [
-    {
-      emptyRead: "",
-      id: "opener",
-      label: "Opener",
-      segment: currentShow[0],
-      tone: "opener",
-    },
-    ...(middleSegments.length
-      ? middleSegments.map((segment, index) => ({
-          emptyRead: "",
-          id: `middle-${segment.id}`,
-          label: middleSegments.length === 1 ? "Middle Anchor" : `Middle ${index + 1}`,
-          segment,
-          tone: "middle" as const,
-        }))
-      : [
-          {
-            emptyRead: "Two-segment card: no dedicated middle block yet.",
-            id: "middle-empty",
-            label: "Middle",
-            tone: "empty" as const,
-          },
-        ]),
-    {
-      emptyRead: "",
-      id: "main-event",
-      label: "Main Event",
-      segment: currentShow[currentShow.length - 1],
-      tone: "main-event",
-    },
-  ];
+    return {
+      id: segment?.id ?? `empty-slot-${slotNumber}`,
+      isBuildable: !segment && index === currentShow.length,
+      segment,
+      slotNumber,
+    };
+  });
 }
 
 function getBookingSegmentCoverageChips(segment: Segment, game: GameState) {
@@ -1274,6 +1211,35 @@ function getBookingSegmentCoverageChips(segment: Segment, game: GameState) {
   }
 
   return chips.length ? chips : [getSegmentRuntime(segment)];
+}
+
+function getBookingSegmentBoardFlags(segment: Segment, game: GameState) {
+  const flags: string[] = [];
+  const championship = segment.championshipId ? game.championships.find((title) => title.id === segment.championshipId) : undefined;
+  const rivalry = segment.rivalryId ? game.rivalries.find((item) => item.id === segment.rivalryId) : undefined;
+  const majorStars = getSegmentParticipants(segment, game.wrestlers).filter(isMajorEventStar);
+
+  if (championship) {
+    flags.push(canSegmentContestChampionship(segment, championship, game.wrestlers) ? "Title" : "Title Context");
+  }
+
+  if (rivalry) {
+    flags.push("Rivalry");
+  }
+
+  if (majorStars.length) {
+    flags.push("Star");
+  }
+
+  if (segment.type === "Open Challenge") {
+    flags.push("Open Challenge");
+  }
+
+  if (!isValidSegment(segment, game.wrestlers)) {
+    flags.push("Needs Fix");
+  }
+
+  return flags.length ? flags : [getSegmentRuntime(segment)];
 }
 
 function getBookingWrestlerRiskReads(wrestler: Wrestler, bookedCount: number) {
@@ -6713,6 +6679,9 @@ function BookingScreen({
   onUpdateSegment: (segmentId: string, updates: Partial<Segment>) => void;
 }) {
   const [composerSegmentId, setComposerSegmentId] = useState<string | undefined>();
+  const [bookingMode, setBookingMode] = useState<"board" | "setup">("board");
+  const [setupDraftSegmentId, setSetupDraftSegmentId] = useState<string | undefined>();
+  const [setupEmptySlotNumber, setSetupEmptySlotNumber] = useState<number | undefined>();
   const [smartRundownNotes, setSmartRundownNotes] = useState<string[]>([]);
   const [smartRundownError, setSmartRundownError] = useState("");
   const [pendingSmartReplace, setPendingSmartReplace] = useState(false);
@@ -6785,7 +6754,7 @@ function BookingScreen({
     return Boolean(championship && canSegmentContestChampionship(segment, championship, game.wrestlers));
   }).length;
   const cardStatus = getBookingCardStatus(game.currentShow.length, invalidSegments, readiness);
-  const cardSpineRows = getBookingCardSpineRows(game.currentShow);
+  const cardBoardSlots = getBookingBoardSlots(game.currentShow);
   const runCommandTitle = readiness.canRun ? "Ready For Air" : cardStatus.tone === "empty" ? "No Rundown Yet" : "Hold The Truck";
   const runCommandDetail = readiness.canRun
     ? "Existing validation clears this card. Run Show remains the same action path."
@@ -6796,7 +6765,7 @@ function BookingScreen({
     .join(" / ");
   const producerRead =
     game.currentShow.length === 0
-      ? "No segments booked. Production is waiting on the first live-TV block."
+      ? "No segments booked. Choose Slot 1 to start the card board."
       : `${game.currentShow.length} segment${game.currentShow.length === 1 ? "" : "s"} on the board with ${validSegments} cleared for TV and ${invalidSegments} needing attention. ${mixLine || "No segment mix yet."}`;
   const coverageRead =
     titleMatchCount || rivalrySegmentCount
@@ -6818,6 +6787,9 @@ function BookingScreen({
     const segmentId = `segment-${Date.now()}-${game.currentShow.length}`;
     onAddSegment(type, segmentId);
     setComposerSegmentId(segmentId);
+    setSetupDraftSegmentId(segmentId);
+    setSetupEmptySlotNumber(undefined);
+    setBookingMode("setup");
     setPendingSmartReplace(false);
   }
 
@@ -6825,7 +6797,41 @@ function BookingScreen({
     onRemoveSegment(segmentId);
     if (composerSegmentId === segmentId) {
       setComposerSegmentId(undefined);
+      setBookingMode("board");
+      setSetupDraftSegmentId(undefined);
+      setSetupEmptySlotNumber(undefined);
     }
+  }
+
+  function openEmptySlot(slotNumber: number) {
+    setComposerSegmentId(undefined);
+    setSetupDraftSegmentId(undefined);
+    setSetupEmptySlotNumber(slotNumber);
+    setBookingMode("setup");
+    setPendingSmartReplace(false);
+  }
+
+  function openExistingSegment(segmentId: string) {
+    setComposerSegmentId(segmentId);
+    setSetupDraftSegmentId(undefined);
+    setSetupEmptySlotNumber(undefined);
+    setBookingMode("setup");
+    setPendingSmartReplace(false);
+  }
+
+  function returnToCardBoard() {
+    setBookingMode("board");
+    setComposerSegmentId(undefined);
+    setSetupDraftSegmentId(undefined);
+    setSetupEmptySlotNumber(undefined);
+  }
+
+  function cancelSegmentSetup() {
+    if (setupDraftSegmentId) {
+      onRemoveSegment(setupDraftSegmentId);
+    }
+
+    returnToCardBoard();
   }
 
   function applyCatalogOption(segment: Segment, option: SegmentCatalogOption) {
@@ -6881,7 +6887,10 @@ function BookingScreen({
     }
 
     onReplaceCurrentShow(result.segments);
-    setComposerSegmentId(result.segments[0]?.id);
+    setComposerSegmentId(undefined);
+    setSetupDraftSegmentId(undefined);
+    setSetupEmptySlotNumber(undefined);
+    setBookingMode("board");
     setPendingSmartReplace(false);
     setSmartRundownError("");
     setSmartRundownNotes(result.notes);
