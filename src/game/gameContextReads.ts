@@ -993,7 +993,7 @@ export function getWeeklyDecisionPressureSnapshot(game: GameState, result?: Show
 }
 
 function getRivalPressureRead(game: GameState, result?: ShowResult): LivingWorldPressureItem {
-  const rivalBrands = game.rivalBrands.length ? game.rivalBrands : [];
+  const rivalBrands = game.rivalBrands?.length ? game.rivalBrands : [];
   const focusRival = rivalBrands[0];
   const focusStyle = focusRival?.assignedGMStyle ?? game.rivalGMAssignments[0]?.gmStyle;
   const focusName = focusRival?.assignedGMName ?? game.rivalGMAssignments[0]?.gmName ?? "Rival GMs";

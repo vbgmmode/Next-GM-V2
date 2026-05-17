@@ -5207,10 +5207,12 @@ function DashboardScreen({
   game: GameState;
   latestResult?: ShowResult;
   onNavigate: (screen: GameScreen) => void;
-	}) {
-	  const lastShow = game.showHistory[game.showHistory.length - 1];
-	  const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers)).length;
-	  const averageFatigue = Math.round(game.wrestlers.reduce((sum, wrestler) => sum + wrestler.fatigue, 0) / game.wrestlers.length);
+}) {
+  const lastShow = game.showHistory[game.showHistory.length - 1];
+  const validShowSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers));
+  const validSegments = validShowSegments.length;
+  const invalidSegments = game.currentShow.length - validSegments;
+  const averageFatigue = game.wrestlers.length ? Math.round(game.wrestlers.reduce((sum, wrestler) => sum + wrestler.fatigue, 0) / game.wrestlers.length) : 0;
   const nextAction =
     validSegments >= 2 ? "The rundown can go live when you are ready." : "Book at least 2 valid segments before production can roll.";
   const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
@@ -5222,299 +5224,267 @@ function DashboardScreen({
   const topTitleContenders = topChampionship ? getTopContenders(topChampionship, game.wrestlers, 2) : [];
   const rivalryTimingSnapshots = getRivalryTimingSnapshots(game);
   const focusRivalryTiming = rivalryTimingSnapshots[0];
-	  const currentShow = getCurrentCalendarWeek(game);
-	  const nextPle = getNextPle(game.calendar, game.currentWeek);
-	  const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
-	  const latestFinanceReport = getLatestFinanceReport(game);
-	  const pressureLabel = getFinancePressureLabel(game.money, latestFinanceReport?.profitLoss ?? 0);
-	  const isPleWeek = currentShow.showType === "ple";
-	  const livingWorldPressure = getLivingWorldPressureSnapshot(game, lastShow);
+  const currentShow = getCurrentCalendarWeek(game);
+  const nextPle = getNextPle(game.calendar, game.currentWeek);
+  const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
+  const latestFinanceReport = getLatestFinanceReport(game);
+  const pressureLabel = getFinancePressureLabel(game.money, latestFinanceReport?.profitLoss ?? 0);
+  const isPleWeek = currentShow.showType === "ple";
+  const weeklyDecisionPressure = getWeeklyDecisionPressureSnapshot(game, latestResult);
+  const pleBuildPressure = getPleBuildPressureSnapshot(game, validShowSegments);
+  const livingWorldPressure = getLivingWorldPressureSnapshot(game, lastShow);
+  const brandPulseSnapshot = getBrandPulseSnapshot(game, latestResult);
+  const rivalBrands = game.rivalBrands?.length ? game.rivalBrands : createRivalBrandUniverse(game.rivalGMAssignments);
+  const latestSocialPost = game.socialPosts[game.socialPosts.length - 1];
+  const financePresenceRead = getFinancePresenceRead(game.money, pressureLabel, latestFinanceReport);
+  const rosterPressureTags = game.wrestlers.flatMap((wrestler) => getRosterPressureTags(wrestler, game.currentWeek));
+  const rosterPressureCount = (tag: RosterPressureTag) => rosterPressureTags.filter((item) => item === tag).length;
+  const overusedCount = rosterPressureCount("Overused");
+  const underusedCount = rosterPressureCount("Underused");
+  const protectedStarCount = rosterPressureCount("Protected Star");
+  const moraleRiskCount = rosterPressureCount("Morale Risk");
+  const injuryRiskCount = rosterPressureCount("Injury Risk");
+  const minorInjuryCount = rosterPressureCount("Minor Injury");
+  const unavailableCount = rosterPressureCount("Unavailable");
+  const topOverused = getTopOverusedWrestler(game.wrestlers);
+  const topUnderused = getTopUnderusedWrestler(game.wrestlers, game.currentWeek);
+  const topMomentumTalent = [...game.wrestlers].sort((a, b) => b.momentum + b.popularity - (a.momentum + a.popularity))[0];
+  const hotTalent = [...game.wrestlers].sort((a, b) => b.momentum + b.popularity - (a.momentum + a.popularity)).slice(0, 4);
+  const atRisk = [...game.wrestlers].sort((a, b) => b.fatigue + (100 - b.morale) - (a.fatigue + (100 - a.morale))).slice(0, 4);
+  const currentShowLabel = isPleWeek ? "Major Event" : getShowTypeLabel(currentShow.showType);
+  const nextPleLabel = nextPle ? (weeksUntilPle === 0 ? "PLE Week" : `${weeksUntilPle} Week${weeksUntilPle === 1 ? "" : "s"} To ${nextPle.showName}`) : "Season End";
 
   return (
-    <main className="app-shell">
+    <main className="app-shell dashboard-command-shell">
       <Header game={game} />
       <GameNav currentScreen="dashboard" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
-      <section className="dashboard-hero">
-        <div>
-          <p className="eyebrow">Season {game.seasonNumber} · Week {game.currentWeek} Dashboard</p>
-          <h2>{game.brandName}</h2>
-          <div className="identity-strip">
-            <span>GM {game.gmName}</span>
-            <span>{game.gmStyle}</span>
-            <span>{game.brandStyle}</span>
-          </div>
-          <p className="lede">
-            {isPleWeek
-              ? `${currentShow.showName} is the season's major-event pulse. This is the room you set up to define this card's legacy.`
-              : `${currentShow.showName} is a ${getShowTypeLabel(currentShow.showType)} stop${currentShow.isGoHome ? " and the last live wire before the next PLE." : " on the road to the next major event."}`}
-          </p>
-        </div>
-        <button className="primary-action" onClick={() => onNavigate("booking")}>
-          Book Show
-        </button>
-      </section>
-
-      <section className="command-grid">
-        <article className="command-panel show-panel">
-          <div className="section-heading">
-            <p className="eyebrow">This Week's Show</p>
-            <h3>{currentShow.showName}</h3>
-          </div>
-          <div className="show-strip">
-            <span>{isPleWeek ? "Major Event" : getShowTypeLabel(currentShow.showType)}</span>
-            {currentShow.isGoHome ? <span>Go-Home</span> : null}
-            {nextPle ? <span>{weeksUntilPle === 0 ? "PLE Week" : `${weeksUntilPle} Week${weeksUntilPle === 1 ? "" : "s"} To ${nextPle.showName}`}</span> : null}
-          </div>
-          {game.currentShow.length ? (
-            <div className="mini-card-list">
-              {game.currentShow.map((segment, index) => (
-                <div className="mini-card" key={segment.id}>
-                  <span>
-                    Segment {index + 1} · {segment.type}
-                  </span>
-                  <strong>{getSegmentParticipantsLabel(segment, game.wrestlers)}</strong>
-                  <small>{isValidSegment(segment, game.wrestlers) ? "Ready for TV" : getSegmentValidationWarning(segment, game.wrestlers)}</small>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="empty-state compact">No card booked yet. The production board is dark.</div>
-          )}
-        </article>
-
-        <article className="command-panel next-action-panel">
-          <div className="section-heading">
-            <p className="eyebrow">Next Action</p>
-            <h3>{validSegments >= 2 ? (isPleWeek ? "Major-Event Block Live-Ready" : "Card Is Runnable") : isPleWeek ? "Build Major-Event Card" : "Book The Show"}</h3>
-          </div>
-          <p>{nextAction}</p>
-          <div className="panel-actions">
-            <button className="primary-action" onClick={() => onNavigate("booking")}>
-              {validSegments >= 2 ? "Review Card" : "Book Show"}
-            </button>
-            <button className="secondary-action" onClick={() => onNavigate("roster")}>
-              View Roster
-            </button>
-          </div>
-        </article>
-      </section>
-
-      <section className="status-grid" aria-label="Brand pulse">
-        <Metric label="Money" value={formatMoney(game.money)} />
-        <Metric label="Last Show" value={lastShow ? `${lastShow.totalScore} (${getShowGrade(lastShow.totalScore)})` : "No Result"} />
-        <Metric label="Avg Fatigue" value={`${averageFatigue}`} detail={averageFatigue >= 45 ? "Training room is busy" : "Load is controlled"} />
-        <Metric label="Top Momentum" value={`${topMomentumTalent.momentum}`} detail={topMomentumTalent.name} />
-      </section>
-
-      <WeeklyDecisionPressurePanel snapshot={weeklyDecisionPressure} />
-
-      <PleBuildPressurePanel snapshot={pleBuildPressure} />
-
-      <RivalBrandUniversePanel className="command-panel rival-universe-dashboard" rivalBrands={rivalBrands} title="Competitive Landscape" />
-
-      {brandPulseSnapshot ? <BrandPulsePanel snapshot={brandPulseSnapshot} /> : null}
-
-      <section className="command-panel roster-pressure-panel">
-        <div className="section-heading">
-          <p className="eyebrow">Roster Pressure</p>
-          <h3>Locker Room Load</h3>
-        </div>
-        <div className="pressure-tags">
-          <span>Overused {overusedCount}</span>
-          <span>Underused {underusedCount}</span>
-          <span>Protected Star {protectedStarCount}</span>
-          <span>Morale Risk {moraleRiskCount}</span>
-          <span>Injury Risk {injuryRiskCount}</span>
-          <span>Minor Injury {minorInjuryCount}</span>
-          <span>Unavailable {unavailableCount}</span>
-        </div>
-        <div className="spotlight-grid">
-          <Metric
-            label="Top Overused"
-            value={topOverused ? topOverused.name : "None"}
-            detail={topOverused ? `Fat ${topOverused.fatigue} · Streak ${topOverused.consecutiveWeeksBooked ?? 0}` : "No workload spike"}
-          />
-          <Metric
-            label="Top Underused"
-            value={topUnderused ? topUnderused.name : "None"}
-            detail={topUnderused ? `${getWeeksSinceLastBooked(topUnderused, game.currentWeek)} weeks off TV` : "No long absences"}
-          />
-          <Metric label="Morale Risk" value={`${moraleRiskCount}`} detail={moraleRiskCount ? "Room needs care" : "Room is steady"} />
-          <Metric label="Injury Risk" value={`${injuryRiskCount}`} detail={injuryRiskCount ? "Protect the load" : "No red flags"} />
-          <Metric label="Minor Injuries" value={`${minorInjuryCount}`} detail={minorInjuryCount ? "Work light" : "None"} />
-          <Metric label="Unavailable" value={`${unavailableCount}`} detail={unavailableCount ? "Major injuries blocked" : "Full roster available"} />
-        </div>
-        {latestRecoveryNotes.length ? (
-          <div className="fallout-grid compact-grid">
-            {latestRecoveryNotes.map((note) => (
-              <div key={`${note.wrestlerId}-${note.weekNumber}`}>
-                <span>Recovery</span>
-                <p>{note.note}</p>
+      <section className="dashboard-command-room" aria-label="Brand HQ command center">
+        <section className={`dashboard-focus-workspace ${isPleWeek ? "ple-panel" : ""}`} aria-label="Current focus workspace">
+          <article className="dashboard-focus-primary">
+            <div>
+              <p className="eyebrow">Season {game.seasonNumber} · Week {game.currentWeek} Brand HQ</p>
+              <h2>{currentShow.showName}</h2>
+              <div className="identity-strip">
+                <span>{game.brandName}</span>
+                <span>GM {game.gmName}</span>
+                <span>{game.gmStyle}</span>
+                <span>{game.brandStyle}</span>
               </div>
-            ))}
-          </div>
-        ) : null}
-        <button className="secondary-action" onClick={() => onNavigate("roster")}>
-          View Roster
-        </button>
-      </section>
+            </div>
+            <p className="dashboard-focus-read">
+              {isPleWeek
+                ? `${currentShow.showName} is the season's major-event pulse. This desk is for card structure, visible pressure, and what the office needs to know before booking.`
+                : `${currentShow.showName} is a ${currentShowLabel} stop${currentShow.isGoHome ? " and the last live wire before the next PLE." : " on the road to the next major event."}`}
+            </p>
+            <div className="dashboard-focus-metrics" aria-label="Current brand status">
+              <Metric label="Money" value={formatMoney(game.money)} />
+              <Metric label="Last Show" value={lastShow ? `${lastShow.totalScore} (${getShowGrade(lastShow.totalScore)})` : "No Result"} />
+              <Metric label="Avg Fatigue" value={`${averageFatigue}`} detail={averageFatigue >= 45 ? "Training room is busy" : "Load is controlled"} />
+              <Metric label="Top Momentum" value={topMomentumTalent ? `${topMomentumTalent.momentum}` : "No Roster"} detail={topMomentumTalent?.name} />
+            </div>
+          </article>
 
-      <section className={`command-panel finance-spotlight pressure-${pressureLabel.toLowerCase()}`}>
-        <div className="section-heading">
-          <p className="eyebrow">Brand Pressure</p>
-          <h3>{formatPressureLabel(pressureLabel)}</h3>
-        </div>
-        <div className="spotlight-grid">
-          <Metric label="Current Money" value={formatMoney(game.money)} />
-          <Metric label="Latest P/L" value={latestFinanceReport ? formatMoney(latestFinanceReport.profitLoss) : "No Report"} />
-          <Metric label="Latest Gate" value={latestFinanceReport ? latestFinanceReport.attendance.toLocaleString() : "No Show"} detail={latestFinanceReport?.showName} />
-        </div>
-        <p className="social-preview-text">{financePresenceRead}</p>
-        <button className="secondary-action" onClick={() => onNavigate("finance")}>
-          View Finance
-        </button>
-      </section>
+          <aside className="dashboard-next-show-panel" aria-label="Next show action">
+            <div>
+              <p className="eyebrow">Selected Focus</p>
+              <h3>{validSegments >= 2 ? (isPleWeek ? "Major-Event Block Live-Ready" : "Card Is Runnable") : isPleWeek ? "Build Major-Event Card" : "Book The Show"}</h3>
+            </div>
+            <div className="dashboard-readiness-stack">
+              <span>{currentShowLabel}</span>
+              {currentShow.isGoHome ? <span>Go-Home</span> : null}
+              <span>{nextPleLabel}</span>
+              <span>{validSegments} Ready / {invalidSegments} Flagged</span>
+            </div>
+            <p>{nextAction}</p>
+            <div className="dashboard-action-bar">
+              <button className="primary-action" onClick={() => onNavigate("booking")}>
+                {validSegments >= 2 ? "Review Card" : "Book Show"}
+              </button>
+              <button className="secondary-action" onClick={() => onNavigate("calendar")}>
+                Calendar
+              </button>
+            </div>
+          </aside>
+        </section>
 
-      <section className={`command-panel calendar-spotlight ${currentShow.showType === "ple" ? "ple-panel" : ""}`}>
-        <div className="section-heading">
-          <p className="eyebrow">Road To PLE</p>
-          <h3>{nextPle ? nextPle.showName : "Season Complete"}</h3>
-        </div>
-        <div className="spotlight-grid">
-          <Metric label="Current Show" value={currentShow.showName} detail={getShowTypeLabel(currentShow.showType)} />
-          <Metric
-            label="Next PLE"
-            value={nextPle ? nextPle.showName : "None"}
-            detail={nextPle ? `${weeksUntilPle} week${weeksUntilPle === 1 ? "" : "s"} away` : "Finish season review"}
-          />
-          <Metric label="Go-Home" value={currentShow.isGoHome ? "Tonight" : "No"} detail={currentShow.isGoHome ? "Final push before PLE" : "Build the road"} />
-        </div>
-        <button className="secondary-action" onClick={() => onNavigate("calendar")}>
-          View Calendar
-        </button>
-      </section>
+        <section className="dashboard-board-grid" aria-label="Brand HQ boards">
+          <article className="command-panel dashboard-board-panel show-panel">
+            <div className="section-heading">
+              <p className="eyebrow">Current Card</p>
+              <h3>{currentShow.showName}</h3>
+            </div>
+            <div className="show-strip">
+              <span>{currentShowLabel}</span>
+              {currentShow.isGoHome ? <span>Go-Home</span> : null}
+              <span>{nextPleLabel}</span>
+            </div>
+            <div className="dashboard-panel-scroll">
+              {game.currentShow.length ? (
+                <div className="mini-card-list">
+                  {game.currentShow.map((segment, index) => (
+                    <div className="mini-card" key={segment.id}>
+                      <span>
+                        Segment {index + 1} · {segment.type}
+                      </span>
+                      <strong>{getSegmentParticipantsLabel(segment, game.wrestlers)}</strong>
+                      <small>{isValidSegment(segment, game.wrestlers) ? "Ready for TV" : getSegmentValidationWarning(segment, game.wrestlers)}</small>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state compact">No card booked yet. The production board is dark.</div>
+              )}
+            </div>
+          </article>
 
-      <section className="command-panel championship-spotlight">
-        <div className="section-heading">
-          <p className="eyebrow">Championship Spotlight</p>
-          <h3>{topChampionship?.name ?? "No Titles"}</h3>
-        </div>
-        <div className="spotlight-grid">
-          <Metric label="Pressure" value={topTitlePressure?.primary.label ?? "No Read"} detail={topTitlePressure?.primary.detail} />
-          <Metric label="Champion" value={topChampionship ? getWrestlerNames(topChampionship.championIds, game.wrestlers) : "None"} />
-          <Metric label="Top Contenders" value={topTitleContenders.map((wrestler) => wrestler.name).join(" / ") || "No clear lane"} />
-        </div>
-        {tagChampionshipSnapshot && tagDivisionAttention ? (
-          <p className="title-pressure-dashboard">
-            Tag division attention: {tagDivisionAttention.label} · {tagDivisionAttention.detail}
-          </p>
-        ) : null}
-        {topTitlePressure ? <p className="title-pressure-dashboard">{topTitlePressure.divisionHealth}</p> : null}
-        <button className="secondary-action" onClick={() => onNavigate("championships")}>
-          View Championships
-        </button>
-      </section>
+          <article className="command-panel dashboard-board-panel dashboard-brief-panel">
+            <div className="section-heading">
+              <p className="eyebrow">GM Desk Brief</p>
+              <h3>{weeklyDecisionPressure.headline}</h3>
+            </div>
+            <p className="dashboard-panel-read">{weeklyDecisionPressure.detail}</p>
+            <div className="dashboard-panel-scroll">
+              <div className="dashboard-brief-list">
+                {weeklyDecisionPressure.items.map((item) => (
+                  <div className={`dashboard-brief-item tone-${item.tone}`} key={item.id}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                    <small>{item.detail}</small>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </article>
 
-      <section className="command-panel rivalry-spotlight">
-        <div className="section-heading">
-          <p className="eyebrow">Rivalry Timing</p>
-          <h3>{focusRivalryTiming ? focusRivalryTiming.rivalry.name : "No Active Rivalries"}</h3>
-        </div>
-        {focusRivalryTiming ? (
-          <div className="spotlight-grid">
-            <Metric label="Timing" value={focusRivalryTiming.snapshot.primary.label} detail={focusRivalryTiming.snapshot.primary.detail} />
-            <Metric label="Heat" value={`${focusRivalryTiming.rivalry.heat}`} detail={formatRivalryStatus(focusRivalryTiming.rivalry.status)} />
-            <Metric label="PLE Window" value={focusRivalryTiming.snapshot.weeksUntilPle === 0 ? "This Week" : formatWeekCount(focusRivalryTiming.snapshot.weeksUntilPle)} detail={focusRivalryTiming.snapshot.timingRead} />
-          </div>
-        ) : (
-          <div className="empty-state compact">No rivalries are active. Start one to give weekly TV more story context.</div>
-        )}
-        {focusRivalryTiming ? <p className="rivalry-timing-dashboard">{focusRivalryTiming.snapshot.producerRead}</p> : null}
-        <button className="secondary-action" onClick={() => onNavigate("rivalries")}>
-          View Rivalries
-        </button>
-      </section>
+          <article className="command-panel dashboard-board-panel dashboard-pressure-panel">
+            <div className="section-heading">
+              <p className="eyebrow">Risk / Opportunity Board</p>
+              <h3>Roster, Titles, Rivalries</h3>
+            </div>
+            <div className="dashboard-pressure-tags">
+              <span>Overused {overusedCount}</span>
+              <span>Underused {underusedCount}</span>
+              <span>Protected {protectedStarCount}</span>
+              <span>Morale {moraleRiskCount}</span>
+              <span>Injury {injuryRiskCount}</span>
+              <span>Minor {minorInjuryCount}</span>
+              <span>Out {unavailableCount}</span>
+            </div>
+            <div className="dashboard-panel-scroll">
+              <div className="dashboard-context-stack">
+                <div>
+                  <span>Locker Room Load</span>
+                  <strong>{topOverused ? topOverused.name : topUnderused ? topUnderused.name : "Stable Room"}</strong>
+                  <small>
+                    {topOverused
+                      ? `Fatigue ${topOverused.fatigue} · streak ${topOverused.consecutiveWeeksBooked ?? 0}`
+                      : topUnderused
+                        ? `${formatWeekCount(getWeeksSinceLastBooked(topUnderused, game.currentWeek))} off TV`
+                        : "No major workload spike"}
+                  </small>
+                </div>
+                <div>
+                  <span>Championship Desk</span>
+                  <strong>{topChampionship?.name ?? "No Titles"}</strong>
+                  <small>
+                    {topChampionship ? `${getWrestlerNames(topChampionship.championIds, game.wrestlers)} · ${topTitlePressure?.primary.label ?? "No scene read"}` : "No title scene available"}
+                  </small>
+                </div>
+                <div>
+                  <span>Contender Lane</span>
+                  <strong>{topTitleContenders.map((wrestler) => wrestler.name).join(" / ") || "No Clear Lane"}</strong>
+                  <small>{tagChampionshipSnapshot && tagDivisionAttention ? `${tagDivisionAttention.label} · ${tagDivisionAttention.detail}` : topTitlePressure?.divisionHealth ?? "Title context is quiet"}</small>
+                </div>
+                <div>
+                  <span>Rivalry Timing</span>
+                  <strong>{focusRivalryTiming ? focusRivalryTiming.rivalry.name : "No Active Rivalries"}</strong>
+                  <small>{focusRivalryTiming ? `${focusRivalryTiming.snapshot.primary.label} · Heat ${focusRivalryTiming.rivalry.heat}` : "Start one to give weekly TV more story context"}</small>
+                </div>
+                <div>
+                  <span>Hot Talent</span>
+                  <strong>{hotTalent.map((wrestler) => wrestler.name).join(" / ") || "No Roster"}</strong>
+                  <small>Momentum and popularity leaders for current-state reads.</small>
+                </div>
+                <div>
+                  <span>Protection Watch</span>
+                  <strong>{atRisk.map((wrestler) => wrestler.name).join(" / ") || "No Risk"}</strong>
+                  <small>Fatigue and morale pressure only; no injury outcome is being predicted.</small>
+                </div>
+              </div>
+            </div>
+          </article>
 
-      {latestSocialPost ? (
-        <section className="command-panel social-spotlight">
-          <div className="section-heading">
-            <p className="eyebrow">IWC Buzz</p>
-            <h3>{formatSocialCategory(latestSocialPost.category)}</h3>
-          </div>
-          <p className="social-preview-text">{latestSocialPost.text}</p>
-          <div className="show-strip">
-            <span>{latestSocialPost.author}</span>
-            <span>{formatSocialTone(latestSocialPost.tone)}</span>
-          </div>
+          <article className={`command-panel dashboard-board-panel dashboard-world-panel pressure-${pressureLabel.toLowerCase()}`}>
+            <div className="section-heading">
+              <p className="eyebrow">World / Office Pulse</p>
+              <h3>{brandPulseSnapshot?.headline ?? livingWorldPressure.headline}</h3>
+            </div>
+            <p className="dashboard-panel-read">{brandPulseSnapshot?.detail ?? livingWorldPressure.weekRead}</p>
+            <div className="dashboard-panel-scroll">
+              <div className="dashboard-context-stack">
+                <div>
+                  <span>Brand Office</span>
+                  <strong>{formatPressureLabel(pressureLabel)}</strong>
+                  <small>{financePresenceRead}</small>
+                </div>
+                <div>
+                  <span>Latest Gate</span>
+                  <strong>{latestFinanceReport ? latestFinanceReport.attendance.toLocaleString() : "No Show"}</strong>
+                  <small>{latestFinanceReport ? `Latest P/L ${formatMoney(latestFinanceReport.profitLoss)}` : "Finance report appears after a show runs"}</small>
+                </div>
+                <div>
+                  <span>Living World</span>
+                  <strong>{livingWorldPressure.whoIsWatching}</strong>
+                  <small>{livingWorldPressure.riskRead}</small>
+                </div>
+                <div>
+                  <span>Next Move</span>
+                  <strong>{livingWorldPressure.nextAction}</strong>
+                  <small>{livingWorldPressure.items[0]?.detail ?? "Current-state pressure only"}</small>
+                </div>
+                <div>
+                  <span>Rival Landscape</span>
+                  <strong>{rivalBrands.length} Chairs</strong>
+                  <small>{getRivalUniverseRead(rivalBrands)}</small>
+                </div>
+                <div>
+                  <span>PLE Build</span>
+                  <strong>{pleBuildPressure.phaseLabel}</strong>
+                  <small>{pleBuildPressure.detail}</small>
+                </div>
+                {latestSocialPost ? (
+                  <div>
+                    <span>IWC Buzz</span>
+                    <strong>{formatSocialCategory(latestSocialPost.category)}</strong>
+                    <small>{latestSocialPost.text} · {formatSocialTone(latestSocialPost.tone)}</small>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section className="dashboard-bottom-rail" aria-label="Brand HQ quick navigation">
+          <span>{game.brandName} Control Room</span>
+          <button className="secondary-action" onClick={() => onNavigate("roster")}>
+            Roster
+          </button>
+          <button className="secondary-action" onClick={() => onNavigate("championships")}>
+            Championships
+          </button>
+          <button className="secondary-action" onClick={() => onNavigate("rivalries")}>
+            Rivalries
+          </button>
           <button className="secondary-action" onClick={() => onNavigate("social")}>
-            View Social
+            Social
+          </button>
+          <button className="secondary-action" onClick={() => onNavigate("finance")}>
+            Finance
+          </button>
+          <button className="primary-action" onClick={() => onNavigate("booking")}>
+            {validSegments >= 2 ? "Review Card" : "Book Show"}
           </button>
         </section>
-      ) : null}
-
-      <section className="command-grid">
-        <article className="command-panel">
-          <div className="section-heading">
-            <p className="eyebrow">Hot Talent</p>
-            <h3>Who Feels Hot</h3>
-          </div>
-          <div className="talent-list">
-            {hotTalent.map((wrestler) => (
-              <div className="talent-row" key={wrestler.id}>
-                <strong>{wrestler.name}</strong>
-                <span>
-                  Momentum {wrestler.momentum} · Popularity {wrestler.popularity}
-                </span>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="command-panel">
-          <div className="section-heading">
-            <p className="eyebrow">At Risk</p>
-            <h3>Who Needs Protection</h3>
-          </div>
-          <div className="talent-list">
-            {atRisk.map((wrestler) => (
-              <div className="talent-row warning-row" key={wrestler.id}>
-                <strong>{wrestler.name}</strong>
-                <span>
-                  Fatigue {wrestler.fatigue} · Morale {wrestler.morale}
-                </span>
-              </div>
-            ))}
-          </div>
-        </article>
-      </section>
-
-      <section className="roster-table">
-        <div className="section-heading">
-          <p className="eyebrow">Brand Pulse</p>
-          <h3>Locker Room Board</h3>
-        </div>
-        <div className="table">
-          <div className="table-row table-head">
-            <span>Name</span>
-            <span>Pop</span>
-            <span>Mom</span>
-            <span>Fat</span>
-            <span>Morale</span>
-            <span>Ring</span>
-            <span>Promo</span>
-          </div>
-          {game.wrestlers.map((wrestler) => (
-            <div className="table-row" key={wrestler.id}>
-              <strong>{wrestler.name}</strong>
-              <span>{wrestler.popularity}</span>
-              <span>{wrestler.momentum}</span>
-              <span>{wrestler.fatigue}</span>
-              <span>{wrestler.morale}</span>
-              <span>{wrestler.ringSkill}</span>
-              <span>{wrestler.promoSkill}</span>
-            </div>
-          ))}
-        </div>
       </section>
     </main>
   );
