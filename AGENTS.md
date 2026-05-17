@@ -49,6 +49,7 @@ The game currently supports:
 - Tag Division Health Diagnostics v1 with read-only, derived tag-division advisories on Championships/Booking/Dashboard and no rankings/team records/team persistence/team-level mechanics
 - Match Format Metadata Foundation v1 with centralized current segment/match format metadata
 - Booking Production Rundown / Card Shape v1 with read-only opener/middle/main-event structure, coverage, and workload context
+- Booking Production Timeline / Show Rundown Visual Pass v1 with read-only production timeline framing and run-readiness presentation on Booking
 - PLE Readiness Checklist v1 with non-spoiler major-event booking context
 - PLE Build Pressure v1 with read-only normal TV/go-home/PLE context derived from current calendar, card, roster, rivalry, and title state
 - Post-Show Cause Ledger v1 with retrospective explanation from resolved result data
@@ -217,6 +218,7 @@ Completed stabilization passes:
 - Wrestler Identity Context v1 (non-mechanical display context layer)
 - Booking Production Rundown / Card Shape v1
 - Booking Production Rundown Microcopy Cleanup v1
+- Booking Production Timeline / Show Rundown Visual Pass v1
 - Roster Identity Context v1
 - Championship Scene Context v1
 - Rivalry Story Context v1

@@ -5001,6 +5001,62 @@ h3 {
   margin: 0;
 }
 
+.production-go-command {
+  background: rgba(8, 9, 13, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 3px solid #f6c156;
+  border-radius: 8px;
+  display: grid;
+  flex: 0 1 300px;
+  gap: 7px;
+  min-width: 260px;
+  padding: 12px;
+}
+
+.production-go-command span {
+  color: #f6c156;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.production-go-command strong {
+  color: #f4f7fb;
+  font-size: 1rem;
+  line-height: 1.12;
+  text-transform: uppercase;
+}
+
+.production-go-command small {
+  color: #b9c1cf;
+  font-weight: 800;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.production-go-command button {
+  justify-self: stretch;
+}
+
+.production-go-command.command-ready {
+  border-left-color: #00a896;
+}
+
+.production-go-command.command-ready span {
+  color: #74e3d3;
+}
+
+.production-go-command.command-blocked,
+.production-go-command.command-overloaded {
+  border-left-color: #ff5361;
+}
+
+.production-go-command.command-blocked span,
+.production-go-command.command-overloaded span {
+  color: #ff9aa4;
+}
+
 .producer-rundown-panel {
   background:
     linear-gradient(135deg, rgba(216, 35, 50, 0.18), transparent 38%),
@@ -5080,6 +5136,18 @@ h3 {
   gap: 8px;
   min-width: 0;
   padding: 10px;
+  position: relative;
+}
+
+.card-spine::before {
+  background: linear-gradient(180deg, rgba(246, 193, 86, 0.64), rgba(216, 35, 50, 0.4));
+  bottom: 22px;
+  content: "";
+  left: 22px;
+  opacity: 0.4;
+  position: absolute;
+  top: 22px;
+  width: 2px;
 }
 
 .card-spine-row {
@@ -5090,12 +5158,45 @@ h3 {
   display: grid;
   gap: 6px;
   min-width: 0;
-  padding: 10px 12px;
+  padding: 10px 12px 10px 34px;
+  position: relative;
+  z-index: 1;
+}
+
+.card-spine-row::before {
+  background: #f6c156;
+  border: 2px solid #151922;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(246, 193, 86, 0.2);
+  content: "";
+  height: 10px;
+  left: 8px;
+  position: absolute;
+  top: 14px;
+  width: 10px;
 }
 
 .card-spine-row.empty-slot {
   border-left-color: rgba(127, 137, 154, 0.66);
   opacity: 0.84;
+}
+
+.card-spine-row.empty-slot::before {
+  background: #2a3040;
+  box-shadow: 0 0 0 2px rgba(127, 137, 154, 0.2);
+}
+
+.card-spine-row.spine-middle {
+  border-left-color: #f6c156;
+}
+
+.card-spine-row.spine-main-event {
+  border-left-color: #6fe2d4;
+}
+
+.card-spine-row.spine-main-event::before {
+  background: #6fe2d4;
+  box-shadow: 0 0 0 2px rgba(111, 226, 212, 0.2);
 }
 
 .card-spine-row > span,
@@ -7117,6 +7218,12 @@ h3 {
 
   .producer-rundown-head > strong {
     text-align: center;
+  }
+
+  .production-go-command {
+    flex-basis: auto;
+    min-width: 0;
+    width: 100%;
   }
 
   .producer-rundown-grid {

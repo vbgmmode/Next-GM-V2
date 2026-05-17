@@ -1161,6 +1161,92 @@ function getBookingCardStatus(segmentCount: number, invalidSegments: number, rea
   return { label: "In Production", tone: "building" };
 }
 
+type BookingCardSpineRow = {
+  emptyRead: string;
+  id: string;
+  label: string;
+  segment?: Segment;
+  tone: "opener" | "middle" | "main-event" | "empty";
+};
+
+function getBookingCardSpineRows(currentShow: Segment[]): BookingCardSpineRow[] {
+  if (currentShow.length === 0) {
+    return [
+      {
+        emptyRead: "First live-TV beat is still waiting on the board.",
+        id: "opener-empty",
+        label: "Opener",
+        tone: "opener",
+      },
+      {
+        emptyRead: "The body of the show comes online after the opening block.",
+        id: "middle-empty",
+        label: "Middle",
+        tone: "middle",
+      },
+      {
+        emptyRead: "Closing block needs a final segment before the show has a finish.",
+        id: "main-event-empty",
+        label: "Main Event",
+        tone: "main-event",
+      },
+    ];
+  }
+
+  if (currentShow.length === 1) {
+    return [
+      {
+        emptyRead: "",
+        id: "solo-block",
+        label: "Solo TV Block",
+        segment: currentShow[0],
+        tone: "opener",
+      },
+      {
+        emptyRead: "Add another valid segment to give the broadcast a second beat.",
+        id: "second-beat-empty",
+        label: "Next Beat",
+        tone: "empty",
+      },
+    ];
+  }
+
+  const middleSegments = currentShow.length > 2 ? currentShow.slice(1, -1) : [];
+
+  return [
+    {
+      emptyRead: "",
+      id: "opener",
+      label: "Opener",
+      segment: currentShow[0],
+      tone: "opener",
+    },
+    ...(middleSegments.length
+      ? middleSegments.map((segment, index) => ({
+          emptyRead: "",
+          id: `middle-${segment.id}`,
+          label: middleSegments.length === 1 ? "Middle Anchor" : `Middle ${index + 1}`,
+          segment,
+          tone: "middle" as const,
+        }))
+      : [
+          {
+            emptyRead: "Two-segment card: no dedicated middle block yet.",
+            id: "middle-empty",
+            label: "Middle",
+            tone: "empty" as const,
+          },
+        ]),
+    {
+      emptyRead: "",
+      id: "main-event",
+      label: "Main Event",
+      segment: currentShow[currentShow.length - 1],
+      tone: "main-event",
+    },
+  ];
+}
+
 function getBookingSegmentCoverageChips(segment: Segment, game: GameState) {
   const chips: string[] = [];
   const championship = segment.championshipId ? game.championships.find((title) => title.id === segment.championshipId) : undefined;
@@ -6699,36 +6785,11 @@ function BookingScreen({
     return Boolean(championship && canSegmentContestChampionship(segment, championship, game.wrestlers));
   }).length;
   const cardStatus = getBookingCardStatus(game.currentShow.length, invalidSegments, readiness);
-  const middleSegments = game.currentShow.length > 2 ? game.currentShow.slice(1, -1) : [];
-  const cardSpineRows = [
-    {
-      emptyRead: "Opening block waiting for the first TV beat.",
-      id: "opener",
-      label: "Opener",
-      segment: game.currentShow[0],
-    },
-    ...(middleSegments.length
-      ? middleSegments.map((segment, index) => ({
-          emptyRead: "",
-          id: `middle-${segment.id}`,
-          label: middleSegments.length === 1 ? "Middle" : `Middle ${index + 1}`,
-          segment,
-        }))
-      : [
-          {
-            emptyRead: game.currentShow.length ? "Interior support lane is still open." : "Middle blocks come online after the opener.",
-            id: "middle-empty",
-            label: "Middle",
-            segment: undefined,
-          },
-        ]),
-    {
-      emptyRead: "Closing block waiting for a final beat.",
-      id: "main-event",
-      label: "Main Event",
-      segment: game.currentShow.length > 1 ? game.currentShow[game.currentShow.length - 1] : undefined,
-    },
-  ];
+  const cardSpineRows = getBookingCardSpineRows(game.currentShow);
+  const runCommandTitle = readiness.canRun ? "Ready For Air" : cardStatus.tone === "empty" ? "No Rundown Yet" : "Hold The Truck";
+  const runCommandDetail = readiness.canRun
+    ? "Existing validation clears this card. Run Show remains the same action path."
+    : readiness.note;
   const mixLine = bookingSegmentTypes
     .filter((type) => segmentTypeCounts[type] > 0)
     .map((type) => `${type.replace("Backstage Angle", "Backstage").replace("Contract Signing", "Contract")}: ${segmentTypeCounts[type]}`)
@@ -6853,9 +6914,14 @@ function BookingScreen({
                 : "TV production card. Build enough show, leave room to breathe, and protect the locker room."}
           </p>
         </div>
-        <button className="primary-action" disabled={!canRunShow} onClick={onRunShow}>
-          Run Show
-        </button>
+        <div className={`production-go-command command-${readiness.tone}`} aria-label="Run show readiness">
+          <span>{runCommandTitle}</span>
+          <strong>{readiness.status}</strong>
+          <small>{runCommandDetail}</small>
+          <button className="primary-action" disabled={!canRunShow} onClick={onRunShow}>
+            Run Show
+          </button>
+        </div>
       </section>
 
       <section className="booking-controls" aria-label="Booking controls">
@@ -6896,7 +6962,7 @@ function BookingScreen({
         <div className="card-shape-layout">
           <div className="card-spine" aria-label="Card spine">
             {cardSpineRows.map((row) => (
-              <article className={`card-spine-row ${row.segment ? "" : "empty-slot"}`} key={row.id}>
+              <article className={`card-spine-row spine-${row.tone} ${row.segment ? "" : "empty-slot"}`} key={row.id}>
                 <span>{row.label}</span>
                 {row.segment ? (
                   <>
