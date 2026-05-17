@@ -203,6 +203,24 @@ type PleReadinessSnapshot = {
   mainEvent?: Segment;
 };
 
+type PleBuildPressureTone = "ready" | "steady" | "watch" | "build";
+
+type PleBuildPressureItem = {
+  id: string;
+  label: string;
+  value: string;
+  detail: string;
+  tone: PleBuildPressureTone;
+};
+
+type PleBuildPressureSnapshot = {
+  phaseLabel: string;
+  headline: string;
+  detail: string;
+  items: PleBuildPressureItem[];
+  spoilerNote: string;
+};
+
 type TitleScenePressureTone = "hot" | "steady" | "watch" | "build";
 
 type TitleScenePressureDiagnostic = {
@@ -702,6 +720,88 @@ function getBrandPulseSnapshot(game: GameState, result?: ShowResult): BrandPulse
   };
 }
 
+function getWeeklyDecisionPressureSnapshot(game: GameState, result?: ShowResult): WeeklyDecisionPressureSnapshot {
+  const currentShow = getCurrentCalendarWeek(game);
+  const nextPle = getNextPle(game.calendar, game.currentWeek);
+  const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
+  const topMomentumTalent = [...game.wrestlers].sort((a, b) => b.momentum - a.momentum)[0];
+  const topOverused = getTopOverusedWrestler(game.wrestlers);
+  const topUnderused = getTopUnderusedWrestler(game.wrestlers, game.currentWeek);
+  const injuryConcernCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus !== "healthy" || getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk")).length;
+  const focusRivalryTiming = getRivalryTimingSnapshots(game)[0];
+  const focusTitlePressure = getChampionshipPressureSnapshots(game)[0];
+  const financeReport = result ? getFinanceReportForResult(game, result) : getLatestFinanceReport(game);
+  const financePressure = getFinancePressureLabel(game.money, financeReport?.profitLoss ?? 0);
+  const calendarDetail = nextPle
+    ? weeksUntilPle === 0
+      ? `${currentShow.showName} is a PLE week. Current pressure is major-event readiness, not a forecast.`
+      : `${formatWeekCount(weeksUntilPle)} until ${nextPle.showName}. Current card work can build toward that checkpoint.`
+    : "No remaining PLE is on the current season calendar.";
+  const lastShowDetail = result
+    ? `${result.showName} closed at ${result.totalScore} (${getShowGrade(result.totalScore)}). ${result.biggestMomentumGain.name} had the biggest momentum gain.`
+    : game.showHistory.length
+      ? `${game.showHistory[game.showHistory.length - 1].showName} is the latest closed show in the save.`
+      : "No show has run yet. Week 1 pressure starts with building a coherent first card.";
+  const rosterValue = topOverused ? "Overuse" : topUnderused ? "Underuse" : injuryConcernCount ? "Availability" : "Controlled";
+  const rosterDetail = topOverused
+    ? `${topOverused.name} is the clearest workload flag at ${topOverused.fatigue} fatigue.`
+    : topUnderused
+      ? `${topUnderused.name} has been off TV for ${formatWeekCount(getWeeksSinceLastBooked(topUnderused, game.currentWeek))}.`
+      : injuryConcernCount
+        ? `${injuryConcernCount} wrestler${injuryConcernCount === 1 ? "" : "s"} carry injury or medical-risk context.`
+        : "No major roster pressure is leading the week.";
+
+  const items: WeeklyDecisionPressureItem[] = [
+    {
+      id: "last-show",
+      label: result ? "Last Show Fallout" : "Current Lead",
+      value: result ? `${result.totalScore} ${getShowGrade(result.totalScore)}` : topMomentumTalent?.name ?? "No Lead",
+      detail: lastShowDetail,
+      tone: result ? (result.totalScore >= 80 ? "strong" : result.totalScore < 62 ? "watch" : "steady") : "steady",
+    },
+    {
+      id: "roster",
+      label: "Roster Desk",
+      value: rosterValue,
+      detail: rosterDetail,
+      tone: topOverused || injuryConcernCount ? "watch" : "steady",
+    },
+    {
+      id: "rivalry",
+      label: "Story Room",
+      value: focusRivalryTiming ? focusRivalryTiming.snapshot.primary.label : "No Active Story",
+      detail: focusRivalryTiming ? `${focusRivalryTiming.rivalry.name}: ${focusRivalryTiming.snapshot.producerRead}` : "No rivalry is currently active.",
+      tone: focusRivalryTiming?.snapshot.primary.tone === "watch" || focusRivalryTiming?.snapshot.primary.tone === "build" ? "watch" : "steady",
+    },
+    {
+      id: "title",
+      label: "Title Office",
+      value: focusTitlePressure ? focusTitlePressure.snapshot.primary.label : "No Title Read",
+      detail: focusTitlePressure ? `${focusTitlePressure.championship.name}: ${focusTitlePressure.snapshot.producerRead}` : "No championship scene is available.",
+      tone: focusTitlePressure?.snapshot.primary.tone === "watch" || focusTitlePressure?.snapshot.primary.tone === "build" ? "watch" : focusTitlePressure?.snapshot.primary.tone === "hot" ? "strong" : "steady",
+    },
+    {
+      id: "calendar-finance",
+      label: "Office Clock",
+      value: financePressure,
+      detail: `${calendarDetail} ${getFinancePresenceRead(game.money, financePressure, financeReport)}`,
+      tone: financePressure === "Critical" || financePressure === "Tight" ? "watch" : "steady",
+    },
+  ];
+  const headline =
+    items.some((item) => item.tone === "watch")
+      ? "This Week Has Active Pressure"
+      : result
+        ? "Fallout Is Ready For Booking"
+        : "Week Starts Clean";
+
+  return {
+    headline,
+    detail: "Read-only staff context from current roster, rivalry, title, calendar, and finance state. It does not forecast booking outcomes.",
+    items,
+  };
+}
+
 function formatDateTime(value: string) {
   const date = new Date(value);
 
@@ -1107,6 +1207,153 @@ function getPleReadinessSnapshot(game: GameState, validShowSegments: Segment[], 
     unresolvedRivalries,
     bookedMajorStars,
     mainEvent,
+  };
+}
+
+function getBookedWrestlerIds(segments: Segment[]) {
+  return new Set(segments.flatMap((segment) => segment.participantIds));
+}
+
+function getCurrentCardTitleMatchCount(game: GameState, validShowSegments: Segment[]) {
+  return validShowSegments.filter((segment) => {
+    const championship = segment.championshipId ? game.championships.find((title) => title.id === segment.championshipId) : undefined;
+    return Boolean(championship && canSegmentContestChampionship(segment, championship, game.wrestlers));
+  }).length;
+}
+
+function formatNamesList(names: string[], fallback: string, limit = 3) {
+  if (!names.length) {
+    return fallback;
+  }
+
+  return `${names.slice(0, limit).join(" / ")}${names.length > limit ? " / more" : ""}`;
+}
+
+function getPleBuildPressureSnapshot(game: GameState, validShowSegments: Segment[] = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers))): PleBuildPressureSnapshot {
+  const calendarWeek = getCurrentCalendarWeek(game);
+  const nextPle = getNextPle(game.calendar, game.currentWeek);
+  const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
+  const phaseLabel = calendarWeek.showType === "ple" ? "PLE Week" : calendarWeek.isGoHome ? "Go-Home TV" : "Weekly TV";
+  const activeRivalries = game.rivalries.filter((rivalry) => rivalry.status !== "stale");
+  const rivalryPressure = getRivalryTimingSnapshots(game).filter(({ snapshot }) =>
+    ["payoff-overdue", "ple-ready", "needs-tv", "cooling-off"].includes(snapshot.primary.id),
+  );
+  const titlePressure = getChampionshipPressureSnapshots(game).filter(({ snapshot }) =>
+    ["defense-drought", "champion-tv", "ple-ready", "cooling-division", "needs-challenger", "tag-needs-challengers"].includes(snapshot.primary.id),
+  );
+  const bookedIds = getBookedWrestlerIds(validShowSegments);
+  const championIds = [...new Set(game.championships.flatMap((championship) => championship.championIds))];
+  const offCardChampionNames = championIds
+    .filter((id) => !bookedIds.has(id))
+    .map((id) => game.wrestlers.find((wrestler) => wrestler.id === id)?.name)
+    .filter((name): name is string => Boolean(name));
+  const pressureRivalryIds = new Set(rivalryPressure.map(({ rivalry }) => rivalry.id));
+  const representedPressureRivalries = validShowSegments.filter((segment) => segment.rivalryId && pressureRivalryIds.has(segment.rivalryId)).length;
+  const offCardRivalryNames = rivalryPressure
+    .filter(({ rivalry }) => !rivalry.participantIds.some((id) => bookedIds.has(id)))
+    .map(({ rivalry }) => rivalry.name);
+  const titleMatchCount = getCurrentCardTitleMatchCount(game, validShowSegments);
+  const titleContextCount = validShowSegments.filter((segment) => Boolean(segment.championshipId)).length;
+  const rivalryBeatCount = validShowSegments.filter((segment) => Boolean(segment.rivalryId)).length;
+  const relevantTalentIds = new Set([
+    ...championIds,
+    ...rivalryPressure.flatMap(({ rivalry }) => rivalry.participantIds),
+    ...validShowSegments.flatMap((segment) => segment.participantIds),
+  ]);
+  const availabilityConcerns = game.wrestlers.filter((wrestler) => {
+    if (!relevantTalentIds.has(wrestler.id)) {
+      return false;
+    }
+
+    const tags = getRosterPressureTags(wrestler, game.currentWeek);
+    return wrestler.injuryStatus !== "healthy" || tags.includes("Injury Risk") || tags.includes("Overused");
+  });
+  const roadDetail = nextPle
+    ? weeksUntilPle === 0
+      ? `${calendarWeek.showName} is the major-event checkpoint. The desk is reading card coverage and unresolved pressure only.`
+      : calendarWeek.isGoHome
+        ? `${calendarWeek.showName} is the final TV stop before ${nextPle.showName}.`
+        : `${formatWeekCount(weeksUntilPle)} until ${nextPle.showName}.`
+    : "No remaining PLE is on the season calendar.";
+  const activePressureCount = rivalryPressure.length + titlePressure.length + availabilityConcerns.length;
+  const headline =
+    calendarWeek.showType === "ple"
+      ? "Major-Event Pressure Is Live"
+      : calendarWeek.isGoHome
+        ? "Final Build Week"
+        : activePressureCount
+          ? "Road-To-PLE Pressure Building"
+          : "Road-To-PLE Board Stable";
+  const detail =
+    calendarWeek.showType === "ple" || calendarWeek.isGoHome
+      ? "Current stories, title scenes, and availability are close enough to the PLE window to deserve a GM desk read."
+      : "Road-to-PLE context stays in the background until timing, title pressure, rivalry pressure, or roster availability makes it worth surfacing.";
+
+  const items: PleBuildPressureItem[] = [
+    {
+      id: "phase",
+      label: "Show Phase",
+      value: phaseLabel,
+      detail: roadDetail,
+      tone: calendarWeek.showType === "ple" ? "ready" : calendarWeek.isGoHome ? "watch" : "steady",
+    },
+    {
+      id: "rivalry-pressure",
+      label: "Story Pressure",
+      value: rivalryPressure.length ? `${rivalryPressure.length} flagged` : `${activeRivalries.length} active`,
+      detail: rivalryPressure.length
+        ? formatNamesList(rivalryPressure.map(({ rivalry }) => rivalry.name), "No rivalry pressure")
+        : activeRivalries.length
+          ? "Active stories are present without an urgent timing flag."
+          : "No active rivalries are currently on the board.",
+      tone: rivalryPressure.length ? (calendarWeek.showType === "ple" || calendarWeek.isGoHome ? "watch" : "steady") : activeRivalries.length ? "steady" : "build",
+    },
+    {
+      id: "title-pressure",
+      label: "Title Office",
+      value: titlePressure.length ? `${titlePressure.length} flagged` : "Steady",
+      detail: titlePressure.length
+        ? formatNamesList(titlePressure.map(({ championship }) => championship.name), "No title pressure")
+        : "No title scene is demanding extra attention from existing history.",
+      tone: titlePressure.length ? "watch" : "steady",
+    },
+    {
+      id: "current-card",
+      label: "Current Card",
+      value: `${titleMatchCount} title / ${rivalryBeatCount} story`,
+      detail: validShowSegments.length
+        ? `${titleContextCount} title-context segment${titleContextCount === 1 ? "" : "s"} and ${representedPressureRivalries} flagged rivalry beat${representedPressureRivalries === 1 ? "" : "s"} are represented by the valid card.`
+        : "No valid card coverage yet. This reads the current rundown only after you book it.",
+      tone: validShowSegments.length && (titleMatchCount || rivalryBeatCount) ? "ready" : calendarWeek.showType === "ple" || calendarWeek.isGoHome ? "build" : "steady",
+    },
+    {
+      id: "off-card",
+      label: "Off-Card Watch",
+      value: `${offCardChampionNames.length + offCardRivalryNames.length} notes`,
+      detail:
+        offCardChampionNames.length || offCardRivalryNames.length
+          ? `${offCardChampionNames.length ? `Champions: ${formatNamesList(offCardChampionNames, "None", 2)}. ` : ""}${offCardRivalryNames.length ? `Stories: ${formatNamesList(offCardRivalryNames, "None", 2)}.` : ""}`
+          : "Current valid card has no champion or flagged-rivalry absence note.",
+      tone: offCardChampionNames.length || offCardRivalryNames.length ? "watch" : "steady",
+    },
+    {
+      id: "availability",
+      label: "Availability",
+      value: availabilityConcerns.length ? `${availabilityConcerns.length} concern${availabilityConcerns.length === 1 ? "" : "s"}` : "Clear",
+      detail: availabilityConcerns.length
+        ? formatNamesList(availabilityConcerns.map((wrestler) => wrestler.name), "No availability flags")
+        : "No injury, injury-risk, or overuse note is attached to champions, flagged stories, or the current valid card.",
+      tone: availabilityConcerns.length ? "watch" : "steady",
+    },
+  ];
+
+  return {
+    phaseLabel,
+    headline,
+    detail,
+    items,
+    spoilerNote:
+      "Read-only PLE build context. It reads existing state and current-card coverage only; it does not forecast grades, fan reaction, finances, social reaction, injuries, morale, fatigue fallout, title outcomes, or rivalry movement.",
   };
 }
 
@@ -5238,6 +5485,55 @@ function BrandPulsePanel({ compact = false, snapshot }: { compact?: boolean; sna
   );
 }
 
+function WeeklyDecisionPressurePanel({ compact = false, snapshot }: { compact?: boolean; snapshot: WeeklyDecisionPressureSnapshot }) {
+  return (
+    <section className={`weekly-pressure-panel${compact ? " compact" : ""}`} aria-label="GM desk brief">
+      <div className="weekly-pressure-head">
+        <div>
+          <p className="eyebrow">GM Desk Brief</p>
+          <h3>{snapshot.headline}</h3>
+        </div>
+        <strong>This Week's Pressure</strong>
+      </div>
+      <p className="weekly-pressure-copy">{snapshot.detail}</p>
+      <div className="weekly-pressure-grid">
+        {snapshot.items.map((item) => (
+          <article className={`weekly-pressure-item tone-${item.tone}`} key={item.id}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+            <p>{item.detail}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PleBuildPressurePanel({ compact = false, snapshot }: { compact?: boolean; snapshot: PleBuildPressureSnapshot }) {
+  return (
+    <section className={`ple-build-panel${compact ? " compact" : ""}`} aria-label="PLE build pressure">
+      <div className="ple-build-head">
+        <div>
+          <p className="eyebrow">PLE Build Pressure</p>
+          <h3>{snapshot.headline}</h3>
+        </div>
+        <strong>{snapshot.phaseLabel}</strong>
+      </div>
+      <p className="ple-build-copy">{snapshot.detail}</p>
+      <div className="ple-build-grid">
+        {snapshot.items.map((item) => (
+          <article className={`ple-build-item item-${item.tone}`} key={item.id}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+            <p>{item.detail}</p>
+          </article>
+        ))}
+      </div>
+      {!compact ? <p className="ple-build-note">{snapshot.spoilerNote}</p> : null}
+    </section>
+  );
+}
+
 function DraftFinanceSummary({ readout }: { readout: DraftFinanceReadout }) {
   const pressureClass = readout.pressureLabel.toLowerCase().replace(/\s+/g, "-");
 
@@ -5423,6 +5719,8 @@ function DashboardScreen({
   const latestRecoveryNotes = game.injuryRecoveryNotes.filter((note) => note.weekNumber === game.currentWeek).slice(-3).reverse();
   const rivalBrands = game.rivalBrands ?? createRivalBrandUniverse(game.rivalGMAssignments);
   const brandPulseSnapshot = getBrandPulseSnapshot(game, lastShow);
+  const weeklyDecisionPressure = getWeeklyDecisionPressureSnapshot(game, lastShow);
+  const pleBuildPressure = getPleBuildPressureSnapshot(game);
 
   return (
     <main className="app-shell">
@@ -5499,6 +5797,10 @@ function DashboardScreen({
         <Metric label="Avg Fatigue" value={`${averageFatigue}`} detail={averageFatigue >= 45 ? "Training room is busy" : "Load is controlled"} />
         <Metric label="Top Momentum" value={`${topMomentumTalent.momentum}`} detail={topMomentumTalent.name} />
       </section>
+
+      <WeeklyDecisionPressurePanel snapshot={weeklyDecisionPressure} />
+
+      <PleBuildPressurePanel snapshot={pleBuildPressure} />
 
       <RivalBrandUniversePanel className="command-panel rival-universe-dashboard" rivalBrands={rivalBrands} title="Competitive Landscape" />
 
@@ -5756,6 +6058,7 @@ function BookingScreen({
   const readiness = getShowReadiness(validSegments, invalidSegments, validRuntimeMinutes);
   const broadcastRisk = getBroadcastRuntimeRisk(validRuntimeMinutes);
   const pleReadiness = getPleReadinessSnapshot(game, validShowSegments, calendarWeek);
+  const pleBuildPressure = getPleBuildPressureSnapshot(game, validShowSegments);
   const canRunShow = readiness.canRun;
   const composerSegment = game.currentShow.find((segment) => segment.id === composerSegmentId);
   const latestFinanceReport = getLatestFinanceReport(game);
@@ -5938,6 +6241,8 @@ function BookingScreen({
         <p>{bookingFinanceRead}</p>
         {calendarWeek.showType === "ple" ? <p>{`PLE context: ${isPleShow && pleReadiness ? "Current card support for a major push." : "No card context lock yet."}`}</p> : null}
       </section>
+
+      <PleBuildPressurePanel compact snapshot={pleBuildPressure} />
 
       <section className="producer-rundown-panel" aria-label="Producer rundown">
         <div className="producer-rundown-head">
@@ -7273,6 +7578,7 @@ function CalendarScreen({
   const nextPle = getNextPle(game.calendar, game.currentWeek);
   const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
   const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
+  const pleBuildPressure = getPleBuildPressureSnapshot(game);
 
   function getWeekResult(week: CalendarWeek) {
     return game.showHistory.find(
@@ -7301,6 +7607,8 @@ function CalendarScreen({
           Book Show
         </button>
       </section>
+
+      <PleBuildPressurePanel snapshot={pleBuildPressure} />
 
       <section className="calendar-list" aria-label="Season calendar">
         {game.calendar.map((week) => {
@@ -7814,6 +8122,7 @@ function WeekReviewScreen({
   const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= result.week + 1 && !week.completed);
   const weeksUntilNextPle = nextPle ? Math.max(0, nextPle.weekNumber - result.week) : 0;
   const brandPulseSnapshot = getBrandPulseSnapshot(game, result);
+  const weeklyDecisionPressure = getWeeklyDecisionPressureSnapshot(game, result);
   const isPleResult = result.showType === "ple";
   const pleAftermathNote = isPleResult
     ? `${result.showName} was a major event. This review is the full fallout layer, not a pre-show forecast.`
@@ -7866,6 +8175,8 @@ function WeekReviewScreen({
         />
         <Metric label="Show" value={result.showName} detail={getShowTypeLabel(result.showType)} />
       </section>
+
+      <WeeklyDecisionPressurePanel compact snapshot={weeklyDecisionPressure} />
 
       {result.broadcastOverrunNotes?.length ? (
         <section className="broadcast-overrun-fallout" aria-label="Week review broadcast overrun">

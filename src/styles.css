@@ -813,6 +813,201 @@ button:disabled {
   text-transform: uppercase;
 }
 
+.weekly-pressure-panel {
+  background:
+    linear-gradient(135deg, rgba(216, 35, 50, 0.14), transparent 42%),
+    linear-gradient(90deg, rgba(246, 193, 86, 0.08), transparent 66%),
+    rgba(14, 17, 24, 0.94);
+  border: 1px solid rgba(246, 193, 86, 0.28);
+  border-left: 4px solid #d82332;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  margin: 0 0 18px;
+  padding: 18px;
+}
+
+.weekly-pressure-panel.compact {
+  margin-top: -12px;
+}
+
+.weekly-pressure-head {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.weekly-pressure-head h3 {
+  line-height: 1.12;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.weekly-pressure-head > strong {
+  background: rgba(246, 193, 86, 0.12);
+  border: 1px solid rgba(246, 193, 86, 0.28);
+  color: #f6c156;
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 8px 10px;
+  text-transform: uppercase;
+}
+
+.weekly-pressure-copy,
+.weekly-pressure-item p {
+  color: #b9c1cf;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.weekly-pressure-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.weekly-pressure-item {
+  background: rgba(8, 9, 13, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 3px solid rgba(185, 193, 207, 0.45);
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.weekly-pressure-item.tone-strong {
+  border-left-color: #00a896;
+}
+
+.weekly-pressure-item.tone-watch {
+  border-left-color: #f6c156;
+}
+
+.weekly-pressure-item span {
+  color: #9ea8ba;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.weekly-pressure-item strong {
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.ple-build-panel {
+  background:
+    linear-gradient(135deg, rgba(216, 35, 50, 0.16), transparent 40%),
+    linear-gradient(90deg, rgba(111, 226, 212, 0.08), transparent 68%),
+    rgba(14, 17, 24, 0.94);
+  border: 1px solid rgba(255, 83, 97, 0.3);
+  border-left: 4px solid #ff5361;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  margin: 0 0 18px;
+  padding: 18px;
+}
+
+.ple-build-panel.compact {
+  margin-bottom: 16px;
+}
+
+.ple-build-head {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.ple-build-head h3 {
+  line-height: 1.12;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ple-build-head > strong {
+  background: rgba(255, 83, 97, 0.14);
+  border: 1px solid rgba(255, 83, 97, 0.32);
+  color: #ff9aa3;
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 8px 10px;
+  text-transform: uppercase;
+}
+
+.ple-build-copy,
+.ple-build-note,
+.ple-build-item p {
+  color: #b9c1cf;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.ple-build-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.ple-build-item {
+  background: rgba(8, 9, 13, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 3px solid rgba(185, 193, 207, 0.45);
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.ple-build-item.item-ready {
+  border-left-color: #00a896;
+}
+
+.ple-build-item.item-watch {
+  border-left-color: #f6c156;
+}
+
+.ple-build-item.item-build {
+  border-left-color: #ff5361;
+}
+
+.ple-build-item span {
+  color: #ff9aa3;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.ple-build-item strong {
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.ple-build-note {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.9rem;
+  padding-top: 12px;
+}
+
 .draft-panel {
   max-width: none;
 }
@@ -4221,6 +4416,7 @@ h3 {
   .draft-stat-grid,
   .brand-pulse-grid,
   .rival-draft-notes,
+  .ple-build-grid,
   .participant-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -4329,6 +4525,8 @@ h3 {
   .rival-draft-notes,
   .draft-stat-grid,
   .draft-tools,
+  .weekly-pressure-grid,
+  .ple-build-grid,
   .title-scene-board,
   .title-pressure-deck,
   .title-desk-talent-grid,
@@ -4412,6 +4610,24 @@ h3 {
 
   .brand-pulse-head > strong {
     text-align: left;
+  }
+
+  .weekly-pressure-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .weekly-pressure-head > strong {
+    text-align: center;
+  }
+
+  .ple-build-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ple-build-head > strong {
+    text-align: center;
   }
 
   .profile-actions,
