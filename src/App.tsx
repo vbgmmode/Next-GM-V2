@@ -1394,8 +1394,9 @@ function getDraftReviewRead(wrestlers: Wrestler[]) {
       : averageRing >= averagePromo + 4
         ? "a bell-to-bell locker room"
         : "a balanced TV locker room";
+  const classTone = averageRing >= 82 && averagePromo >= 82 ? "title-ready" : averageRing >= averagePromo ? "methodical" : "high-strike";
 
-  return `This reads like ${identity} leaning ${topArchetype}, with ${topTier} depth setting the tone. You pulled from ${sourceMix} source brand${sourceMix === 1 ? "" : "s"}, so Week 1 can be framed as an open-board roster rather than a brand-restricted room.`;
+  return `This reads like ${identity} leaning ${topArchetype}, with ${topTier} depth setting the tone. You built a ${classTone} class from ${sourceMix} source brand${sourceMix === 1 ? "" : "s"}, so Week 1 is an open-board launch rather than a brand-restricted roster.`;
 }
 
 function getRosterLeader(wrestlers: Wrestler[], score: (wrestler: Wrestler) => number) {
@@ -4387,6 +4388,29 @@ function NewGameSetupScreen({
   const draftArchetypeCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.archetype);
   const draftDivisionCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.division);
   const draftSourceBrandCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.sourceBrand);
+  const picksRemaining = Math.max(0, draftPickCount - draftedWrestlers.length);
+  const draftClockRead =
+    draftedWrestlers.length === 0
+      ? `Draft floor is open. You have ${draftPickCount} clean picks to build your first locker-room direction.`
+      : draftPickCount - draftedWrestlers.length <= 2
+        ? "Final stretch. This final lane cements your Week 1 identity."
+        : `${draftedWrestlers.length + 1} of ${draftPickCount} is the next lane and ${Math.max(
+            0,
+            draftPickCount - draftedWrestlers.length,
+          )} picks remain to define the room.`;
+  const rosterClassRead = (() => {
+    if (!draftedWrestlers.length) {
+      return "No class read yet. The board is still open, and every pick sets the early identity of this campaign.";
+    }
+
+    const topDraftTier = getMostCommonDraftValue(draftTierCounts, "Balanced Tier");
+    const topDraftArchetype = getMostCommonDraftValue(draftArchetypeCounts, "Mixed Style");
+    const topDraftDivision = getMostCommonDraftValue(draftDivisionCounts, "Mixed Division");
+    return `Class profile is shaping as a ${topDraftDivision} roster with ${topDraftArchetype} emphasis and ${topDraftTier} depth.`;
+  })();
+  const bestAvailableRead = boardLeader
+    ? `Best visible file: ${boardLeader.name} · ${getDraftTag(boardLeader.sourceBrand, "Open Pool")} · ${getDraftTag(boardLeader.roleTier)} · ${getDraftTag(boardLeader.archetype)}`
+    : "No open-board lead in current filters. Clear filters to reopen the board.";
   const previewRivalBrands = createRivalBrandUniverse(rivalGMAssignments);
   const rivalDraftActivity = getRivalDraftActivitySnapshot(previewRivalBrands, draftedWrestlers.length, draftPickCount);
 
@@ -4608,18 +4632,33 @@ function NewGameSetupScreen({
         {step === "draft" ? (
           <div className="setup-panel draft-panel">
             <p className="eyebrow">Draft Night</p>
-            <h2>You're On The Clock</h2>
+            <h2>Draft War Room</h2>
             <p className="lede">
               Build the first 12-person locker room for {brandName.trim() || defaultCareer.brandName}. The Top 200 board is open across every source brand, and every pick is yours.
             </p>
             <div className="draft-war-room-strip" aria-label="Draft board status">
-              <span>{draftPool.length} Top 200 Files</span>
+              <span>{draftPickCount}-Pick Command Board</span>
               <span>{availableWrestlers.length} Showing</span>
+              <span>{picksRemaining} Picks Left</span>
               <span>{draftedWrestlers.length}/{draftPickCount} Signed</span>
               <span>{activeDraftFilters.length ? activeDraftFilters.join(" / ") : "Open Board"}</span>
             </div>
             {rivalDraftActivity ? <RivalDraftActivityPanel snapshot={rivalDraftActivity} /> : null}
             <DraftFinanceSummary readout={draftFinanceReadout} />
+            <section>
+              <div className="draft-board-note">
+                <strong>Draft Clock Read</strong>
+                <span>{draftClockRead}</span>
+              </div>
+              <div className="draft-board-note">
+                <strong>Best Available Spotlight</strong>
+                <span>{bestAvailableRead}</span>
+              </div>
+              <div className="draft-board-note">
+                <strong>Roster Identity Signal</strong>
+                <span>{rosterClassRead}</span>
+              </div>
+            </section>
             <div className="draft-board">
               <section className="draft-column">
                 <div className="draft-head">
@@ -4757,8 +4796,8 @@ function NewGameSetupScreen({
         {step === "review" ? (
           <div className="setup-panel draft-review-panel">
             <p className="eyebrow">Draft Review</p>
-            <h2>{brandName.trim() || defaultCareer.brandName} Roster</h2>
-            <p className="lede">The board is locked. Read the room before you walk into Week 1.</p>
+            <h2>{brandName.trim() || defaultCareer.brandName} Draft Debrief</h2>
+            <p className="lede">The board is locked. Run through this class read before Week 1 hits the tape.</p>
             <div className="status-grid setup-summary draft-review-summary">
               <Metric label="Franchise Player" value={topStar?.name ?? "None"} detail={topStar ? `Pop ${topStar.popularity} · Mom ${topStar.momentum}` : undefined} />
               <Metric label="Best Talker" value={bestTalker?.name ?? "None"} detail={bestTalker ? `Promo ${bestTalker.promoSkill}` : undefined} />
@@ -4771,9 +4810,10 @@ function NewGameSetupScreen({
             <section className="war-room-read" aria-label="Draft review war room read">
               <div>
                 <p className="eyebrow">War Room Read</p>
-                <h3>Locker Room Identity</h3>
+                <h3>Class Identity Recap</h3>
               </div>
               <p>{draftReviewRead}</p>
+              <p>{rosterClassRead}</p>
             </section>
             {rivalDraftActivity ? <RivalDraftActivityPanel snapshot={rivalDraftActivity} /> : null}
             <section className="draft-review-breakdown" aria-label="Drafted roster shape">
