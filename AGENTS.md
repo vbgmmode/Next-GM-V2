@@ -152,13 +152,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Season Archive / Legacy Index Planning v1
+Phase: Season Archive / Legacy Index v1 Implementation
 
 Goal:
-Define the first safe implementation lane for preserving long-form seasonal legacy memory using already-persisted history data, then execute only bounded slices when actively requested.
+Deliver the first implemented read-only Legacy Snapshot in Season Review using existing resolved season data, while preserving existing simulation and flow behavior.
 
 Current priority:
-Add season-legacy history visibility first as a read-only, context-only archive index while preserving existing match-result and fallout behavior. Defer offseason systems, contract/performance mechanics, migration changes, and formula rewrites.
+Keep Legacy Snapshot read-only and context-only. Preserve existing match-result and fallout behavior. Defer offseason mechanics, contract/performance systems, migration changes, and formula rewrites.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -193,6 +193,7 @@ Completed stabilization passes:
 - Read-Only Contract Value Profiles Planning v1
 - Read-Only Contract Value Profiles v1 (implemented)
 - Season Archive / Legacy Index Planning v1
+- Season Archive / Legacy Index v1 (implemented)
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.

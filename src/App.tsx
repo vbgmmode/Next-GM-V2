@@ -7265,8 +7265,10 @@ function SeasonReviewScreen({
   onStartNextSeason: () => void;
 }) {
   const bestShow = getBestShow(game.showHistory, game.seasonNumber);
-  const topMomentum = [...game.wrestlers].sort((a, b) => b.momentum - a.momentum)[0];
-  const mostFatigued = [...game.wrestlers].sort((a, b) => b.fatigue - a.fatigue)[0];
+  const sortedByMomentum = [...game.wrestlers].sort((a, b) => b.momentum - a.momentum);
+  const sortedByFatigue = [...game.wrestlers].sort((a, b) => b.fatigue - a.fatigue);
+  const topMomentum = sortedByMomentum[0];
+  const mostFatigued = sortedByFatigue[0];
   const hottestRivalry = getHottestRivalry(game.rivalries);
   const seasonReports = getSeasonFinanceReports(game);
   const seasonProfitLoss = game.money - game.seasonStartingMoney;
@@ -7277,6 +7279,13 @@ function SeasonReviewScreen({
   const hottestRivalryStory = getHottestRivalryStory(game);
   const mostEventfulRivalry = getMostEventfulRivalry(game);
   const notablePlePayoff = getNotablePlePayoff(game);
+  const topChampions = game.championships.filter((championship) => championship.championIds.length > 0);
+  const strongestChampionshipName = biggestTitleChange?.championshipName ?? mostDefendedChampionship?.championship.name ?? "No title movement";
+  const legacyProfitDeltaLabel = seasonProfitLoss >= 0 ? "Positive" : "Negative";
+  const legacyFinancialRead =
+    seasonReports.length > 0
+      ? `Season finance held at ${seasonReports.length} closed shows with a ${legacyProfitDeltaLabel} cash movement of ${formatMoney(seasonProfitLoss)}.`
+      : "No full-season finance ledger was captured yet.";
 
   return (
     <main className="app-shell">
@@ -7292,6 +7301,55 @@ function SeasonReviewScreen({
         </button>
       </section>
 
+      <section className="command-panel season-legacy-snapshot" aria-label="Legacy snapshot">
+        <div className="section-heading">
+          <p className="eyebrow">Legacy Snapshot</p>
+          <h3>Season Memory Card</h3>
+        </div>
+        <p className="lede legacy-snapshot-copy">No mechanics attached. This is a read-only GM ledger of what defined the year.</p>
+        <div className="spotlight-grid">
+          <Metric label="Best Show" value={bestShow ? bestShow.showName : "No show data"} detail={bestShow ? `${bestShow.totalScore} (${getShowGrade(bestShow.totalScore)})` : "Run a full season to lock first place"} />
+          <Metric label="Final Money" value={formatMoney(game.money)} detail={legacyFinancialRead} />
+          <Metric label="Season Delta" value={formatMoney(seasonProfitLoss)} detail={`From ${formatMoney(game.seasonStartingMoney)}`} />
+          <Metric
+            label="Top Momentum"
+            value={topMomentum ? topMomentum.name : "No momentum profile"}
+            detail={topMomentum ? `${topMomentum.momentum} momentum` : "No readable momentum snapshots for this save"}
+          />
+          <Metric
+            label="Most Defended Title"
+            value={mostDefendedChampionship ? mostDefendedChampionship.championship.name : "No title defenses"}
+            detail={mostDefendedChampionship ? `${mostDefendedChampionship.count} this season` : "No successful defenses recorded"}
+          />
+          <Metric
+            label="Biggest Title Change"
+            value={strongestChampionshipName}
+            detail={biggestTitleChange ? formatHistoryStamp(biggestTitleChange) : "No title changes recorded"}
+          />
+        </div>
+        <div className="spotlight-grid">
+          <Metric
+            label="Rivalry Highlight"
+            value={hottestRivalryStory ? hottestRivalryStory.name : hottestRivalry ? hottestRivalry.name : "No rivalry events"}
+            detail={hottestRivalryStory ? `${hottestRivalryStory.note}` : hottestRivalry ? `Heat ${hottestRivalry.heat}` : "No rivalry movement this season"}
+          />
+          <Metric
+            label="PLE Payoff"
+            value={notablePlePayoff ? notablePlePayoff.rivalryName : "None"}
+            detail={
+              notablePlePayoff
+                ? `${notablePlePayoff.showName}${notablePlePayoff.showType ? ` · ${getShowTypeLabel(notablePlePayoff.showType)}` : ""}`
+                : "No PLE payoff recorded"
+            }
+          />
+          <Metric
+            label="Champion Snapshot"
+            value={topChampions.length ? topChampions.length.toString() : "0"}
+            detail={topChampions.length ? `Active title holders: ${topChampions.map((championship) => `${championship.name} (${getWrestlerNames(championship.championIds, game.wrestlers)})`).join(" · ")}` : "No current title holders listed"}
+          />
+        </div>
+      </section>
+
       <section className="status-grid" aria-label="Season review">
         <Metric label="Starting Money" value={formatMoney(game.seasonStartingMoney)} />
         <Metric label="Final Money" value={formatMoney(game.money)} />
@@ -7300,8 +7358,8 @@ function SeasonReviewScreen({
       </section>
 
       <section className="status-grid" aria-label="Season roster review">
-        <Metric label="Top Momentum" value={topMomentum.name} detail={`${topMomentum.momentum}`} />
-        <Metric label="Most Fatigued" value={mostFatigued.name} detail={`${mostFatigued.fatigue}`} />
+        <Metric label="Top Momentum" value={topMomentum ? topMomentum.name : "No Momentum Data"} detail={topMomentum ? `${topMomentum.momentum}` : "No momentum snapshots available"} />
+        <Metric label="Most Fatigued" value={mostFatigued ? mostFatigued.name : "No Fatigue Data"} detail={mostFatigued ? `${mostFatigued.fatigue}` : "No fatigue snapshots available"} />
         <Metric
           label="Best Revenue"
           value={bestRevenueReport ? bestRevenueReport.showName : "No Report"}
