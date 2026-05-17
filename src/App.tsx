@@ -223,6 +223,21 @@ type TitleScenePressureSnapshot = {
   titleRivalries: Rivalry[];
 };
 
+type TitleSceneTalentRead = {
+  wrestler: Wrestler;
+  labels: string[];
+  detail: string;
+};
+
+type ChampionshipSceneDeskRead = {
+  headline: string;
+  detail: string;
+  championReads: TitleSceneTalentRead[];
+  contenderReads: TitleSceneTalentRead[];
+  recentActivityRead: string;
+  pleWindowRead: string;
+};
+
 type RivalryTimingTone = "hot" | "steady" | "watch" | "build";
 
 type RivalryTimingDiagnostic = {
@@ -242,6 +257,17 @@ type RivalryTimingSnapshot = {
   currentCardBeats: number;
   currentCardParticipants: number;
   recentlyPaidOff: boolean;
+};
+
+type RivalryParticipantRead = {
+  wrestler: Wrestler;
+  labels: string[];
+  detail: string;
+};
+
+type RivalryStoryRoomRead = {
+  headline: string;
+  detail: string;
 };
 
 type BrandPulseTone = "strong" | "steady" | "watch";
@@ -1907,6 +1933,85 @@ function getChampionshipPressureSnapshots(game: GameState) {
     );
 }
 
+function getTitleSceneTalentRead(wrestler: Wrestler, game: GameState, currentChampionshipId: string): TitleSceneTalentRead {
+  const identity = getWrestlerIdentityContext(wrestler);
+  const pressureTags = getRosterPressureTags(wrestler, game.currentWeek);
+  const otherTitleLabels = getOtherChampionshipHolderLabels(wrestler, game.championships, currentChampionshipId);
+  const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, game.currentWeek);
+  const labels = [
+    wrestler.momentum >= 70 ? "Hot" : null,
+    wrestler.momentum < 45 ? "Cold" : null,
+    wrestler.injuryStatus === "major" ? "Unavailable" : null,
+    wrestler.injuryStatus === "minor" ? "Working Hurt" : null,
+    pressureTags.includes("Overused") ? "Overused" : null,
+    pressureTags.includes("Underused") ? "Underused" : null,
+    weeksSinceLastBooked >= 2 ? "Missing TV" : null,
+    ...otherTitleLabels,
+  ].filter((label): label is string => Boolean(label));
+  const detail =
+    wrestler.injuryStatus === "major"
+      ? `${wrestler.name} is blocked by a major injury.`
+      : pressureTags.includes("Overused")
+        ? `${wrestler.name} carries ${wrestler.fatigue} fatigue and ${wrestler.consecutiveWeeksBooked ?? 0} straight week${(wrestler.consecutiveWeeksBooked ?? 0) === 1 ? "" : "s"} booked.`
+        : pressureTags.includes("Underused")
+          ? `${wrestler.name} has been off TV for ${formatWeekCount(weeksSinceLastBooked)}.`
+          : otherTitleLabels.length
+            ? `${wrestler.name} also carries ${otherTitleLabels.join(" / ")} context.`
+            : `${identity.role} · ${identity.wrestlingStyle} · ${identity.promoStyle}.`;
+
+  return {
+    wrestler,
+    labels: [...new Set(labels)].slice(0, 4),
+    detail,
+  };
+}
+
+function getChampionshipSceneDeskRead(
+  championship: Championship,
+  game: GameState,
+  scene: ReturnType<typeof getTitleDivisionScene>,
+  pressureSnapshot: TitleScenePressureSnapshot,
+): ChampionshipSceneDeskRead {
+  const latestTitleEvent = getChampionshipHistory(game, championship.id, 1)[0];
+  const nextPle = getNextPle(game.calendar, game.currentWeek);
+  const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
+  const championReads = scene.champions.map((wrestler) => getTitleSceneTalentRead(wrestler, game, championship.id));
+  const contenderReads = scene.topContenders.slice(0, isTagChampionship(championship) ? 4 : 3).map((wrestler) => getTitleSceneTalentRead(wrestler, game, championship.id));
+  const championRivalries = game.rivalries.filter(
+    (rivalry) => rivalry.status !== "stale" && rivalry.participantIds.some((id) => championship.championIds.includes(id)),
+  );
+  const recentActivityRead = latestTitleEvent
+    ? `${formatChampionshipEventType(latestTitleEvent.eventType)} at ${formatHistoryStamp(latestTitleEvent)}.`
+    : `No resolved title event yet; title clock reads ${formatWeekCount(pressureSnapshot.weeksSinceLastTitleEvent)}.`;
+  const pleWindowRead =
+    weeksUntilPle === 0
+      ? `${getCurrentCalendarWeek(game).showName} is a PLE week. Title defense pressure is visible, not automatic.`
+      : nextPle && weeksUntilPle <= 2
+        ? `${nextPle.showName} is ${formatWeekCount(weeksUntilPle)} away, so major-defense context is close if the scene supports it.`
+        : nextPle
+          ? `${nextPle.showName} is ${formatWeekCount(weeksUntilPle)} away; TV can keep the title scene warm.`
+          : "No remaining PLE window this season.";
+  const championContext = championRivalries.length
+    ? `${championRivalries[0].name} gives the champion active story context.`
+    : championReads.length
+      ? `${championReads.map((read) => read.wrestler.name).join(" / ")} currently anchors the scene without a title-specific active rivalry.`
+      : "No champion resolves from the current roster data.";
+  const contenderPressure = contenderReads.length
+    ? `${contenderReads.length} front-line contender${contenderReads.length === 1 ? "" : "s"} are visible: ${contenderReads.map((read) => read.wrestler.name).join(" / ")}.`
+    : "No front-line contender read is available for this title.";
+  const headline = `${pressureSnapshot.primary.label} · ${pressureSnapshot.divisionHealth}`;
+  const detail = `${championContext} ${contenderPressure} ${pressureSnapshot.producerRead}`;
+
+  return {
+    headline,
+    detail,
+    championReads,
+    contenderReads,
+    recentActivityRead,
+    pleWindowRead,
+  };
+}
+
 function getTitleSceneGMRead(championship: Championship, scene: ReturnType<typeof getTitleDivisionScene>) {
   if (championship.eligibleMatchScope === "tag_team") {
     return "Tag title defenses are available only as 2v2 M020 matches with the champion pair together on one side.";
@@ -2240,6 +2345,68 @@ function getRivalryTimingSnapshots(game: GameState) {
         b.rivalry.heat - a.rivalry.heat ||
         a.rivalry.name.localeCompare(b.rivalry.name),
     );
+}
+
+function getRivalryParticipantReads(rivalry: Rivalry, game: GameState): RivalryParticipantRead[] {
+  return getRivalryParticipants(rivalry, game.wrestlers).map((wrestler) => {
+    const pressureTags = getRosterPressureTags(wrestler, game.currentWeek);
+    const championships = getWrestlerChampionships(wrestler.id, game.championships);
+    const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, game.currentWeek);
+    const labels = [
+      championships.length ? "Champion" : null,
+      wrestler.injuryStatus === "major" ? "Unavailable" : null,
+      wrestler.injuryStatus === "minor" ? "Working Hurt" : null,
+      pressureTags.includes("Overused") ? "Overused" : null,
+      pressureTags.includes("Underused") ? "Underused" : null,
+      weeksSinceLastBooked >= 2 ? "Missing TV" : null,
+      wrestler.momentum >= 65 ? "Hot" : null,
+      wrestler.morale <= 45 ? "Morale Risk" : null,
+    ].filter((label): label is string => Boolean(label));
+    const detail =
+      wrestler.injuryStatus === "major"
+        ? `${wrestler.name} is blocked by a major injury.`
+        : championships.length
+          ? `${wrestler.name} carries ${championships.map((championship) => championship.name).join(" / ")} context into this feud.`
+          : pressureTags.includes("Overused")
+            ? `${wrestler.name} has ${wrestler.fatigue} fatigue and ${wrestler.consecutiveWeeksBooked ?? 0} straight week${(wrestler.consecutiveWeeksBooked ?? 0) === 1 ? "" : "s"} booked.`
+            : pressureTags.includes("Underused")
+              ? `${wrestler.name} has been off TV for ${formatWeekCount(weeksSinceLastBooked)}.`
+              : wrestler.lastBookedWeek
+                ? `${wrestler.name} last appeared in Week ${wrestler.lastBookedWeek}.`
+                : `${wrestler.name} has no recorded TV appearance this season.`;
+
+    return {
+      wrestler,
+      labels: [...new Set(labels)].slice(0, 4),
+      detail,
+    };
+  });
+}
+
+function getRivalryStoryRoomRead(
+  rivalry: Rivalry,
+  timingSnapshot: RivalryTimingSnapshot,
+  participantReads: RivalryParticipantRead[],
+  latestHistory?: RivalryHistoryEvent,
+): RivalryStoryRoomRead {
+  const participantPressure = participantReads.flatMap((read) => read.labels).filter((label) => label !== "Hot");
+  const latestActivity = latestHistory
+    ? `${formatRivalryEventType(latestHistory.eventType)} at ${formatHistoryStamp(latestHistory)}`
+    : "No recorded rivalry beat yet";
+  const temperature =
+    rivalry.heat >= 75 && rivalry.freshness >= 50
+      ? "Hot story"
+      : rivalry.freshness <= 35 || rivalry.heat < 45
+        ? "Cooling story"
+        : rivalry.heat >= 55
+          ? "Building story"
+          : "Quiet story";
+  const headline = `${temperature} · ${timingSnapshot.primary.label}`;
+  const detail = participantPressure.length
+    ? `${latestActivity}. Participant context: ${[...new Set(participantPressure)].slice(0, 4).join(" / ")}. ${timingSnapshot.producerRead}`
+    : `${latestActivity}. ${timingSnapshot.producerRead}`;
+
+  return { headline, detail };
 }
 
 function getRivalryTitleRelevance(rivalry: Rivalry, championships: Championship[], wrestlers: Wrestler[]) {
@@ -6690,6 +6857,7 @@ function ChampionshipsScreen({
           const gmRead = getTitleSceneGMRead(championship, scene);
           const isTagTitle = isTagChampionship(championship);
           const tagDivisionHealth = isTagTitle ? getTagDivisionHealthDiagnostics(championship, game) : [];
+          const titleDeskRead = getChampionshipSceneDeskRead(championship, game, scene, pressureSnapshot);
 
           return (
             <article className="championship-card" key={championship.id}>
@@ -6746,6 +6914,51 @@ function ChampionshipsScreen({
                   ))}
                 </div>
               ) : null}
+              <section className="title-desk-panel" aria-label={`${championship.name} title desk context`}>
+                <div className="title-desk-head">
+                  <div>
+                    <span>Title Desk Read</span>
+                    <strong>{titleDeskRead.headline}</strong>
+                  </div>
+                  <small>{titleDeskRead.pleWindowRead}</small>
+                </div>
+                <p>{titleDeskRead.detail}</p>
+                <div className="title-desk-talent-grid">
+                  <article>
+                    <span>Champion Context</span>
+                    {titleDeskRead.championReads.length ? (
+                      titleDeskRead.championReads.map((read) => (
+                        <div className="title-desk-talent-row" key={read.wrestler.id}>
+                          <strong>{read.wrestler.name}</strong>
+                          <small>{read.labels.length ? read.labels.join(" / ") : "Scene Anchor"}</small>
+                          <p>{read.detail}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p>No champion resolves from the current roster.</p>
+                    )}
+                  </article>
+                  <article>
+                    <span>{isTagTitle ? "Challenger Pool" : "Contender Pressure"}</span>
+                    {titleDeskRead.contenderReads.length ? (
+                      titleDeskRead.contenderReads.map((read) => (
+                        <div className="title-desk-talent-row" key={read.wrestler.id}>
+                          <strong>{read.wrestler.name}</strong>
+                          <small>{read.labels.length ? read.labels.join(" / ") : "Available"}</small>
+                          <p>{read.detail}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p>No eligible contender pressure is visible yet.</p>
+                    )}
+                  </article>
+                  <article>
+                    <span>Recent Activity</span>
+                    <strong>{titleDeskRead.recentActivityRead}</strong>
+                    <p>{pressureSnapshot.weeksSinceLastTitleEvent ? `${formatWeekCount(pressureSnapshot.weeksSinceLastTitleEvent)} since last title event.` : "Fresh title activity is visible."}</p>
+                  </article>
+                </div>
+              </section>
               <div className="title-division-builder" aria-label={`${championship.name} division builder`}>
                 <article>
                   <span>Champion</span>
@@ -6910,6 +7123,8 @@ function RivalriesScreen({
             const titleRelevance = getRivalryTitleRelevance(rivalry, game.championships, game.wrestlers);
             const rivalryBlocked = isRivalryIntergenderBlocked(rivalry, game.wrestlers);
             const timingSnapshot = getRivalryTimingSnapshot(rivalry, game);
+            const participantReads = getRivalryParticipantReads(rivalry, game);
+            const storyRoomRead = getRivalryStoryRoomRead(rivalry, timingSnapshot, participantReads, recentHistory[0]);
             const gmRead = getRivalryGMRead(rivalry, {
               hasPlePayoff: plePayoff,
               isGoHome: getCurrentCalendarWeek(game).isGoHome,
@@ -6945,6 +7160,22 @@ function RivalriesScreen({
                     </article>
                   ))}
                 </div>
+                <section className="rivalry-context-panel" aria-label={`${rivalry.name} story room context`}>
+                  <div>
+                    <span>Story Room Read</span>
+                    <strong>{storyRoomRead.headline}</strong>
+                    <p>{storyRoomRead.detail}</p>
+                  </div>
+                  <div className="rivalry-participant-read-grid">
+                    {participantReads.map((read) => (
+                      <article key={read.wrestler.id}>
+                        <span>{read.wrestler.name}</span>
+                        <strong>{read.labels.length ? read.labels.join(" / ") : "Available"}</strong>
+                        <p>{read.detail}</p>
+                      </article>
+                    ))}
+                  </div>
+                </section>
                 <div className="rivalry-story-map">
                   <article>
                     <span>Storyline</span>

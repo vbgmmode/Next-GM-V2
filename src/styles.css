@@ -2236,6 +2236,83 @@ h3 {
   padding-left: 10px;
 }
 
+.title-desk-panel {
+  background:
+    linear-gradient(90deg, rgba(246, 193, 86, 0.13), transparent 50%),
+    rgba(8, 9, 13, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 3px solid #f6c156;
+  border-radius: 6px;
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.title-desk-head {
+  align-items: start;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+}
+
+.title-desk-head > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.title-desk-panel span,
+.title-desk-head small,
+.title-desk-talent-grid > article > span,
+.title-desk-talent-row small {
+  color: #f6c156;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.title-desk-panel strong {
+  color: #f4f7fb;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.title-desk-panel p {
+  color: #b9c1cf;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.title-desk-talent-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.title-desk-talent-grid > article {
+  background: rgba(14, 17, 24, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.title-desk-talent-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: grid;
+  gap: 4px;
+  padding-top: 8px;
+}
+
+.title-desk-talent-row:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
 .rivalry-timing-dashboard {
   border-left: 3px solid #6fe2d4;
   color: #b9c1cf;
@@ -2403,6 +2480,63 @@ h3 {
   line-height: 1.2;
   overflow-wrap: anywhere;
   text-transform: uppercase;
+}
+
+.rivalry-context-panel {
+  background:
+    linear-gradient(90deg, rgba(216, 35, 50, 0.12), transparent 48%),
+    rgba(8, 9, 13, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 3px solid #d82332;
+  border-radius: 6px;
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.rivalry-context-panel > div:first-child {
+  display: grid;
+  gap: 6px;
+}
+
+.rivalry-context-panel span,
+.rivalry-participant-read-grid span {
+  color: #ff9aa3;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.rivalry-context-panel strong,
+.rivalry-participant-read-grid strong {
+  color: #f4f7fb;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.rivalry-context-panel p,
+.rivalry-participant-read-grid p {
+  color: #b9c1cf;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.rivalry-participant-read-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.rivalry-participant-read-grid article {
+  background: rgba(14, 17, 24, 0.74);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
 }
 
 .rivalry-story-map p,
@@ -4197,7 +4331,9 @@ h3 {
   .draft-tools,
   .title-scene-board,
   .title-pressure-deck,
+  .title-desk-talent-grid,
   .rivalry-timing-board,
+  .rivalry-participant-read-grid,
   .title-division-builder {
     grid-template-columns: 1fr;
   }
