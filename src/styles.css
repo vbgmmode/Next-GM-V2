@@ -1593,6 +1593,16 @@ h3 {
   text-transform: uppercase;
 }
 
+.pressure-tags .value-tier-chip {
+  border-color: rgba(111, 226, 212, 0.34);
+  color: #6fe2d4;
+}
+
+.pressure-tags .value-tier-chip-missing {
+  border-style: dashed;
+  color: #9ea8ba;
+}
+
 .affiliation-strip {
   display: flex;
   flex-wrap: wrap;

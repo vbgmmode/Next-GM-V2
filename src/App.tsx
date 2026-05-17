@@ -7456,6 +7456,7 @@ function WrestlerCard({
   const pressureTags = getRosterPressureTags(wrestler, currentWeek);
   const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, currentWeek);
   const affiliations = rosterAffiliations.filter((affiliation) => affiliation.memberWrestlerIds.includes(wrestler.id));
+  const valueProfile = getWrestlerValueProfile(wrestler);
 
   return (
     <article className={`wrestler-card status-${status.toLowerCase()}`}>
@@ -7472,6 +7473,9 @@ function WrestlerCard({
         </div>
       </div>
       <div className="pressure-tags">
+        <span className={`value-tier-chip ${valueProfile.contextMode === "missing" ? "value-tier-chip-missing" : ""}`}>
+          {valueProfile.valueTierLabel}
+        </span>
         {pressureTags.length ? pressureTags.map((tag) => <span key={tag}>{tag}</span>) : <span>Balanced</span>}
       </div>
       {affiliations.length ? (

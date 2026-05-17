@@ -152,13 +152,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Season Archive / Legacy Index v1 Implementation
+Phase: Roster Value-Tier Hints v1 Implementation
 
 Goal:
-Deliver the first implemented read-only Legacy Snapshot in Season Review using existing resolved season data, while preserving existing simulation and flow behavior.
+Surface compact read-only value-tier context on Roster cards by reusing the existing Wrestler Profile Contract Value Dossier derivation.
 
 Current priority:
-Keep Legacy Snapshot read-only and context-only. Preserve existing match-result and fallout behavior. Defer offseason mechanics, contract/performance systems, migration changes, and formula rewrites.
+Keep roster value hints read-only and compact. Preserve existing match-result, fallout, finance, booking, persistence, and formula behavior. Defer all contract, payroll, roster-limit, and availability mechanics.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -194,6 +194,7 @@ Completed stabilization passes:
 - Read-Only Contract Value Profiles v1 (implemented)
 - Season Archive / Legacy Index Planning v1
 - Season Archive / Legacy Index v1 (implemented)
+- Roster Value-Tier Hints v1 (implemented)
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
