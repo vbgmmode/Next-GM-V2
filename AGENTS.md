@@ -152,13 +152,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Read-Only Contract Value Profiles v1 Implementation
+Phase: Season Archive / Legacy Index Planning v1
 
 Goal:
-Implement the first delivery slice for read-only contract/value context on Wrestler Profile so players get roster-dossier guidance without contract/payout mechanics.
+Define the first safe implementation lane for preserving long-form seasonal legacy memory using already-persisted history data, then execute only bounded slices when actively requested.
 
 Current priority:
-Keep this slice profile-only and read-only. Preserve existing match-result and fallout behavior. Do not add contract mechanics, payroll enforcement, state migration, or formula changes.
+Add season-legacy history visibility first as a read-only, context-only archive index while preserving existing match-result and fallout behavior. Defer offseason systems, contract/performance mechanics, migration changes, and formula rewrites.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -192,10 +192,11 @@ Completed stabilization passes:
 - Stipulation Metadata v1 (implemented)
 - Read-Only Contract Value Profiles Planning v1
 - Read-Only Contract Value Profiles v1 (implemented)
+- Season Archive / Legacy Index Planning v1
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
-- Treat read-only contract/value context as the delivered profile slice; defer payroll/contract mechanics to future tickets.
+- Treat season legacy as read-only narrative continuity first; defer payroll/contract mechanics and offseason systems to future tickets.
 - Data expansion should remain planning-only until a bounded implementation ticket is accepted.
 - Before content expansion, define the data category, maximum safe content size, allowed files, migration or fallback needs, and required smoke checks.
 - Future restricted draft modes must be explicit, optional, and requested by an active ticket.
