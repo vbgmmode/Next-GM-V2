@@ -152,13 +152,13 @@ The loop must remain playable after every change.
 - Finance should be clear, gamey, and decision-focused.
 
 ## Current Phase
-Phase: Stipulation Metadata v1 Implementation
+Phase: Read-Only Contract Value Profiles Planning v1
 
 Goal:
-Implement read-only stipulation metadata for eligible matches to improve broadcast context without changing winner resolution, title logic, rivalry logic, scoring, or persistence behavior.
+Create a planning-only lane for read-only contract/value context to support roster and booking judgment without introducing contract mechanics, payroll enforcement, or forecast-driven gameplay.
 
 Current priority:
-Keep implementation bounded to match-format-safe metadata only, preserve current match-result and fallout behavior, and avoid any title, scoring, social, finance, injury, or rivalry engine rewrites.
+Keep implementation bounded to planning and read-only presentation first, preserve current match-result and fallout behavior, and avoid any contract mechanics, payroll enforcement, title/scoring/floor changes, or persistence/schema changes in this ticket.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -190,9 +190,11 @@ Completed stabilization passes:
 - Wrestler Identity Context v1 (non-mechanical display context layer)
 - Tag Division Health Diagnostics v1
 - Stipulation Metadata v1 (implemented)
+- Read-Only Contract Value Profiles Planning v1
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
+- Treat read-only contract/value context as a bounded planning lane before any payroll or contract-enforcement mechanics.
 - Data expansion should remain planning-only until a bounded implementation ticket is accepted.
 - Before content expansion, define the data category, maximum safe content size, allowed files, migration or fallback needs, and required smoke checks.
 - Future restricted draft modes must be explicit, optional, and requested by an active ticket.
