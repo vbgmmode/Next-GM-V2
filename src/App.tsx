@@ -48,6 +48,16 @@ import {
   type RosterPressureTag,
 } from "./game/rosterContextReads";
 import {
+  formatChampionshipEventType,
+  formatRivalryEventType,
+  formatRivalryStatus,
+  getChampionshipHistory,
+  getChampionshipHistoryAgeWeeks,
+  getRivalryHistory,
+  getRivalryHistoryAgeWeeks,
+  hasPlePayoff,
+} from "./game/storyContextReads";
+import {
   applyRivalryCatalogDefaults,
   deriveRivalryStage,
   getDefaultStorylineIdForStakes,
@@ -1687,11 +1697,6 @@ function formatWeekCount(weeks: number) {
   return `${weeks} week${weeks === 1 ? "" : "s"}`;
 }
 
-function getChampionshipHistoryAgeWeeks(game: GameState, event: ChampionshipHistoryEvent) {
-  const seasonDelta = Math.max(0, game.seasonNumber - event.seasonNumber);
-  return Math.max(0, seasonDelta * 12 + game.currentWeek - event.weekNumber);
-}
-
 function getTitleRivalries(championship: Championship, wrestlers: Wrestler[], rivalries: Rivalry[]) {
   const championIds = new Set(championship.championIds);
 
@@ -2044,20 +2049,6 @@ function getReignLength(championship: Championship, currentWeek: number) {
   return Math.max(1, currentWeek - championship.reignStartWeek + 1);
 }
 
-function getChampionshipHistory(game: GameState, championshipId: string, limit = 5) {
-  return [...(game.championshipHistory ?? [])]
-    .filter((event) => event.championshipId === championshipId)
-    .sort((a, b) => b.seasonNumber - a.seasonNumber || b.weekNumber - a.weekNumber)
-    .slice(0, limit);
-}
-
-function getRivalryHistory(game: GameState, rivalryId: string, limit = 5) {
-  return [...(game.rivalryHistory ?? [])]
-    .filter((event) => event.rivalryId === rivalryId)
-    .sort((a, b) => b.seasonNumber - a.seasonNumber || b.weekNumber - a.weekNumber)
-    .slice(0, limit);
-}
-
 function getWrestlerTitleHistory(game: GameState, wrestlerId: string, limit = 5) {
   return [...(game.championshipHistory ?? [])]
     .filter((event) => event.championIds.includes(wrestlerId) || Boolean(event.previousChampionIds?.includes(wrestlerId)))
@@ -2087,26 +2078,6 @@ function getChampionshipEventPairLine(event: ChampionshipHistoryEvent) {
   const winner = event.winningPairLabel ?? event.winningPairIds?.join(" / ") ?? "Winning pair";
   const loser = event.losingPairLabel ?? event.losingPairIds?.join(" / ");
   return loser ? `${winner} over ${loser}` : winner;
-}
-
-function formatChampionshipEventType(eventType: ChampionshipHistoryEvent["eventType"]) {
-  return eventType === "title_change" ? "Title Change" : "Successful Defense";
-}
-
-function formatRivalryEventType(eventType: RivalryHistoryEvent["eventType"]) {
-  return eventType
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-function hasPlePayoff(game: GameState, rivalryId: string) {
-  return (game.rivalryHistory ?? []).some((event) => event.rivalryId === rivalryId && event.eventType === "ple_payoff");
-}
-
-function getRivalryHistoryAgeWeeks(game: GameState, event: RivalryHistoryEvent) {
-  const seasonDelta = Math.max(0, game.seasonNumber - event.seasonNumber);
-  return Math.max(0, seasonDelta * 12 + game.currentWeek - event.weekNumber);
 }
 
 function getRivalryStageContext(game: GameState, rivalry: Rivalry) {
@@ -2720,10 +2691,6 @@ function getCoolingRivalry(rivalries: Rivalry[]) {
 function hasDuplicateRivalry(rivalries: Rivalry[], wrestlerAId: string, wrestlerBId: string) {
   const pair = [wrestlerAId, wrestlerBId].sort().join("|");
   return rivalries.some((rivalry) => [...rivalry.participantIds].sort().join("|") === pair);
-}
-
-function formatRivalryStatus(status: Rivalry["status"]) {
-  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 function formatRivalryStakes(stakes: RivalryStakes) {
