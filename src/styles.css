@@ -905,6 +905,98 @@ button:disabled {
   text-transform: uppercase;
 }
 
+.week-handoff-panel {
+  background:
+    linear-gradient(135deg, rgba(111, 226, 212, 0.12), transparent 42%),
+    linear-gradient(90deg, rgba(246, 193, 86, 0.08), transparent 66%),
+    rgba(14, 17, 24, 0.94);
+  border: 1px solid rgba(111, 226, 212, 0.28);
+  border-left: 4px solid #6fe2d4;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  margin: 0 0 18px;
+  padding: 18px;
+}
+
+.week-handoff-head {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.week-handoff-head h3 {
+  line-height: 1.12;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.week-handoff-head > strong {
+  background: rgba(111, 226, 212, 0.12);
+  border: 1px solid rgba(111, 226, 212, 0.28);
+  color: #6fe2d4;
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 8px 10px;
+  text-transform: uppercase;
+}
+
+.week-handoff-copy,
+.week-handoff-item p {
+  color: #b9c1cf;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.week-handoff-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.week-handoff-item {
+  background: rgba(8, 9, 13, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 3px solid rgba(185, 193, 207, 0.45);
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.week-handoff-item.item-strong {
+  border-left-color: #00a896;
+}
+
+.week-handoff-item.item-steady {
+  border-left-color: #6fe2d4;
+}
+
+.week-handoff-item.item-watch {
+  border-left-color: #f6c156;
+}
+
+.week-handoff-item span {
+  color: #6fe2d4;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.week-handoff-item strong {
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
 .ple-build-panel {
   background:
     linear-gradient(135deg, rgba(216, 35, 50, 0.16), transparent 40%),
@@ -4508,6 +4600,7 @@ h3 {
   .draft-stat-grid,
   .brand-pulse-grid,
   .rival-draft-notes,
+  .week-handoff-grid,
   .ple-build-grid,
   .participant-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4618,6 +4711,7 @@ h3 {
   .draft-stat-grid,
   .draft-tools,
   .weekly-pressure-grid,
+  .week-handoff-grid,
   .broadcast-fallout-grid,
   .ple-build-grid,
   .title-scene-board,
@@ -4712,6 +4806,15 @@ h3 {
   }
 
   .weekly-pressure-head > strong {
+    text-align: center;
+  }
+
+  .week-handoff-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .week-handoff-head > strong {
     text-align: center;
   }
 

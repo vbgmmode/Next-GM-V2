@@ -374,6 +374,22 @@ type WeeklyDecisionPressureSnapshot = {
   items: WeeklyDecisionPressureItem[];
 };
 
+type WeekReviewHandoffTone = "strong" | "steady" | "watch";
+
+type WeekReviewHandoffItem = {
+  id: string;
+  label: string;
+  value: string;
+  detail: string;
+  tone: WeekReviewHandoffTone;
+};
+
+type WeekReviewHandoffSnapshot = {
+  headline: string;
+  detail: string;
+  items: WeekReviewHandoffItem[];
+};
+
 type QaHarnessMode = "runtime" | "legacy-runtime";
 
 const draftPickCount = 12;
@@ -814,6 +830,105 @@ function getWeeklyDecisionPressureSnapshot(game: GameState, result?: ShowResult)
   return {
     headline,
     detail: "Read-only staff context from current roster, rivalry, title, calendar, and finance state. It does not forecast booking outcomes.",
+    items,
+  };
+}
+
+function findWrestlerByName(name: string, wrestlers: Wrestler[]) {
+  return wrestlers.find((wrestler) => wrestler.name === name);
+}
+
+function getWeekReviewHandoffSnapshot(game: GameState, result: ShowResult, financeReport?: FinanceReport): WeekReviewHandoffSnapshot {
+  const nextWeek = game.calendar.find((week) => week.weekNumber === result.week + 1);
+  const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= result.week + 1 && !week.completed);
+  const weeksUntilNextPle = nextPle ? Math.max(0, nextPle.weekNumber - result.week) : 0;
+  const momentumWrestler = findWrestlerByName(result.biggestMomentumGain.name, game.wrestlers);
+  const fatigueWrestler = findWrestlerByName(result.biggestFatigueIncrease.name, game.wrestlers);
+  const hotWrestlers = game.wrestlers.filter((wrestler) => wrestler.momentum >= 70).sort((a, b) => b.momentum - a.momentum);
+  const coldWrestlers = game.wrestlers.filter((wrestler) => wrestler.momentum < 45).sort((a, b) => a.momentum - b.momentum);
+  const overused = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Overused"));
+  const underused = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Underused"));
+  const injured = game.wrestlers.filter((wrestler) => wrestler.injuryStatus !== "healthy");
+  const moralePressure = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Morale Risk"));
+  const rivalryPressure = getRivalryTimingSnapshots(game).filter(({ snapshot }) => snapshot.primary.tone === "watch" || snapshot.primary.tone === "build").slice(0, 2);
+  const titlePressure = getChampionshipPressureSnapshots(game).filter(({ snapshot }) => snapshot.primary.tone === "watch" || snapshot.primary.tone === "build").slice(0, 2);
+  const titleEvents = result.titleHistoryEvents ?? [];
+  const rivalryEvents = result.rivalryHistoryEvents ?? [];
+  const financePressure = getFinancePressureLabel(game.money, financeReport?.profitLoss ?? 0);
+  const roadRead = nextWeek
+    ? nextWeek.showType === "ple"
+      ? `${nextWeek.showName} is next on the calendar as a PLE.`
+      : nextWeek.isGoHome
+        ? `${nextWeek.showName} is the go-home broadcast.`
+        : `${nextWeek.showName} is the next TV stop.`
+    : "The season calendar is ready for review.";
+  const pleRead = nextPle
+    ? weeksUntilNextPle === 0
+      ? "The next calendar step is a PLE."
+      : `${nextPle.showName} is ${formatWeekCount(weeksUntilNextPle)} away.`
+    : "No remaining PLE is on the current season calendar.";
+
+  const items: WeekReviewHandoffItem[] = [
+    {
+      id: "talent-temperature",
+      label: "Talent Temperature",
+      value: momentumWrestler?.name ?? result.biggestMomentumGain.name,
+      detail: `${result.biggestMomentumGain.name} left with +${result.biggestMomentumGain.amount} momentum${momentumWrestler ? ` and now sits at ${momentumWrestler.momentum}.` : "."} ${coldWrestlers.length ? `Cold watch: ${coldWrestlers.slice(0, 2).map((wrestler) => `${wrestler.name} ${wrestler.momentum}`).join(" / ")}.` : `${hotWrestlers.length} wrestler${hotWrestlers.length === 1 ? "" : "s"} now sit at 70+ momentum.`}`,
+      tone: result.biggestMomentumGain.amount >= 8 || hotWrestlers.length ? "strong" : coldWrestlers.length ? "watch" : "steady",
+    },
+    {
+      id: "roster-pressure",
+      label: "Roster Pressure",
+      value: injured.length ? `${injured.length} injured` : overused.length ? `${overused.length} overused` : "Level",
+      detail: injured.length
+        ? `${injured.slice(0, 2).map((wrestler) => `${wrestler.name} (${getInjuryStatusLabel(wrestler.injuryStatus)})`).join(" / ")} carry medical status into the handoff.`
+        : overused.length || moralePressure.length || underused.length
+          ? `${overused.length} overuse, ${moralePressure.length} morale, and ${underused.length} underuse note${overused.length + moralePressure.length + underused.length === 1 ? "" : "s"} are visible from current roster state.`
+          : fatigueWrestler
+            ? `${fatigueWrestler.name} took +${result.biggestFatigueIncrease.amount} fatigue and now sits at ${fatigueWrestler.fatigue}.`
+            : "No major roster pressure is leading the handoff.",
+      tone: injured.length || overused.length || moralePressure.length ? "watch" : "steady",
+    },
+    {
+      id: "story-room",
+      label: "Story Room",
+      value: rivalryEvents.length ? `${rivalryEvents.length} moved` : rivalryPressure.length ? `${rivalryPressure.length} flagged` : "Stable",
+      detail: rivalryEvents.length
+        ? rivalryEvents.slice(0, 2).map((event) => `${formatRivalryEventType(event.eventType)}: ${event.rivalryName}`).join(" / ")
+        : rivalryPressure.length
+          ? rivalryPressure.map(({ rivalry, snapshot }) => `${rivalry.name}: ${snapshot.primary.label}`).join(" / ")
+          : "No rivalry movement or urgent story-room flag is leading the next handoff.",
+      tone: rivalryEvents.length ? "strong" : rivalryPressure.length ? "watch" : "steady",
+    },
+    {
+      id: "title-office",
+      label: "Title Office",
+      value: titleEvents.length ? `${titleEvents.length} logged` : titlePressure.length ? `${titlePressure.length} flagged` : "Stable",
+      detail: titleEvents.length
+        ? titleEvents.slice(0, 2).map((event) => `${formatChampionshipEventType(event.eventType)}: ${event.championshipName}`).join(" / ")
+        : titlePressure.length
+          ? titlePressure.map(({ championship, snapshot }) => `${championship.name}: ${snapshot.primary.label}`).join(" / ")
+          : "No title event or title-office pressure is leading the next handoff.",
+      tone: titleEvents.some((event) => event.eventType === "title_change") ? "strong" : titlePressure.length ? "watch" : "steady",
+    },
+    {
+      id: "office-clock",
+      label: "Office Clock",
+      value: financePressure,
+      detail: `${roadRead} ${pleRead} ${financeReport ? `${formatMoney(financeReport.profitLoss)} closed in the office books.` : "No finance report is attached to this result."}`,
+      tone: financePressure === "Critical" || financePressure === "Tight" || nextWeek?.showType === "ple" || nextWeek?.isGoHome ? "watch" : "steady",
+    },
+  ];
+  const headline =
+    items.some((item) => item.tone === "watch")
+      ? "Next Week Has Carry-Forward Pressure"
+      : items.some((item) => item.tone === "strong")
+        ? "Next Week Has Clear Follow-Up"
+        : "Next Week Opens Clean";
+
+  return {
+    headline,
+    detail: "Staff handoff from resolved fallout and current state only. These are context notes for the next booking desk, not projections.",
     items,
   };
 }
@@ -5657,6 +5772,30 @@ function WeeklyDecisionPressurePanel({ compact = false, snapshot }: { compact?: 
   );
 }
 
+function WeekReviewHandoffPanel({ snapshot }: { snapshot: WeekReviewHandoffSnapshot }) {
+  return (
+    <section className="week-handoff-panel" aria-label="Next week setup">
+      <div className="week-handoff-head">
+        <div>
+          <p className="eyebrow">GM Handoff</p>
+          <h3>{snapshot.headline}</h3>
+        </div>
+        <strong>Next Week Setup</strong>
+      </div>
+      <p className="week-handoff-copy">{snapshot.detail}</p>
+      <div className="week-handoff-grid">
+        {snapshot.items.map((item) => (
+          <article className={`week-handoff-item item-${item.tone}`} key={item.id}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+            <p>{item.detail}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function PleBuildPressurePanel({ compact = false, snapshot }: { compact?: boolean; snapshot: PleBuildPressureSnapshot }) {
   return (
     <section className={`ple-build-panel${compact ? " compact" : ""}`} aria-label="PLE build pressure">
@@ -8298,6 +8437,7 @@ function WeekReviewScreen({
   const weeksUntilNextPle = nextPle ? Math.max(0, nextPle.weekNumber - result.week) : 0;
   const brandPulseSnapshot = getBrandPulseSnapshot(game, result);
   const weeklyDecisionPressure = getWeeklyDecisionPressureSnapshot(game, result);
+  const weekReviewHandoff = getWeekReviewHandoffSnapshot(game, result, financeReport);
   const isPleResult = result.showType === "ple";
   const pleAftermathNote = isPleResult
     ? `${result.showName} was a major event. This review is the full fallout layer, not a pre-show forecast.`
@@ -8352,6 +8492,8 @@ function WeekReviewScreen({
       </section>
 
       <WeeklyDecisionPressurePanel compact snapshot={weeklyDecisionPressure} />
+
+      <WeekReviewHandoffPanel snapshot={weekReviewHandoff} />
 
       {result.broadcastOverrunNotes?.length ? (
         <section className="broadcast-overrun-fallout" aria-label="Week review broadcast overrun">
