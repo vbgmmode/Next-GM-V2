@@ -958,29 +958,6 @@ function getSegmentIdentityBadges(segment: Segment) {
   return badges;
 }
 
-function getSegmentRequirementDetails(segment: Segment) {
-  const option = getSegmentCatalogOption(segment);
-  const details = [
-    getParticipantRequirementLabel(option),
-    option.championshipAllowed ? "Championship context can be attached when eligible." : "No championship context or title change in this format.",
-    option.winnerRequired ? "A winner is resolved when the show runs." : "No winner is required for this segment.",
-  ];
-
-  if (segment.type === "Match") {
-    details.push("Match competitors must come from the same division.");
-  }
-
-  if (option.rivalryRelevant) {
-    details.push("Rivalry context is useful when this beat belongs to an active story.");
-  }
-
-  if (segment.type === "Open Challenge") {
-    details.push("The answering opponent stays hidden until Run Show.");
-  }
-
-  return details;
-}
-
 function getSegmentRequirement(type: SegmentType) {
   const option = getDefaultCatalogOption(type);
 
@@ -5066,7 +5043,6 @@ function App() {
         game={game}
         isQaHarness={isQaHarness}
         onAddSegment={addSegment}
-        onBack={() => navigateTo("dashboard")}
         onNavigate={navigateTo}
         onRemoveSegment={removeSegment}
         onRunShow={handleRunShow}
@@ -6622,7 +6598,6 @@ function BookingScreen({
   game,
   isQaHarness,
   onAddSegment,
-  onBack,
   onNavigate,
   onOpenProfile,
   onRemoveSegment,
@@ -6637,7 +6612,6 @@ function BookingScreen({
   game: GameState;
   isQaHarness?: boolean;
   onAddSegment: (type: SegmentType, segmentId?: string) => void;
-  onBack: () => void;
   onNavigate: (screen: GameScreen) => void;
   onOpenProfile: (wrestlerId: string) => void;
   onRemoveSegment: (id: string) => void;
@@ -6654,9 +6628,8 @@ function BookingScreen({
   const [setupDraftSegmentId, setSetupDraftSegmentId] = useState<string | undefined>();
   const [setupEmptySlotNumber, setSetupEmptySlotNumber] = useState<number | undefined>();
   const [productionDetailsOpen, setProductionDetailsOpen] = useState(false);
-  const [smartRundownNotes, setSmartRundownNotes] = useState<string[]>([]);
   const [smartRundownError, setSmartRundownError] = useState("");
-  const [pendingSmartReplace, setPendingSmartReplace] = useState(false);
+  const [pendingClearCard, setPendingClearCard] = useState(false);
   const validShowSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers));
   const validSegments = validShowSegments.length;
   const invalidSegments = game.currentShow.length - validSegments;
@@ -6666,26 +6639,8 @@ function BookingScreen({
   const hasCurrentWeekReview = game.showHistory[game.showHistory.length - 1]?.week === game.currentWeek;
   const runtimePercent = Math.min(100, Math.round((validRuntimeMinutes / showRuntimeTargetMinutes) * 100));
   const readiness = getShowReadiness(validSegments, invalidSegments, validRuntimeMinutes);
-  const broadcastRisk = getBroadcastRuntimeRisk(validRuntimeMinutes);
-  const pleReadiness = getPleReadinessSnapshot(game, validShowSegments, calendarWeek);
-  const pleBuildPressure = getPleBuildPressureSnapshot(game, validShowSegments);
   const canRunShow = readiness.canRun;
   const composerSegment = game.currentShow.find((segment) => segment.id === composerSegmentId);
-  const latestFinanceReport = getLatestFinanceReport(game);
-  const financePressureLabel = getFinancePressureLabel(game.money, latestFinanceReport?.profitLoss ?? 0);
-  const isPleShow = calendarWeek.showType === "ple";
-  const talentValuePressure = getTalentValuePressure(game.wrestlers);
-  const bookingFinanceRead = `${getFinancePresenceRead(game.money, financePressureLabel, latestFinanceReport)} Roster value map: ${talentValuePressure.premiumCount} premium/high-cost and ${talentValuePressure.bargainCount} bargain/rising profiles.`;
-  const pleProductionRead =
-    pleReadiness && isPleShow && validSegments > 0
-      ? `Current card shape: ${pleReadiness.titleMatchCount} title stake segment${pleReadiness.titleMatchCount === 1 ? "" : "s"}, ${formatRivalryCount(pleReadiness.representedRivalries.length)} represented, ${pleReadiness.bookedMajorStars.length} major star${pleReadiness.bookedMajorStars.length === 1 ? "" : "s"} booked.`
-      : pleReadiness && isPleShow
-        ? "No valid segments are booked yet; add the card before production can read PLE support."
-      : "Major-event control room context is only available on PLE cards.";
-  const pleFinanceContextRead =
-    pleReadiness && isPleShow && validSegments > 0
-      ? "Current card has PLE support context for the production desk."
-      : "No valid PLE card has been built yet; production support reads will update after booking.";
   const bookedCounts = game.currentShow.reduce<Record<string, number>>((counts, segment) => {
     segment.participantIds.forEach((id) => {
       counts[id] = (counts[id] ?? 0) + 1;
@@ -6694,7 +6649,6 @@ function BookingScreen({
   }, {});
   const bookedWrestlerIds = new Set(game.currentShow.flatMap((segment) => segment.participantIds));
   const bookedWrestlers = game.wrestlers.filter((wrestler) => bookedWrestlerIds.has(wrestler.id));
-  const bookedMajorStars = bookedWrestlers.filter(isMajorEventStar);
   const missingMajorStars = game.wrestlers.filter((wrestler) => isMajorEventStar(wrestler) && !bookedWrestlerIds.has(wrestler.id));
   const riskRows = bookedWrestlers
     .map((wrestler) => ({
@@ -6702,16 +6656,6 @@ function BookingScreen({
       wrestler,
     }))
     .filter((item) => item.reads.length);
-  const segmentTypeCounts = game.currentShow.reduce<Record<SegmentType, number>>(
-    (counts, segment) => ({ ...counts, [segment.type]: counts[segment.type] + 1 }),
-    {
-      Match: 0,
-      Promo: 0,
-      "Backstage Angle": 0,
-      "Contract Signing": 0,
-      "Open Challenge": 0,
-    },
-  );
   const bookedRosterCount = bookedWrestlerIds.size;
   const unusedRosterCount = Math.max(0, game.wrestlers.length - bookedRosterCount);
   const topUnusedWrestler = getTopUnderusedWrestler(
@@ -6720,29 +6664,8 @@ function BookingScreen({
   );
   const rivalrySegmentCount = game.currentShow.filter((segment) => Boolean(segment.rivalryId)).length;
   const titleContextCount = game.currentShow.filter((segment) => Boolean(segment.championshipId)).length;
-  const openChallengeCount = game.currentShow.filter((segment) => segment.type === "Open Challenge").length;
-  const titleMatchCount = validShowSegments.filter((segment) => {
-    const championship = segment.championshipId ? game.championships.find((title) => title.id === segment.championshipId) : undefined;
-    return Boolean(championship && canSegmentContestChampionship(segment, championship, game.wrestlers));
-  }).length;
   const cardStatus = getBookingCardStatus(game.currentShow.length, invalidSegments, readiness);
   const cardBoardSlots = getBookingBoardSlots(game.currentShow);
-  const runCommandTitle = readiness.canRun ? "Ready For Air" : cardStatus.tone === "empty" ? "No Rundown Yet" : "Hold The Truck";
-  const runCommandDetail = readiness.canRun
-    ? "Existing validation clears this card. Run Show remains the same action path."
-    : readiness.note;
-  const mixLine = bookingSegmentTypes
-    .filter((type) => segmentTypeCounts[type] > 0)
-    .map((type) => `${type.replace("Backstage Angle", "Backstage").replace("Contract Signing", "Contract")}: ${segmentTypeCounts[type]}`)
-    .join(" / ");
-  const producerRead =
-    game.currentShow.length === 0
-      ? "No segments booked. Choose Slot 1 to start the card board."
-      : `${game.currentShow.length} segment${game.currentShow.length === 1 ? "" : "s"} on the board with ${validSegments} cleared for TV and ${invalidSegments} needing attention. ${mixLine || "No segment mix yet."}`;
-  const coverageRead =
-    titleMatchCount || rivalrySegmentCount
-      ? `${titleMatchCount} title match${titleMatchCount === 1 ? "" : "es"} and ${rivalrySegmentCount} rivalry beat${rivalrySegmentCount === 1 ? "" : "s"} attached to the current card.`
-      : "No title match or rivalry beat attached yet. This is context only, not a forecast.";
   const rosterDeskRead = topUnusedWrestler
     ? `${unusedRosterCount} roster member${unusedRosterCount === 1 ? "" : "s"} unused tonight. ${topUnusedWrestler.name} has been off TV for ${formatWeekCount(getWeeksSinceLastBooked(topUnusedWrestler, game.currentWeek))}.`
     : `${unusedRosterCount} roster member${unusedRosterCount === 1 ? "" : "s"} unused tonight. No long-absence pressure is surfacing from current roster history.`;
@@ -6762,7 +6685,7 @@ function BookingScreen({
     setSetupDraftSegmentId(segmentId);
     setSetupEmptySlotNumber(undefined);
     setBookingMode("setup");
-    setPendingSmartReplace(false);
+    setPendingClearCard(false);
   }
 
   function removeAndClose(segmentId: string) {
@@ -6780,7 +6703,7 @@ function BookingScreen({
     setSetupDraftSegmentId(undefined);
     setSetupEmptySlotNumber(slotNumber);
     setBookingMode("setup");
-    setPendingSmartReplace(false);
+    setPendingClearCard(false);
   }
 
   function openExistingSegment(segmentId: string) {
@@ -6788,7 +6711,7 @@ function BookingScreen({
     setSetupDraftSegmentId(undefined);
     setSetupEmptySlotNumber(undefined);
     setBookingMode("setup");
-    setPendingSmartReplace(false);
+    setPendingClearCard(false);
   }
 
   function returnToCardBoard() {
@@ -6841,21 +6764,11 @@ function BookingScreen({
     onSetSegmentRivalry(segment.id, rivalryId);
   }
 
-  function generateSmartRundown(forceReplace = false) {
-    if (game.currentShow.length && !forceReplace) {
-      setPendingSmartReplace(true);
-      setSmartRundownError("");
-      setSmartRundownNotes(["Current rundown detected. Confirm replace to let production draft a fresh editable card."]);
-      setProductionDetailsOpen(true);
-      return;
-    }
-
+  function generateSmartRundown() {
     const result = buildSmartRundown(game);
 
     if (result.error) {
-      setPendingSmartReplace(false);
       setSmartRundownError(result.error);
-      setSmartRundownNotes(result.notes);
       setProductionDetailsOpen(true);
       return;
     }
@@ -6865,14 +6778,23 @@ function BookingScreen({
     setSetupDraftSegmentId(undefined);
     setSetupEmptySlotNumber(undefined);
     setBookingMode("board");
-    setPendingSmartReplace(false);
     setSmartRundownError("");
-    setSmartRundownNotes(result.notes);
-    setProductionDetailsOpen(true);
+    setPendingClearCard(false);
+    setProductionDetailsOpen(false);
+  }
+
+  function confirmClearCard() {
+    onReplaceCurrentShow([]);
+    setComposerSegmentId(undefined);
+    setSetupDraftSegmentId(undefined);
+    setSetupEmptySlotNumber(undefined);
+    setBookingMode("board");
+    setSmartRundownError("");
+    setPendingClearCard(false);
   }
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell booking-app-shell ${productionDetailsOpen ? "producer-note-expanded" : ""}`}>
       <Header game={game} />
       <GameNav currentScreen="booking" hasResults={Boolean(game.showHistory.length)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       {isQaHarness ? (
@@ -6881,46 +6803,35 @@ function BookingScreen({
           <span>In-memory fixture. Real career saves are not updated from this session.</span>
         </section>
       ) : null}
-      <section className={`booking-top ${calendarWeek.showType === "ple" ? "ple-panel" : ""}`}>
-        <button className="secondary-action" onClick={onBack}>
-          Dashboard
-        </button>
-        <div>
-          <p className="eyebrow">
-            Season {game.seasonNumber} · Week {game.currentWeek} · {getShowTypeLabel(calendarWeek.showType)}
-          </p>
-          <h2>{calendarWeek.showName}</h2>
-          <p className="lede">
-            {calendarWeek.showType === "ple"
-              ? `Major-event card. ${pleProductionRead}`
-              : calendarWeek.isGoHome
-                ? "Go-home broadcast. Build a complete TV block and set the final tone before the next PLE."
-                : "TV production card. Build enough show, leave room to breathe, and protect the locker room."}
-          </p>
-        </div>
-        <div className={`production-go-command command-${readiness.tone}`} aria-label="Run show readiness">
-          <span>{runCommandTitle}</span>
-          <strong>{readiness.status}</strong>
-          <small>{runCommandDetail}</small>
-          <button className="primary-action" disabled={!canRunShow} onClick={onRunShow}>
-            Run Show
-          </button>
-        </div>
-      </section>
 
       {bookingMode === "board" ? (
         <>
           <section className="booking-controls" aria-label="Booking controls">
-            <button className="secondary-action" onClick={() => generateSmartRundown(false)}>
+            <button className="secondary-action" onClick={generateSmartRundown}>
               Generate Smart Rundown
             </button>
-            <button className="secondary-action" onClick={() => onNavigate("roster")}>
-              View Roster
-            </button>
-            <button className="secondary-action" onClick={() => onNavigate("rivalries")}>
-              View Rivalries
+            <button className="danger-action" disabled={!game.currentShow.length} onClick={() => setPendingClearCard(true)}>
+              Remove All
             </button>
           </section>
+
+          {pendingClearCard ? (
+            <section className="clear-card-warning" aria-label="Confirm remove all card segments">
+              <div>
+                <span>Clear Card?</span>
+                <strong>Remove every booked slot from tonight's card.</strong>
+                <small>This only clears the current rundown. Results, roster, championships, and rivalries stay untouched.</small>
+              </div>
+              <div className="clear-card-actions">
+                <button className="danger-action" onClick={confirmClearCard}>
+                  Confirm Remove All
+                </button>
+                <button className="secondary-action" onClick={() => setPendingClearCard(false)}>
+                  Keep Card
+                </button>
+              </div>
+            </section>
+          ) : null}
 
           <section className={`booking-card-board-panel status-${cardStatus.tone}`} aria-label="Booking card board">
             <div className="booking-card-board-head">
@@ -6928,32 +6839,39 @@ function BookingScreen({
                 <p className="eyebrow">Card Board</p>
                 <h3>{calendarWeek.showName} Slots</h3>
               </div>
-              <strong>{cardStatus.label}</strong>
+              <button className="run-show-action board-run-show-action" disabled={!canRunShow} onClick={onRunShow}>
+                Run Show
+              </button>
             </div>
-            <p>{producerRead}</p>
 
-            <div className="booking-board-summary" aria-label="Board summary">
+            <section className={`runtime-board readiness-${readiness.tone}`} aria-label="Runtime plan">
               <div>
-                <span>Segments</span>
-                <strong>{validSegments}/{game.currentShow.length || 0}</strong>
-                <small>{invalidSegments ? `${invalidSegments} flagged` : "No flags"}</small>
+                <p className="eyebrow">Runtime Board</p>
+                <h3>{readiness.status}</h3>
+                <p>{readiness.note}</p>
               </div>
-              <div>
-                <span>Runtime</span>
-                <strong>{validRuntimeMinutes}/{showRuntimeTargetMinutes}</strong>
-                <small>{readiness.status}</small>
+              <div className="runtime-meter" aria-label={`${validRuntimeMinutes} of ${showRuntimeTargetMinutes} valid minutes ready`}>
+                <span style={{ width: `${runtimePercent}%` }} />
               </div>
-              <div>
-                <span>Coverage</span>
-                <strong>{titleContextCount}T / {rivalrySegmentCount}R / {bookedMajorStars.length}S / {openChallengeCount}OC</strong>
-                <small>Title / rivalry / star / open challenge</small>
+              <div className="runtime-numbers">
+                <div>
+                  <span>Ready Time</span>
+                  <strong>{validRuntimeMinutes} min</strong>
+                </div>
+                <div>
+                  <span>Segments</span>
+                  <strong>{validSegments}/{game.currentShow.length || 0}</strong>
+                </div>
+                <div>
+                  <span>Planned</span>
+                  <strong>{runtimeMinutes} min</strong>
+                </div>
+                <div>
+                  <span>Window</span>
+                  <strong>{showRuntimeMinMinutes}-{tvRuntimeWarningMinutes} min</strong>
+                </div>
               </div>
-              <div>
-                <span>Workload</span>
-                <strong>{riskRows.length ? `${riskRows.length} flagged` : "Clear"}</strong>
-                <small>{riskRows.length ? "Check details" : "No current-card risk flags"}</small>
-              </div>
-            </div>
+            </section>
 
             <div className="booking-slot-grid" aria-label="Numbered card slots">
                 {cardBoardSlots.map((slot) => {
@@ -7002,129 +6920,19 @@ function BookingScreen({
             </div>
           </section>
 
-          <section className={`production-details-panel ${productionDetailsOpen ? "open" : ""}`} aria-label="Production details">
+          <section className={`production-details-panel ${productionDetailsOpen ? "open" : ""}`} aria-label="Producer note">
             <button className="production-details-toggle" onClick={() => setProductionDetailsOpen((open) => !open)} type="button">
-              <span>Production Details</span>
+              <span>Producer Note</span>
               <strong>{productionDetailsOpen ? "Hide" : "Show"}</strong>
             </button>
 
             {productionDetailsOpen ? (
               <div className="production-details-grid">
-                <section className="booking-finance-context" aria-label="Booking finance context">
-                  <span>Brand Office</span>
-                  <p>{bookingFinanceRead}</p>
-                  {calendarWeek.showType === "ple" ? <p>{`PLE context: ${pleFinanceContextRead}`}</p> : null}
-                </section>
-
-                <PleBuildPressurePanel compact snapshot={pleBuildPressure} />
-
-                <div className="coverage-strip" aria-label="Current card coverage">
-                  <div>
-                    <span>Segments</span>
-                    <strong>{game.currentShow.length}</strong>
-                    <small>{validSegments} valid / {invalidSegments} flagged</small>
-                  </div>
-                  <div>
-                    <span>Titles</span>
-                    <strong>{titleContextCount ? `${titleContextCount}` : "Quiet"}</strong>
-                    <small>{titleMatchCount ? `${titleMatchCount} sanctioned match${titleMatchCount === 1 ? "" : "es"}` : "No title match"}</small>
-                  </div>
-                  <div>
-                    <span>Rivalries</span>
-                    <strong>{rivalrySegmentCount ? `${rivalrySegmentCount}` : "Quiet"}</strong>
-                    <small>{coverageRead}</small>
-                  </div>
-                  <div>
-                    <span>Stars</span>
-                    <strong>{bookedMajorStars.length ? `${bookedMajorStars.length}` : "Light"}</strong>
-                    <small>{bookedMajorStars.length ? bookedMajorStars.slice(0, 3).map((wrestler) => wrestler.name).join(" / ") : "No major-star flag yet"}</small>
-                  </div>
-                  <div>
-                    <span>Open Challenge</span>
-                    <strong>{openChallengeCount ? `${openChallengeCount}` : "None"}</strong>
-                    <small>{openChallengeCount ? "Opponent identity stays hidden until Run Show" : "No mystery slot"}</small>
-                  </div>
-                </div>
-
-                <div className="risk-board" aria-label="Current card workload risk">
-                  <div className="risk-board-head">
-                    <span>Risk Board</span>
-                    <strong>{riskRows.length ? `${riskRows.length} Flagged` : "Clear"}</strong>
-                  </div>
-                  {riskRows.length ? (
-                    <div className="risk-row-list">
-                      {riskRows.slice(0, 4).map(({ reads, wrestler }) => (
-                        <div className="risk-row" key={wrestler.id}>
-                          <strong>{wrestler.name}</strong>
-                          <small>{reads.join(" · ")}</small>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p>No current-card fatigue, morale, injury, overuse, or multi-booking flags are surfacing.</p>
-                  )}
-                </div>
-
                 <div className="producer-note" aria-label="Producer note">
                   <span>Producer Note</span>
-                  <p>{producerNote}</p>
-                  {topUnusedWrestler ? <small>{rosterDeskRead}</small> : null}
+                  <p>{smartRundownError || producerNote}</p>
+                  {smartRundownError ? null : topUnusedWrestler ? <small>{rosterDeskRead}</small> : null}
                 </div>
-
-                {(pendingSmartReplace || smartRundownNotes.length || smartRundownError) ? (
-                  <section className={`smart-rundown-panel ${smartRundownError ? "error" : pendingSmartReplace ? "warning" : ""}`} aria-label="Smart rundown production logic">
-                    <div className="section-heading">
-                      <p className="eyebrow">{pendingSmartReplace ? "Replace Rundown?" : "Production Logic"}</p>
-                      <h3>{pendingSmartReplace ? "Current Card Has Work On It" : smartRundownError ? "Draft Blocked" : "Why This Card?"}</h3>
-                    </div>
-                    {smartRundownError ? <p>{smartRundownError}</p> : null}
-                    {smartRundownNotes.length ? (
-                      <ul>
-                        {smartRundownNotes.map((note) => (
-                          <li key={note}>{note}</li>
-                        ))}
-                      </ul>
-                    ) : null}
-                    {pendingSmartReplace ? (
-                      <div className="smart-rundown-actions">
-                        <button className="primary-action" onClick={() => generateSmartRundown(true)}>
-                          Confirm Replace Rundown
-                        </button>
-                        <button className="secondary-action" onClick={() => setPendingSmartReplace(false)}>
-                          Keep Current
-                        </button>
-                      </div>
-                    ) : null}
-                  </section>
-                ) : null}
-
-                <section className={`runtime-board readiness-${readiness.tone}`} aria-label="Runtime plan">
-                  <div>
-                    <p className="eyebrow">Runtime Board</p>
-                    <h3>{readiness.status}</h3>
-                    <p>{readiness.note}</p>
-                  </div>
-                  <div className="runtime-meter" aria-label={`${validRuntimeMinutes} of ${showRuntimeTargetMinutes} valid minutes ready`}>
-                    <span style={{ width: `${runtimePercent}%` }} />
-                  </div>
-                  <div className="runtime-numbers">
-                    <strong>{validRuntimeMinutes} ready min</strong>
-                    <span>{runtimeMinutes} min planned</span>
-                    <span>Ready window {showRuntimeMinMinutes}-{tvRuntimeWarningMinutes} min</span>
-                  </div>
-                </section>
-
-                {pleReadiness ? <PleReadinessChecklist calendarWeek={calendarWeek} snapshot={pleReadiness} /> : null}
-
-                {broadcastRisk ? (
-                  <section className={`broadcast-risk-panel risk-${broadcastRisk.tone}`} aria-label="Broadcast runtime risk">
-                    <div className="section-heading">
-                      <p className="eyebrow">Live TV Timing</p>
-                      <h3>{broadcastRisk.title}</h3>
-                    </div>
-                    <p>{broadcastRisk.note}</p>
-                  </section>
-                ) : null}
               </div>
             ) : null}
           </section>
@@ -7149,7 +6957,6 @@ function BookingScreen({
 
           {composerSegment ? (
             <SegmentComposer
-              bookedCounts={bookedCounts}
               championships={game.championships}
               game={game}
               onApplyCatalogOption={(option) => applyCatalogOption(composerSegment, option)}
@@ -7219,7 +7026,6 @@ function PleReadinessChecklist({ calendarWeek, snapshot }: { calendarWeek: Calen
 }
 
 function SegmentComposer({
-  bookedCounts,
   championships,
   game,
   onApplyCatalogOption,
@@ -7237,7 +7043,6 @@ function SegmentComposer({
   segment,
   wrestlers,
 }: {
-  bookedCounts: Record<string, number>;
   championships: Championship[];
   game: GameState;
   onApplyCatalogOption: (option: SegmentCatalogOption) => void;
@@ -7310,28 +7115,12 @@ function SegmentComposer({
         </div>
       </div>
 
-      <div className="composer-block segment-guidance">
-        <div>
-          <span>Segment Intent</span>
-          <strong>{selectedOption.intent}</strong>
-        </div>
-        <div>
-          <span>Production Guidance</span>
-          <strong>{selectedOption.note}</strong>
-        </div>
-        <ul>
-          {getSegmentRequirementDetails(segment).map((detail) => (
-            <li key={detail}>{detail}</li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="composer-block segment-stipulation">
-        <div>
-          <span>Match Stipulation</span>
-          <strong>{selectedStipulation ? selectedStipulation.label : segment.type === "Match" ? "Optional presentation context only" : "Match-only context layer"}</strong>
-        </div>
-        {segment.type === "Match" ? (
+      {segment.type === "Match" ? (
+        <div className="composer-block segment-stipulation">
+          <div>
+            <span>Match Stipulation</span>
+            <strong>{selectedStipulation ? selectedStipulation.label : "Optional presentation context only"}</strong>
+          </div>
           <>
             <p>
               {selectedStipulation
@@ -7359,10 +7148,8 @@ function SegmentComposer({
               </div>
             ) : null}
           </>
-        ) : (
-          <p>Stipulation metadata is available on match-format segments only in the current metadata slice.</p>
-        )}
-      </div>
+        </div>
+      ) : null}
 
       <div className="composer-block duration-editor">
         <div>
@@ -7393,8 +7180,6 @@ function SegmentComposer({
           </button>
         </div>
       </div>
-
-      <SegmentContext segment={segment} wrestlers={wrestlers} bookedCounts={bookedCounts} />
       <TitleMatchControl
         championships={championships}
         game={game}
@@ -7441,7 +7226,7 @@ function SegmentComposer({
                   <strong>{wrestler.name}</strong>
                   <small>
                     Mom {wrestler.momentum} · Fat {wrestler.fatigue}
-                    {wrestler.injuryStatus !== "healthy" ? ` · ${getInjuryStatusLabel(wrestler.injuryStatus)}` : ""}
+                    {wrestler.injuryStatus !== "healthy" ? ` · ${getInjuryStatusLabel(wrestler.injuryStatus)} · ${getInjuryDetail(wrestler)}` : ""}
                     {isDivisionBlocked ? " · Division mismatch" : ""}
                   </small>
                 </span>
@@ -10085,75 +9870,6 @@ function GameNav({
         </button>
       ) : null}
     </nav>
-  );
-}
-
-function SegmentContext({
-  bookedCounts,
-  segment,
-  wrestlers,
-}: {
-  bookedCounts: Record<string, number>;
-  segment: Segment;
-  wrestlers: Wrestler[];
-}) {
-  const participants = getSegmentParticipants(segment, wrestlers);
-  const warnings = participants.flatMap((wrestler) => {
-    const wrestlerWarnings: string[] = [];
-
-    if (wrestler.fatigue >= 60) {
-      wrestlerWarnings.push(`${wrestler.name} is carrying heavy fatigue.`);
-    }
-
-    if (wrestler.injuryStatus === "minor") {
-      wrestlerWarnings.push(`${wrestler.name} is working through a minor injury.`);
-    }
-
-    if (wrestler.injuryStatus === "major") {
-      wrestlerWarnings.push(`${wrestler.name} is unavailable with a major injury.`);
-    }
-
-    if (wrestler.morale <= 45) {
-      wrestlerWarnings.push(`${wrestler.name} has low morale.`);
-    }
-
-    if ((bookedCounts[wrestler.id] ?? 0) > 1) {
-      wrestlerWarnings.push(`${wrestler.name} is already booked elsewhere on this card.`);
-    }
-
-    return wrestlerWarnings;
-  });
-
-  if (!isValidSegment(segment, wrestlers)) {
-    warnings.unshift(getSegmentValidationWarning(segment, wrestlers));
-  }
-
-  if (segment.type === "Open Challenge" && isValidSegment(segment, wrestlers)) {
-    warnings.push("Opponent stays unrevealed until the show runs.");
-  }
-
-  return (
-    <div className="segment-context">
-      <div>
-        <span>Selected</span>
-        <strong>{getSegmentParticipantsLabel(segment, wrestlers)}</strong>
-      </div>
-      <div>
-        <span>Production Note</span>
-        <strong>{warnings.length ? warnings[0] : "Ready for the rundown."}</strong>
-      </div>
-      <div>
-        <span>Presentation</span>
-        <strong>{getSegmentStipulationLabel(segment)}</strong>
-      </div>
-      {warnings.length > 1 ? (
-        <ul>
-          {warnings.slice(1).map((warning) => (
-            <li key={warning}>{warning}</li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
   );
 }
 
