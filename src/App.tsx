@@ -639,13 +639,13 @@ function getDraftFinanceNote(readout: DraftFinanceReadout) {
 
 function getRivalUniverseRead(rivalBrands: RivalBrandState[]) {
   if (!rivalBrands.length) {
-    return "No rival brand chairs are assigned in this career setup.";
+    return "No rival brand chairs are assigned for this career frame.";
   }
 
   const rosterCount = rivalBrands.reduce((sum, brand) => sum + brand.rosterWrestlerIds.length, 0);
   const activityCount = rivalBrands.reduce((sum, brand) => sum + brand.activityHistory.length, 0);
 
-  return `${rivalBrands.length} rival brand${rivalBrands.length === 1 ? "" : "s"} assigned. ${rosterCount} rival roster claim${rosterCount === 1 ? "" : "s"} and ${activityCount} activity beat${activityCount === 1 ? "" : "s"} recorded.`;
+  return `${rivalBrands.length} rival brand chair${rivalBrands.length === 1 ? "" : "s"} filled for universe flavor. ${rosterCount} roster reference${rosterCount === 1 ? "" : "s"} and ${activityCount} activity beat${activityCount === 1 ? "" : "s"} are logged as read-only context.`;
 }
 
 function getRivalDraftActivitySnapshot(
@@ -680,13 +680,13 @@ function getRivalDraftActivitySnapshot(
       : safeDraftedCount < 4
         ? "Rival Desks Hold"
         : safeDraftedCount < maxDraftCount - 2
-          ? "Rival Desks Are Tracking the Draft"
-          : "Rival Draft Activity Is Peaking";
+          ? "Rival Desks Track the Room"
+          : "League Desk Noise Peaks";
 
   const detail =
     safeDraftedCount === 0
-      ? "Draft Night has opened, but rival desks are still framing this board as watch-only noise."
-      : `You are at pick ${safeDraftedCount}/${maxDraftCount}; rival desks stay active as flavor-only readouts around your live build.`;
+      ? "Draft Night has opened inside a larger GM room. The other desks are watch-only atmosphere around your board."
+      : `You are at pick ${safeDraftedCount}/${maxDraftCount}; rival desks remain flavor-only readouts around your live build.`;
 
   const notes: RivalDraftActivityNote[] = rankedBrands.slice(0, 3).map((brand) => {
     const activityCount = brand.activityHistory.length;
@@ -706,21 +706,21 @@ function getRivalDraftActivitySnapshot(
       safeDraftedCount < 3
         ? "Quiet War Room"
         : activityCount >= 2
-          ? "Scouting Aggressively"
+          ? "Board Chatter Rising"
           : safeDraftedCount >= maxDraftCount - 1
-            ? "Building Around Star Power"
+            ? "Star-Power Read"
             : "Watching The Board";
 
     const activityNote = latestActivity
       ? `Recent desk read: ${latestActivity.label.toLowerCase()} · ${latestActivity.note}`
-      : `No logged movement yet; desk is monitoring ${brandRosterClaims ? "roster claims" : "board position"}.`;
+      : `No logged movement yet; desk is only monitoring ${brandRosterClaims ? "read-only roster references" : "board atmosphere"}.`;
 
     return {
       id: `${brand.id}-${safeDraftedCount}`,
       brandName: brand.brandName,
       gmName: brand.assignedGMName,
       label,
-      detail: `${brand.assignedGMName} (${brand.assignedGMStyle}) is ${safeDraftedCount < 5 ? "monitoring" : "pushing context"}: ${activityNote}`,
+      detail: `${brand.assignedGMName} (${brand.assignedGMStyle}) is ${safeDraftedCount < 5 ? "watching the room" : "adding atmosphere"}: ${activityNote}`,
       tone: noteTone,
     };
   });
@@ -3509,7 +3509,9 @@ function getIwcMoodSummary(game: GameState): IwcMoodSummary | undefined {
         id: "argument",
         label: "Main Argument",
         value: argumentLabel,
-        detail: category ? `${dominantCategory?.[1] ?? 0} post${dominantCategory?.[1] === 1 ? "" : "s"} are centered on ${formatSocialCategory(category).toLowerCase()}.` : "No dominant topic yet.",
+        detail: category
+          ? `${dominantCategory?.[1] ?? 0} post${dominantCategory?.[1] === 1 ? " is" : "s are"} centered on ${formatSocialCategory(category).toLowerCase()}.`
+          : "No dominant topic yet.",
       },
       {
         id: "focus",
@@ -5236,7 +5238,7 @@ function NewGameSetupScreen({
             <p className="eyebrow">Sign The Contract</p>
             <h1>You're Hired</h1>
             <p className="lede">
-              A national broadcast window is open, the roster is restless, and ownership wants a GM who can build more than one hot night. Take the chair and turn this brand into a lasting force.
+              A national broadcast window is open, the roster is restless, and the GM room is filling up. Ownership is hiring you to run a brand over seasons, not just survive one hot night.
             </p>
             <div className="title-actions">
               <button className="primary-action" onClick={() => setStep("rules")}>
@@ -5266,7 +5268,7 @@ function NewGameSetupScreen({
             <div className="identity-note">
               <p className="eyebrow">Selected Identity</p>
               <strong>{selectedGmStyle.label}</strong>
-              <p>{selectedGmStyle.description} This is roleplay framing for your GM fantasy, not a hidden bonus.</p>
+              <p>{selectedGmStyle.description} This is your leadership reputation in the room; it frames the fantasy without adding hidden bonuses.</p>
             </div>
             <div className="title-actions">
               <button className="secondary-action" onClick={() => setStep("rules")}>
@@ -5281,8 +5283,8 @@ function NewGameSetupScreen({
 
         {step === "brand" ? (
           <div className="setup-panel">
-            <p className="eyebrow">Choose Your Brand</p>
-            <h2>Which Show Are You Taking Over?</h2>
+            <p className="eyebrow">Choose Your Seat</p>
+            <h2>Which Brand Chair Is Yours?</h2>
             <label className="setup-field">
               Brand Name
               <input value={brandName} onChange={(event) => setBrandName(event.target.value)} />
@@ -5294,9 +5296,9 @@ function NewGameSetupScreen({
               variant="identity"
             />
             <div className="identity-note">
-              <p className="eyebrow">Selected Prototype Brand</p>
+              <p className="eyebrow">Selected Brand Chair</p>
               <strong>{selectedBrandStyle.label}</strong>
-              <p>{selectedBrandStyle.description} This selects the show you want to run in the prototype, not a hidden gameplay modifier.</p>
+              <p>{selectedBrandStyle.description} This frames the show you are taking into the GM universe; it does not add hidden gameplay modifiers.</p>
             </div>
             <div className="title-actions">
               <button className="secondary-action" onClick={() => setStep("gm")}>
@@ -5313,7 +5315,7 @@ function NewGameSetupScreen({
           <div className="setup-panel">
             <p className="eyebrow">Game Rules</p>
             <h2>Set The Pressure Level</h2>
-            <p className="lede">Lock the shape of this career before Draft Night. Difficulty is challenge framing for now; budget sets your opening war chest.</p>
+            <p className="lede">Lock the ownership mandate before Draft Night. Difficulty frames the pressure of the job for now; budget sets your opening war chest.</p>
             <div className="rules-grid">
               <section>
                 <p className="eyebrow">Difficulty</p>
@@ -5358,20 +5360,20 @@ function NewGameSetupScreen({
             <h2>{brandName.trim() || defaultCareer.brandName}</h2>
             <div className="status-grid setup-summary">
               <Metric label="GM" value={gmName.trim() || defaultCareer.gmName} detail={gmStyle} />
-              <Metric label="Selected Brand" value={brandStyle} detail={selectedBrandStyle.description} />
+              <Metric label="Brand Chair" value={brandStyle} detail={selectedBrandStyle.description} />
               <Metric label="Difficulty" value={difficulty} detail="Challenge framing; no hidden tuning yet" />
               <Metric
                 label="Starting Budget"
                 value={formatStartingBudgetReadout(startingBudgetTier, startingBudgetAmount)}
                 detail={formatStartingBudgetDetail(startingBudgetTier, startingBudgetAmount, selectedBudgetDescription)}
               />
-              <Metric label="First Season" value="12 Weeks" detail="PLEs in Weeks 4, 8, and 12" />
+              <Metric label="Opening Season" value="12 Weeks" detail="PLEs in Weeks 4, 8, and 12" />
               <Metric label="Next Step" value="Draft Night" detail="Build the first locker room" />
             </div>
             <RivalBrandUniversePanel rivalBrands={previewRivalBrands} title="The Other Chairs Are Filled" />
             {rivalDraftActivity ? <RivalDraftActivityPanel snapshot={rivalDraftActivity} /> : null}
             <p className="lede">
-              Week 1 opens on TV. This first campaign starts with Collision Course in Week 4, and ownership expects momentum before the road reaches Final Bell.
+              Your chair is set, the other desks are assigned, and Week 1 opens on TV. This first campaign starts with Collision Course in Week 4 while the rival-brand room stays read-only flavor around your career.
             </p>
             <div className="title-actions">
               <button className="secondary-action" onClick={() => setStep("brand")}>
@@ -5391,7 +5393,7 @@ function NewGameSetupScreen({
                 <p className="eyebrow">Draft Night</p>
                 <h2>Draft War Room</h2>
                 <p className="lede">
-                  Build the first 12-person locker room for {brandName.trim() || defaultCareer.brandName}. The Top 200 board is open across every source brand, and every pick is yours.
+                  Build the first 12-person locker room for {brandName.trim() || defaultCareer.brandName} while the rest of the GM room watches. The Top 200 board is open across every source brand, and every pick is yours.
                 </p>
               </div>
               <div className="draft-clock-tower" aria-label="Draft clock">
@@ -5592,7 +5594,7 @@ function NewGameSetupScreen({
           <div className="setup-panel draft-review-panel">
             <p className="eyebrow">Draft Review</p>
             <h2>{brandName.trim() || defaultCareer.brandName} Draft Debrief</h2>
-            <p className="lede">The board is locked. Run through this class read before Week 1 hits the tape.</p>
+            <p className="lede">The board is locked. Review how this class fits {gmName.trim() || defaultCareer.gmName}'s room and the brand chair before Week 1 hits the tape.</p>
             <section className="draft-review-hero" aria-label="Draft review broadcast recap">
               <div>
                 <p className="eyebrow">Opening Night Graphic</p>
@@ -5623,7 +5625,7 @@ function NewGameSetupScreen({
             <section className="war-room-read" aria-label="Draft review war room read">
               <div>
                 <p className="eyebrow">War Room Read</p>
-                <h3>Class Identity Recap</h3>
+                <h3>Brand Class Identity</h3>
               </div>
               <p>{draftReviewRead}</p>
               <p>{rosterClassRead}</p>
@@ -6078,59 +6080,182 @@ function DashboardScreen({
   const actionContext = hasCurrentWeekReview
     ? "Week Review is waiting before the office advances the calendar."
     : nextAction;
+  const dashboardUrgentItems = weeklyDecisionPressure.items.slice(0, 3);
+  const rosterHealthRead =
+    unavailableCount > 0
+      ? `${unavailableCount} unavailable`
+      : injuryRiskCount + moraleRiskCount > 0
+        ? `${injuryRiskCount + moraleRiskCount} watch`
+        : "Room stable";
+  const rosterHealthHudRead = unavailableCount > 0 ? `${unavailableCount} out` : injuryRiskCount + moraleRiskCount > 0 ? `${injuryRiskCount + moraleRiskCount} watch` : "Stable";
+  const titleSceneRead = topTitlePressure?.primary.label ?? tagDivisionAttention?.label ?? "Scene steady";
+  const rivalrySceneRead = focusRivalryTiming ? `${focusRivalryTiming.snapshot.primary.label} · Heat ${focusRivalryTiming.rivalry.heat}` : "No active rivalry";
+  const financeStatusRead = latestFinanceReport ? `Latest P/L ${formatMoney(latestFinanceReport.profitLoss)}` : `${formatMoney(game.money)} available`;
+  const compactDashboardRead = (read: string, limit = 76) => (read.length > limit ? `${read.slice(0, limit - 3)}...` : read);
 
   return (
     <main className={`app-shell dashboard-command-shell broadcast-theme-${dashboardTheme}`} data-broadcast-theme={dashboardTheme}>
       <Header game={game} />
       <GameNav currentScreen="dashboard" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       <section className="dashboard-command-room" aria-label="Brand HQ command center">
-        <section className={`dashboard-focus-workspace ${isPleWeek ? "ple-panel" : ""}`} aria-label="Current focus workspace">
-          <article className="dashboard-focus-primary">
-            <div className="dashboard-scoreboard">
-              <div className="dashboard-brand-plate" aria-label={`${game.brandName} identity slot`}>
-                <span>{brandInitials}</span>
+        <section className="dashboard-top-hud" aria-label="Brand HQ scoreboard">
+          <div className="dashboard-brand-lockup">
+            <div className="dashboard-brand-plate" aria-label={`${game.brandName} identity slot`}>
+              <span>{brandInitials}</span>
+            </div>
+            <div>
+              <span>Monday Night Brand</span>
+              <strong>{game.brandName}</strong>
+              <small>
+                GM {game.gmName} · {game.gmStyle}
+              </small>
+            </div>
+          </div>
+          <div className="dashboard-hud-metrics" aria-label="Current brand readout">
+            <Metric label="Money" value={formatMoney(game.money)} />
+            <Metric label="Last Show" value={lastShow ? `${lastShow.totalScore} (${getShowGrade(lastShow.totalScore)})` : "No Result"} />
+            <Metric label="Roster Health" value={rosterHealthHudRead} />
+            <Metric label="Title Scene" value={titleSceneRead} />
+          </div>
+          <div className="dashboard-marquee" aria-label="Next show marquee">
+            <span>Next Show</span>
+            <strong>{currentShow.showName}</strong>
+            <small>
+              {currentShowLabel} · {nextPleLabel}
+            </small>
+          </div>
+          <div className="dashboard-urgent-chip" data-state={hasCurrentWeekReview || invalidSegments > 0 ? "warning" : "ready"}>
+            <span>Urgent Status</span>
+            <strong>{urgentStatus}</strong>
+          </div>
+        </section>
+
+        <section className="dashboard-main-console" aria-label="Brand HQ live desk">
+          <aside className="dashboard-side-stack dashboard-left-rail" aria-label="Brand status rail">
+            <article className="command-panel dashboard-rail-panel dashboard-status-panel">
+              <div className="section-heading">
+                <p className="eyebrow">Brand Status</p>
+                <h3>Week {game.currentWeek} Readout</h3>
               </div>
-              <div className="dashboard-scoreboard-main">
-                <p className="eyebrow">Season {game.seasonNumber} · Week {game.currentWeek} Brand HQ</p>
-                <h2>{currentShow.showName}</h2>
-                <div className="identity-strip">
-                  <span>{game.brandName}</span>
-                  <span>GM {game.gmName}</span>
-                  <span>{game.gmStyle}</span>
-                  <span>{game.brandStyle}</span>
+              <div className="dashboard-stat-grid">
+                <div>
+                  <span>Show Phase</span>
+                  <strong>{currentShowLabel}</strong>
+                  <small>{currentShow.isGoHome ? "Go-home pressure" : nextPleLabel}</small>
+                </div>
+                <div>
+                  <span>Finance</span>
+                  <strong>{formatPressureLabel(pressureLabel)}</strong>
+                  <small>{financeStatusRead}</small>
+                </div>
+                <div>
+                  <span>Roster Health</span>
+                  <strong>{rosterHealthRead}</strong>
+                  <small>{averageFatigue >= 45 ? "Training room is busy" : "Load is controlled"}</small>
+                </div>
+                <div>
+                  <span>Rivalry Heat</span>
+                  <strong>{focusRivalryTiming ? focusRivalryTiming.rivalry.name : "Quiet Desk"}</strong>
+                  <small>{rivalrySceneRead}</small>
                 </div>
               </div>
-              <div className="dashboard-urgent-chip" data-state={hasCurrentWeekReview || invalidSegments > 0 ? "warning" : "ready"}>
-                <span>Urgent Status</span>
-                <strong>{urgentStatus}</strong>
+              <p className="dashboard-panel-read">{weeklyDecisionPressure.detail}</p>
+            </article>
+
+            <article className="command-panel dashboard-rail-panel dashboard-title-panel">
+              <div className="section-heading">
+                <p className="eyebrow">Champions / Goals</p>
+                <h3>{topChampionship?.name ?? "Title Office"}</h3>
               </div>
-            </div>
-            <p className="dashboard-focus-read">
+              <div className="dashboard-title-plate">
+                <div className="dashboard-badge-slot">T</div>
+                <div>
+                  <span>Current Holder</span>
+                  <strong>{topChampionship ? getWrestlerNames(topChampionship.championIds, game.wrestlers) : "No Champion"}</strong>
+                  <small>{topTitlePressure?.primary.detail ?? topTitlePressure?.divisionHealth ?? "No active title pressure is demanding a booking promise."}</small>
+                </div>
+              </div>
+              <div className="dashboard-mini-rows">
+                <div>
+                  <span>Contender Lane</span>
+                  <strong>{topTitleContenders.map((wrestler) => wrestler.name).join(" / ") || "No Clear Lane"}</strong>
+                </div>
+                <div>
+                  <span>Tag Division</span>
+                  <strong>{tagDivisionAttention?.label ?? "Steady"}</strong>
+                </div>
+              </div>
+            </article>
+          </aside>
+
+          <article className={`command-panel dashboard-primary-stage ${isPleWeek ? "ple-panel" : ""}`} aria-label="Current show focus">
+            <div className="dashboard-stage-head">
+              <div>
+                <p className="eyebrow">Current Show Focus</p>
+                <h2>{currentShow.showName}</h2>
+                <p className="dashboard-focus-read">
               {isPleWeek
                 ? `${currentShow.showName} is the season's major-event pulse. This desk is for card structure, visible pressure, and what the office needs to know before booking.`
                 : `${currentShow.showName} is a ${currentShowLabel} stop${currentShow.isGoHome ? " and the last live wire before the next PLE." : " on the road to the next major event."}`}
-            </p>
-            <div className="dashboard-focus-metrics" aria-label="Current brand status">
-              <Metric label="Money" value={formatMoney(game.money)} />
-              <Metric label="Last Show" value={lastShow ? `${lastShow.totalScore} (${getShowGrade(lastShow.totalScore)})` : "No Result"} />
-              <Metric label="Avg Fatigue" value={`${averageFatigue}`} detail={averageFatigue >= 45 ? "Training room is busy" : "Load is controlled"} />
-              <Metric label="Top Momentum" value={topMomentumTalent ? `${topMomentumTalent.momentum}` : "No Roster"} detail={topMomentumTalent?.name} />
+                </p>
+              </div>
+              <div className="dashboard-show-art-slot" aria-label={`${currentShow.showName} show art slot`}>
+                <span>{currentShowLabel}</span>
+              </div>
             </div>
-          </article>
-
-          <aside className="dashboard-next-show-panel" aria-label="Next show action">
-            <div>
-              <p className="eyebrow">Next Player Action</p>
-              <h3>{validSegments >= 2 ? (isPleWeek ? "Major-Event Block Live-Ready" : "Card Is Runnable") : isPleWeek ? "Build Major-Event Card" : "Book The Show"}</h3>
+            <div className="dashboard-stage-metrics">
+              <div>
+                <span>Card Status</span>
+                <strong>{validSegments >= 2 ? "Runnable" : "Needs Segments"}</strong>
+                <small>{validSegments} ready / {invalidSegments} flagged</small>
+              </div>
+              <div>
+                <span>PLE Timing</span>
+                <strong>{nextPleLabel}</strong>
+                <small>{pleBuildPressure.phaseLabel}</small>
+              </div>
+              <div>
+                <span>Locker Room</span>
+                <strong>{topMomentumTalent?.name ?? "No Roster"}</strong>
+                <small>Top momentum {topMomentumTalent?.momentum ?? "n/a"}</small>
+              </div>
+              <div>
+                <span>Office Pulse</span>
+                <strong>{formatPressureLabel(pressureLabel)}</strong>
+                <small>{latestFinanceReport ? `Latest P/L ${formatMoney(latestFinanceReport.profitLoss)}` : "No show books closed"}</small>
+              </div>
             </div>
-            <div className="dashboard-readiness-stack">
-              <span>{currentShowLabel}</span>
-              {currentShow.isGoHome ? <span>Go-Home</span> : null}
-              <span>{nextPleLabel}</span>
-              <span>{validSegments} Ready / {invalidSegments} Flagged</span>
+            <div className="dashboard-stage-rundown">
+              <div className="section-heading">
+                <p className="eyebrow">Production Rundown</p>
+                <h3>{validSegments >= 2 ? "Broadcast-Ready Board" : "Open Booking Desk"}</h3>
+              </div>
+              <div className="dashboard-panel-scroll">
+                {game.currentShow.length ? (
+                  <div className="mini-card-list">
+                    {game.currentShow.map((segment, index) => (
+                      <div className="mini-card" key={segment.id}>
+                        <span>
+                          {String(index + 1).padStart(2, "0")} · {segment.type}
+                        </span>
+                        <strong>{getSegmentParticipantsLabel(segment, game.wrestlers)}</strong>
+                        <small>{isValidSegment(segment, game.wrestlers) ? "Ready for TV" : getSegmentValidationWarning(segment, game.wrestlers)}</small>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="dashboard-empty-slot">
+                    <strong>Card spine is empty</strong>
+                    <span>Book at least 2 valid segments. Open Challenge opponents stay hidden until show-run time.</span>
+                  </div>
+                )}
+              </div>
             </div>
-            <p>{actionContext}</p>
             <div className="dashboard-action-bar">
+              <div>
+                <span>Next Player Action</span>
+                <strong>{actionContext}</strong>
+              </div>
               <button className="primary-action" onClick={() => onNavigate(primaryActionScreen)}>
                 {primaryActionLabel}
               </button>
@@ -6138,63 +6263,68 @@ function DashboardScreen({
                 Calendar
               </button>
             </div>
+          </article>
+
+          <aside className="dashboard-side-stack dashboard-right-rail" aria-label="Urgent decisions and world pulse">
+            <article className="command-panel dashboard-rail-panel dashboard-urgent-panel">
+              <div className="section-heading">
+                <p className="eyebrow">Urgent Decisions</p>
+                <h3>{dashboardUrgentItems.length}</h3>
+              </div>
+              <div className="dashboard-decision-list">
+                {dashboardUrgentItems.map((item, index) => (
+                  <div className={`dashboard-decision-row tone-${item.tone}`} key={item.id}>
+                    <span>{index + 1}</span>
+                    <div>
+                      <strong>{item.label}</strong>
+                      <small>{compactDashboardRead(item.detail)}</small>
+                    </div>
+                  </div>
+                ))}
+                {!dashboardUrgentItems.length ? (
+                  <div className="dashboard-empty-slot">
+                    <strong>No urgent reads</strong>
+                    <span>Current state is quiet. Book the next show to create fresh fallout.</span>
+                  </div>
+                ) : null}
+              </div>
+            </article>
+
+            <article className="command-panel dashboard-rail-panel dashboard-iwc-panel">
+              <div className="section-heading">
+                <p className="eyebrow">IWC / World Pulse</p>
+                <h3>{brandPulseSnapshot?.headline ?? livingWorldPressure.headline}</h3>
+              </div>
+              <p className="dashboard-panel-read">{brandPulseSnapshot?.detail ?? livingWorldPressure.weekRead}</p>
+              <div className="dashboard-mini-rows">
+                <div>
+                  <span>Living World</span>
+                  <strong>{livingWorldPressure.whoIsWatching}</strong>
+                </div>
+                <div>
+                  <span>Next Move</span>
+                  <strong>{livingWorldPressure.nextAction}</strong>
+                </div>
+                <div>
+                  <span>Rival Chairs</span>
+                  <strong>{rivalBrands.length}</strong>
+                </div>
+                {latestSocialPost ? (
+                  <div>
+                    <span>IWC Buzz</span>
+                    <strong>{formatSocialCategory(latestSocialPost.category)}</strong>
+                  </div>
+                ) : null}
+              </div>
+            </article>
           </aside>
         </section>
 
-        <section className="dashboard-board-grid" aria-label="Brand HQ boards">
-          <article className="command-panel dashboard-board-panel show-panel">
+        <section className="dashboard-bottom-telemetry" aria-label="Brand HQ telemetry boards">
+          <article className="command-panel dashboard-telemetry-panel dashboard-roster-panel">
             <div className="section-heading">
-              <p className="eyebrow">Current Card</p>
-              <h3>{currentShow.showName}</h3>
-            </div>
-            <div className="show-strip">
-              <span>{currentShowLabel}</span>
-              {currentShow.isGoHome ? <span>Go-Home</span> : null}
-              <span>{nextPleLabel}</span>
-              <span>{validSegments} Ready / {invalidSegments} Flagged</span>
-            </div>
-            <div className="dashboard-panel-scroll">
-              {game.currentShow.length ? (
-                <div className="mini-card-list">
-                  {game.currentShow.map((segment, index) => (
-                    <div className="mini-card" key={segment.id}>
-                      <span>
-                        Segment {index + 1} · {segment.type}
-                      </span>
-                      <strong>{getSegmentParticipantsLabel(segment, game.wrestlers)}</strong>
-                      <small>{isValidSegment(segment, game.wrestlers) ? "Ready for TV" : getSegmentValidationWarning(segment, game.wrestlers)}</small>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-state compact">No card booked yet. The production board is dark.</div>
-              )}
-            </div>
-          </article>
-
-          <article className="command-panel dashboard-board-panel dashboard-brief-panel">
-            <div className="section-heading">
-              <p className="eyebrow">GM Desk Brief</p>
-              <h3>{weeklyDecisionPressure.headline}</h3>
-            </div>
-            <p className="dashboard-panel-read">{weeklyDecisionPressure.detail}</p>
-            <div className="dashboard-panel-scroll">
-              <div className="dashboard-brief-list">
-                {weeklyDecisionPressure.items.map((item) => (
-                  <div className={`dashboard-brief-item tone-${item.tone}`} key={item.id}>
-                    <span>{item.label}</span>
-                    <strong>{item.value}</strong>
-                    <small>{item.detail}</small>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </article>
-
-          <article className="command-panel dashboard-board-panel dashboard-pressure-panel">
-            <div className="section-heading">
-              <p className="eyebrow">Risk / Opportunity Board</p>
-              <h3>Roster, Titles, Rivalries</h3>
+              <p className="eyebrow">Roster Overview</p>
+              <h3>{game.wrestlers.length} Signed</h3>
             </div>
             <div className="dashboard-pressure-tags">
               <span>Overused {overusedCount}</span>
@@ -6202,98 +6332,43 @@ function DashboardScreen({
               <span>Protected {protectedStarCount}</span>
               <span>Morale {moraleRiskCount}</span>
               <span>Injury {injuryRiskCount}</span>
-              <span>Minor {minorInjuryCount}</span>
               <span>Out {unavailableCount}</span>
-            </div>
-            <div className="dashboard-panel-scroll">
-              <div className="dashboard-context-stack">
-                <div>
-                  <span>Locker Room Load</span>
-                  <strong>{topOverused ? topOverused.name : topUnderused ? topUnderused.name : "Stable Room"}</strong>
-                  <small>
-                    {topOverused
-                      ? `Fatigue ${topOverused.fatigue} · streak ${topOverused.consecutiveWeeksBooked ?? 0}`
-                      : topUnderused
-                        ? `${formatWeekCount(getWeeksSinceLastBooked(topUnderused, game.currentWeek))} off TV`
-                        : "No major workload spike"}
-                  </small>
-                </div>
-                <div>
-                  <span>Championship Desk</span>
-                  <strong>{topChampionship?.name ?? "No Titles"}</strong>
-                  <small>
-                    {topChampionship ? `${getWrestlerNames(topChampionship.championIds, game.wrestlers)} · ${topTitlePressure?.primary.label ?? "No scene read"}` : "No title scene available"}
-                  </small>
-                </div>
-                <div>
-                  <span>Contender Lane</span>
-                  <strong>{topTitleContenders.map((wrestler) => wrestler.name).join(" / ") || "No Clear Lane"}</strong>
-                  <small>{tagChampionshipSnapshot && tagDivisionAttention ? `${tagDivisionAttention.label} · ${tagDivisionAttention.detail}` : topTitlePressure?.divisionHealth ?? "Title context is quiet"}</small>
-                </div>
-                <div>
-                  <span>Rivalry Timing</span>
-                  <strong>{focusRivalryTiming ? focusRivalryTiming.rivalry.name : "No Active Rivalries"}</strong>
-                  <small>{focusRivalryTiming ? `${focusRivalryTiming.snapshot.primary.label} · Heat ${focusRivalryTiming.rivalry.heat}` : "Start one to give weekly TV more story context"}</small>
-                </div>
-                <div>
-                  <span>Hot Talent</span>
-                  <strong>{hotTalent.map((wrestler) => wrestler.name).join(" / ") || "No Roster"}</strong>
-                  <small>Momentum and popularity leaders for current-state reads.</small>
-                </div>
-                <div>
-                  <span>Protection Watch</span>
-                  <strong>{atRisk.map((wrestler) => wrestler.name).join(" / ") || "No Risk"}</strong>
-                  <small>Fatigue and morale pressure only; no injury outcome is being predicted.</small>
-                </div>
-              </div>
             </div>
           </article>
 
-          <article className={`command-panel dashboard-board-panel dashboard-world-panel pressure-${pressureLabel.toLowerCase()}`}>
+          <article className="command-panel dashboard-telemetry-panel dashboard-locker-table">
             <div className="section-heading">
-              <p className="eyebrow">World / Office Pulse</p>
-              <h3>{brandPulseSnapshot?.headline ?? livingWorldPressure.headline}</h3>
+              <p className="eyebrow">Locker Room Table</p>
+              <h3>Talent Watch</h3>
             </div>
-            <p className="dashboard-panel-read">{brandPulseSnapshot?.detail ?? livingWorldPressure.weekRead}</p>
-            <div className="dashboard-panel-scroll">
-              <div className="dashboard-context-stack">
-                <div className="world-pressure-card office-read">
-                  <span>Brand Office</span>
-                  <strong>{formatPressureLabel(pressureLabel)}</strong>
-                  <small>{financePresenceRead}</small>
+            <div className="dashboard-table-list">
+              {hotTalent.slice(0, 2).map((wrestler, index) => (
+                <div className="dashboard-table-row" key={wrestler.id}>
+                  <span>{index + 1}</span>
+                  <strong>{wrestler.name}</strong>
+                  <small>Mom {wrestler.momentum} · Pop {wrestler.popularity}</small>
                 </div>
-                <div className="world-pressure-card support-read">
-                  <span>Latest Gate</span>
-                  <strong>{latestFinanceReport ? latestFinanceReport.attendance.toLocaleString() : "No Show"}</strong>
-                  <small>{latestFinanceReport ? `Latest P/L ${formatMoney(latestFinanceReport.profitLoss)}` : "Finance report appears after a show runs"}</small>
-                </div>
-                <div className="world-pressure-card primary-read">
-                  <span>Living World</span>
-                  <strong>{livingWorldPressure.whoIsWatching}</strong>
-                  <small>{livingWorldPressure.riskRead}</small>
-                </div>
-                <div className="world-pressure-card next-move-read">
-                  <span>Next Move</span>
-                  <strong>{livingWorldPressure.nextAction}</strong>
-                  <small>{livingWorldPressure.items[0]?.detail ?? "Current-state pressure only"}</small>
-                </div>
-                <div className="world-pressure-card support-read">
-                  <span>Rival Landscape</span>
-                  <strong>{rivalBrands.length} Chairs</strong>
-                  <small>{getRivalUniverseRead(rivalBrands)}</small>
-                </div>
-                <div className="world-pressure-card support-read">
-                  <span>PLE Build</span>
-                  <strong>{pleBuildPressure.phaseLabel}</strong>
-                  <small>{pleBuildPressure.detail}</small>
-                </div>
-                {latestSocialPost ? (
-                  <div className="world-pressure-card support-read">
-                    <span>IWC Buzz</span>
-                    <strong>{formatSocialCategory(latestSocialPost.category)}</strong>
-                    <small>{latestSocialPost.text} · {formatSocialTone(latestSocialPost.tone)}</small>
-                  </div>
-                ) : null}
+              ))}
+            </div>
+          </article>
+
+          <article className="command-panel dashboard-telemetry-panel dashboard-rivalry-panel">
+            <div className="section-heading">
+              <p className="eyebrow">Rivalry / Title Heat</p>
+              <h3>{focusRivalryTiming ? focusRivalryTiming.rivalry.name : "Story Desk"}</h3>
+            </div>
+            <div className="dashboard-mini-rows">
+              <div>
+                <span>Rivalry Timing</span>
+                <strong>{rivalrySceneRead}</strong>
+              </div>
+              <div>
+                <span>Championship Desk</span>
+                <strong>{titleSceneRead}</strong>
+              </div>
+              <div>
+                <span>PLE Build</span>
+                <strong>{pleBuildPressure.phaseLabel}</strong>
               </div>
             </div>
           </article>
