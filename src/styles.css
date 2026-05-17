@@ -817,6 +817,50 @@ button:disabled {
   max-width: none;
 }
 
+.draft-event-stage {
+  align-items: end;
+  background:
+    linear-gradient(120deg, rgba(216, 35, 50, 0.18), rgba(12, 15, 22, 0.3) 48%, rgba(111, 226, 212, 0.1)),
+    rgba(8, 9, 13, 0.64);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-left: 4px solid #d82332;
+  border-radius: 8px;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.24fr);
+  padding: 18px;
+}
+
+.draft-event-stage .lede {
+  margin-bottom: 0;
+}
+
+.draft-clock-tower {
+  background: rgba(6, 8, 12, 0.74);
+  border: 1px solid rgba(246, 193, 86, 0.2);
+  border-radius: 6px;
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.draft-clock-tower span,
+.draft-clock-tower small {
+  color: #9ea8ba;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.draft-clock-tower strong {
+  color: #f6c156;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
 .draft-war-room-strip {
   background: linear-gradient(90deg, rgba(216, 35, 50, 0.18), rgba(246, 193, 86, 0.1), rgba(111, 226, 212, 0.08));
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -900,6 +944,82 @@ button:disabled {
   line-height: 1.45;
   margin: 0;
   text-transform: uppercase;
+}
+
+.draft-spotlight {
+  align-items: stretch;
+  background:
+    linear-gradient(90deg, rgba(246, 193, 86, 0.14), rgba(216, 35, 50, 0.08), rgba(111, 226, 212, 0.08)),
+    rgba(8, 9, 13, 0.62);
+  border: 1px solid rgba(246, 193, 86, 0.2);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1fr) minmax(180px, 0.34fr);
+  margin-top: 16px;
+  padding: 14px;
+}
+
+.draft-spotlight-main {
+  display: grid;
+  gap: 8px;
+}
+
+.draft-spotlight-main h3,
+.draft-review-hero h3 {
+  color: #f4f7fb;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.draft-spotlight-main p:not(.eyebrow),
+.draft-review-hero p {
+  color: #b9c1cf;
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
+.draft-spotlight-metrics {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.draft-spotlight-stack {
+  background: rgba(6, 8, 12, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+}
+
+.draft-spotlight-stack span,
+.draft-review-spine span {
+  color: #9ea8ba;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.draft-spotlight-stack strong,
+.draft-review-spine strong {
+  color: #f4f7fb;
+  display: grid;
+  font-size: 0.82rem;
+  font-weight: 900;
+  gap: 2px;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.draft-spotlight-stack small,
+.draft-review-spine small {
+  color: #f6c156;
+  font-size: 0.68rem;
+  font-weight: 900;
 }
 
 .draft-board {
@@ -1096,6 +1216,29 @@ button:disabled {
 
 .draft-review-summary {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.draft-review-hero {
+  background:
+    linear-gradient(115deg, rgba(216, 35, 50, 0.18), rgba(246, 193, 86, 0.1), rgba(111, 226, 212, 0.06)),
+    rgba(8, 9, 13, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-left: 4px solid #f6c156;
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.4fr);
+  margin: 16px 0;
+  padding: 16px;
+}
+
+.draft-review-spine {
+  background: rgba(6, 8, 12, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
 }
 
 .war-room-read {
@@ -3828,6 +3971,7 @@ h3 {
 
   .status-grid,
   .spotlight-grid,
+  .draft-spotlight-metrics,
   .draft-stat-grid,
   .brand-pulse-grid,
   .rival-draft-notes,
@@ -3836,6 +3980,7 @@ h3 {
   }
 
   .command-grid,
+  .draft-spotlight,
   .profile-layout {
     grid-template-columns: 1fr;
   }
@@ -3903,6 +4048,16 @@ h3 {
     grid-template-columns: 1fr;
   }
 
+  .draft-event-stage,
+  .draft-review-hero {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .draft-clock-tower {
+    text-align: left;
+  }
+
   .draft-war-room-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3921,6 +4076,7 @@ h3 {
 
   .draft-board,
   .draft-finance-grid,
+  .draft-spotlight-metrics,
   .draft-review-grid,
   .draft-review-summary,
   .draft-review-breakdown,

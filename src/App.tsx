@@ -4377,11 +4377,15 @@ function NewGameSetupScreen({
     draftArchetypeFilter !== "All Styles" ? draftArchetypeFilter : null,
   ].filter(Boolean);
   const boardLeader = availableWrestlers[0];
+  const boardSpotlightStack = availableWrestlers.slice(1, 4);
   const topStar = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.popularity + wrestler.momentum);
   const bestTalker = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.promoSkill);
   const bestInRing = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.ringSkill);
   const highestMomentum = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.momentum);
   const weekOneAnchor = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.morale + wrestler.momentum + (100 - wrestler.fatigue));
+  const draftReviewSpine = [...draftedWrestlers]
+    .sort((a, b) => b.popularity + b.momentum + b.ringSkill + b.promoSkill - (a.popularity + a.momentum + a.ringSkill + a.promoSkill))
+    .slice(0, 3);
   const draftReviewPressure = getDraftReviewPressure(draftedWrestlers);
   const draftReviewRead = getDraftReviewRead(draftedWrestlers);
   const draftTierCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.roleTier);
@@ -4631,11 +4635,20 @@ function NewGameSetupScreen({
 
         {step === "draft" ? (
           <div className="setup-panel draft-panel">
-            <p className="eyebrow">Draft Night</p>
-            <h2>Draft War Room</h2>
-            <p className="lede">
-              Build the first 12-person locker room for {brandName.trim() || defaultCareer.brandName}. The Top 200 board is open across every source brand, and every pick is yours.
-            </p>
+            <section className="draft-event-stage" aria-label="Draft night command stage">
+              <div>
+                <p className="eyebrow">Draft Night</p>
+                <h2>Draft War Room</h2>
+                <p className="lede">
+                  Build the first 12-person locker room for {brandName.trim() || defaultCareer.brandName}. The Top 200 board is open across every source brand, and every pick is yours.
+                </p>
+              </div>
+              <div className="draft-clock-tower" aria-label="Draft clock">
+                <span>On The Clock</span>
+                <strong>Pick {Math.min(draftedWrestlers.length + 1, draftPickCount)}</strong>
+                <small>{picksRemaining} pick{picksRemaining === 1 ? "" : "s"} left</small>
+              </div>
+            </section>
             <div className="draft-war-room-strip" aria-label="Draft board status">
               <span>{draftPickCount}-Pick Command Board</span>
               <span>{availableWrestlers.length} Showing</span>
@@ -4645,6 +4658,37 @@ function NewGameSetupScreen({
             </div>
             {rivalDraftActivity ? <RivalDraftActivityPanel snapshot={rivalDraftActivity} /> : null}
             <DraftFinanceSummary readout={draftFinanceReadout} />
+            <section className="draft-spotlight" aria-label="Best available spotlight">
+              <div className="draft-spotlight-main">
+                <p className="eyebrow">Best Available Spotlight</p>
+                <h3>{boardLeader?.name ?? "No Matching Talent"}</h3>
+                <p>
+                  {boardLeader
+                    ? `${getDraftTag(boardLeader.sourceBrand, "Open Pool")} · ${getDraftTag(boardLeader.roleTier)} · ${getDraftTag(boardLeader.archetype)} · ${getDraftTag(boardLeader.division)}`
+                    : "Clear a filter to bring the board back online."}
+                </p>
+              </div>
+              {boardLeader ? (
+                <div className="draft-spotlight-metrics">
+                  <Metric label="Top 200" value={boardLeader.draftRank ? `#${boardLeader.draftRank}` : "File"} />
+                  <Metric label="Star Power" value={`${boardLeader.popularity + boardLeader.momentum}`} />
+                  <Metric label="Ring / Promo" value={`${boardLeader.ringSkill}/${boardLeader.promoSkill}`} />
+                  <Metric label="Condition" value={`Fat ${boardLeader.fatigue}`} detail={`Morale ${boardLeader.morale}`} />
+                </div>
+              ) : null}
+              <div className="draft-spotlight-stack">
+                <span>Next On Board</span>
+                {boardSpotlightStack.length ? (
+                  boardSpotlightStack.map((wrestler) => (
+                    <strong key={wrestler.id}>
+                      {wrestler.name} <small>{wrestler.draftRank ? `#${wrestler.draftRank}` : "Draft File"}</small>
+                    </strong>
+                  ))
+                ) : (
+                  <strong>Board stack empty</strong>
+                )}
+              </div>
+            </section>
             <section>
               <div className="draft-board-note">
                 <strong>Draft Clock Read</strong>
@@ -4798,6 +4842,24 @@ function NewGameSetupScreen({
             <p className="eyebrow">Draft Review</p>
             <h2>{brandName.trim() || defaultCareer.brandName} Draft Debrief</h2>
             <p className="lede">The board is locked. Run through this class read before Week 1 hits the tape.</p>
+            <section className="draft-review-hero" aria-label="Draft review broadcast recap">
+              <div>
+                <p className="eyebrow">Opening Night Graphic</p>
+                <h3>{topStar?.name ?? "Locker Room TBD"}</h3>
+                <p>{topStar ? `Franchise player read with ${topStar.popularity} popularity and ${topStar.momentum} momentum.` : "Complete the draft to generate a roster lead."}</p>
+              </div>
+              <div className="draft-review-spine">
+                <span>Locker Room Spine</span>
+                {draftReviewSpine.map((wrestler, index) => (
+                  <strong key={wrestler.id}>
+                    {index + 1}. {wrestler.name}
+                    <small>
+                      {getDraftTag(wrestler.roleTier)} · Pop {wrestler.popularity} · Mom {wrestler.momentum}
+                    </small>
+                  </strong>
+                ))}
+              </div>
+            </section>
             <div className="status-grid setup-summary draft-review-summary">
               <Metric label="Franchise Player" value={topStar?.name ?? "None"} detail={topStar ? `Pop ${topStar.popularity} · Mom ${topStar.momentum}` : undefined} />
               <Metric label="Best Talker" value={bestTalker?.name ?? "None"} detail={bestTalker ? `Promo ${bestTalker.promoSkill}` : undefined} />
