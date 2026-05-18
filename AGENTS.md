@@ -98,7 +98,8 @@ The game currently supports:
 - Roster command board with compact wrestler cards, selected-superstar dock, morale trend, injury report, and read-only locker-room reads from existing momentum, morale, fatigue, injury, title, rivalry, and TV-time state
 - Wrestler Profiles v1 with compact stat rows, expandable local-state detail panels, pressure labels, GM Read, championship/rivalry/social context, and deterministic read-only decision support
 - Championships with a Champion Wall, selected-title command workspace, title catalog context, vacant-title assignment, champion revocation, player-edited contender order, selected-title contender board, title scene health, and title history for assigned/revoked/resolved title events
-- Rivalries with heat, freshness, stakes, status, create/end controls, and a read-only Creative Desk / story-room pulse derived from existing rivalry timing, history, card usage, and PLE context
+- Rivalries Command Desk with active rivalry rail, selected rivalry spotlight, compact Creative Desk strip, create/end controls, and current-state reads from existing heat, freshness, timing, history, card usage, and PLE context
+- Rivalry structure support for Singles, Tag 2v2, and Multi rivalries, with optional persisted `Rivalry.structure`, legacy saves defaulting to singles, participantIds remaining canonical, and no team records, faction records, rankings, or team-level stats
 - Calendar
 - 12-week season
 - PLEs
@@ -238,6 +239,7 @@ Completed stabilization passes:
 - Setup World Framing Copy Pass v1
 - Laptop UI Readability / Broadcast Hierarchy Pass v1
 - Rivalries Story Room Personality v1
+- Rivalries Command Desk / Expanded Structures v1 (implemented)
 - Finance GM Office Pressure v1
 - Read-only gameplay context helper extraction to src/game/gameContextReads.ts
 - Tag Division Health Diagnostics v1

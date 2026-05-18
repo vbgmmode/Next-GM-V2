@@ -12,7 +12,7 @@ As of this roadmap, the game supports the solo weekly loop:
 
 Title -> Setup -> Draft Night -> Draft Review -> Dashboard -> Booking -> Run Show -> Results -> Week Review -> Advance Week -> Season Review -> Start Next Season
 
-The current mode includes localStorage persistence, deterministic show resolution, roster pressure, injuries, title changes, rivalry movement, social posts, finance reports, season archives, read-only rival brand flavor, tag title support, and multiple read-only context surfaces.
+The current mode includes localStorage persistence, deterministic show resolution, roster pressure, injuries, title changes, rivalry movement, social posts, finance reports, season archives, read-only rival brand flavor, tag title support, Rivalries Command Desk support for singles/tag 2v2/multi rivalry structures, and multiple read-only context surfaces.
 
 ## Near-Term Product Direction
 
@@ -43,7 +43,7 @@ When explicitly requested, grow the game through small playable systems:
 - Contract management with readable pressure and clear player choices.
 - Venue or production decisions that affect show economics.
 - Deeper season archive and career legacy surfaces.
-- Stronger rivalry planning and payoff tools.
+- Stronger rivalry planning and payoff tools beyond the current singles/tag 2v2/multi Rivalries Command Desk.
 - Deeper championship scene management beyond the current Champion Wall, vacant-title assignment, revocation, title booking shortcut, and contender edit controls.
 - Tag/faction systems beyond read-only affiliation context.
 

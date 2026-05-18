@@ -5149,9 +5149,11 @@ h3 {
   border-left: 4px solid #f6c156;
   border-radius: 8px;
   display: grid;
-  gap: 14px;
-  margin: 0 0 18px;
-  padding: 18px;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin: 0;
+  overflow: hidden;
+  padding: 0;
 }
 
 .title-office-panel.tone-hot {
@@ -5186,6 +5188,73 @@ h3 {
   text-transform: uppercase;
 }
 
+.title-office-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  justify-content: stretch;
+  min-height: 40px;
+  padding: 6px 12px;
+  text-align: left;
+  text-transform: none;
+  width: 100%;
+}
+
+.title-office-toggle:hover:not(:disabled),
+.title-office-toggle:focus-visible {
+  border: 0;
+  color: inherit;
+}
+
+.title-office-toggle h3 {
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.1;
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.title-office-toggle > strong {
+  align-items: center;
+  align-self: center;
+  background:
+    linear-gradient(180deg, rgba(246, 193, 86, 0.14), transparent),
+    rgba(8, 9, 13, 0.58);
+  border: 1px solid rgba(246, 193, 86, 0.28);
+  border-radius: 6px;
+  color: #f6c156;
+  display: flex;
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 900;
+  justify-content: center;
+  letter-spacing: 0;
+  line-height: 1.2;
+  min-height: 28px;
+  min-width: 0;
+  padding: 0 10px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.title-office-toggle > span {
+  align-self: center;
+  color: #f6c156;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .title-office-panel > p {
   color: #dbe2ef;
   font-weight: 800;
@@ -5196,14 +5265,34 @@ h3 {
 .championships-command-shell {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.championships-command-shell .top-bar {
+  min-height: 44px;
+}
+
+.championships-command-shell .game-nav {
+  padding-top: 8px;
+}
+
+.championships-command-shell .game-nav button {
+  min-height: 32px;
+  padding: 0 12px;
 }
 
 .championship-command-board {
   align-items: start;
   display: grid;
-  gap: 16px;
+  flex: 1 1 auto;
+  gap: 12px;
   grid-template-columns: minmax(360px, 0.82fr) minmax(0, 1.18fr);
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
 }
 
 .championship-title-wall,
@@ -5220,8 +5309,12 @@ h3 {
   align-self: start;
   border-left: 4px solid #f6c156;
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 10px;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: 12px;
 }
 
 .championship-wall-head,
@@ -5253,8 +5346,9 @@ h3 {
 
 .championship-spotlight-grid {
   display: grid;
-  gap: 10px;
-  max-height: 670px;
+  gap: 8px;
+  max-height: none;
+  min-height: 0;
   min-width: 0;
   overflow: auto;
   padding-right: 3px;
@@ -5271,15 +5365,16 @@ h3 {
   color: inherit;
   cursor: pointer;
   display: grid;
-  gap: 11px;
+  gap: 8px;
   grid-template-areas:
     "belt copy"
     "stats stats"
     "read read";
   grid-template-columns: auto minmax(0, 1fr);
-  min-height: 204px;
+  min-height: 180px;
   min-width: 0;
-  padding: 12px;
+  overflow: hidden;
+  padding: 10px;
   text-align: left;
   transition:
     border-color 160ms ease,
@@ -5330,10 +5425,10 @@ h3 {
   font-family: var(--font-display);
   font-size: 0.92rem;
   font-weight: 900;
-  height: 44px;
+  height: 40px;
   justify-content: center;
   letter-spacing: 0;
-  min-width: 54px;
+  min-width: 50px;
   padding: 0 8px;
   text-transform: uppercase;
 }
@@ -5343,9 +5438,9 @@ h3 {
 }
 
 .championship-belt-mark.large {
-  font-size: 1.2rem;
-  height: 64px;
-  min-width: 78px;
+  font-size: 1.05rem;
+  height: 54px;
+  min-width: 68px;
 }
 
 .championship-card-copy {
@@ -5387,7 +5482,7 @@ h3 {
 
 .championship-card-stats {
   display: grid;
-  gap: 7px;
+  gap: 6px;
   grid-area: stats;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -5398,7 +5493,7 @@ h3 {
   display: grid;
   gap: 3px;
   min-width: 0;
-  padding: 8px;
+  padding: 7px;
 }
 
 .championship-card-stats strong {
@@ -5418,7 +5513,8 @@ h3 {
   gap: 4px;
   grid-area: read;
   min-width: 0;
-  padding: 8px 10px;
+  overflow: hidden;
+  padding: 7px 9px;
 }
 
 .championship-card-read b {
@@ -5429,19 +5525,30 @@ h3 {
   text-transform: uppercase;
 }
 
+.championship-card-read small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .championship-focus-workspace {
   align-content: start;
   align-self: start;
   border-left: 4px solid #d82332;
   display: grid;
-  gap: 14px;
-  padding: 16px;
+  gap: 10px;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: 12px;
 }
 
 .championship-focus-title {
   align-items: start;
   display: grid;
-  gap: 14px;
+  gap: 10px;
   grid-template-columns: auto minmax(0, 1fr);
   min-width: 0;
 }
@@ -5464,7 +5571,7 @@ h3 {
 
 .championship-focus-metrics {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
@@ -5475,14 +5582,14 @@ h3 {
   border-radius: 6px;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px;
+  gap: 7px;
+  padding: 8px;
 }
 
 .championship-focus-tabs button {
   flex: 0 0 auto;
-  min-height: 36px;
-  padding: 0 16px;
+  min-height: 32px;
+  padding: 0 14px;
 }
 
 .championship-champion-metric {
@@ -5562,8 +5669,11 @@ h3 {
 
 .championship-focus-body {
   display: grid;
-  gap: 12px;
+  gap: 10px;
+  min-height: 0;
   min-width: 0;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .championship-scene-summary {
@@ -5574,9 +5684,9 @@ h3 {
   border-left: 3px solid #f6c156;
   border-radius: 6px;
   display: grid;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
-  padding: 12px;
+  padding: 10px;
 }
 
 .championship-scene-summary.pressure-hot {
@@ -5923,6 +6033,10 @@ h3 {
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.title-office-grid {
+  padding: 0 14px 14px;
 }
 
 .title-office-grid article,

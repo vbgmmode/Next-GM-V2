@@ -8543,6 +8543,7 @@ function ChampionshipsScreen({
   const officeRead = getChampionshipOfficeRead(game);
   const [editContendersOpen, setEditContendersOpen] = useState(false);
   const [assignChampionOpen, setAssignChampionOpen] = useState(false);
+  const [isTitleOfficeExpanded, setIsTitleOfficeExpanded] = useState(false);
   const defaultSelectedChampionship =
     game.championships.find((championship) => championship.name === officeRead.attentionTitle) ??
     game.championships.find((championship) => championship.name === officeRead.prestigeTitle) ??
@@ -8624,42 +8625,6 @@ function ChampionshipsScreen({
     <main className="app-shell gameplay-command-shell championships-command-shell">
       <Header game={game} />
       <GameNav currentScreen="championships" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
-      <section className="dashboard-hero">
-        <div>
-          <p className="eyebrow">Title Office</p>
-          <h2>Championships</h2>
-          <p className="lede">
-            {getTitleCatalogBrand(game.brandStyle)} title scenes. Champions anchor the brand, contenders circle by division, and title matches create stakes once the bell rings.
-          </p>
-        </div>
-      </section>
-
-      <section className={`title-office-panel tone-${officeRead.tone}`} aria-label="Championship office readout">
-        <div className="title-office-head">
-          <div>
-            <p className="eyebrow">Championship Committee</p>
-            <h3>{officeRead.headline}</h3>
-          </div>
-          <strong>Prestige Desk</strong>
-        </div>
-        <div className="title-office-grid">
-          <article>
-            <span>Brand Anchor</span>
-            <strong>{officeRead.anchorTitle}</strong>
-            <p>{officeRead.anchorDetail}</p>
-          </article>
-          <article>
-            <span>Needs Attention</span>
-            <strong>{officeRead.attentionTitle}</strong>
-            <p>{officeRead.attentionDetail}</p>
-          </article>
-          <article>
-            <span>Prestige Center</span>
-            <strong>{officeRead.prestigeTitle}</strong>
-            <p>{officeRead.prestigeDetail}</p>
-          </article>
-        </div>
-      </section>
 
       <section className="championship-command-board" aria-label="Championship title office">
         <section className="championship-title-wall" aria-label="Championship spotlight wall">
@@ -9013,6 +8978,41 @@ function ChampionshipsScreen({
               </div>
             ) : null}
           </section>
+        ) : null}
+      </section>
+
+      <section className={`title-office-panel tone-${officeRead.tone} ${isTitleOfficeExpanded ? "is-expanded" : "is-collapsed"}`} aria-label="Championship office readout">
+        <button
+          className="title-office-toggle"
+          aria-expanded={isTitleOfficeExpanded}
+          onClick={() => setIsTitleOfficeExpanded((current) => !current)}
+          type="button"
+        >
+          <div>
+            <p className="eyebrow">Championship Committee</p>
+            <h3>{officeRead.headline}</h3>
+          </div>
+          <strong>Prestige Desk</strong>
+          <span>{isTitleOfficeExpanded ? "Collapse" : "Expand"}</span>
+        </button>
+        {isTitleOfficeExpanded ? (
+          <div className="title-office-grid">
+            <article>
+              <span>Brand Anchor</span>
+              <strong>{officeRead.anchorTitle}</strong>
+              <p>{officeRead.anchorDetail}</p>
+            </article>
+            <article>
+              <span>Needs Attention</span>
+              <strong>{officeRead.attentionTitle}</strong>
+              <p>{officeRead.attentionDetail}</p>
+            </article>
+            <article>
+              <span>Prestige Center</span>
+              <strong>{officeRead.prestigeTitle}</strong>
+              <p>{officeRead.prestigeDetail}</p>
+            </article>
+          </div>
         ) : null}
       </section>
     </main>

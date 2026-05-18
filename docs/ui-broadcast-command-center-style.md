@@ -374,7 +374,10 @@ Championships:
 Rivalries:
 
 - Should feel alive and elastic.
-- Show heat, freshness, stakes, stage, participants, status, history, and available player actions.
+- Use a command-desk shape: active rivalry rail on the left, selected rivalry spotlight in the center, rivalry composer on the right, and a compact expandable Creative Desk strip pinned at the bottom.
+- The selected rivalry spotlight should stay current-state only: structure, stakes, participants, heat, freshness, timing, stage, GM read, recent history, and available player actions.
+- Support singles, tag 2v2, and multi-person rivalry presentation without implying team records, faction mechanics, rankings, predicted outcomes, or hidden story simulation.
+- Avoid redundant labels such as participant subtitles that repeat the title, "Relationship: Rivals," projected effects, broad template panels, or warning grids when the selected rivalry workspace already carries the decision context.
 
 Calendar:
 
