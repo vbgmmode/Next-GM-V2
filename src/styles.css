@@ -2740,6 +2740,10 @@ h3 {
   margin: 16px 0 32px;
 }
 
+.finance-summary-strip {
+  margin: 14px 0 18px;
+}
+
 .command-grid {
   display: grid;
   gap: 14px;
@@ -2898,6 +2902,110 @@ h3 {
 .finance-spotlight {
   border-color: rgba(111, 226, 212, 0.24);
   margin-bottom: 18px;
+}
+
+.finance-expandable-panel {
+  background:
+    linear-gradient(180deg, rgba(111, 226, 212, 0.055), transparent),
+    rgba(14, 17, 24, 0.92);
+  border: 1px solid rgba(111, 226, 212, 0.22);
+  border-radius: 8px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.finance-expandable-panel.finance-report-card {
+  padding: 0;
+}
+
+.finance-expandable-panel.talent-value-pressure-panel {
+  border-color: rgba(246, 193, 86, 0.3);
+}
+
+.finance-expandable-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr) auto;
+  justify-content: stretch;
+  min-height: 62px;
+  padding: 14px 16px;
+  text-align: left;
+  text-transform: none;
+  width: 100%;
+}
+
+.finance-expandable-toggle:hover:not(:disabled),
+.finance-expandable-toggle:focus-visible {
+  border: 0;
+  color: inherit;
+}
+
+.finance-expandable-toggle div,
+.finance-expandable-toggle em,
+.finance-expandable-toggle b {
+  min-width: 0;
+}
+
+.finance-expandable-toggle span {
+  color: #f6c156;
+  display: block;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.finance-expandable-toggle strong {
+  color: #f4f7fb;
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.finance-expandable-toggle em {
+  color: #aeb7c8;
+  font-size: 0.82rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.finance-expandable-toggle b {
+  align-items: center;
+  background:
+    linear-gradient(180deg, rgba(246, 193, 86, 0.14), transparent),
+    rgba(8, 9, 13, 0.58);
+  border: 1px solid rgba(246, 193, 86, 0.28);
+  border-radius: 6px;
+  color: #f6c156;
+  display: flex;
+  font-size: 0.68rem;
+  font-weight: 900;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  text-transform: uppercase;
+}
+
+.finance-expandable-body {
+  padding: 0 12px 14px;
+}
+
+.finance-expandable-body .command-grid,
+.finance-expandable-body .command-panel {
+  margin-bottom: 0;
 }
 
 .finance-spotlight.pressure-critical {
@@ -5265,23 +5373,9 @@ h3 {
 .championships-command-shell {
   display: flex;
   flex-direction: column;
-  gap: 10px;
   height: 100vh;
   min-height: 0;
   overflow: hidden;
-}
-
-.championships-command-shell .top-bar {
-  min-height: 44px;
-}
-
-.championships-command-shell .game-nav {
-  padding-top: 8px;
-}
-
-.championships-command-shell .game-nav button {
-  min-height: 32px;
-  padding: 0 12px;
 }
 
 .championship-command-board {
@@ -5290,6 +5384,7 @@ h3 {
   flex: 1 1 auto;
   gap: 12px;
   grid-template-columns: minmax(360px, 0.82fr) minmax(0, 1.18fr);
+  margin-top: 10px;
   min-height: 0;
   min-width: 0;
   overflow: hidden;

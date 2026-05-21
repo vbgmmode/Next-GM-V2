@@ -97,7 +97,7 @@ The game currently supports:
 - Injury System v1 with deterministic minor/major injuries from fatigue and overuse, major-injury booking blocks, recovery on Advance Week, and persisted injury state
 - Roster command board with compact wrestler cards, selected-superstar dock, morale trend, injury report, and read-only locker-room reads from existing momentum, morale, fatigue, injury, title, rivalry, and TV-time state
 - Wrestler Profiles v1 with compact stat rows, expandable local-state detail panels, pressure labels, GM Read, championship/rivalry/social context, and deterministic read-only decision support
-- Championships with a Champion Wall, selected-title command workspace, title catalog context, vacant-title assignment, champion revocation, player-edited contender order, selected-title contender board, title scene health, and title history for assigned/revoked/resolved title events
+- Championships with a viewport-fit Champion Wall, selected-title command workspace, collapsed committee support strip, contained panel scrolling, title catalog context, vacant-title assignment, champion revocation, player-edited contender order, selected-title contender board, title scene health, and title history for assigned/revoked/resolved title events
 - Rivalries Command Desk with active rivalry rail, selected rivalry spotlight, compact Creative Desk strip, create/end controls, and current-state reads from existing heat, freshness, timing, history, card usage, and PLE context
 - Rivalry structure support for Singles, Tag 2v2, and Multi rivalries, with optional persisted `Rivalry.structure`, legacy saves defaulting to singles, participantIds remaining canonical, and no team records, faction records, rankings, or team-level stats
 - Calendar
@@ -234,7 +234,7 @@ Completed stabilization passes:
 - Week Review Consequence Handoff Polish v1
 - Roster Locker Room Personality v1
 - Championships Prestige / Division Identity v1
-- Championships Command Board / Contender Control v1 (implemented)
+- Championships Command Board / Contender Control v1 (implemented, viewport-fit)
 - Social / IWC Mood Summary v1
 - Setup World Framing Copy Pass v1
 - Laptop UI Readability / Broadcast Hierarchy Pass v1

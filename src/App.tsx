@@ -129,6 +129,7 @@ type RosterSort = "popularity" | "momentum" | "fatigue" | "morale";
 type RosterFilter = "all" | "mens" | "womens" | "champions" | "injured" | "hot" | "tired" | "morale" | "underused";
 type RosterStatus = "Hot" | "Tired" | "Frustrated" | "Steady";
 type ProfilePanelId = "stats" | "gmRead" | "contractValue" | "affiliations" | "showHistory" | "championships" | "rivalries" | "social";
+type FinancePanelId = "talentValue" | "latestReport" | "seasonReads" | "financeHistory";
 type SocialFilter = "All" | "Fan Reaction" | "Dirt Sheets" | "Analyst Takes" | "Title Scene" | "Rivalries";
 type IwcMoodTone = SocialPost["tone"];
 type SetupStep = "contract" | "gm" | "brand" | "rules" | "preview" | "draft" | "review";
@@ -9554,20 +9555,30 @@ function FinanceScreen({
   const talentValuePressure = getTalentValuePressure(game.wrestlers);
   const venueMarketReadout = getVenueMarketContextReadout(latestReport, seasonReports);
   const officeRead = getFinanceOfficeRead(game);
+  const [expandedFinancePanels, setExpandedFinancePanels] = useState<Set<FinancePanelId>>(() => new Set());
+
+  function toggleFinancePanel(panelId: FinancePanelId) {
+    setExpandedFinancePanels((currentPanels) => {
+      const nextPanels = new Set(currentPanels);
+      if (nextPanels.has(panelId)) {
+        nextPanels.delete(panelId);
+      } else {
+        nextPanels.add(panelId);
+      }
+      return nextPanels;
+    });
+  }
 
   return (
     <main className="app-shell gameplay-command-shell">
       <Header game={game} />
       <GameNav currentScreen="finance" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
-      <section className="dashboard-hero">
-        <div>
-          <p className="eyebrow">Brand Office</p>
-          <h2>Finance</h2>
-          <p className="lede">Cash pressure, weekly business, and show fallout. No forecasts here, just what the last broadcast actually did.</p>
-        </div>
-        <button className="primary-action" onClick={() => onNavigate("booking")}>
-          Book Show
-        </button>
+
+      <section className="status-grid finance-summary-strip" aria-label="Finance summary">
+        <Metric label="Current Money" value={formatMoney(game.money)} />
+        <Metric label="Pressure" value={pressureLabel} />
+        <Metric label="Season P/L" value={formatMoney(totalProfitLoss)} />
+        <Metric label="Reports" value={`${game.financeReports.length}`} />
       </section>
 
       <section className={`finance-office-desk pressure-${officeRead.pressureLabel.toLowerCase()}`} aria-label="Finance GM office pressure">
@@ -9590,18 +9601,15 @@ function FinanceScreen({
         </div>
       </section>
 
-      <section className="status-grid" aria-label="Finance summary">
-        <Metric label="Current Money" value={formatMoney(game.money)} />
-        <Metric label="Pressure" value={pressureLabel} />
-        <Metric label="Season P/L" value={formatMoney(totalProfitLoss)} />
-        <Metric label="Reports" value={`${game.financeReports.length}`} />
-      </section>
-
-      <section className="command-panel finance-spotlight talent-value-pressure-panel" aria-label="Talent value pressure">
-        <div className="section-heading">
-          <p className="eyebrow">Talent Value Pressure</p>
-          <h3>Roster Value Read</h3>
-        </div>
+      <FinanceExpandablePanel
+        className="finance-spotlight talent-value-pressure-panel"
+        expanded={expandedFinancePanels.has("talentValue")}
+        eyebrow="Talent Value Pressure"
+        id="talentValue"
+        summary={`${talentValuePressure.mappedCount}/${talentValuePressure.totalCount} mapped · ${talentValuePressure.premiumCount} premium · ${talentValuePressure.bargainCount} value`}
+        title="Roster Value Read"
+        onToggle={toggleFinancePanel}
+      >
         <div className="spotlight-grid compact-grid">
           <Metric label="Premium / High-Cost" value={`${talentValuePressure.premiumCount}`} detail="Premium draw lanes" />
           <Metric label="Bargain / Rising" value={`${talentValuePressure.bargainCount}`} detail="Value-base lanes" />
@@ -9611,17 +9619,18 @@ function FinanceScreen({
             detail={talentValuePressure.missingCount ? `${talentValuePressure.missingCount} pending` : "All roster values mapped"}
           />
         </div>
-        <p className="social-preview-text">{talentValuePressure.gmRead}</p>
-      </section>
+      </FinanceExpandablePanel>
 
       {latestReport ? (
-        <section className="finance-report-card">
-          <div className="section-heading">
-            <p className="eyebrow">
-              Latest Report · {getShowTypeLabel(latestReport.showType)} · {getFinanceReportModelLabel(latestReport)}
-            </p>
-            <h3>{latestReport.showName}</h3>
-          </div>
+        <FinanceExpandablePanel
+          className="finance-report-card"
+          expanded={expandedFinancePanels.has("latestReport")}
+          eyebrow={`Latest Report · ${getShowTypeLabel(latestReport.showType)} · ${getFinanceReportModelLabel(latestReport)}`}
+          id="latestReport"
+          summary={`${formatMoney(latestReport.profitLoss)} · Score ${latestReport.showScore} · ${latestReport.attendance.toLocaleString()} attendance`}
+          title={latestReport.showName}
+          onToggle={toggleFinancePanel}
+        >
           <p className="social-preview-text">
             <strong>{venueMarketReadout.label}</strong> · {venueMarketReadout.read}
           </p>
@@ -9642,56 +9651,114 @@ function FinanceScreen({
               <p key={`${note}-${index}`}>{note}</p>
             ))}
           </div>
-        </section>
+        </FinanceExpandablePanel>
       ) : (
         <div className="empty-state">No finance reports yet. Run a show and the brand office will close the books after results.</div>
       )}
 
       {seasonReports.length ? (
-        <section className="command-grid">
-          <article className="command-panel">
-            <div className="section-heading">
-              <p className="eyebrow">Best Revenue Week</p>
-              <h3>{bestRevenueReport?.showName ?? "None"}</h3>
-            </div>
-            <p className="social-preview-text">
-              {bestRevenueReport
-                ? `${formatMoney(getFinanceGrossRevenue(bestRevenueReport))} revenue in Week ${bestRevenueReport.weekNumber}.`
-                : "No revenue booked yet."}
-            </p>
-          </article>
-          <article className="command-panel">
-            <div className="section-heading">
-              <p className="eyebrow">Worst Profit/Loss</p>
-              <h3>{worstProfitReport?.showName ?? "None"}</h3>
-            </div>
-            <p className="social-preview-text">
-              {worstProfitReport ? `${formatMoney(worstProfitReport.profitLoss)} in Week ${worstProfitReport.weekNumber}.` : "No report yet."}
-            </p>
-          </article>
-        </section>
+        <FinanceExpandablePanel
+          expanded={expandedFinancePanels.has("seasonReads")}
+          eyebrow="Season Business Reads"
+          id="seasonReads"
+          summary={`${seasonReports.length} closed report${seasonReports.length === 1 ? "" : "s"} · ${formatMoney(totalProfitLoss)} season P/L`}
+          title="Best And Worst Closes"
+          onToggle={toggleFinancePanel}
+        >
+          <section className="command-grid">
+            <article className="command-panel">
+              <div className="section-heading">
+                <p className="eyebrow">Best Revenue Week</p>
+                <h3>{bestRevenueReport?.showName ?? "None"}</h3>
+              </div>
+              <p className="social-preview-text">
+                {bestRevenueReport
+                  ? `${formatMoney(getFinanceGrossRevenue(bestRevenueReport))} revenue in Week ${bestRevenueReport.weekNumber}.`
+                  : "No revenue booked yet."}
+              </p>
+            </article>
+            <article className="command-panel">
+              <div className="section-heading">
+                <p className="eyebrow">Worst Profit/Loss</p>
+                <h3>{worstProfitReport?.showName ?? "None"}</h3>
+              </div>
+              <p className="social-preview-text">
+                {worstProfitReport ? `${formatMoney(worstProfitReport.profitLoss)} in Week ${worstProfitReport.weekNumber}.` : "No report yet."}
+              </p>
+            </article>
+          </section>
+        </FinanceExpandablePanel>
       ) : null}
 
-      <section className="finance-history" aria-label="Finance history">
-        {game.financeReports.length ? (
-          [...game.financeReports].reverse().map((report) => (
-            <article className="finance-history-row" key={report.id}>
-              <div>
-                <p className="eyebrow">
-                  Season {report.seasonNumber} · Week {report.weekNumber} · {getShowTypeLabel(report.showType)}
-                </p>
-                <h3>{report.showName}</h3>
-              </div>
-              <div className="finance-row-numbers">
-                <span>Attendance {report.attendance.toLocaleString()}</span>
-                <span>{getFinanceReportModelLabel(report)}</span>
-                <strong>{formatMoney(report.profitLoss)}</strong>
-              </div>
-            </article>
-          ))
-        ) : null}
-      </section>
+      {game.financeReports.length ? (
+        <FinanceExpandablePanel
+          expanded={expandedFinancePanels.has("financeHistory")}
+          eyebrow="Finance History"
+          id="financeHistory"
+          summary={`${game.financeReports.length} closed report${game.financeReports.length === 1 ? "" : "s"}`}
+          title="Closed Books"
+          onToggle={toggleFinancePanel}
+        >
+          <section className="finance-history" aria-label="Finance history">
+            {[...game.financeReports].reverse().map((report) => (
+              <article className="finance-history-row" key={report.id}>
+                <div>
+                  <p className="eyebrow">
+                    Season {report.seasonNumber} · Week {report.weekNumber} · {getShowTypeLabel(report.showType)}
+                  </p>
+                  <h3>{report.showName}</h3>
+                </div>
+                <div className="finance-row-numbers">
+                  <span>Attendance {report.attendance.toLocaleString()}</span>
+                  <span>{getFinanceReportModelLabel(report)}</span>
+                  <strong>{formatMoney(report.profitLoss)}</strong>
+                </div>
+              </article>
+            ))}
+          </section>
+        </FinanceExpandablePanel>
+      ) : null}
     </main>
+  );
+}
+
+function FinanceExpandablePanel({
+  children,
+  className,
+  expanded,
+  eyebrow,
+  id,
+  onToggle,
+  summary,
+  title,
+}: {
+  children: ReactNode;
+  className?: string;
+  expanded: boolean;
+  eyebrow: string;
+  id: FinancePanelId;
+  onToggle: (panelId: FinancePanelId) => void;
+  summary: string;
+  title: string;
+}) {
+  const contentId = `finance-panel-${id}`;
+
+  return (
+    <section className={`finance-expandable-panel ${expanded ? "is-expanded" : "is-collapsed"} ${className ?? ""}`} aria-label={eyebrow}>
+      <button className="finance-expandable-toggle" aria-controls={contentId} aria-expanded={expanded} onClick={() => onToggle(id)} type="button">
+        <div>
+          <span>{eyebrow}</span>
+          <strong>{title}</strong>
+        </div>
+        <em>{summary}</em>
+        <b>{expanded ? "Collapse" : "Expand"}</b>
+      </button>
+      {expanded ? (
+        <div className="finance-expandable-body" id={contentId}>
+          {children}
+        </div>
+      ) : null}
+    </section>
   );
 }
 

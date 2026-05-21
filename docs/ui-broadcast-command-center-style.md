@@ -365,6 +365,8 @@ Championships:
 - Should feel prestigious.
 - Use a Champion Wall or equivalent title wall so every active belt is visible and treated as important.
 - Use a selected-title workspace for the active belt, with focused views for Scene, Contenders, and History.
+- Keep the Championship screen viewport-first: the Champion Wall, selected-title workspace, and collapsed committee/support strip should fit without document-level page scroll.
+- Put overflow inside contained panels only, especially the Champion Wall list and selected-title detail body. Title cards must have stable row heights and clip or truncate long metadata instead of overlapping adjacent belts.
 - Spotlight champion state, vacancy, reign, defenses, current scene pressure, selected-title contenders, division health, and title history.
 - Keep contender boards scoped to the selected title. Do not show every division or every eligible pool when the player is focused on one belt.
 - Contender controls should be direct GM tools: edit, add, remove, and reorder. The game may suggest same-division contenders, but it should not auto-place current champions from other titles into another title's contender lane.
