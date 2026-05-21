@@ -7183,8 +7183,92 @@ h3 {
   padding: 18px;
 }
 
+.cause-ledger-panel.is-collapsible {
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
 .cause-ledger-panel.compact {
   border-color: rgba(111, 226, 212, 0.22);
+}
+
+.cause-ledger-toggle,
+.broadcast-fallout-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr) auto;
+  justify-content: stretch;
+  min-height: 62px;
+  padding: 14px 16px;
+  text-align: left;
+  text-transform: none;
+  width: 100%;
+}
+
+.cause-ledger-toggle:hover:not(:disabled),
+.cause-ledger-toggle:focus-visible,
+.broadcast-fallout-toggle:hover:not(:disabled),
+.broadcast-fallout-toggle:focus-visible {
+  border: 0;
+  color: inherit;
+}
+
+.cause-ledger-toggle span,
+.broadcast-fallout-toggle span {
+  color: #f6c156;
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 900;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.cause-ledger-toggle strong,
+.broadcast-fallout-toggle strong {
+  color: #f4f7fb;
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.cause-ledger-toggle em,
+.broadcast-fallout-toggle em {
+  color: #aeb7c8;
+  font-size: 0.82rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.cause-ledger-toggle b,
+.broadcast-fallout-toggle b {
+  align-items: center;
+  background:
+    linear-gradient(180deg, rgba(246, 193, 86, 0.14), transparent),
+    rgba(8, 9, 13, 0.58);
+  border: 1px solid rgba(246, 193, 86, 0.28);
+  border-radius: 6px;
+  color: #f6c156;
+  display: flex;
+  font-size: 0.68rem;
+  font-weight: 900;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  text-transform: uppercase;
+}
+
+.cause-ledger-panel.is-collapsible .cause-ledger-grid {
+  padding: 0 16px 16px;
 }
 
 .cause-ledger-grid {
@@ -7256,33 +7340,13 @@ h3 {
   display: grid;
   gap: 11px;
   margin-bottom: 18px;
-  padding: 14px;
+  overflow: hidden;
 }
 
-.broadcast-fallout-head {
-  align-items: start;
-  display: flex;
-  gap: 16px;
-  justify-content: space-between;
-}
-
-.broadcast-fallout-head h3 {
-  color: #dbe2ef;
-  font-size: 1rem;
-  line-height: 1.12;
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.broadcast-fallout-head > strong {
-  background: rgba(8, 9, 13, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #aeb7c7;
-  flex: 0 0 auto;
-  font-size: 0.7rem;
-  font-weight: 900;
-  padding: 6px 8px;
-  text-transform: uppercase;
+.broadcast-fallout-body {
+  display: grid;
+  gap: 11px;
+  padding: 0 14px 14px;
 }
 
 .broadcast-fallout-copy,
@@ -8656,6 +8720,124 @@ h3 {
   padding: 18px;
 }
 
+.gameplay-command-shell .results-recap-package {
+  margin-top: 14px;
+}
+
+.results-command-shell {
+  height: 100vh;
+  overflow: hidden;
+  text-transform: uppercase;
+}
+
+.results-command-shell .results-recap-package {
+  gap: 9px;
+  margin-bottom: 10px;
+  padding: 12px;
+}
+
+.results-command-shell .results-recap-package .results-hero {
+  gap: 12px;
+  grid-template-columns: minmax(150px, 0.3fr) minmax(0, 1fr) auto;
+  padding-bottom: 9px;
+}
+
+.results-command-shell .results-scoreboard {
+  padding: 10px;
+}
+
+.results-command-shell .results-hero h2 {
+  font-size: clamp(3.2rem, 5vw, 4.7rem);
+}
+
+.results-command-shell .results-score-line strong {
+  font-size: clamp(1.4rem, 2.6vw, 2.2rem);
+}
+
+.results-command-shell .results-show-name {
+  font-size: 0.76rem;
+  margin-top: 6px;
+}
+
+.results-command-shell .results-broadcast-verdict {
+  gap: 5px;
+}
+
+.results-command-shell .results-broadcast-verdict h3 {
+  font-size: 1.15rem;
+}
+
+.results-command-shell .results-broadcast-verdict p,
+.results-command-shell .results-headline-card p,
+.results-command-shell .results-reel-card p {
+  display: -webkit-box;
+  line-height: 1.28;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.results-command-shell .results-headline-grid,
+.results-command-shell .results-consequence-reel {
+  gap: 8px;
+}
+
+.results-command-shell .results-headline-card,
+.results-command-shell .results-performer-swing,
+.results-command-shell .results-reel-card {
+  gap: 6px;
+  padding: 9px 10px;
+}
+
+.results-command-shell .results-headline-card {
+  min-height: 0;
+}
+
+.results-command-shell .results-headline-card strong {
+  font-size: 1.25rem;
+}
+
+.results-command-shell .results-performer-swing {
+  align-content: stretch;
+}
+
+.results-command-shell .results-performer-swing div {
+  padding: 7px 8px;
+}
+
+.results-command-shell .results-reel-card strong {
+  font-size: 0.88rem;
+}
+
+.results-command-shell .results-why-strip {
+  gap: 10px;
+  padding: 9px 10px;
+}
+
+.results-command-shell .results-why-strip p {
+  line-height: 1.25;
+}
+
+.results-command-shell .cause-ledger-panel,
+.results-command-shell .broadcast-fallout-panel,
+.results-command-shell .results-list,
+.results-command-shell .broadcast-overrun-fallout,
+.results-command-shell .locker-room-fallout {
+  margin-bottom: 8px;
+}
+
+.results-command-shell .cause-ledger-grid,
+.results-command-shell .broadcast-fallout-body,
+.results-command-shell .results-breakdown-body {
+  max-height: 260px;
+  overflow: auto;
+}
+
+.gameplay-command-shell .week-review-hero {
+  margin-top: 14px;
+  padding: 18px 0;
+}
+
 .results-recap-package .results-hero {
   align-items: stretch;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
@@ -8677,6 +8859,13 @@ h3 {
   padding: 14px;
 }
 
+.results-score-line {
+  align-items: baseline;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
 .results-hero h2 {
   color: #f6c156;
   font-size: clamp(4rem, 10vw, 7rem);
@@ -8693,10 +8882,13 @@ h3 {
   font-size: clamp(3rem, 8vw, 6rem);
 }
 
-.results-hero h2 span {
+.results-score-line strong {
   color: #ffffff;
+  font-family: var(--font-display);
   font-size: clamp(1.8rem, 4vw, 3.4rem);
-  vertical-align: middle;
+  font-weight: 900;
+  justify-self: end;
+  line-height: 1;
 }
 
 .results-show-name {
@@ -8886,8 +9078,88 @@ h3 {
 }
 
 .results-list {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent),
+    rgba(14, 17, 24, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
   display: grid;
   gap: 10px;
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.results-breakdown-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr) auto;
+  justify-content: stretch;
+  min-height: 62px;
+  padding: 14px 16px;
+  text-align: left;
+  text-transform: none;
+  width: 100%;
+}
+
+.results-breakdown-toggle:hover:not(:disabled),
+.results-breakdown-toggle:focus-visible {
+  border: 0;
+  color: inherit;
+}
+
+.results-breakdown-toggle span {
+  color: #f6c156;
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 900;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.results-breakdown-toggle strong {
+  color: #f4f7fb;
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.results-breakdown-toggle em {
+  color: #aeb7c8;
+  font-size: 0.82rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.results-breakdown-toggle b {
+  align-items: center;
+  background:
+    linear-gradient(180deg, rgba(246, 193, 86, 0.14), transparent),
+    rgba(8, 9, 13, 0.58);
+  border: 1px solid rgba(246, 193, 86, 0.28);
+  border-radius: 6px;
+  color: #f6c156;
+  display: flex;
+  font-size: 0.68rem;
+  font-weight: 900;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  text-transform: uppercase;
+}
+
+.results-breakdown-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 14px;
 }
 
 .title-fallout,
@@ -8903,6 +9175,17 @@ h3 {
 .locker-room-fallout p {
   color: #f4f7fb;
   line-height: 1.45;
+}
+
+.week-review-aftermath-head {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.week-review-aftermath-head .primary-action {
+  flex: 0 0 auto;
 }
 
 .broadcast-overrun-fallout {

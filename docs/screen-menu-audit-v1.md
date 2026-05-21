@@ -916,18 +916,16 @@ Read audience reaction and decide what stories/talent may need follow-up.
 
 ### Current Purpose
 
-Show money, brand pressure, weekly reports, and season business history.
+Show current money, brand pressure, weekly reports, and season business history through a GM office pressure hierarchy.
 
 ### Current Data Shown
 
-- Current money.
-- Pressure label.
-- Season profit/loss.
-- Report count.
-- Latest report: attendance, revenue, costs, profit/loss, ending money, show score, notes.
-- Best revenue week.
-- Worst profit/loss.
-- Finance history rows.
+- Current money, pressure label, season profit/loss, and report count in a summary strip below nav.
+- GM Office Pressure as the primary open read from current cash, latest close, season trend, business swing, and cost control.
+- Talent Value Pressure as an expandable support panel with premium/high-cost, bargain/rising, and mapped-profile reads.
+- Latest report as an expandable support panel with attendance, revenue, costs, profit/loss, ending money, show score, breakdowns, and notes.
+- Season business reads as an expandable support panel for best revenue week and worst profit/loss.
+- Finance history rows as an expandable support panel.
 
 ### Missing Or Thin Data
 
@@ -937,12 +935,12 @@ Show money, brand pressure, weekly reports, and season business history.
 
 ### Current UI/UX Feel
 
-Clear, gamey finance readout.
+Clear, gamey GM office pressure surface with dense report details collapsed into support panels.
 
 ### UI/UX Gaps Against Doctrine
 
-- Could feel more like a GM office pressure screen and less like a report list.
 - Needs audit for whether financial stakes affect player choices enough.
+- Expandable support panels reduce report-list weight, but the screen still depends on resolved report data rather than deeper business objectives.
 
 ### Player Decision This Screen Should Support
 

@@ -397,6 +397,9 @@ Finance:
 
 - Should be clear, gamey, and decision-focused.
 - Show money, profit/loss, revenue, costs, pressure, and trends without becoming accounting software.
+- Keep the primary GM Office Pressure read open and dominant.
+- Put dense finance support details behind expandable panels when the screen would otherwise become a report list.
+- Finance copy should stay current or retrospective. Do not introduce forecasts, predicted business outcomes, budgets, payroll, sponsorships, ownership objectives, or accounting systems unless an active ticket explicitly asks for them.
 
 Season Review:
 

@@ -106,7 +106,7 @@ The game currently supports:
 - Season Review
 - Start Next Season
 - Social/IWC with existing post feed, filters, and read-only resolved-state IWC mood summary
-- Finance & Brand Pressure with a read-only GM Office Pressure surface derived from current money, latest finance report, season finance history, best/worst business weeks, and closed-report cost context
+- Finance & Brand Pressure with a read-only GM Office Pressure surface derived from current money, latest finance report, season finance history, best/worst business weeks, and closed-report cost context, with finance summary metrics under nav and expandable support panels for talent value, latest report, season reads, and finance history
 - FinanceReport legacy-compatible v2 optional fields for future detailed revenue and expense categories
 - Read-only gameplay context helpers extracted into src/game/gameContextReads.ts for recent derived UI snapshots while React screen components remain in src/App.tsx
 
@@ -252,6 +252,7 @@ Completed stabilization passes:
 - Roster Command Board / Expandable Profile Polish v1 (implemented)
 - Finance Talent Value Pressure v1 (implemented)
 - Finance Presence Pass v1 (implemented)
+- Finance Support Panel Collapse v1 (implemented)
 - Free Agent Watchlist v1 (implemented)
 - Venue / Market Context v1 (implemented)
 - Season Archive Persistence v1 (implemented)

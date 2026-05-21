@@ -9782,7 +9782,9 @@ function FinanceBreakdownList({
   );
 }
 
-function PostShowCauseLedger({ compact = false, sections }: { compact?: boolean; sections: CauseLedgerSection[] }) {
+function PostShowCauseLedger({ collapsible = false, compact = false, sections }: { collapsible?: boolean; compact?: boolean; sections: CauseLedgerSection[] }) {
+  const [isExpanded, setIsExpanded] = useState(!collapsible);
+
   if (!sections.length) {
     return (
       <section className="cause-ledger-panel compact" aria-label="Post-show cause ledger">
@@ -9796,52 +9798,73 @@ function PostShowCauseLedger({ compact = false, sections }: { compact?: boolean;
   }
 
   const visibleSections = compact ? sections.slice(0, 4) : sections;
+  const itemCount = visibleSections.reduce((count, section) => count + section.items.length, 0);
 
   return (
-    <section className={`cause-ledger-panel ${compact ? "compact" : ""}`} aria-label="Post-show cause ledger">
-      <div className="section-heading">
-        <p className="eyebrow">Post-Show Cause Ledger</p>
-        <h3>{compact ? "Why The Week Moved" : "Why It Happened"}</h3>
-      </div>
-      <div className="cause-ledger-grid">
-        {visibleSections.map((section) => (
-          <article className="cause-ledger-section" key={section.id}>
-            <span>{section.label}</span>
-            <div>
-              {section.items.map((item) => (
-                <div className={`cause-ledger-item item-${item.tone}`} key={item.id}>
-                  <strong>{item.label}</strong>
-                  <p>{item.detail}</p>
-                </div>
-              ))}
-            </div>
-          </article>
-        ))}
-      </div>
+    <section className={`cause-ledger-panel ${compact ? "compact" : ""} ${collapsible ? "is-collapsible" : ""} ${isExpanded ? "is-expanded" : "is-collapsed"}`} aria-label="Post-show cause ledger">
+      {collapsible ? (
+        <button className="cause-ledger-toggle" aria-expanded={isExpanded} aria-controls="post-show-cause-ledger-body" onClick={() => setIsExpanded((open) => !open)} type="button">
+          <div>
+            <span>Post-Show Cause Ledger</span>
+            <strong>{compact ? "Why The Week Moved" : "Why It Happened"}</strong>
+          </div>
+          <em>{visibleSections.length} driver group{visibleSections.length === 1 ? "" : "s"} · {itemCount} read{itemCount === 1 ? "" : "s"}</em>
+          <b>{isExpanded ? "Collapse" : "Expand"}</b>
+        </button>
+      ) : (
+        <div className="section-heading">
+          <p className="eyebrow">Post-Show Cause Ledger</p>
+          <h3>{compact ? "Why The Week Moved" : "Why It Happened"}</h3>
+        </div>
+      )}
+      {isExpanded ? (
+        <div className="cause-ledger-grid" id={collapsible ? "post-show-cause-ledger-body" : undefined}>
+          {visibleSections.map((section) => (
+            <article className="cause-ledger-section" key={section.id}>
+              <span>{section.label}</span>
+              <div>
+                {section.items.map((item) => (
+                  <div className={`cause-ledger-item item-${item.tone}`} key={item.id}>
+                    <strong>{item.label}</strong>
+                    <p>{item.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }
 
 function BroadcastFalloutPanel({ snapshot }: { snapshot: BroadcastFalloutSnapshot }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   return (
-    <section className="broadcast-fallout-panel" aria-label="Operational fallout log">
-      <div className="broadcast-fallout-head">
+    <section className={`broadcast-fallout-panel ${isExpanded ? "is-expanded" : "is-collapsed"}`} aria-label="Operational fallout log">
+      <button className="broadcast-fallout-toggle" aria-expanded={isExpanded} aria-controls="operational-fallout-body" onClick={() => setIsExpanded((open) => !open)} type="button">
         <div>
-          <p className="eyebrow">Operational Fallout</p>
-          <h3>Resolved Consequence Notes</h3>
+          <span>Operational Fallout</span>
+          <strong>Resolved Consequence Notes</strong>
         </div>
-        <strong>Support Log</strong>
-      </div>
-      <p className="broadcast-fallout-copy">{snapshot.detail}</p>
-      <div className="broadcast-fallout-grid">
-        {snapshot.items.map((item) => (
-          <article className={`broadcast-fallout-item item-${item.tone}`} key={item.id}>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-            <p>{item.detail}</p>
-          </article>
-        ))}
-      </div>
+        <em>{snapshot.items.length} resolved note{snapshot.items.length === 1 ? "" : "s"}</em>
+        <b>{isExpanded ? "Collapse" : "Expand"}</b>
+      </button>
+      {isExpanded ? (
+        <div className="broadcast-fallout-body" id="operational-fallout-body">
+          <p className="broadcast-fallout-copy">{snapshot.detail}</p>
+          <div className="broadcast-fallout-grid">
+            {snapshot.items.map((item) => (
+              <article className={`broadcast-fallout-item item-${item.tone}`} key={item.id}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <p>{item.detail}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -9861,18 +9884,39 @@ function ResultsScreen({
 }) {
   const bestSegment = getBestSegment(result);
   const financeReport = getFinanceReportForResult(game, result);
-  const causeLedger = buildPostShowCauseLedger(game, result, financeReport);
   const broadcastFallout = buildBroadcastFalloutSnapshot(result);
   const titleHistoryEvents = result.titleHistoryEvents ?? [];
   const titleChanges = titleHistoryEvents.filter((event) => event.eventType === "title_change");
   const isPleResult = result.showType === "ple";
+  const baseCauseLedger = buildPostShowCauseLedger(game, result, financeReport);
+  const titleChangeCauseLedgerItems = titleChanges.map((event) => ({
+    id: `title-change-${event.id}`,
+    label: "Crowning Impact",
+    detail: `${event.championshipName}: ${event.note}${getChampionshipEventPairLine(event) ? ` ${getChampionshipEventPairLine(event)}.` : ""}`,
+    tone: "strong" as const,
+  }));
+  const pleCauseLedgerItem = {
+    id: "major-event-wrap",
+    label: "Major Event Wrap",
+    detail: `This major-event broadcast carried ${titleChanges.length ? `${titleChanges.length} title change${titleChanges.length === 1 ? "" : "s"}` : "no title changes"} and ${
+      result.rivalryHistoryEvents?.length ? `${result.rivalryHistoryEvents.length} rivalry movement event${result.rivalryHistoryEvents.length === 1 ? "" : "s"}` : "no rivalry movement"
+    }.`,
+    tone: "strong" as const,
+  };
+  const resultsStakeItems = [...(isPleResult ? [pleCauseLedgerItem] : []), ...titleChangeCauseLedgerItems];
+  const causeLedger = resultsStakeItems.length
+    ? baseCauseLedger.some((section) => section.id === "stakes")
+      ? baseCauseLedger.map((section) => (section.id === "stakes" ? { ...section, items: [...resultsStakeItems, ...section.items] } : section))
+      : [{ id: "stakes", label: "Title And Rivalry Drivers", items: resultsStakeItems }, ...baseCauseLedger]
+    : baseCauseLedger;
   const pleResultRead = isPleResult
     ? `Major-event night complete; the room now moves on the fallout instead of the build notes.`
     : `Broadcast locked; review the fallout before calendar movement.`;
   const recapPackage = buildResultsRecapPackage(result, broadcastFallout, causeLedger);
+  const [isSegmentBreakdownOpen, setIsSegmentBreakdownOpen] = useState(false);
 
   return (
-    <main className="app-shell">
+    <main className="app-shell gameplay-command-shell results-command-shell">
       <Header game={game} />
       <GameNav currentScreen="results" hasResults hasWeekReview={canContinueWeekReview} onNavigate={onNavigate} />
       <section className={`results-recap-package ${isPleResult ? "ple-panel" : ""}`} aria-label="Broadcast recap package">
@@ -9881,9 +9925,10 @@ function ResultsScreen({
             <p className="eyebrow">
               Season {result.seasonNumber} · Week {result.week} · {getShowTypeLabel(result.showType)}
             </p>
-            <h2>
-              {result.totalScore} <span>{getShowGrade(result.totalScore)}</span>
-            </h2>
+            <div className="results-score-line">
+              <h2>{result.totalScore}</h2>
+              <strong>{getShowGrade(result.totalScore)}</strong>
+            </div>
             <p className="results-show-name">{result.showName}</p>
           </div>
           <div className="results-broadcast-verdict">
@@ -9937,22 +9982,9 @@ function ResultsScreen({
         </section>
       </section>
 
+      <PostShowCauseLedger sections={causeLedger} collapsible />
+
       <BroadcastFalloutPanel snapshot={broadcastFallout} />
-
-      {isPleResult ? (
-        <section className="story-fallout" aria-label="PLE recap">
-          <div className="section-heading">
-            <p className="eyebrow">Major Event Wrap</p>
-            <h3>{result.showName} Fallout</h3>
-          </div>
-          <p>
-            This major-event broadcast carried {titleChanges.length ? `${titleChanges.length} title change${titleChanges.length === 1 ? "" : "s"}` : "no title changes"} and
-            {result.rivalryHistoryEvents?.length ? ` ${result.rivalryHistoryEvents.length} rivalry movement event${result.rivalryHistoryEvents.length === 1 ? "" : "s"}.` : " no rivalry movement."}
-          </p>
-        </section>
-      ) : null}
-
-      <PostShowCauseLedger sections={causeLedger} />
 
       {result.broadcastOverrunNotes?.length ? (
         <section className="broadcast-overrun-fallout" aria-label="Broadcast overrun fallout">
@@ -9961,39 +9993,6 @@ function ResultsScreen({
             <h3>{result.broadcastOverrunLevel === "major" ? "Major Overrun" : result.broadcastOverrunLevel === "moderate" ? "Overrun Pressure" : "Minor Overrun"}</h3>
           </div>
           {result.broadcastOverrunNotes.map((note, index) => (
-            <p key={`${note}-${index}`}>{note}</p>
-          ))}
-        </section>
-      ) : null}
-
-      {titleChanges.length ? (
-        <section className="title-fallout" aria-label="Title fallout">
-          <div className="section-heading">
-            <p className="eyebrow">Crowning Impact</p>
-            <h3>Championships Changed Hands</h3>
-          </div>
-          <p className="lede">One or more belts moved. The room now lives with a sharper title picture.</p>
-          <div className="history-list">
-            {titleChanges.map((event) => (
-              <article className="history-event" key={`result-${event.id}`}>
-                <span>{event.championshipName} · {formatChampionshipEventType(event.eventType)} · {formatHistoryStamp(event)}</span>
-                <p>
-                  {event.note}
-                  {getChampionshipEventPairLine(event) ? ` ${getChampionshipEventPairLine(event)}.` : ""}
-                </p>
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {result.rivalryNotes?.length ? (
-        <section className="story-fallout" aria-label="Rivalry fallout">
-          <div className="section-heading">
-            <p className="eyebrow">Story Fallout</p>
-            <h3>Rivalry Movement</h3>
-          </div>
-          {result.rivalryNotes.map((note, index) => (
             <p key={`${note}-${index}`}>{note}</p>
           ))}
         </section>
@@ -10016,35 +10015,49 @@ function ResultsScreen({
         </section>
       ) : null}
 
-      <section className="results-list" aria-label="Segment results">
-        <div className="section-heading">
-          <p className="eyebrow">Broadcast Breakdown</p>
-          <h3>Segment By Segment</h3>
-        </div>
-        {result.segmentResults.map((segment, index) => (
-          <article className="result-row" key={segment.segmentId}>
-            <div>
-              <p className="eyebrow">
-                Segment {index + 1} · {segment.type}
-              </p>
-              <h3>{getSegmentResultParticipantsLabel(segment, game.wrestlers)}</h3>
-              <p>
-                Momentum +{getResultChange(segment.momentumChanges)} · Fatigue +{getResultChange(segment.fatigueChanges)}
-              </p>
-              <p>
-                {segment.actualDurationMinutes !== undefined
-                  ? `Runtime ${segment.plannedDurationMinutes ?? 0} planned / ${segment.actualDurationMinutes} actual · ${formatRuntimeVariance(segment.durationVarianceMinutes)}`
-                  : "Runtime not recorded for this legacy segment"}
-                {segment.overrunAffected ? " · closing block compressed" : ""}
-              </p>
-              {segment.recapNote ? <p>{segment.recapNote}</p> : null}
-              {getResolvedSegmentStipulationLabel(segment) ? <p className="title-note">Match stipulation: {getResolvedSegmentStipulationLabel(segment)}</p> : null}
-              {segment.titleNote ? <p className="title-note">{segment.titleNote}</p> : null}
-              {segment.rivalryNote ? <p className="rivalry-note">{segment.rivalryNote}</p> : null}
-            </div>
-            <strong>{segment.score}</strong>
-          </article>
-        ))}
+      <section className={`results-list ${isSegmentBreakdownOpen ? "is-expanded" : "is-collapsed"}`} aria-label="Segment results">
+        <button
+          className="results-breakdown-toggle"
+          aria-expanded={isSegmentBreakdownOpen}
+          aria-controls="results-segment-breakdown"
+          onClick={() => setIsSegmentBreakdownOpen((open) => !open)}
+          type="button"
+        >
+          <div>
+            <span>Broadcast Breakdown</span>
+            <strong>Segment By Segment</strong>
+          </div>
+          <em>{result.segmentResults.length} resolved segment{result.segmentResults.length === 1 ? "" : "s"}</em>
+          <b>{isSegmentBreakdownOpen ? "Collapse" : "Expand"}</b>
+        </button>
+        {isSegmentBreakdownOpen ? (
+          <div className="results-breakdown-body" id="results-segment-breakdown">
+            {result.segmentResults.map((segment, index) => (
+              <article className="result-row" key={segment.segmentId}>
+                <div>
+                  <p className="eyebrow">
+                    Segment {index + 1} · {segment.type}
+                  </p>
+                  <h3>{getSegmentResultParticipantsLabel(segment, game.wrestlers)}</h3>
+                  <p>
+                    Momentum +{getResultChange(segment.momentumChanges)} · Fatigue +{getResultChange(segment.fatigueChanges)}
+                  </p>
+                  <p>
+                    {segment.actualDurationMinutes !== undefined
+                      ? `Runtime ${segment.plannedDurationMinutes ?? 0} planned / ${segment.actualDurationMinutes} actual · ${formatRuntimeVariance(segment.durationVarianceMinutes)}`
+                      : "Runtime not recorded for this legacy segment"}
+                    {segment.overrunAffected ? " · closing block compressed" : ""}
+                  </p>
+                  {segment.recapNote ? <p>{segment.recapNote}</p> : null}
+                  {getResolvedSegmentStipulationLabel(segment) ? <p className="title-note">Match stipulation: {getResolvedSegmentStipulationLabel(segment)}</p> : null}
+                  {segment.titleNote ? <p className="title-note">{segment.titleNote}</p> : null}
+                  {segment.rivalryNote ? <p className="rivalry-note">{segment.rivalryNote}</p> : null}
+                </div>
+                <strong>{segment.score}</strong>
+              </article>
+            ))}
+          </div>
+        ) : null}
       </section>
     </main>
   );
@@ -10063,7 +10076,6 @@ function WeekReviewScreen({
 }) {
   const bestSegment = getBestSegment(result);
   const financeReport = getFinanceReportForResult(game, result);
-  const causeLedger = buildPostShowCauseLedger(game, result, financeReport);
   const buzzPreview = game.socialPosts.filter((post) => post.seasonNumber === result.seasonNumber && post.weekNumber === result.week).slice(-3).reverse();
   const bookedIds = [...new Set(result.segmentResults.flatMap((segment) => segment.participantIds))];
   const injuryRiskWrestlers = game.wrestlers.filter(
@@ -10073,58 +10085,42 @@ function WeekReviewScreen({
   const reviewedRivalries = rivalryIds
     .map((id) => game.rivalries.find((rivalry) => rivalry.id === id))
     .filter((rivalry): rivalry is Rivalry => Boolean(rivalry));
-  const financeMarketContext = getVenueMarketContextReadout(financeReport, getSeasonFinanceReports(game));
   const titleHistoryEvents = result.titleHistoryEvents ?? [];
   const titleChanges = titleHistoryEvents.filter((event) => event.eventType === "title_change");
-  const titleDefenses = titleHistoryEvents.filter((event) => event.eventType !== "title_change");
   const rivalryHistoryEvents = result.rivalryHistoryEvents ?? [];
   const nextWeek = game.calendar.find((week) => week.weekNumber === result.week + 1);
   const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= result.week + 1 && !week.completed);
   const weeksUntilNextPle = nextPle ? Math.max(0, nextPle.weekNumber - result.week) : 0;
-  const brandPulseSnapshot = getBrandPulseSnapshot(game, result);
   const weekReviewOffice = getWeekReviewOfficeSnapshot(game, result, financeReport);
   const weekReviewHandoff = getWeekReviewHandoffSnapshot(game, result, financeReport);
   const isPleResult = result.showType === "ple";
-  const pleAftermathNote = isPleResult
-    ? `${result.showName} was a major event. Bring the office through the consequences before the calendar moves.`
-    : `Bring the office through what changed before the calendar moves.`;
 
   return (
-    <main className="app-shell">
+    <main className="app-shell gameplay-command-shell">
       <Header game={game} />
       <GameNav currentScreen="weekReview" hasResults hasWeekReview={true} onNavigate={onNavigate} />
-      <section className="results-hero week-review-hero">
-        <div>
-          <p className="eyebrow">
-            Season {result.seasonNumber} · Week {result.week} After-Action
-          </p>
-          <h2>GM Office Review</h2>
-          <p className="lede">{pleAftermathNote}</p>
-        </div>
-        <button className="primary-action" onClick={onAdvanceWeek}>
-          {result.week >= 12 ? "Season Review" : "Advance Week"}
-        </button>
-      </section>
-
-      {isPleResult ? (
-        <section className="story-fallout" aria-label="PLE week aftermath">
+      <section className="story-fallout week-review-aftermath-panel" aria-label={isPleResult ? "PLE week aftermath" : "Week aftermath"}>
+        <div className="week-review-aftermath-head">
           <div className="section-heading">
-            <p className="eyebrow">PLE Aftermath</p>
-            <h3>Major-Event Consequences</h3>
+            <p className="eyebrow">{isPleResult ? "PLE Aftermath" : "Week Aftermath"}</p>
+            <h3>{isPleResult ? "Major-Event Consequences" : "After-Action Consequences"}</h3>
           </div>
-          <p>
-            {financeReport
-              ? `PLE closeout moved through ${financeReport.attendance.toLocaleString()} paid doors and ${formatMoney(financeReport.profitLoss)} net movement on this week in the office books.`
-              : "The office loaded a major-event review without a finance snapshot."}
-          </p>
-          <p>
-            {titleChanges.length
-              ? `${titleChanges.length} title change${titleChanges.length === 1 ? "" : "s"} were logged, alongside ${result.rivalryHistoryEvents?.length ?? 0} rivalry event${(result.rivalryHistoryEvents?.length ?? 0) === 1 ? "" : "s"}`
-              : "No title transitions were logged on this major event."}
-            .
-          </p>
-        </section>
-      ) : null}
+          <button className="primary-action" onClick={onAdvanceWeek}>
+            {result.week >= 12 ? "Season Review" : "Advance Week"}
+          </button>
+        </div>
+        <p>
+          {financeReport
+            ? `${result.showName} closed through ${financeReport.attendance.toLocaleString()} paid doors and ${formatMoney(financeReport.profitLoss)} net movement in the office books.`
+            : "The office loaded this review without a finance snapshot."}
+        </p>
+        <p>
+          {titleChanges.length
+            ? `${titleChanges.length} title change${titleChanges.length === 1 ? "" : "s"} were logged, alongside ${result.rivalryHistoryEvents?.length ?? 0} rivalry event${(result.rivalryHistoryEvents?.length ?? 0) === 1 ? "" : "s"}`
+            : "No title transitions were logged on this show."}
+          .
+        </p>
+      </section>
 
       <section className="status-grid" aria-label="Week review show outcome">
         <Metric label="Show Score" value={`${result.totalScore}`} detail={`Grade ${getShowGrade(result.totalScore)}`} />
@@ -10174,10 +10170,6 @@ function WeekReviewScreen({
           </div>
         </section>
       ) : null}
-
-      <PostShowCauseLedger sections={causeLedger} compact />
-
-      {brandPulseSnapshot ? <BrandPulsePanel compact snapshot={brandPulseSnapshot} /> : null}
 
       <section className="locker-room-fallout" aria-label="Locker room fallout">
         <div className="section-heading">
@@ -10255,52 +10247,6 @@ function WeekReviewScreen({
         </div>
       </section>
 
-      <section className="title-fallout" aria-label="Championship fallout">
-        <div className="section-heading">
-          <p className="eyebrow">Championship Fallout</p>
-          <h3>Title Picture</h3>
-        </div>
-        {titleChanges.length ? (
-          <article className="title-change-callout">
-            <p className="lede">One or more titles changed hands. The champion landscape now carries the full weight of this broadcast.</p>
-            <div className="history-list">
-              {titleChanges.map((event) => (
-                <div className="history-event" key={`week-review-change-${event.id}`}>
-                  <span>{formatChampionshipEventType(event.eventType)} · {event.championshipName} · {formatHistoryStamp(event)}</span>
-                  {getChampionshipEventPairLine(event) ? <strong>{getChampionshipEventPairLine(event)}</strong> : null}
-                  <p>{event.note}</p>
-                </div>
-              ))}
-            </div>
-            {titleDefenses.length ? (
-              <div className="history-list">
-                {titleDefenses.map((event) => (
-                  <div className="history-event" key={`week-review-defense-${event.id}`}>
-                    <span>{formatChampionshipEventType(event.eventType)} · {event.championshipName}</span>
-                    {getChampionshipEventPairLine(event) ? <strong>{getChampionshipEventPairLine(event)}</strong> : null}
-                    <p>{event.note}</p>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </article>
-        ) : titleHistoryEvents.length ? (
-          <div className="history-list">
-            {titleHistoryEvents.map((event) => (
-              <article className="history-event" key={event.id}>
-                <span>{formatChampionshipEventType(event.eventType)} · {event.championshipName}</span>
-                {getChampionshipEventPairLine(event) ? <strong>{getChampionshipEventPairLine(event)}</strong> : null}
-                <p>{event.note}</p>
-              </article>
-            ))}
-          </div>
-        ) : result.titleNotes.length ? (
-          result.titleNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>)
-        ) : (
-          <p>No championship changes or defenses.</p>
-        )}
-      </section>
-
       <section className="story-fallout" aria-label="Rivalry fallout">
         <div className="section-heading">
           <p className="eyebrow">Rivalry Fallout</p>
@@ -10348,23 +10294,6 @@ function WeekReviewScreen({
                 <p>{post.text}</p>
               </article>
             ))}
-          </div>
-        </section>
-      ) : null}
-
-      {financeReport ? (
-        <section className="finance-fallout" aria-label="Week review financial fallout">
-          <div className="section-heading">
-            <p className="eyebrow">Finance Fallout</p>
-            <h3>Brand Office Close</h3>
-          </div>
-          <div className="spotlight-grid">
-            <Metric label="Profit/Loss" value={formatMoney(financeReport.profitLoss)} />
-            <Metric label="Revenue" value={formatMoney(getFinanceGrossRevenue(financeReport))} />
-            <Metric label="Costs" value={formatMoney(getFinanceTotalExpenses(financeReport))} />
-            <Metric label="Attendance" value={financeReport.attendance.toLocaleString()} />
-            <Metric label="Ending Money" value={formatMoney(financeReport.endingMoney)} />
-            <Metric label="Venue / Market" value={financeMarketContext.label} detail={financeMarketContext.summary} />
           </div>
         </section>
       ) : null}
