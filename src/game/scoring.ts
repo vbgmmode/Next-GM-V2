@@ -57,7 +57,7 @@ const CONTEXT_BONUS = {
 
 const SHOW_BALANCE = {
   pleScoreBonus: 4,
-  pleMomentumBonus: 1,
+  pleMomentumBonus: 2,
   pleFatigueBonus: 1,
 };
 
@@ -72,22 +72,26 @@ const SEGMENT_FATIGUE_GAIN: Record<SegmentType, number> = {
 const FALLOUT_BALANCE = {
   underuseWeeks: 3,
   overuseConsecutiveWeeks: 3,
-  highFatigue: 60,
+  highFatigue: 58,
+  severeFatigue: 78,
   bookedMoraleGain: 1,
-  underusedReturnMoraleGain: 2,
-  pressureBookingMoralePenalty: 2,
-  underuseMoralePenalty: 1,
+  underusedReturnMoraleGain: 3,
+  pressureBookingMoralePenalty: 3,
+  severePressureMoralePenalty: 4,
+  underuseMoralePenalty: 2,
 };
 
 const RIVALRY_BALANCE = {
+  eliteHeatGain: 8,
   strongHeatGain: 6,
   steadyHeatGain: 3,
-  flatHeatLoss: -4,
-  pleHeatBonus: 3,
+  flatHeatLoss: -5,
+  pleHeatBonus: 4,
   backstageStoryBonus: 1,
   contractStoryBonus: 2,
   freshnessCost: -5,
-  repeatedBeatFreshnessCost: -10,
+  repeatedBeatFreshnessCost: -12,
+  repeatedWeakBeatFreshnessCost: -15,
 };
 
 const INJURY_BALANCE = {
@@ -542,23 +546,27 @@ function updateWrestlerPressure(
   const wasUnderused = weeksSinceLastBooked >= FALLOUT_BALANCE.underuseWeeks;
   const wasOverused = previousConsecutiveWeeks >= FALLOUT_BALANCE.overuseConsecutiveWeeks;
   const wasHighlyFatigued = wrestler.fatigue >= FALLOUT_BALANCE.highFatigue;
+  const wasSeverelyFatigued = wrestler.fatigue >= FALLOUT_BALANCE.severeFatigue;
   // Normal TV time is a small morale positive; pressure penalties only bite after repeated usage or long absences.
   let moraleChange = isBooked ? FALLOUT_BALANCE.bookedMoraleGain : 0;
   let underusedBoostNote = "";
 
   if (isBooked && wasUnderused) {
     moraleChange += FALLOUT_BALANCE.underusedReturnMoraleGain;
-    underusedBoostNote = `${wrestler.name} returned after ${weeksSinceLastBooked} weeks off TV and felt seen by the room.`;
+    underusedBoostNote = `${wrestler.name} returned after ${weeksSinceLastBooked} weeks off TV and turned absence into a locker-room lift.`;
   }
 
   if (isBooked && (wasHighlyFatigued || wasOverused)) {
-    moraleChange -= FALLOUT_BALANCE.pressureBookingMoralePenalty + (wrestler.injuryStatus === "minor" ? INJURY_BALANCE.minorMoralePenalty : 0);
-    const pressureSource = wasHighlyFatigued ? "heavy fatigue" : "a long TV streak";
+    const pressurePenalty =
+      (wasSeverelyFatigued ? FALLOUT_BALANCE.severePressureMoralePenalty : FALLOUT_BALANCE.pressureBookingMoralePenalty) +
+      (wrestler.injuryStatus === "minor" ? INJURY_BALANCE.minorMoralePenalty : 0);
+    moraleChange -= pressurePenalty;
+    const pressureSource = wasSeverelyFatigued ? "red-line fatigue" : wasHighlyFatigued ? "heavy fatigue" : "a long TV streak";
     fallout.overuseWarnings.push({
       wrestlerId: wrestler.id,
       wrestlerName: wrestler.name,
-      moraleChange: -(FALLOUT_BALANCE.pressureBookingMoralePenalty + (wrestler.injuryStatus === "minor" ? INJURY_BALANCE.minorMoralePenalty : 0)),
-      note: `${wrestler.name} worked through ${pressureSource}${wrestler.injuryStatus === "minor" ? " while already hurt" : ""}. The locker room noticed the load.`,
+      moraleChange: -pressurePenalty,
+      note: `${wrestler.name} was pushed through ${pressureSource}${wrestler.injuryStatus === "minor" ? " while already hurt" : ""}. The room read it as a costly ask, not just TV time.`,
     });
   }
 
@@ -568,7 +576,7 @@ function updateWrestlerPressure(
       wrestlerId: wrestler.id,
       wrestlerName: wrestler.name,
       moraleChange: -FALLOUT_BALANCE.underuseMoralePenalty,
-      note: `${wrestler.name} has been off TV for ${weeksSinceLastBooked} weeks and is slipping from the weekly conversation.`,
+      note: `${wrestler.name} has been off TV for ${weeksSinceLastBooked} weeks. The absence is starting to read like a creative verdict.`,
     });
   }
 
@@ -579,7 +587,7 @@ function updateWrestlerPressure(
       wrestlerId: wrestler.id,
       wrestlerName: wrestler.name,
       moraleChange: nextMorale - wrestler.morale,
-      note: `${wrestler.name} lost morale from ${isBooked ? "being pushed through pressure" : "another week without meaningful TV"}.`,
+      note: `${wrestler.name} lost morale from ${isBooked ? "being asked to carry pressure the room could see" : "another week without meaningful TV"}.`,
     });
   }
 
@@ -588,7 +596,7 @@ function updateWrestlerPressure(
       wrestlerId: wrestler.id,
       wrestlerName: wrestler.name,
       moraleChange: nextMorale - wrestler.morale,
-      note: underusedBoostNote || `${wrestler.name} gained morale from TV time that felt useful, not ornamental.`,
+      note: underusedBoostNote || `${wrestler.name} gained morale because the TV time felt like a role, not filler.`,
     });
   }
 
@@ -743,7 +751,7 @@ function getSegmentFatigueGain(segment: Segment, actualDurationMinutes: number, 
 }
 
 function getSegmentMomentumGain(score: number, isPle: boolean) {
-  const baseGain = score >= 85 ? 5 : score >= 70 ? 4 : score >= 55 ? 2 : 1;
+  const baseGain = score >= 95 ? 8 : score >= 90 ? 7 : score >= 85 ? 6 : score >= 70 ? 4 : score >= 55 ? 2 : 1;
   return baseGain + (isPle ? SHOW_BALANCE.pleMomentumBonus : 0);
 }
 
@@ -847,11 +855,13 @@ function getSegmentRecap(segment: Segment, wrestlers: Wrestler[], score: number,
 
     const titleIntrigue = segment.championshipId ? " The title scene picked up a little intrigue without putting the championship at stake." : "";
     const flavor =
-      score >= 75
-        ? "The answer landed like a genuine jolt."
-        : score >= 55
-          ? "The challenge created useful noise, even if it left room to grow."
-          : "The answer exposed fatigue more than it sparked buzz.";
+      score >= 90
+        ? "The answer felt like a breakout interruption."
+        : score >= 75
+          ? "The answer landed like a genuine jolt."
+          : score >= 55
+            ? "The challenge created useful noise, even if it left room to grow."
+            : "The answer exposed fatigue more than it sparked buzz.";
     return `${issuer} issued the challenge, and ${opponent} answered the call. ${flavor}${titleIntrigue}`;
   }
 
@@ -863,33 +873,55 @@ function getSegmentRecap(segment: Segment, wrestlers: Wrestler[], score: number,
         : `${teamNames} ran a 2v2 tag contest${stage}.`;
     }
 
+    if (score >= 95) {
+      return `${pairedNames} delivered the kind of bell-to-bell statement that changes the room${stage}.`;
+    }
+
     if (score >= 85) {
       return `${pairedNames} delivered a premium bell-to-bell statement${stage}.`;
     }
 
     return score >= 70
       ? `${pairedNames} delivered a crisp match${stage}.`
-      : `${pairedNames} got through the match, but the room wanted a cleaner gear.`;
+      : score >= 55
+        ? `${pairedNames} got through the match, but the room wanted a cleaner gear.`
+        : `${pairedNames} never found the gear the spot needed, and the silence carried into the next segment.`;
   }
 
   if (segment.type === "Promo") {
+    if (score >= 95) {
+      return `${joinedNames} made the microphone feel like the whole show was bending around it.`;
+    }
+
     if (score >= 85) {
       return `${joinedNames} made the microphone feel like the center of the broadcast.`;
     }
 
     return score >= 70
       ? `${joinedNames} owned the microphone and gave the broadcast a clear voice.`
-      : `${joinedNames} kept the story alive, but the promo needed sharper fire.`;
+      : score >= 55
+        ? `${joinedNames} kept the story alive, but the promo needed sharper fire.`
+        : `${joinedNames} lost the room before the point could land.`;
   }
 
   if (segment.type === "Backstage Angle") {
+    if (score >= 95) {
+      return `${joinedNames} turned the backstage feed into the clip everyone rewinds.`;
+    }
+
     if (score >= 85) {
       return `${joinedNames} made the backstage feed feel like surveillance with stakes.`;
     }
 
     return score >= 70
       ? `${joinedNames} turned the backstage cameras into useful story pressure.`
-      : `${joinedNames} added texture backstage, though the beat did not fully land.`;
+      : score >= 55
+        ? `${joinedNames} added texture backstage, though the beat did not fully land.`
+        : `${joinedNames} left the backstage cameras running on a beat the room did not buy.`;
+  }
+
+  if (score >= 95) {
+    return `${pairedNames} made the contract table feel seconds away from becoming a crime scene.`;
   }
 
   if (score >= 85) {
@@ -898,7 +930,9 @@ function getSegmentRecap(segment: Segment, wrestlers: Wrestler[], score: number,
 
   return score >= 70
     ? `${pairedNames} made the contract table feel dangerous without changing the title picture.`
-    : `${pairedNames} put ink on the table, but the tension needed more bite.`;
+    : score >= 55
+      ? `${pairedNames} put ink on the table, but the tension needed more bite.`
+      : `${pairedNames} made the contract table feel procedural when it needed danger.`;
 }
 
 export function getRivalryStatus(heat: number, freshness: number): RivalryStatus {
@@ -938,11 +972,24 @@ function resolveRivalrySegment(segment: Segment, rivalries: Rivalry[], score: nu
   const events: RivalryHistoryEvent[] = [];
   const isPle = context.showType === "ple";
   // Rivalry movement should be visible after each beat, but freshness prevents one story from maxing out instantly.
+  const scoreHeatDelta =
+    score >= 90
+      ? RIVALRY_BALANCE.eliteHeatGain
+      : score >= 75
+        ? RIVALRY_BALANCE.strongHeatGain
+        : score >= 60
+          ? RIVALRY_BALANCE.steadyHeatGain
+          : RIVALRY_BALANCE.flatHeatLoss;
   const heatDelta =
-    (score >= 75 ? RIVALRY_BALANCE.strongHeatGain : score >= 60 ? RIVALRY_BALANCE.steadyHeatGain : RIVALRY_BALANCE.flatHeatLoss) +
+    scoreHeatDelta +
     getRivalrySegmentTypeBonus(segment) +
     (isPle ? RIVALRY_BALANCE.pleHeatBonus : 0);
-  const freshnessDelta = rivalry.lastAdvancedWeek === context.weekNumber ? RIVALRY_BALANCE.repeatedBeatFreshnessCost : RIVALRY_BALANCE.freshnessCost;
+  const repeatedBeat = rivalry.lastAdvancedWeek === context.weekNumber;
+  const freshnessDelta = repeatedBeat
+    ? score < 60
+      ? RIVALRY_BALANCE.repeatedWeakBeatFreshnessCost
+      : RIVALRY_BALANCE.repeatedBeatFreshnessCost
+    : RIVALRY_BALANCE.freshnessCost;
   rivalry.heat = clamp(rivalry.heat + heatDelta);
   rivalry.freshness = clamp(rivalry.freshness + freshnessDelta);
   rivalry.lastAdvancedWeek = context.weekNumber;
@@ -969,22 +1016,25 @@ function resolveRivalrySegment(segment: Segment, rivalries: Rivalry[], score: nu
 
   if (rivalry.status === "stale") {
     eventType = "became_stale";
-    note = `${rivalry.name} is losing freshness after another beat${isPle ? " on a major stage" : " on TV"}.`;
+    note = `${rivalry.name} lost the room after another beat${isPle ? " on a major stage" : " on TV"} drained the thread.`;
+  } else if (score >= 90) {
+    eventType = "heated_up";
+    note = `${rivalry.name} exploded into the loudest story lane after an elite${isPle ? " major-event" : ""} beat.`;
   } else if (score >= 75) {
     eventType = "heated_up";
-    note = `${rivalry.name} caught fire after a strong${isPle ? " major-event" : ""} segment.`;
+    note = `${rivalry.name} caught real heat after a strong${isPle ? " major-event" : ""} segment gave the room something to chase.`;
   } else if (score >= 60) {
     eventType = "advanced";
-    note = `${rivalry.name} moved forward${isPle ? " under the major-event lights" : ""}, though the story lost a little freshness.`;
+    note = `${rivalry.name} moved forward${isPle ? " under the major-event lights" : ""}, but the next beat needs a sharper turn before freshness slips.`;
   } else {
     eventType = "cooled";
-    note = `${rivalry.name} cooled after a flat beat failed to lift the room.`;
+    note = `${rivalry.name} cooled after a flat beat made the room feel the repetition.`;
   }
 
   events.push(buildEvent(eventType, note));
 
   if (isPle) {
-    events.push(buildEvent("ple_payoff", `${rivalry.name} reached a PLE checkpoint at ${context.showName}.`));
+    events.push(buildEvent("ple_payoff", `${rivalry.name} reached a PLE checkpoint at ${context.showName}; the story now has a receipt, not just build.`));
   }
 
   return { note, events };
@@ -1044,8 +1094,10 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
     championship.defenses += 1;
     const defenseFrame =
       championship.defenses >= 3
-        ? `Retained again. ${champion.name} is turning the ${championship.name} into a guarded office.`
-        : `${champion.name} retained the ${championship.name}${context.showType === "ple" ? " on a major stage" : ""}.`;
+        ? `Retained again. ${champion.name} is turning the ${championship.name} into a guarded office nobody can casually enter.`
+        : context.showType === "ple"
+          ? `${champion.name} retained the ${championship.name} on a major stage and left with the belt feeling heavier.`
+          : `${champion.name} retained the ${championship.name}, keeping the title scene centered on the champion.`;
     const note = defenseFrame;
 
     return {
@@ -1073,8 +1125,8 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
   championship.defenses = 0;
   const note =
     context.showType === "ple"
-      ? `${winner.name} defeated ${champion.name} to win the ${championship.name} at a major event. The title picture has a new center.`
-      : `${winner.name} defeated ${champion.name} to win the ${championship.name}. The belt moved on TV, and the room has to adjust.`;
+      ? `${winner.name} defeated ${champion.name} to win the ${championship.name} at a major event. The title picture snapped to a new center.`
+      : `${winner.name} defeated ${champion.name} to win the ${championship.name}. The belt moved on TV, and the room has to reorganize around it.`;
 
   return {
     note,
@@ -1140,7 +1192,10 @@ function resolveTagTitleMatch(segment: Segment, championship: Championship, wres
 
   if (championRetains) {
     championship.defenses += 1;
-    const note = `${championPairLabel} retained the ${championship.name} against ${challengerPairLabel}${context.showType === "ple" ? " on a major stage" : ""}.`;
+    const note =
+      context.showType === "ple"
+        ? `${championPairLabel} retained the ${championship.name} against ${challengerPairLabel} on a major stage, keeping the division locked around them.`
+        : `${championPairLabel} retained the ${championship.name} against ${challengerPairLabel}, forcing the tag scene to keep chasing.`;
 
     return {
       note,
@@ -1171,8 +1226,8 @@ function resolveTagTitleMatch(segment: Segment, championship: Championship, wres
   championship.defenses = 0;
   const note =
     context.showType === "ple"
-      ? `${challengerPairLabel} defeated ${championPairLabel} to win the ${championship.name} at a major event. The tag title picture has a new center.`
-      : `${challengerPairLabel} defeated ${championPairLabel} to win the ${championship.name}. The tag title picture has to adjust.`;
+      ? `${challengerPairLabel} defeated ${championPairLabel} to win the ${championship.name} at a major event. The tag title picture snapped to a new center.`
+      : `${challengerPairLabel} defeated ${championPairLabel} to win the ${championship.name}. The tag title picture has to reorganize around them.`;
 
   return {
     note,

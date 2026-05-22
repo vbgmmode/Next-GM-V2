@@ -1542,7 +1542,10 @@ export function buildBroadcastFalloutSnapshot(result: ShowResult): BroadcastFall
       id: "best-segment",
       label: "Top Segment",
       value: `${bestSegment.score}`,
-      detail: `${bestSegment.participantNames.join(" / ") || "The resolved segment"} delivered the strongest ${bestSegment.type.toLowerCase()} on the resolved card.`,
+      detail:
+        bestSegment.score >= 90
+          ? `${bestSegment.participantNames.join(" / ") || "The resolved segment"} gave the broadcast its signature spike with a ${bestSegment.score} ${bestSegment.type.toLowerCase()}.`
+          : `${bestSegment.participantNames.join(" / ") || "The resolved segment"} delivered the strongest ${bestSegment.type.toLowerCase()} on the resolved card.`,
       tone: bestSegment.score >= 85 ? "strong" : bestSegment.score < 60 ? "watch" : "steady",
     });
   }
@@ -1551,7 +1554,10 @@ export function buildBroadcastFalloutSnapshot(result: ShowResult): BroadcastFall
     id: "standout-performer",
     label: "Standout",
     value: result.biggestMomentumGain.name,
-    detail: `${result.biggestMomentumGain.name} left with the biggest momentum gain at +${result.biggestMomentumGain.amount}. ${result.biggestFatigueIncrease.name} absorbed the heaviest fatigue hit at +${result.biggestFatigueIncrease.amount}.`,
+    detail:
+      result.biggestMomentumGain.amount >= 8
+        ? `${result.biggestMomentumGain.name} left with a real breakout signal at +${result.biggestMomentumGain.amount} momentum. ${result.biggestFatigueIncrease.name} paid the biggest physical tax at +${result.biggestFatigueIncrease.amount} fatigue.`
+        : `${result.biggestMomentumGain.name} left with the biggest momentum gain at +${result.biggestMomentumGain.amount}. ${result.biggestFatigueIncrease.name} absorbed the heaviest fatigue hit at +${result.biggestFatigueIncrease.amount}.`,
     tone: result.biggestMomentumGain.amount >= 8 ? "strong" : result.biggestFatigueIncrease.amount >= 12 ? "watch" : "steady",
   });
 
@@ -1591,7 +1597,7 @@ export function buildBroadcastFalloutSnapshot(result: ShowResult): BroadcastFall
           .map((note) => note.note)
           .join(" / ")
       : moraleBoosts.length || moraleDrops.length
-        ? `${moraleBoosts.length} morale boost${moraleBoosts.length === 1 ? "" : "s"} and ${moraleDrops.length} morale drop${moraleDrops.length === 1 ? "" : "s"} resolved after the show.`
+        ? `${moraleBoosts.length} morale boost${moraleBoosts.length === 1 ? "" : "s"} and ${moraleDrops.length} morale drop${moraleDrops.length === 1 ? "" : "s"} hit the room after the card.`
         : "No injury or morale fallout note was logged from this result.",
     tone: injuryNotes.length || moraleDrops.length ? "watch" : moraleBoosts.length ? "strong" : "steady",
   });
@@ -1635,7 +1641,10 @@ export function buildPostShowCauseLedger(game: GameState, result: ShowResult, fi
     performanceItems.push({
       id: "best-segment",
       label: "Top Driver",
-      detail: `${bestSegment.participantNames.join(" / ")} carried the night with a ${bestSegment.score} ${bestSegment.type.toLowerCase()}.`,
+      detail:
+        bestSegment.score >= 90
+          ? `${bestSegment.participantNames.join(" / ")} gave the night its emotional peak with a ${bestSegment.score} ${bestSegment.type.toLowerCase()}.`
+          : `${bestSegment.participantNames.join(" / ")} carried the night with a ${bestSegment.score} ${bestSegment.type.toLowerCase()}.`,
       tone: bestSegment.score >= 85 ? "strong" : bestSegment.score >= 70 ? "steady" : "watch",
     });
   }
@@ -1643,7 +1652,7 @@ export function buildPostShowCauseLedger(game: GameState, result: ShowResult, fi
     performanceItems.push({
       id: "score-shape",
       label: "Score Shape",
-      detail: `${strongSegments.length} segment${strongSegments.length === 1 ? "" : "s"} landed at 85+, while ${coldSegments.length} segment${coldSegments.length === 1 ? "" : "s"} finished below 60.`,
+      detail: `${strongSegments.length} segment${strongSegments.length === 1 ? "" : "s"} broke through at 85+, while ${coldSegments.length} segment${coldSegments.length === 1 ? "" : "s"} fell below 60 and dragged on the night.`,
       tone: coldSegments.length ? "watch" : strongSegments.length ? "strong" : "steady",
     });
   }
@@ -1729,7 +1738,10 @@ export function buildPostShowCauseLedger(game: GameState, result: ShowResult, fi
     rosterItems.push({
       id: "momentum-driver",
       label: "Momentum",
-      detail: `${result.biggestMomentumGain.name} gained the most momentum after their resolved TV usage.`,
+      detail:
+        result.biggestMomentumGain.amount >= 8
+          ? `${result.biggestMomentumGain.name} turned the resolved TV usage into a breakout-sized momentum swing.`
+          : `${result.biggestMomentumGain.name} gained the most momentum after their resolved TV usage.`,
       tone: "strong",
     });
   }
@@ -1737,7 +1749,10 @@ export function buildPostShowCauseLedger(game: GameState, result: ShowResult, fi
     rosterItems.push({
       id: "fatigue-driver",
       label: "Fatigue Load",
-      detail: `${result.biggestFatigueIncrease.name} took the biggest fatigue hit from the finished card.`,
+      detail:
+        result.biggestFatigueIncrease.amount >= 12
+          ? `${result.biggestFatigueIncrease.name} took the heaviest physical tax from the finished card.`
+          : `${result.biggestFatigueIncrease.name} took the biggest fatigue hit from the finished card.`,
       tone: result.biggestFatigueIncrease.amount >= 12 ? "watch" : "steady",
     });
   }

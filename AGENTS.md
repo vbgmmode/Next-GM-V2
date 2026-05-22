@@ -336,7 +336,7 @@ These should only be added when the user explicitly asks for them in the active 
 - Do not broaden scope.
 - Do not refactor unrelated code.
 - Do not rewrite working systems.
-- For player-facing UI work, follow docs/ui-broadcast-command-center-style.md as the operational visual-system guide. It makes docs/ui-ux-doctrine.md implementation-ready without replacing the doctrine.
+- For player-facing UI work, read DESIGN.md first (Agent Quick Contract + the relevant Screen Contract), then follow docs/ui-broadcast-command-center-style.md as the operational visual-system guide. It makes docs/ui-ux-doctrine.md implementation-ready without replacing the doctrine.
 - For Next GM broadcast UI implementation, redesign, screen creation, or polish, use the next-gm-broadcast-ui skill. Its canonical artifacts are docs/ui/tokens/next-gm-brand-skins.tokens.yml and docs/ui/screen-templates/brand-hq-command-center/index.html.
 - Treat red, blue, gold, and fight-gold as brand skins for identity. Keep semantic warning, danger, success, and info colors separate from brand color.
 - Keep localStorage persistence working unless the active ticket is specifically about replacing/upgrading persistence.
