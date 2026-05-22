@@ -85,10 +85,10 @@ The game currently supports:
 - Title/Rivalry History v1 with lightweight title changes, defenses, rivalry movement, PLE payoffs, profile context, and season story summaries
 - Rivalry context attached to eligible segments
 - Run Show
-- Results with a top broadcast recap package, quiet operational fallout support, Post-Show Cause Ledger, segment scores, and major title/rivalry/Open Challenge notes from resolved show data
+- Results with a viewport-fit top broadcast recap package, collapsed Post-Show Cause Ledger, collapsed operational fallout support, expandable broadcast breakdown, and major title/rivalry/PLE/Open Challenge notes folded into resolved post-show readouts
 - Dedicated Week Review screen before Advance Week
 - Results → Week Review → Advance Week flow
-- Week Review summary of show outcome, GM Office after-action readout, GM Handoff / next-week setup, roster fallout, championships, rivalries, social buzz, finance fallout, and next week teaser
+- Week Review aftermath handoff with the Advance Week or Season Review action inside the PLE/week aftermath box, plus show outcome, GM Office after-action readout, roster fallout, social buzz, rivalries, and next-week setup without duplicating full Results/Finance/Championship fallout panels
 - Persisted Week Review screen state
 - TV-time tracking with appearances this season, last booked week, and consecutive weeks booked
 - Open Challenge resolved opponents count as booked after the show
@@ -230,8 +230,10 @@ Completed stabilization passes:
 - Show Results Broadcast Fallout v1
 - Results Broadcast Recap Staging v1
 - Results Operational Fallout Quieting v1
+- Results Viewport-Fit Expandable Fallout v1 (implemented)
 - Week Review GM Handoff v1
 - Week Review Consequence Handoff Polish v1
+- Week Review Aftermath Action Consolidation v1 (implemented)
 - Roster Locker Room Personality v1
 - Championships Prestige / Division Identity v1
 - Championships Command Board / Contender Control v1 (implemented, viewport-fit)

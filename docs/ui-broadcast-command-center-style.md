@@ -341,12 +341,15 @@ Booking:
 Results:
 
 - Should feel like broadcast recap plus consequence reveal.
-- Reveal score, grade, strongest segment, title notes, rivalry notes, Open Challenge reveal, runtime fallout, social/finance summary, momentum/fatigue movement, and locker room fallout after the show runs.
+- Keep the collapsed state viewport-fit on laptop screens: broadcast recap first, then compact expandable rows for Post-Show Cause Ledger, Operational Fallout, and Broadcast Breakdown.
+- Fold title, rivalry, PLE, business, roster, and Open Challenge aftermath into the resolved recap, cause ledger, or operational fallout instead of duplicating standalone fallout panels.
+- Expanded support rows may scroll internally; the collapsed screen should not require page scrolling.
 
 Week Review:
 
 - Should connect consequences before the calendar advances.
-- Make it feel like the player is closing the week with full context, not clicking through a required pause.
+- Place the Advance Week or Season Review action inside the PLE/week aftermath box so the next step is part of the office handoff, not a detached hero action.
+- Keep Week Review lighter than Results: summarize the aftermath and next-week setup without repeating full Results, Finance, Championship, Brand Pulse, or Post-Show Cause Ledger panels.
 
 Roster / Locker Room:
 

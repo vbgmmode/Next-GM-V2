@@ -531,29 +531,26 @@ Reveal show outcome immediately after Run Show.
 
 ### Current Data Shown
 
-- Show score and grade.
-- Broadcast recap.
-- Best segment.
-- Segment count and best type.
-- Title fallout.
-- Rivalry fallout.
-- Injury fallout.
-- Segment-by-segment scores, momentum, fatigue, recap notes, title notes, rivalry notes.
+- Viewport-fit broadcast recap package with show score, grade, show name, headline fallout, who moved, title scene, rivalry heat, locker room, Open Challenge, and why this week mattered.
+- Collapsed Post-Show Cause Ledger with expandable resolved cause groups.
+- Collapsed Operational Fallout with expandable resolved consequence notes.
+- Collapsed Broadcast Breakdown with expandable segment-by-segment scores, momentum, fatigue, recap notes, title notes, and rivalry notes.
+- Major-event, title, rivalry, business, and roster pressure context folded into the cause ledger or operational fallout instead of duplicated as separate standalone sections.
 
 ### Missing Or Thin Data
 
 - Limited broadcast texture beyond text recap and score.
-- Social and finance are mostly deferred to Week Review or dedicated screens.
-- No highlight hierarchy for multiple major moments beyond listed sections.
+- Social and finance are mostly deferred to dedicated screens or compact resolved readouts.
+- Expanded support panels are dense and intentionally scroll internally when opened.
 
 ### Current UI/UX Feel
 
-Clear retrospective consequence screen.
+Broadcast-first consequence screen with compact expandable support rows.
 
 ### UI/UX Gaps Against Doctrine
 
 - Big moments may need stronger presentation.
-- Segment list can still read like a report if the card is long.
+- Expanded segment breakdown can still read like a report if the card is long.
 
 ### Player Decision This Screen Should Support
 
@@ -561,12 +558,12 @@ Understand what happened before moving to Week Review.
 
 ### Priority Notes
 
-- P1: Audit whether Results should separate broadcast recap from operational consequences more strongly.
+- P1: Keep the collapsed Results state viewport-fit on laptop screens; expanded support panels may scroll internally.
 
 ### Open Questions For Human Review
 
 - Does this feel like a broadcast recap?
-- Are title changes, injuries, and Open Challenge reveals dramatic enough?
+- Are title changes, injuries, and Open Challenge reveals dramatic enough inside the recap and expandable support rows?
 
 ## `/week-review`
 
@@ -577,28 +574,26 @@ Connect the week's consequences before advancing the calendar.
 ### Current Data Shown
 
 - Show score, best segment, best type, show name.
+- PLE/week aftermath box with the primary Advance Week or Season Review action.
+- GM Office after-action readout.
 - Locker room fallout: morale, overuse, underuse, injuries, injury risk.
-- Championship fallout and title history events.
-- Rivalry fallout and rivalry history events.
 - Social buzz preview.
-- Finance fallout.
+- Rivalry fallout and rivalry history events.
 - Next week teaser.
-- Advance Week or Season Review action.
 
 ### Missing Or Thin Data
 
 - Limited recommendations or decision framing for next week.
-- Fallout is comprehensive but can be text-heavy.
+- Fallout is intentionally lighter than Results and avoids duplicating full finance/championship/brand-pulse panels.
 - No explicit "what changed since before the show" comparison beyond notes.
 
 ### Current UI/UX Feel
 
-Strong loop completion screen with actual resolved fallout.
+GM office handoff screen with the next-week action anchored in the aftermath panel.
 
 ### UI/UX Gaps Against Doctrine
 
-- Could better stage the office close/readout moment.
-- Needs audit for whether it feels like a required pause or a satisfying review.
+- Needs audit for whether the lighter aftermath handoff still gives enough consequence weight before advancing.
 
 ### Player Decision This Screen Should Support
 
@@ -611,7 +606,7 @@ Absorb consequences and decide to advance the week.
 ### Open Questions For Human Review
 
 - Does the player understand why Advance Week is gated here?
-- Which fallout categories feel most useful?
+- Which remaining fallout categories feel most useful now that duplicate Results/Finance/Championship panels are removed?
 
 ## `advance-week-flow`
 
