@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" role="img" aria-label="GM Crest">
+  <defs>
+    <linearGradient id="crestGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffd36a"/>
+      <stop offset="100%" stop-color="#d4af37"/>
+    </linearGradient>
+  </defs>
+  <path d="M24 2 L44 14 V38 L24 54 L4 38 V14 Z" fill="#0a0a0a" stroke="url(#crestGold)" stroke-width="2"/>
+  <path d="M24 8 L38 17 V35 L24 46 L10 35 V17 Z" fill="url(#crestGold)" opacity="0.15"/>
+  <text x="24" y="36" text-anchor="middle" fill="url(#crestGold)" font-family="Impact, Teko, sans-serif" font-size="22" font-weight="900">G</text>
+</svg>

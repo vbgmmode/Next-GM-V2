@@ -5061,6 +5061,141 @@ function App() {
     });
   }
 
+  function getRivalryBookingCandidateOptions(rivalry: Rivalry, current: GameState) {
+    const structure = getRivalryStructure(rivalry);
+    const timingSnapshot = getRivalryTimingSnapshot(rivalry, current);
+    const calendarWeek = getCurrentCalendarWeek(current);
+    const isPleReady = timingSnapshot.diagnostics.some((diagnostic) => diagnostic.id === "ple-ready");
+    const isPayoffOverdue = timingSnapshot.diagnostics.some((diagnostic) => diagnostic.id === "payoff-overdue");
+    const candidateIds: string[] = [];
+
+    if (structure === "tag_team" && rivalry.participantIds.length === 4) {
+      candidateIds.push("M020");
+    } else if (structure === "singles" && rivalry.participantIds.length === 2) {
+      if (rivalry.stakes === "title" && calendarWeek.isGoHome) {
+        candidateIds.push("P008");
+      }
+
+      if (calendarWeek.showType === "ple" || isPleReady || isPayoffOverdue || rivalry.heat >= 65) {
+        candidateIds.push("M019", "M001");
+      }
+
+      candidateIds.push("P003", "A046");
+    } else if (structure === "multi_person") {
+      candidateIds.push("A046");
+    }
+
+    const fallbackOptions = bookingSegmentTypes
+      .flatMap((type) => getCatalogOptionsForType(type))
+      .filter((option) => option.rivalryRelevant && rivalry.participantIds.length >= option.minParticipants && rivalry.participantIds.length <= option.maxParticipants);
+    const candidateOptions = [...candidateIds.map((id) => getCatalogOptionById(id)).filter((option): option is SegmentCatalogOption => Boolean(option)), ...fallbackOptions];
+    const seenOptionIds = new Set<string>();
+
+    return candidateOptions.filter((option) => {
+      if (seenOptionIds.has(option.id)) {
+        return false;
+      }
+
+      seenOptionIds.add(option.id);
+      return true;
+    });
+  }
+
+  function buildRivalryBookingSegment(current: GameState, rivalry: Rivalry, segmentId: string) {
+    if (isRivalryIntergenderBlocked(rivalry, current.wrestlers)) {
+      return undefined;
+    }
+
+    const participants = rivalry.participantIds.map((id) => current.wrestlers.find((wrestler) => wrestler.id === id));
+
+    if (participants.some((wrestler) => !wrestler || wrestler.injuryStatus === "major")) {
+      return undefined;
+    }
+
+    for (const option of getRivalryBookingCandidateOptions(rivalry, current)) {
+      const candidate: Segment = {
+        id: segmentId,
+        type: option.family,
+        participantIds: [...rivalry.participantIds],
+        rivalryId: rivalry.id,
+        segmentCatalogId: option.id,
+        segmentDisplayName: option.label,
+        durationMinutes: option.defaultDurationMinutes,
+        participantMin: option.minParticipants,
+        participantMax: option.maxParticipants,
+      };
+
+      if (!isValidSegment(candidate, current.wrestlers) || !canSegmentAttachRivalry(candidate, rivalry, current.wrestlers)) {
+        continue;
+      }
+
+      const championship = option.championshipAllowed
+        ? current.championships.find((title) => canSegmentAttachChampionship(candidate, title, current.wrestlers))
+        : undefined;
+      const segment = championship ? { ...candidate, championshipId: championship.id } : candidate;
+
+      if (isValidSegment(segment, current.wrestlers) && canSegmentAttachRivalry(segment, rivalry, current.wrestlers)) {
+        return segment;
+      }
+    }
+
+    return undefined;
+  }
+
+  function bookRivalryStory(rivalryId: string) {
+    setGame((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const existingSegment = current.currentShow.find((segment) => segment.rivalryId === rivalryId);
+
+      if (existingSegment) {
+        persistGameSnapshot(current, "booking");
+        setBookingFocusSegmentId(existingSegment.id);
+        setProfileWrestlerId(undefined);
+        setProfileReturnScreen("booking");
+        setScreen("booking");
+        return current;
+      }
+
+      const rivalry = current.rivalries.find((item) => item.id === rivalryId);
+
+      if (!rivalry || current.currentShow.length >= maxBookingSegments) {
+        persistGameSnapshot(current, "booking");
+        setBookingFocusSegmentId(undefined);
+        setProfileWrestlerId(undefined);
+        setProfileReturnScreen("booking");
+        setScreen("booking");
+        return current;
+      }
+
+      const segmentId = `rivalry-segment-${Date.now()}-${current.currentShow.length}`;
+      const segment = buildRivalryBookingSegment(current, rivalry, segmentId);
+
+      if (!segment) {
+        persistGameSnapshot(current, "booking");
+        setBookingFocusSegmentId(undefined);
+        setProfileWrestlerId(undefined);
+        setProfileReturnScreen("booking");
+        setScreen("booking");
+        return current;
+      }
+
+      const updatedGame = {
+        ...current,
+        currentShow: [...current.currentShow, segment],
+      };
+
+      persistGameSnapshot(updatedGame, "booking");
+      setBookingFocusSegmentId(segmentId);
+      setProfileWrestlerId(undefined);
+      setProfileReturnScreen("booking");
+      setScreen("booking");
+      return updatedGame;
+    });
+  }
+
   function bookChampionship(championshipId: string) {
     setGame((current) => {
       if (!current || current.currentShow.length >= maxBookingSegments) {
@@ -5681,6 +5816,7 @@ function App() {
       <RivalriesScreen
         game={game}
         latestResult={latestResult}
+        onBookRivalry={bookRivalryStory}
         onCreateRivalry={createRivalry}
         onEndRivalry={endRivalry}
         onNavigate={navigateTo}
@@ -9023,12 +9159,14 @@ function ChampionshipsScreen({
 function RivalriesScreen({
   game,
   latestResult,
+  onBookRivalry,
   onCreateRivalry,
   onEndRivalry,
   onNavigate,
 }: {
   game: GameState;
   latestResult?: ShowResult;
+  onBookRivalry: (rivalryId: string) => void;
   onCreateRivalry: (input: RivalryCreateInput) => void;
   onEndRivalry: (rivalryId: string) => void;
   onNavigate: (screen: GameScreen) => void;
@@ -9162,7 +9300,7 @@ function RivalriesScreen({
                   </div>
                 </div>
                 <div className="rivalry-spotlight-actions">
-                  <button className="primary-action" onClick={() => onNavigate("booking")}>
+                  <button className="primary-action" onClick={() => onBookRivalry(selectedRivalry.id)}>
                     Book This Story
                   </button>
                   <button className="danger-action" onClick={() => onEndRivalry(selectedRivalry.id)}>

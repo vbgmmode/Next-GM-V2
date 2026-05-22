@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 230" role="img" aria-labelledby="promoTitle">
+  <title id="promoTitle">Cody Rhodes vs Roman Reigns main event</title>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1"><stop offset="0" stop-color="#050607"/><stop offset=".48" stop-color="#160305"/><stop offset="1" stop-color="#020202"/></linearGradient>
+    <linearGradient id="slash" x1="0" x2="1"><stop offset="0" stop-color="#5b0508"/><stop offset="1" stop-color="#d71920"/></linearGradient>
+    <clipPath id="left"><path d="M15 18h206l-34 194H15z"/></clipPath>
+    <clipPath id="right"><path d="M238 18h207l-33 194H205z"/></clipPath>
+  </defs>
+  <rect width="460" height="230" fill="url(#bg)"/>
+  <path d="M191 0h64l-38 230h-64z" fill="url(#slash)" opacity=".78"/>
+  <g clip-path="url(#left)">
+    <rect x="0" y="0" width="230" height="230" fill="#0a0d10"/>
+    <path d="M45 218c12-68 42-103 80-103s68 35 80 103z" fill="#e01622"/>
+    <ellipse cx="125" cy="70" rx="34" ry="48" fill="#c89b74"/>
+    <path d="M84 50c23-36 66-34 85 4l-13 20c-17-18-48-18-62 2z" fill="#080808"/>
+  </g>
+  <g clip-path="url(#right)">
+    <rect x="210" y="0" width="250" height="230" fill="#060708"/>
+    <path d="M250 218c14-76 50-113 95-113s78 37 92 113z" fill="#171b20"/>
+    <ellipse cx="345" cy="62" rx="39" ry="54" fill="#b9845f"/>
+    <path d="M298 42c24-42 75-39 94 7l-13 25c-20-24-58-25-75 1z" fill="#050505"/>
+  </g>
+  <path d="M15 18h430v194H15z" fill="none" stroke="#d71920" stroke-width="4"/>
+  <path d="M35 186h390" stroke="#d4af37" stroke-width="3" opacity=".9"/>
+  <text x="230" y="41" text-anchor="middle" fill="#e9edf2" font-family="Impact, sans-serif" font-size="21">MAIN EVENT</text>
+  <text x="230" y="209" text-anchor="middle" fill="#e9edf2" font-family="Impact, sans-serif" font-size="24">RHODES VS REIGNS</text>
+</svg>

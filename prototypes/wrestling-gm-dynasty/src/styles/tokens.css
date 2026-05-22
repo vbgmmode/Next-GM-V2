@@ -1,0 +1,66 @@
+:root {
+  --bg-main: #0a0a0a;
+  --panel-bg: rgba(12, 15, 19, 0.92);
+  --panel-glass: rgba(10, 13, 18, 0.9);
+  --border-muted: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --accent-red: #e60000;
+  --accent-red-hot: #ff2b2b;
+  --accent-red-deep: #d71920;
+  --accent-gold: #d4af37;
+  --accent-gold-bright: #f2c766;
+  --delta-green: #41d878;
+  --warning-amber: #f59e0b;
+  --text-main: #f3f4f6;
+  --text-muted: #71717a;
+  --text-soft: #a1a1aa;
+  --font-display: "Teko", "Barlow Condensed", Impact, sans-serif;
+  --font-ui: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --hard-shadow: 0 0 0 1px rgba(255, 255, 255, 0.035), inset 0 0 28px rgba(255, 255, 255, 0.018);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  min-width: 320px;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-family: var(--font-ui);
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+button {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.01));
+  border: 1px solid var(--border-strong);
+  border-radius: 1px;
+  color: var(--text-main);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  min-height: 32px;
+  overflow: hidden;
+  padding: 0 10px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+button:hover,
+button:focus-visible {
+  border-color: rgba(255, 43, 43, 0.8);
+  box-shadow: inset 3px 0 0 var(--accent-red-hot), 0 0 16px rgba(255, 43, 43, 0.18);
+  outline: none;
+}

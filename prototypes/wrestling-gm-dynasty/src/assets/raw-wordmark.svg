@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 48" role="img" aria-label="RAW">
+  <defs>
+    <linearGradient id="rawGrad" x1="0" x2="1">
+      <stop offset="0%" stop-color="#ff3434"/>
+      <stop offset="100%" stop-color="#d71920"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="48" fill="none"/>
+  <text x="60" y="36" text-anchor="middle" fill="url(#rawGrad)" font-family="Impact, Teko, sans-serif" font-size="38" font-weight="900" font-style="italic">RAW</text>
+</svg>
