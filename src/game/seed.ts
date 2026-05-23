@@ -18,6 +18,8 @@ import { applyRivalryCatalogDefaults, getDefaultStorylineIdForStakes, getRivalry
 import { top200DraftPool } from "./top200DraftPool";
 import { enrichWrestlerIdentityContext } from "./wrestlerIdentityContext";
 import { getRosterFinanceValueForWrestler } from "./financeCatalog";
+import { allocateCpuDraftRosters } from "./cpuRivalLoop";
+import { createDefaultMarketState, getCpuBudgetDefault } from "./market";
 
 type SeedWrestler = Omit<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek"> &
   Partial<Pick<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek">>;
@@ -86,7 +88,20 @@ export function createRivalBrandUniverse(rivalGMAssignments: RivalGMAssignment[]
     roleLabel: "Rival Brand",
     statusLabel: "Assigned / Watching",
     rosterWrestlerIds: [],
+    rosterState: [],
+    championships: [],
+    rivalries: [],
+    financeReports: [],
+    freeAgentClaims: [],
+    contracts: [],
+    marketTransactions: [],
+    budget: getCpuBudgetDefault(),
+    seasonObjectives: [],
     activityHistory: [],
+    weeklyResults: [],
+    seasonAverageScore: 0,
+    seasonRank: 0,
+    seasonTrend: "unranked",
   }));
 }
 
@@ -385,6 +400,8 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
   const startingRoster = cloneWrestlers(options.draftedWrestlers?.length ? options.draftedWrestlers : roster);
   const startingMoney = getOpeningMoneyAfterDraft(career.startingBudgetTier, options.draftedWrestlers);
 
+  const rivalBrands = allocateCpuDraftRosters(createRivalBrandUniverse(career.rivalGMAssignments), startingRoster, draftPool);
+
   return {
     seasonNumber: 1,
     seasonStartingMoney: startingMoney,
@@ -396,7 +413,7 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
     difficulty: career.difficulty,
     startingBudgetTier: career.startingBudgetTier,
     rivalGMAssignments: career.rivalGMAssignments,
-    rivalBrands: createRivalBrandUniverse(career.rivalGMAssignments),
+    rivalBrands,
     createdAt: new Date().toISOString(),
     money: startingMoney,
     wrestlers: startingRoster,
@@ -407,6 +424,7 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
     calendar: createSeasonCalendar(),
     socialPosts: [],
     financeReports: [],
+    marketState: createDefaultMarketState(startingRoster),
     seasonArchives: [],
     injuryRecoveryNotes: [],
     currentShow: [],

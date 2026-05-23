@@ -1,6 +1,8 @@
 import type { GameState, InjuryRecoveryNote, RivalryHistoryEvent, SeasonArchiveSummary, Wrestler } from "./types";
 import { getRivalryStatus } from "./scoring";
-import { createSeasonCalendar } from "./seed";
+import { createSeasonCalendar, draftPool } from "./seed";
+import { advanceCpuRivalWeek } from "./cpuRivalLoop";
+import { advanceCpuMarket, advancePlayerContracts, evaluateOfficeMandate } from "./market";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
@@ -21,7 +23,7 @@ export function advanceGameWeek(game: GameState): GameState {
   const recoveredWrestlers = game.wrestlers.map((wrestler) => recoverWrestlerInjury(wrestler, nextWeek, recoveryNotes));
   const rivalryHistoryEvents: RivalryHistoryEvent[] = [];
 
-  return {
+  const nextGame = {
     ...game,
     currentWeek: nextWeek,
     calendar: completedCalendar,
@@ -68,6 +70,14 @@ export function advanceGameWeek(game: GameState): GameState {
     }),
     rivalryHistory: [...(game.rivalryHistory ?? []), ...rivalryHistoryEvents],
   };
+
+  const withCpu = {
+    ...nextGame,
+    rivalBrands: advanceCpuRivalWeek(nextGame, draftPool),
+  };
+  const withMarket = advanceCpuMarket(advancePlayerContracts(withCpu), draftPool);
+
+  return evaluateOfficeMandate(withMarket);
 }
 
 function recoverWrestlerInjury(wrestler: Wrestler, nextWeek: number, recoveryNotes: InjuryRecoveryNote[]): Wrestler {
@@ -124,5 +134,43 @@ export function startNextSeason(game: GameState, completedSeasonArchive?: Season
       lastBookedWeek: 0,
       consecutiveWeeksBooked: 0,
     })),
+    rivalBrands: game.rivalBrands.map((brand) => ({
+      ...brand,
+      seasonAverageScore: 0,
+      seasonRank: 0,
+      seasonTrend: "unranked",
+      rosterState: brand.rosterState.map((member) => ({
+        ...member,
+        appearancesThisSeason: 0,
+        lastBookedWeek: 0,
+        consecutiveWeeksBooked: 0,
+      })),
+      contracts: brand.contracts.map((contract) => ({
+        ...contract,
+        contractWeeksRemaining: Math.max(contract.contractWeeksRemaining, 4),
+        contractStatus: contract.contractWeeksRemaining <= 3 ? "expiring" : contract.contractStatus,
+      })),
+      seasonObjectives: brand.seasonObjectives.map((objective) => ({
+        ...objective,
+        current: 0,
+        status: objective.label.includes("85+") ? "at_risk" : "on_track",
+        note: objective.label.includes("85+") ? "No premium rival show logged yet." : "New season ratings lane reset.",
+      })),
+      weeklyResults: brand.weeklyResults,
+    })),
+    marketState: {
+      ...game.marketState,
+      playerContracts: game.marketState.playerContracts.map((contract) => ({
+        ...contract,
+        contractWeeksRemaining: Math.max(contract.contractWeeksRemaining, 4),
+        contractStatus: contract.contractWeeksRemaining <= 3 ? "expiring" : contract.contractStatus,
+      })),
+      officeMandate: {
+        ownerTrust: game.marketState.officeMandate.ownerTrust,
+        brandReputation: game.marketState.officeMandate.brandReputation,
+        mandateStatus: "stable",
+        mandateHistory: game.marketState.officeMandate.mandateHistory,
+      },
+    },
   };
 }

@@ -4,6 +4,7 @@ export type Screen =
   | "dashboard"
   | "booking"
   | "roster"
+  | "market"
   | "profile"
   | "championships"
   | "rivalries"
@@ -59,6 +60,186 @@ export type RivalBrandActivity = {
   note: string;
 };
 
+export type RivalBrandTrend = "unranked" | "surging" | "steady" | "slipping";
+
+export type CpuRosterAcquisitionSource = "draft" | "free_agent" | "trade";
+
+export type MarketOwnerType = "player" | "rival" | "free_agent";
+
+export type MarketAcquisitionSource = "draft" | "free_agent" | "trade" | "renewal" | "release";
+
+export type MarketContractStatus = "active" | "expiring" | "expired" | "released";
+
+export type MarketTransactionType = "signing" | "release" | "trade" | "renewal" | "expiry";
+
+export type OfficeMandateStatus = "stable" | "watch" | "critical" | "surging";
+
+export type MarketContract = {
+  id: string;
+  wrestlerId: string;
+  ownerType: MarketOwnerType;
+  ownerBrandId?: string;
+  contractWeeksRemaining: number;
+  weeklySalary: number;
+  releasePenalty: number;
+  acquisitionSource: MarketAcquisitionSource;
+  contractStatus: MarketContractStatus;
+  renewalRisk: number;
+};
+
+export type MarketTransaction = {
+  id: string;
+  seasonNumber: number;
+  weekNumber: number;
+  type: MarketTransactionType;
+  wrestlerIds: string[];
+  wrestlerNames: string[];
+  fromBrandId?: string;
+  fromBrandName?: string;
+  toBrandId?: string;
+  toBrandName?: string;
+  amount: number;
+  accepted?: boolean;
+  note: string;
+};
+
+export type MarketCooldown = {
+  wrestlerId: string;
+  availableWeek: number;
+  releasedByBrandId?: string;
+};
+
+export type OfficeMandateEvent = {
+  id: string;
+  seasonNumber: number;
+  weekNumber: number;
+  status: OfficeMandateStatus;
+  ownerTrustDelta: number;
+  brandReputationDelta: number;
+  moneyDelta: number;
+  note: string;
+};
+
+export type OfficeMandateState = {
+  ownerTrust: number;
+  brandReputation: number;
+  mandateStatus: OfficeMandateStatus;
+  mandateHistory: OfficeMandateEvent[];
+};
+
+export type MarketState = {
+  playerContracts: MarketContract[];
+  transactions: MarketTransaction[];
+  cooldowns: MarketCooldown[];
+  officeMandate: OfficeMandateState;
+};
+
+export type CpuRosterMemberState = {
+  wrestlerId: string;
+  contractId?: string;
+  acquisitionSource: CpuRosterAcquisitionSource;
+  acquiredSeasonNumber: number;
+  acquiredWeekNumber: number;
+  momentum: number;
+  morale: number;
+  fatigue: number;
+  appearancesThisSeason: number;
+  lastBookedWeek: number;
+  consecutiveWeeksBooked: number;
+  injuryStatus: InjuryStatus;
+  injuryDescription?: string;
+  injuryWeeksRemaining: number;
+};
+
+export type CpuChampionshipState = {
+  id: string;
+  name: string;
+  division: string;
+  championIds: string[];
+  prestige: number;
+  defenses: number;
+  reignStartWeek: number;
+};
+
+export type CpuRivalryState = {
+  id: string;
+  name: string;
+  participantIds: string[];
+  heat: number;
+  freshness: number;
+  weeksActive: number;
+  lastAdvancedWeek: number;
+  status: RivalryStatus;
+  stakes: RivalryStakes;
+};
+
+export type CpuFinanceReport = {
+  id: string;
+  seasonNumber: number;
+  weekNumber: number;
+  showName: string;
+  revenue: number;
+  expenses: number;
+  profitLoss: number;
+  endingMoney: number;
+  note: string;
+};
+
+export type CpuFreeAgentClaim = {
+  id: string;
+  seasonNumber: number;
+  weekNumber: number;
+  wrestlerId: string;
+  wrestlerName: string;
+  brandName: string;
+  note: string;
+};
+
+export type CpuSeasonObjective = {
+  id: string;
+  label: string;
+  target: number;
+  current: number;
+  status: "on_track" | "at_risk" | "missed" | "complete";
+  note: string;
+};
+
+export type CpuSegmentResult = {
+  id: string;
+  type: SegmentType;
+  participantIds: string[];
+  participantNames: string[];
+  score: number;
+  winnerId?: string;
+  titleId?: string;
+  rivalryId?: string;
+  note: string;
+};
+
+export type RivalBrandWeeklyResult = {
+  id: string;
+  seasonNumber: number;
+  weekNumber: number;
+  showName: string;
+  showType: ShowType;
+  score: number;
+  grade: string;
+  rank: number;
+  playerScoreDelta: number;
+  mainEvent: string;
+  keyAngle: string;
+  rosterFocusWrestlerIds: string[];
+  segments: CpuSegmentResult[];
+  titleNotes: string[];
+  rivalryNotes: string[];
+  injuryNotes: string[];
+  financeReport?: CpuFinanceReport;
+  freeAgentClaims: CpuFreeAgentClaim[];
+  objectiveNotes: string[];
+  note: string;
+  trend: RivalBrandTrend;
+};
+
 export type RivalBrandState = {
   id: string;
   brandKey: PrototypeBrand;
@@ -69,7 +250,20 @@ export type RivalBrandState = {
   roleLabel: string;
   statusLabel: string;
   rosterWrestlerIds: string[];
+  rosterState: CpuRosterMemberState[];
+  championships: CpuChampionshipState[];
+  rivalries: CpuRivalryState[];
+  financeReports: CpuFinanceReport[];
+  freeAgentClaims: CpuFreeAgentClaim[];
+  contracts: MarketContract[];
+  marketTransactions: MarketTransaction[];
+  budget: number;
+  seasonObjectives: CpuSeasonObjective[];
   activityHistory: RivalBrandActivity[];
+  weeklyResults: RivalBrandWeeklyResult[];
+  seasonAverageScore: number;
+  seasonRank: number;
+  seasonTrend: RivalBrandTrend;
 };
 
 export type AffiliationKind = "tag_team" | "faction" | "affiliation";
@@ -438,6 +632,7 @@ export type GameState = {
   calendar: CalendarWeek[];
   socialPosts: SocialPost[];
   financeReports: FinanceReport[];
+  marketState: MarketState;
   seasonArchives: SeasonArchiveSummary[];
   injuryRecoveryNotes: InjuryRecoveryNote[];
   currentShow: Segment[];

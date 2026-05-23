@@ -61,9 +61,11 @@ The game currently supports:
 - Weekly GM Desk Brief with read-only dashboard/week-review staff context from current roster, calendar, finance, title, rivalry, and resolved-show state
 - Brand Pulse v1 with read-only, non-simulated post-show brand pressure diagnostics derived from player results and static rival brand flavor
 - Non-Blocking Rival Draft Activity v1 with read-only draft-week flavor diagnostics for rival-brand setup context
+- Full CPU Rival System v1 with deterministic parallel rival draft claims, persisted rival rosters, hidden CPU card simulation, CPU titles/rivalries/injuries/finance/free-agent claims, ratings-battle standings, and summarized post-show Results Feed pressure
+- Full Market + Rival Pressure v1 with player free-agent signings, releases, deterministic trade proposals, contract/payroll pressure, CPU market churn, limited Rival Intelligence, and office mandates that affect money/trust/reputation without firing or progression locks
 - Top 200 open draft pool staged from data/rosters and activated through src/game/top200DraftPool.ts
-- 199 game-eligible performers available by default in Draft Night
-- Open Draft Night availability across source brands; source/current brand does not restrict draft availability
+- 120 source-balanced game-eligible performers available by default in Draft Night from the staged Top 200 roster data, with Madden-like in-game stat distribution applied at export
+- Open Draft Night availability across source brands; player brand selection does not restrict draft availability
 - NXT treated as an equal major brand, not developmental by default
 - Draft night with a 12-wrestler starting roster
 - Draft Night search and sort controls for the larger pool
@@ -106,7 +108,7 @@ The game currently supports:
 - Season Review
 - Start Next Season
 - Social/IWC with existing post feed, filters, and read-only resolved-state IWC mood summary
-- Finance & Brand Pressure with a read-only GM Office Pressure surface derived from current money, latest finance report, season finance history, best/worst business weeks, and closed-report cost context, with finance summary metrics under nav and expandable support panels for talent value, latest report, season reads, and finance history
+- Finance & Brand Pressure with active payroll and market transaction costs, GM Office Pressure derived from current money, latest finance report, season finance history, best/worst business weeks, and closed-report cost context, with finance summary metrics under nav and expandable support panels for talent value, latest report, season reads, and finance history
 - FinanceReport legacy-compatible v2 optional fields for future detailed revenue and expense categories
 - Read-only gameplay context helpers extracted into src/game/gameContextReads.ts for recent derived UI snapshots while React screen components remain in src/App.tsx
 
@@ -130,7 +132,7 @@ Title
 The loop must remain playable after every change.
 
 ## Current UX Role Map
-- Setup frames the player as a hired GM entering a larger read-only GM universe before Draft Night.
+- Setup frames the player as a hired GM entering a larger GM universe before Draft Night.
 - Dashboard orients the week through Living World Pressure / Office Pulse, next action, and current brand pressure.
 - Booking is the TV production desk for assembling the current card with context and warnings, not predicted fallout.
 - Results is the resolved broadcast recap and immediate consequence reveal.
@@ -177,7 +179,7 @@ The loop must remain playable after every change.
 - History should come from resolved events, not invented offscreen story.
 - Social/IWC should react to actual outcomes.
 - Finance should be clear, gamey, and decision-focused.
-- Finance should read current and retrospective business pressure only; do not add forecasts, budgets, payroll, sponsorships, ownership objectives, or predictive financial outcomes unless explicitly requested.
+- Finance should read current and retrospective business pressure only; active payroll, market transactions, and office mandates are allowed, but do not add forecasts, sponsorships, predictive financial outcomes, firing, or progression locks unless explicitly requested.
 
 ## Current Phase
 Phase: Post-context-pass stabilization and bounded maintenance
@@ -258,13 +260,15 @@ Completed stabilization passes:
 - Free Agent Watchlist v1 (implemented)
 - Venue / Market Context v1 (implemented)
 - Season Archive Persistence v1 (implemented)
+- Full CPU Rival System v1 (implemented)
+- Full Market + Rival Pressure v1 (implemented)
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
-- Keep scout/read-only career-memory features bounded while deferring signing, release, and free-agency mechanics.
-- Treat season legacy as read-only narrative continuity first; defer payroll/contract mechanics and offseason systems to future tickets.
+- Keep scout/read-only career-memory features bounded while using the active Market desk for signing, release, trade, and contract pressure.
+- Treat season legacy as read-only narrative continuity first; defer offseason systems to future tickets.
 - Keep recent context passes read-only and non-predictive: pre-show surfaces may explain existing pressure, but consequences and outcome language stay retrospective after Run Show.
-- Keep rival brands as pressure/flavor only unless a future accepted ticket explicitly adds simulation.
+- Keep rival brands as summarized ratings-battle and market pressure with deterministic internal CPU simulation; do not expand into rival HQ screens, editable CPU booking, progression locks, firing, or career-ending fail states unless a future accepted ticket explicitly asks for it.
 - Use src/game/gameContextReads.ts or another src/game read-model module for pure derived gameplay context when a future slice would otherwise add more helper logic to src/App.tsx.
 - Treat src/App.tsx and src/styles.css as high-risk growth areas; prefer bounded extraction, verification, or small focused UI fixes over broad screen rewrites.
 - Before content expansion, define the data category, maximum safe content size, allowed files, migration or fallback needs, and required smoke checks.
@@ -288,22 +292,18 @@ Unless the active ticket explicitly asks for it, do not add:
 - modding
 - setup variants, brand variants, or GM style variants
 - scouting
-- contract-management systems beyond the current setup framing and Contract Signing segment type
 - draft expansion beyond the current new-game draft flow
-- CPU drafting
-- CPU booking
-- rival rosters
-- rival show simulation
-- brand standings or ratings battles
-- ratings-battle systems
-- salary or contract gameplay systems
+- CPU booking editors
+- full CPU segment-by-segment booking
+- rival HQ roster/championship/rivalry/finance screens
+- hard fail states from CPU standings
 - brand-restricted draft modes
 - complex accounting
 
 Open Draft Rules:
 - Top 200 is the active default draft pool.
-- All game-eligible Top 200 performers are draft-available by default.
-- Source/current brand must not restrict draft availability by default.
+- Game-eligible Top 200 performers are staged for the active draft pool, with source-brand cap and Madden-like stat distribution applied in src/game/top200DraftPool.ts to prevent one source roster from dominating Draft Night or prototype stats from reading too optimistic.
+- Source/current brand must not restrict draft availability by the player's selected brand.
 - Raw, SmackDown, NXT, and AEW are equal major brands.
 - NXT is not developmental by default.
 - Any future restricted draft mode must be explicit and optional.
@@ -317,8 +317,8 @@ Finance Readiness Rules:
 - Affordability is not enforced.
 - FinanceReport supports optional legacy-compatible v2 fields: modelVersion, grossRevenue, totalExpenses, revenueBreakdown, and expenseBreakdown.
 - Existing saves and legacy finance reports must remain compatible.
-- Current weekly finance formulas remain unchanged unless a future ticket explicitly changes them.
-- Draft spending, affordability enforcement, contracts, venues, payroll, recurring expenses, segment booking costs, finance projections, and weekly formula v2 remain out of scope unless explicitly requested.
+- Current weekly finance formulas include active payroll and same-week market transaction costs; larger formula rewrites still require an explicit ticket.
+- Draft affordability enforcement, sponsorships, segment booking costs, finance projections, complex accounting, and weekly formula v2 remain out of scope unless explicitly requested.
 
 ## Permanent Scope Rules
 These should only be added when the user explicitly asks for them in the active ticket:

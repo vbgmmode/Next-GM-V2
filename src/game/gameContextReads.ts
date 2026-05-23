@@ -1034,18 +1034,19 @@ function getRivalPressureRead(game: GameState, result?: ShowResult): LivingWorld
   const focusName = focusRival?.assignedGMName ?? game.rivalGMAssignments[0]?.gmName ?? "Rival GMs";
   const focusBrand = focusRival?.brandName ?? game.rivalGMAssignments[0]?.brand ?? "the other brands";
   const score = result?.totalScore;
+  const latestCpuResult = focusRival?.weeklyResults.filter((item) => item.seasonNumber === game.seasonNumber).at(-1);
   const detail =
     focusStyle === "Ratings Chaser"
       ? score !== undefined
-        ? `${focusName} is watching whether ${game.brandName}'s last ${score >= 75 ? "strong" : "uneven"} number turns into another loud week.`
-        : `${focusName} is watching the first TV number from ${focusBrand}, but no rival result is being simulated.`
+        ? `${focusName} ${latestCpuResult ? `closed the rival desk at ${latestCpuResult.score}` : "is waiting on a CPU result"} while ${game.brandName}'s last number landed ${score >= 75 ? "strong" : "uneven"}.`
+        : `${focusName} is watching the first TV number from ${focusBrand}; the ratings race starts after Run Show.`
       : focusStyle === "Talent Developer"
-        ? `${focusName} will notice whether your room creates new momentum or lets underused names drift.`
+        ? `${focusName} is building a CPU roster around development pressure while your room creates or loses momentum.`
         : focusStyle === "Big Money Promoter"
-          ? `${focusName} is watching the business posture around ${game.brandName}, not running a rival ledger.`
+          ? `${focusName} is watching the market posture around ${game.brandName}; CPU ratings pressure stays separate from your finance ledger.`
           : focusStyle === "Chaos Booker"
-            ? `${focusName} is waiting for your show to feel dangerous without the game inventing offscreen chaos.`
-            : `${focusName} and ${rivalBrands.length ? `${rivalBrands.length - 1} other rival chair${rivalBrands.length === 2 ? "" : "s"}` : "the other brands"} are positioned as competitive pressure, not CPU-booked shows.`;
+            ? `${focusName} is chasing a louder CPU summary without revealing any result before your show resolves.`
+            : `${focusName} and ${rivalBrands.length ? `${rivalBrands.length - 1} other rival chair${rivalBrands.length === 2 ? "" : "s"}` : "the other brands"} are active competitive pressure in the ratings race.`;
 
   return {
     id: "rival-brands",

@@ -13,6 +13,22 @@ import { getRosterAffiliations, getWrestlerAffiliations } from "./game/affiliati
 import { getFinancePressureLabel } from "./game/finance";
 import { financeModelSummaryByRole, getRosterFinanceValueForWrestler } from "./game/financeCatalog";
 import {
+  getContractForWrestler,
+  getMarketSnapshot,
+  getRivalMarketEvents,
+  proposePlayerTrade,
+  releasePlayerWrestler,
+  signPlayerFreeAgent,
+} from "./game/market";
+import {
+  getCpuDraftPreviewSnapshot,
+  getCpuResultsFeedSnapshot,
+  getRatingsBattleSnapshot,
+  type CpuDraftPreviewSnapshot,
+  type CpuResultsFeedSnapshot,
+  type RatingsBattleSnapshot,
+} from "./game/cpuRivalLoop";
+import {
   bookingSegmentTypes,
   getCatalogOptionById,
   getCatalogOptionsForType,
@@ -437,24 +453,6 @@ type BrandPulseSnapshot = {
   rivalNotes: BrandPulseRivalNote[];
 };
 
-type RivalDraftActivityTone = "quiet" | "watch" | "aggressive" | "burst";
-
-type RivalDraftActivityNote = {
-  id: string;
-  brandName: string;
-  gmName: string;
-  label: string;
-  detail: string;
-  tone: RivalDraftActivityTone;
-};
-
-type RivalDraftActivitySnapshot = {
-  headline: string;
-  detail: string;
-  tone: RivalDraftActivityTone;
-  notes: RivalDraftActivityNote[];
-};
-
 
 
 
@@ -683,92 +681,7 @@ function getRivalUniverseRead(rivalBrands: RivalBrandState[]) {
   const rosterCount = rivalBrands.reduce((sum, brand) => sum + brand.rosterWrestlerIds.length, 0);
   const activityCount = rivalBrands.reduce((sum, brand) => sum + brand.activityHistory.length, 0);
 
-  return `${rivalBrands.length} rival brand chair${rivalBrands.length === 1 ? "" : "s"} filled for universe flavor. ${rosterCount} roster reference${rosterCount === 1 ? "" : "s"} and ${activityCount} activity beat${activityCount === 1 ? "" : "s"} are logged as read-only context.`;
-}
-
-function getRivalDraftActivitySnapshot(
-  rivalBrands: RivalBrandState[],
-  draftedCount: number,
-  maxDraftCount = draftPickCount,
-): RivalDraftActivitySnapshot | undefined {
-  if (!rivalBrands.length) {
-    return undefined;
-  }
-
-  const safeDraftedCount = Math.max(0, Math.min(maxDraftCount, draftedCount));
-  const rankedBrands = [...rivalBrands].sort((a, b) => {
-    const aSignal = a.activityHistory.length + a.rosterWrestlerIds.length * 0.6;
-    const bSignal = b.activityHistory.length + b.rosterWrestlerIds.length * 0.6;
-
-    return bSignal - aSignal || a.brandName.localeCompare(b.brandName);
-  });
-
-  const tone: RivalDraftActivityTone =
-    safeDraftedCount >= maxDraftCount
-      ? "burst"
-      : safeDraftedCount >= Math.floor(maxDraftCount * 0.8)
-        ? "aggressive"
-        : safeDraftedCount >= Math.floor(maxDraftCount * 0.4)
-          ? "watch"
-          : "quiet";
-
-  const headline =
-    safeDraftedCount === 0
-      ? "The Other Desks Are Quietly Watching"
-      : safeDraftedCount < 4
-        ? "Rival Desks Hold"
-        : safeDraftedCount < maxDraftCount - 2
-          ? "Rival Desks Track the Room"
-          : "League Desk Noise Peaks";
-
-  const detail =
-    safeDraftedCount === 0
-      ? "Draft Night has opened inside a larger GM room. The other desks are watch-only atmosphere around your board."
-      : `You are at pick ${safeDraftedCount}/${maxDraftCount}; rival desks remain flavor-only readouts around your live build.`;
-
-  const notes: RivalDraftActivityNote[] = rankedBrands.slice(0, 3).map((brand) => {
-    const activityCount = brand.activityHistory.length;
-    const brandRosterClaims = brand.rosterWrestlerIds.length;
-    const latestActivity = brand.activityHistory.at(-1);
-
-    const noteTone: RivalDraftActivityTone =
-      activityCount >= 3
-        ? "aggressive"
-        : safeDraftedCount >= maxDraftCount - 1 && brandRosterClaims >= 2
-          ? "aggressive"
-          : safeDraftedCount >= Math.floor(maxDraftCount / 2)
-            ? "watch"
-            : "quiet";
-
-    const label =
-      safeDraftedCount < 3
-        ? "Quiet War Room"
-        : activityCount >= 2
-          ? "Board Chatter Rising"
-          : safeDraftedCount >= maxDraftCount - 1
-            ? "Star-Power Read"
-            : "Watching The Board";
-
-    const activityNote = latestActivity
-      ? `Recent desk read: ${latestActivity.label.toLowerCase()} · ${latestActivity.note}`
-      : `No logged movement yet; desk is only monitoring ${brandRosterClaims ? "read-only roster references" : "board atmosphere"}.`;
-
-    return {
-      id: `${brand.id}-${safeDraftedCount}`,
-      brandName: brand.brandName,
-      gmName: brand.assignedGMName,
-      label,
-      detail: `${brand.assignedGMName} (${brand.assignedGMStyle}) is ${safeDraftedCount < 5 ? "watching the room" : "adding atmosphere"}: ${activityNote}`,
-      tone: noteTone,
-    };
-  });
-
-  return {
-    headline,
-    detail,
-    tone,
-    notes,
-  };
+  return `${rivalBrands.length} rival brand chair${rivalBrands.length === 1 ? "" : "s"} active in the ratings race. ${rosterCount} CPU roster claim${rosterCount === 1 ? "" : "s"} and ${activityCount} activity beat${activityCount === 1 ? "" : "s"} are logged as competitive context.`;
 }
 
 function getBrandPulseRivalLabel(score: number, socialCount: number, profitLoss: number | undefined, index: number) {
@@ -840,7 +753,7 @@ function getBrandPulseSnapshot(game: GameState, result?: ShowResult): BrandPulse
         id: rivalBrand.id,
         brandName: rivalBrand.brandName,
         label,
-        detail: `${rivalBrand.assignedGMName}'s desk logs this as flavor only; no rival show was simulated.`,
+        detail: `${rivalBrand.assignedGMName}'s desk is now part of the resolved ratings race; pressure stays contextual, not a finance penalty.`,
       };
     }),
   };
@@ -866,6 +779,7 @@ function formatLocationLabel(screen: GameScreen) {
     championships: "Title Office",
     dashboard: "Brand HQ",
     finance: "Finance & Pressure",
+    market: "Market Desk",
     profile: "Talent Profile",
     results: "Show Recap",
     rivalries: "Rivalry Desk",
@@ -5878,6 +5792,54 @@ function App() {
     setScreen("dashboard");
   }
 
+  function signFreeAgent(wrestlerId: string) {
+    setGame((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const updatedGame = signPlayerFreeAgent(current, wrestlerId, draftPool);
+      persistGameSnapshot(updatedGame, "market");
+      return updatedGame;
+    });
+  }
+
+  function releaseWrestler(wrestlerId: string) {
+    setGame((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const wrestler = current.wrestlers.find((item) => item.id === wrestlerId);
+      const titleWarning = current.championships.some((championship) => championship.championIds.includes(wrestlerId));
+      const rivalryWarning = current.rivalries.some((rivalry) => rivalry.participantIds.includes(wrestlerId));
+
+      if (!wrestler) {
+        return current;
+      }
+
+      if ((titleWarning || rivalryWarning) && !window.confirm(`${wrestler.name} is tied to ${titleWarning ? "a championship" : "an active rivalry"}. Release anyway?`)) {
+        return current;
+      }
+
+      const updatedGame = releasePlayerWrestler(current, wrestlerId);
+      persistGameSnapshot(updatedGame, "market");
+      return updatedGame;
+    });
+  }
+
+  function proposeTrade(outgoingWrestlerId: string, targetWrestlerId: string) {
+    setGame((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const updatedGame = proposePlayerTrade(current, outgoingWrestlerId, targetWrestlerId, draftPool);
+      persistGameSnapshot(updatedGame, "market");
+      return updatedGame;
+    });
+  }
+
   function createRivalry({ participantIds, structure, stakes, storylineId }: RivalryCreateInput) {
     setGame((current) => {
       const selectedIds = participantIds.filter(Boolean);
@@ -6048,6 +6010,19 @@ function App() {
 
   if (screen === "roster") {
     return <RosterScreen game={game} latestResult={latestResult} onNavigate={navigateTo} onOpenProfile={(wrestlerId) => openWrestlerProfile(wrestlerId, "roster")} />;
+  }
+
+  if (screen === "market") {
+    return (
+      <MarketScreen
+        game={game}
+        latestResult={latestResult}
+        onNavigate={navigateTo}
+        onProposeTrade={proposeTrade}
+        onReleaseWrestler={releaseWrestler}
+        onSignFreeAgent={signFreeAgent}
+      />
+    );
   }
 
   if (screen === "championships") {
@@ -6299,9 +6274,13 @@ function NewGameSetupScreen({
   const canPreview = gmName.trim().length > 0 && brandName.trim().length > 0;
   const draftSearchTerm = draftSearch.trim().toLowerCase();
   const draftedIds = new Set(draftedWrestlers.map((wrestler) => wrestler.id));
-  const availableDraftCount = draftPool.length - draftedWrestlers.length;
+  const previewRivalBrands = createRivalBrandUniverse(rivalGMAssignments);
+  const rivalDraftActivity = getCpuDraftPreviewSnapshot(previewRivalBrands, draftedWrestlers, draftPool);
+  const cpuClaimedDraftIds = new Set(rivalDraftActivity?.claimedWrestlerIds ?? []);
+  const availableDraftCount = draftPool.length - draftedWrestlers.length - cpuClaimedDraftIds.size;
   const availableWrestlers = draftPool
     .filter((wrestler) => !draftedIds.has(wrestler.id))
+    .filter((wrestler) => !cpuClaimedDraftIds.has(wrestler.id))
     .filter((wrestler) => !draftSearchTerm || getDraftSearchText(wrestler).includes(draftSearchTerm))
     .filter((wrestler) => draftBrandFilter === "All Brands" || wrestler.sourceBrand === draftBrandFilter)
     .filter((wrestler) => draftRoleTierFilter === "All Tiers" || wrestler.roleTier === draftRoleTierFilter)
@@ -6353,8 +6332,6 @@ function NewGameSetupScreen({
   const bestAvailableRead = boardLeader
     ? `Best visible file: ${boardLeader.name} · ${getDraftTag(boardLeader.sourceBrand, "Open Pool")} · ${getDraftTag(boardLeader.roleTier)} · ${getDraftTag(boardLeader.archetype)}`
     : "No open-board lead in current filters. Clear filters to reopen the board.";
-  const previewRivalBrands = createRivalBrandUniverse(rivalGMAssignments);
-  const rivalDraftActivity = getRivalDraftActivitySnapshot(previewRivalBrands, draftedWrestlers.length, draftPickCount);
 
   function startCareer() {
     if (!canPreview || draftedWrestlers.length !== draftPickCount) {
@@ -6558,7 +6535,7 @@ function NewGameSetupScreen({
             <RivalBrandUniversePanel rivalBrands={previewRivalBrands} title="The Other Chairs Are Filled" />
             {rivalDraftActivity ? <RivalDraftActivityPanel snapshot={rivalDraftActivity} /> : null}
             <p className="lede">
-              Your chair is set, the other desks are assigned, and Week 1 opens on TV. This first campaign starts with Collision Course in Week 4 while the rival-brand room stays read-only flavor around your career.
+              Your chair is set, the other desks are assigned, and Week 1 opens on TV. This first campaign starts with Collision Course in Week 4 while the rival-brand room enters the ratings race after your shows resolve.
             </p>
             <div className="title-actions">
               <button className="secondary-action" onClick={() => setStep("brand")}>
@@ -6578,7 +6555,7 @@ function NewGameSetupScreen({
                 <p className="eyebrow">Draft Night</p>
                 <h2>Draft War Room</h2>
                 <p className="lede">
-                  Build the first 12-person locker room for {brandName.trim() || defaultCareer.brandName} while the rest of the GM room watches. The Top 200 board is open across every source brand, and every pick is yours.
+                  Build the first 12-person locker room for {brandName.trim() || defaultCareer.brandName} while CPU desks claim from the same Top 200 pool. Your picks stay manual; rival claims are deterministic and commit when the career starts.
                 </p>
               </div>
               <div className="draft-clock-tower" aria-label="Draft clock">
@@ -6935,6 +6912,143 @@ function BrandPulsePanel({ compact = false, snapshot }: { compact?: boolean; sna
   );
 }
 
+function formatRivalTrend(trend: RivalBrandState["seasonTrend"]) {
+  switch (trend) {
+    case "surging":
+      return "Surging";
+    case "slipping":
+      return "Slipping";
+    case "steady":
+      return "Steady";
+    default:
+      return "Unranked";
+  }
+}
+
+function RatingsBattlePanel({ compact = false, snapshot }: { compact?: boolean; snapshot: RatingsBattleSnapshot }) {
+  const playerEntry = snapshot.entries.find((entry) => entry.isPlayer);
+  const visibleEntries = compact ? snapshot.entries.slice(0, 4) : snapshot.entries;
+
+  return (
+    <section className={`ratings-battle-panel${compact ? " compact" : ""}`} aria-label="Ratings battle standings">
+      <div className="ratings-battle-head">
+        <div>
+          <p className="eyebrow">Ratings Battle</p>
+          <h3>{snapshot.headline}</h3>
+        </div>
+        <strong>{snapshot.latestWeekLabel}</strong>
+      </div>
+      <p className="ratings-battle-copy">{snapshot.detail}</p>
+      <div className="ratings-battle-summary">
+        <Metric label="Your Rank" value={`#${snapshot.playerRank}`} detail={playerEntry ? `Average ${playerEntry.seasonAverage}` : "No player average"} />
+        <Metric label="Leader" value={snapshot.leaderName} detail="Season average race" />
+        <Metric label="Vs Nearest CPU" value={`${snapshot.playerDelta >= 0 ? "+" : ""}${snapshot.playerDelta}`} detail="Average score margin" />
+      </div>
+      <div className="ratings-battle-table">
+        {visibleEntries.map((entry) => (
+          <article className={`ratings-battle-row ${entry.isPlayer ? "is-player" : ""} trend-${entry.trend}`} key={entry.id}>
+            <span>#{entry.rank}</span>
+            <div>
+              <strong>{entry.brandName}</strong>
+              <small>{entry.isPlayer ? `GM ${entry.gmName}` : `${entry.gmName} · ${formatRivalTrend(entry.trend)}`}</small>
+            </div>
+            <div>
+              <strong>{entry.latestScore ?? "No Show"}</strong>
+              <small>Avg {entry.seasonAverage || "n/a"}</small>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CpuResultsFeedPanel({ compact = false, snapshot }: { compact?: boolean; snapshot: CpuResultsFeedSnapshot }) {
+  const visibleItems = compact ? snapshot.items.slice(0, 3) : snapshot.items;
+
+  return (
+    <section className={`cpu-results-feed${compact ? " compact" : ""}`} aria-label="CPU results feed">
+      <div className="cpu-results-head">
+        <div>
+          <p className="eyebrow">CPU Results Feed</p>
+          <h3>{snapshot.headline}</h3>
+        </div>
+        <strong>{visibleItems.filter((item) => item.score !== undefined).length} Live Desks</strong>
+      </div>
+      <p className="cpu-results-copy">{snapshot.detail}</p>
+      <div className="cpu-results-list">
+        {visibleItems.map((item) => (
+          <article className={`cpu-results-card tone-${item.tone}`} key={item.id}>
+            <div className="cpu-results-card-head">
+              <div>
+                <span>{item.brandName}</span>
+                <strong>{item.headline}</strong>
+              </div>
+              <b>{item.score ?? "Hidden"}</b>
+            </div>
+            <p>{item.detail}</p>
+            {!compact && item.segments.length ? (
+              <div className="cpu-segment-strip">
+                {item.segments.slice(0, 4).map((segment) => (
+                  <span key={segment.id}>
+                    {segment.type} {segment.score}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {item.notes.length ? (
+              <div className="cpu-results-notes">
+                {item.notes.slice(0, compact ? 2 : 5).map((note, index) => (
+                  <small key={`${item.id}-note-${index}`}>{note}</small>
+                ))}
+              </div>
+            ) : null}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RivalIntelligencePanel({ compact = false, game }: { compact?: boolean; game: GameState }) {
+  const snapshot = getMarketSnapshot(game, draftPool);
+  const office = game.marketState.officeMandate;
+  const rivalEvents = getRivalMarketEvents(game).slice(0, compact ? 2 : 5);
+  const latestMove = snapshot.latestTransaction?.note ?? "No market move has resolved yet.";
+
+  return (
+    <section className={`rival-intel-panel mandate-${office.mandateStatus}${compact ? " compact" : ""}`} aria-label="Rival intelligence">
+      <div className="rival-intel-head">
+        <div>
+          <p className="eyebrow">Rival Intelligence</p>
+          <h3>{office.mandateStatus === "critical" ? "Office Heat Rising" : office.mandateStatus === "surging" ? "Office Backing Strong" : "Market Race Active"}</h3>
+        </div>
+        <strong>{office.mandateStatus.toUpperCase()}</strong>
+      </div>
+      <p>{latestMove}</p>
+      <div className="rival-intel-grid">
+        <Metric label="Owner Trust" value={`${office.ownerTrust}`} />
+        <Metric label="Reputation" value={`${office.brandReputation}`} />
+        <Metric label="Payroll" value={formatMoney(snapshot.payroll)} />
+        <Metric label="Open Market" value={`${snapshot.freeAgents.length}`} />
+      </div>
+      {!compact && rivalEvents.length ? (
+        <div className="rival-intel-feed">
+          {rivalEvents.map((event) => (
+            <article key={event.id}>
+              <span>
+                S{event.seasonNumber} W{event.weekNumber} · {event.type}
+              </span>
+              <strong>{event.wrestlerNames.join(" / ")}</strong>
+              <p>{event.note}</p>
+            </article>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function WeeklyDecisionPressurePanel({ compact = false, snapshot }: { compact?: boolean; snapshot: WeeklyDecisionPressureSnapshot }) {
   return (
     <section className={`weekly-pressure-panel${compact ? " compact" : ""}`} aria-label="GM desk brief">
@@ -7089,7 +7203,7 @@ function DraftFinanceSummary({ readout }: { readout: DraftFinanceReadout }) {
   );
 }
 
-function RivalDraftActivityPanel({ snapshot }: { snapshot: RivalDraftActivitySnapshot }) {
+function RivalDraftActivityPanel({ snapshot }: { snapshot: CpuDraftPreviewSnapshot }) {
   return (
     <section className={`rival-draft-panel tone-${snapshot.tone}`} aria-label="Rival draft activity">
       <div className="rival-draft-head">
@@ -7227,6 +7341,8 @@ function DashboardScreen({
   const pleBuildPressure = getPleBuildPressureSnapshot(game, validShowSegments);
   const livingWorldPressure = getLivingWorldPressureSnapshot(game, lastShow);
   const brandPulseSnapshot = getBrandPulseSnapshot(game, latestResult);
+  const ratingsBattle = getRatingsBattleSnapshot(game, latestResult);
+  const cpuResultsFeed = getCpuResultsFeedSnapshot(game, latestResult);
   const rivalBrands = game.rivalBrands?.length ? game.rivalBrands : createRivalBrandUniverse(game.rivalGMAssignments);
   const latestSocialPost = game.socialPosts[game.socialPosts.length - 1];
   const financePresenceRead = getFinancePresenceRead(game.money, pressureLabel, latestFinanceReport);
@@ -7502,6 +7618,9 @@ function DashboardScreen({
                 ) : null}
               </div>
             </article>
+            <RivalIntelligencePanel compact game={game} />
+            {ratingsBattle ? <RatingsBattlePanel compact snapshot={ratingsBattle} /> : null}
+            {cpuResultsFeed ? <CpuResultsFeedPanel compact snapshot={cpuResultsFeed} /> : null}
           </aside>
         </section>
 
@@ -9755,6 +9874,8 @@ function CalendarScreen({
   const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
   const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
   const pleBuildPressure = getPleBuildPressureSnapshot(game);
+  const ratingsBattle = getRatingsBattleSnapshot(game, latestResult);
+  const cpuResultsFeed = getCpuResultsFeedSnapshot(game, latestResult);
 
   function getWeekResult(week: CalendarWeek) {
     return game.showHistory.find(
@@ -9786,6 +9907,9 @@ function CalendarScreen({
 
       <PleBuildPressurePanel snapshot={pleBuildPressure} />
 
+      {ratingsBattle ? <RatingsBattlePanel compact snapshot={ratingsBattle} /> : null}
+      {cpuResultsFeed ? <CpuResultsFeedPanel compact snapshot={cpuResultsFeed} /> : null}
+
       <section className="calendar-list" aria-label="Season calendar">
         {game.calendar.map((week) => {
           const result = getWeekResult(week);
@@ -9810,6 +9934,9 @@ function CalendarScreen({
                   <>
                     <strong>{result.totalScore}</strong>
                     <span>Grade {getShowGrade(result.totalScore)}</span>
+                    {game.rivalBrands.some((brand) => brand.weeklyResults.some((cpuResult) => cpuResult.seasonNumber === result.seasonNumber && cpuResult.weekNumber === result.week)) ? (
+                      <small>CPU race logged</small>
+                    ) : null}
                   </>
                 ) : (
                   <>
@@ -9842,6 +9969,8 @@ function SocialScreen({
     .filter((post) => !categories || categories.includes(post.category));
   const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
   const moodSummary = getIwcMoodSummary(game);
+  const ratingsBattle = getRatingsBattleSnapshot(game, latestResult);
+  const cpuResultsFeed = getCpuResultsFeedSnapshot(game, latestResult);
 
   return (
     <main className="app-shell gameplay-command-shell">
@@ -9879,6 +10008,9 @@ function SocialScreen({
           </div>
         </section>
       ) : null}
+
+      {ratingsBattle ? <RatingsBattlePanel compact snapshot={ratingsBattle} /> : null}
+      {cpuResultsFeed ? <CpuResultsFeedPanel compact snapshot={cpuResultsFeed} /> : null}
 
       <section className="roster-controls" aria-label="Social filters">
         <div>
@@ -9918,6 +10050,164 @@ function SocialScreen({
             {game.socialPosts.length ? "No posts match this filter." : "The internet has nothing to react to yet. Run a show and the buzz will arrive after the results."}
           </div>
         )}
+      </section>
+    </main>
+  );
+}
+
+function MarketScreen({
+  game,
+  latestResult,
+  onNavigate,
+  onProposeTrade,
+  onReleaseWrestler,
+  onSignFreeAgent,
+}: {
+  game: GameState;
+  latestResult?: ShowResult;
+  onNavigate: (screen: GameScreen) => void;
+  onProposeTrade: (outgoingWrestlerId: string, targetWrestlerId: string) => void;
+  onReleaseWrestler: (wrestlerId: string) => void;
+  onSignFreeAgent: (wrestlerId: string) => void;
+}) {
+  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
+  const snapshot = getMarketSnapshot(game, draftPool);
+  const office = game.marketState.officeMandate;
+  const [selectedFreeAgentId, setSelectedFreeAgentId] = useState(snapshot.freeAgents[0]?.id ?? "");
+  const [selectedOutgoingId, setSelectedOutgoingId] = useState(game.wrestlers[0]?.id ?? "");
+  const [selectedTargetId, setSelectedTargetId] = useState(snapshot.rivalTradeTargets[0]?.wrestler.id ?? "");
+  const selectedFreeAgent = snapshot.freeAgents.find((wrestler) => wrestler.id === selectedFreeAgentId) ?? snapshot.freeAgents[0];
+  const selectedOutgoing = game.wrestlers.find((wrestler) => wrestler.id === selectedOutgoingId) ?? game.wrestlers[0];
+  const selectedTarget = snapshot.rivalTradeTargets.find((target) => target.wrestler.id === selectedTargetId) ?? snapshot.rivalTradeTargets[0];
+  const latestRivalEvents = getRivalMarketEvents(game).slice(0, 4);
+  const visibleTransactions = [...game.marketState.transactions, ...latestRivalEvents].sort((a, b) => b.weekNumber - a.weekNumber || b.id.localeCompare(a.id)).slice(0, 8);
+
+  function contractRead(wrestlerId: string) {
+    const contract = getContractForWrestler(game, wrestlerId);
+
+    return contract ? `${contract.contractWeeksRemaining} wk · ${formatMoney(contract.weeklySalary)}/wk · Penalty ${formatMoney(contract.releasePenalty)}` : "No active contract read";
+  }
+
+  return (
+    <main className="app-shell gameplay-command-shell market-command-shell">
+      <Header game={game} />
+      <GameNav currentScreen="market" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
+
+      <section className={`market-office-mandate mandate-${office.mandateStatus}`} aria-label="Office mandate">
+        <div>
+          <p className="eyebrow">Office Mandates</p>
+          <h2>{office.mandateStatus === "critical" ? "Ownership Pressure Is Critical" : office.mandateStatus === "surging" ? "Ownership Is Backing The Desk" : office.mandateStatus === "watch" ? "Ownership Is Watching The Ledger" : "Office Mandate Stable"}</h2>
+          <p>{office.mandateHistory.at(-1)?.note ?? "The office is waiting for the next resolved week before changing the mandate read."}</p>
+        </div>
+        <div className="market-mandate-metrics">
+          <Metric label="Owner Trust" value={`${office.ownerTrust}`} />
+          <Metric label="Reputation" value={`${office.brandReputation}`} />
+          <Metric label="Payroll" value={formatMoney(snapshot.payroll)} detail={`${snapshot.expiringContracts} expiring`} />
+          <Metric label="Roster Slots" value={`${game.wrestlers.length}/${snapshot.rosterLimit}`} />
+        </div>
+      </section>
+
+      <section className="market-grid" aria-label="Market command grid">
+        <article className="command-panel market-panel">
+          <div className="section-heading">
+            <p className="eyebrow">Free Agency</p>
+            <h3>Open Market Board</h3>
+          </div>
+          <div className="market-list">
+            {snapshot.freeAgents.slice(0, 8).map((wrestler) => {
+              const finance = getRosterFinanceValueForWrestler(wrestler);
+              const isSelected = selectedFreeAgent?.id === wrestler.id;
+
+              return (
+                <button className={isSelected ? "market-row is-selected" : "market-row"} key={wrestler.id} onClick={() => setSelectedFreeAgentId(wrestler.id)} type="button">
+                  <span>{wrestler.name}</span>
+                  <strong>{formatMoney(finance?.weeklyHireRateUsd ?? 0)}/wk</strong>
+                  <small>{wrestler.roleTier} · Rank #{wrestler.draftRank ?? "n/a"}</small>
+                </button>
+              );
+            })}
+          </div>
+          <button className="primary-action" disabled={!selectedFreeAgent || game.wrestlers.length >= snapshot.rosterLimit} onClick={() => selectedFreeAgent && onSignFreeAgent(selectedFreeAgent.id)}>
+            Sign {selectedFreeAgent?.name ?? "Talent"}
+          </button>
+        </article>
+
+        <article className="command-panel market-panel">
+          <div className="section-heading">
+            <p className="eyebrow">Contracts / Releases</p>
+            <h3>Locker Room Ledger</h3>
+          </div>
+          <div className="market-list">
+            {game.wrestlers.slice(0, 10).map((wrestler) => (
+              <button className={selectedOutgoing?.id === wrestler.id ? "market-row is-selected" : "market-row"} key={wrestler.id} onClick={() => setSelectedOutgoingId(wrestler.id)} type="button">
+                <span>{wrestler.name}</span>
+                <strong>{formatMoney(getContractForWrestler(game, wrestler.id)?.weeklySalary ?? 0)}/wk</strong>
+                <small>{contractRead(wrestler.id)}</small>
+              </button>
+            ))}
+          </div>
+          <button className="secondary-action" disabled={!selectedOutgoing || game.wrestlers.length <= 8} onClick={() => selectedOutgoing && onReleaseWrestler(selectedOutgoing.id)}>
+            Release {selectedOutgoing?.name ?? "Talent"}
+          </button>
+        </article>
+
+        <article className="command-panel market-panel">
+          <div className="section-heading">
+            <p className="eyebrow">Trade Wire</p>
+            <h3>Limited Rival Visibility</h3>
+          </div>
+          <div className="trade-builder">
+            <label>
+              <span>Send</span>
+              <select value={selectedOutgoing?.id ?? ""} onChange={(event) => setSelectedOutgoingId(event.target.value)}>
+                {game.wrestlers.map((wrestler) => (
+                  <option key={wrestler.id} value={wrestler.id}>{wrestler.name}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Target</span>
+              <select value={selectedTarget?.wrestler.id ?? ""} onChange={(event) => setSelectedTargetId(event.target.value)}>
+                {snapshot.rivalTradeTargets.map((target) => (
+                  <option key={`${target.brand.id}-${target.wrestler.id}`} value={target.wrestler.id}>
+                    {target.wrestler.name} · {target.brand.brandName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {selectedTarget ? (
+            <p className="social-preview-text">
+              {selectedTarget.brand.brandName} visibility is limited to market-eligible talent, contract pressure, and public form. Acceptance resolves deterministically after proposal.
+            </p>
+          ) : null}
+          <button className="primary-action" disabled={!selectedOutgoing || !selectedTarget} onClick={() => selectedOutgoing && selectedTarget && onProposeTrade(selectedOutgoing.id, selectedTarget.wrestler.id)}>
+            Propose Trade
+          </button>
+        </article>
+      </section>
+
+      <section className="command-panel market-panel market-feed-panel" aria-label="Transaction feed">
+        <div className="section-heading">
+          <p className="eyebrow">Transaction Wire</p>
+          <h3>{snapshot.latestTransaction?.note ?? "No market movement yet"}</h3>
+        </div>
+        <div className="market-transaction-list">
+          {visibleTransactions.length ? (
+            visibleTransactions.map((transaction) => (
+              <article key={transaction.id}>
+                <span>
+                  S{transaction.seasonNumber} W{transaction.weekNumber} · {transaction.type.toUpperCase()}
+                </span>
+                <strong>{transaction.wrestlerNames.join(" / ") || "Market Desk"}</strong>
+                <p>{transaction.note}</p>
+                <small>{transaction.amount ? formatMoney(transaction.amount) : "No fee"}</small>
+              </article>
+            ))
+          ) : (
+            <p className="muted-copy">The market opens after Draft Night. CPU and player moves will land here as resolved transactions.</p>
+          )}
+        </div>
       </section>
     </main>
   );
@@ -10300,6 +10590,8 @@ function ResultsScreen({
     ? `Major-event night complete; the room now moves on the fallout instead of the build notes.`
     : `Broadcast locked; review the fallout before calendar movement.`;
   const recapPackage = buildResultsRecapPackage(result, broadcastFallout, causeLedger);
+  const ratingsBattle = getRatingsBattleSnapshot(game, result);
+  const cpuResultsFeed = getCpuResultsFeedSnapshot(game, result);
   const [isSegmentBreakdownOpen, setIsSegmentBreakdownOpen] = useState(false);
 
   return (
@@ -10372,6 +10664,10 @@ function ResultsScreen({
       <PostShowCauseLedger sections={causeLedger} collapsible />
 
       <BroadcastFalloutPanel snapshot={broadcastFallout} />
+
+      <RivalIntelligencePanel game={game} />
+      {ratingsBattle ? <RatingsBattlePanel snapshot={ratingsBattle} /> : null}
+      {cpuResultsFeed ? <CpuResultsFeedPanel snapshot={cpuResultsFeed} /> : null}
 
       {result.broadcastOverrunNotes?.length ? (
         <section className="broadcast-overrun-fallout" aria-label="Broadcast overrun fallout">
@@ -10480,6 +10776,8 @@ function WeekReviewScreen({
   const weeksUntilNextPle = nextPle ? Math.max(0, nextPle.weekNumber - result.week) : 0;
   const weekReviewOffice = getWeekReviewOfficeSnapshot(game, result, financeReport);
   const weekReviewHandoff = getWeekReviewHandoffSnapshot(game, result, financeReport);
+  const ratingsBattle = getRatingsBattleSnapshot(game, result);
+  const cpuResultsFeed = getCpuResultsFeedSnapshot(game, result);
   const isPleResult = result.showType === "ple";
 
   return (
@@ -10523,6 +10821,10 @@ function WeekReviewScreen({
       <WeekReviewOfficePanel snapshot={weekReviewOffice} />
 
       <WeekReviewHandoffPanel snapshot={weekReviewHandoff} />
+
+      <RivalIntelligencePanel game={game} />
+      {ratingsBattle ? <RatingsBattlePanel snapshot={ratingsBattle} /> : null}
+      {cpuResultsFeed ? <CpuResultsFeedPanel snapshot={cpuResultsFeed} /> : null}
 
       {result.broadcastOverrunNotes?.length ? (
         <section className="broadcast-overrun-fallout" aria-label="Week review broadcast overrun">
@@ -10734,6 +11036,8 @@ function SeasonReviewScreen({
       ? `Season finance held at ${seasonReports.length} closed shows with a ${legacyProfitDeltaLabel} cash movement of ${formatMoney(seasonProfitLoss)}.`
       : "No full-season finance ledger was captured yet.";
   const archivedSeasons = [...game.seasonArchives].reverse();
+  const ratingsBattle = getRatingsBattleSnapshot(game, bestShow);
+  const cpuResultsFeed = getCpuResultsFeedSnapshot(game, bestShow);
 
   return (
     <main className="app-shell">
@@ -10833,6 +11137,10 @@ function SeasonReviewScreen({
         <Metric label="Season P/L" value={formatMoney(seasonProfitLoss)} />
         <Metric label="Best Show" value={bestShow ? bestShow.showName : "No Shows"} detail={bestShow ? `${bestShow.totalScore} (${getShowGrade(bestShow.totalScore)})` : undefined} />
       </section>
+
+      <RivalIntelligencePanel game={game} />
+      {ratingsBattle ? <RatingsBattlePanel snapshot={ratingsBattle} /> : null}
+      {cpuResultsFeed ? <CpuResultsFeedPanel snapshot={cpuResultsFeed} /> : null}
 
       <section className="status-grid" aria-label="Season roster review">
         <Metric label="Top Momentum" value={topMomentum ? topMomentum.name : "No Momentum Data"} detail={topMomentum ? `${topMomentum.momentum}` : "No momentum snapshots available"} />
@@ -11378,6 +11686,9 @@ function GameNav({
       </button>
       <button className={currentScreen === "roster" ? "active-filter" : ""} onClick={() => onNavigate("roster")}>
         Roster
+      </button>
+      <button className={currentScreen === "market" ? "active-filter" : ""} onClick={() => onNavigate("market")}>
+        Market
       </button>
       <button className={currentScreen === "championships" ? "active-filter" : ""} onClick={() => onNavigate("championships")}>
         Championships

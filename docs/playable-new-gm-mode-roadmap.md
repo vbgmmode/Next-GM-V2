@@ -12,7 +12,7 @@ As of this roadmap, the game supports the solo weekly loop:
 
 Title -> Setup -> Draft Night -> Draft Review -> Dashboard -> Booking -> Run Show -> Results -> Week Review -> Advance Week -> Season Review -> Start Next Season
 
-The current mode includes localStorage persistence, deterministic show resolution, roster pressure, injuries, title changes, rivalry movement, social posts, finance reports, season archives, read-only rival brand flavor, tag title support, Rivalries Command Desk support for singles/tag 2v2/multi rivalry structures, and multiple read-only context surfaces.
+The current mode includes localStorage persistence, deterministic show resolution, roster pressure, injuries, title changes, rivalry movement, social posts, finance reports, season archives, deterministic CPU rival brands, limited Rival Intelligence, player/CPU market transactions, tag title support, Rivalries Command Desk support for singles/tag 2v2/multi rivalry structures, and multiple read-only context surfaces.
 
 ## Near-Term Product Direction
 
@@ -22,7 +22,7 @@ Prioritize bounded improvements that preserve the current loop:
 - Keep Booking as the primary decision surface.
 - Let Booking feel staged instead of cramped: the player should be able to see the card/rundown as they build, then enter focused setup surfaces for matchups, promos, title context, rivalry context, and other segment details.
 - Keep Results and Week Review as consequence reveal surfaces.
-- Keep finance, contract, scout, rival-brand, tag, and season-memory features read-only unless a ticket explicitly adds gameplay.
+- Keep scout, rival visibility, tag, and season-memory features bounded unless a ticket explicitly adds gameplay; finance, contracts, and market pressure are now active gameplay systems.
 - Prefer stabilization, validation, and focused UI polish over broad new systems.
 
 ## Near-Term Architecture Direction
@@ -46,17 +46,16 @@ When explicitly requested, grow the game through small playable systems:
 - Stronger rivalry planning and payoff tools beyond the current singles/tag 2v2/multi Rivalries Command Desk.
 - Deeper championship scene management beyond the current Champion Wall, vacant-title assignment, revocation, title booking shortcut, and contender edit controls.
 - Tag/faction systems beyond read-only affiliation context.
+- Rival-brand pressure beyond the current summarized CPU Results Feed and Rival Intelligence only when it preserves player agency and avoids rival HQ/editor sprawl.
 
 ## Later Product Growth
 
 Defer these until the core loop and current architecture can support them safely:
 
-- CPU drafting.
-- CPU booking.
-- Rival rosters.
-- Rival show simulation.
-- Ratings battles or brand standings.
-- Payroll and complex accounting.
+- Editable CPU booking or full rival HQ management screens.
+- Full rival HQ management, editable CPU booking, or manual CPU transaction control.
+- Progression locks, firing, or career-ending fail states from CPU standings.
+- Complex accounting beyond the active contract/payroll/transaction ledger.
 - Offseason systems.
 - Multi-year career systems.
 - Modding, database, backend, cloud sync, multiplayer, or external services.

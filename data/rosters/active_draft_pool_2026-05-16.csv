@@ -1,0 +1,121 @@
+draft_rank,id,name,brand,division,role_tier
+1,aew-aew-kenny-omega,Kenny Omega,AEW,Mens,MainEvent
+2,wwe-smackdown-rhea-ripley,Rhea Ripley,SmackDown,Womens,MainEvent
+3,wwe-raw-roman-reigns,Roman Reigns,Raw,Mens,MainEvent
+4,wwe-smackdown-cody-rhodes,Cody Rhodes,SmackDown,Mens,MainEvent
+5,wwe-raw-becky-lynch,Becky Lynch,Raw,Womens,MainEvent
+6,aew-aew-kazuchika-okada,Kazuchika Okada,AEW,Mens,MainEvent
+7,wwe-raw-seth-rollins,Seth Rollins,Raw,Mens,MainEvent
+8,aew-aew-chris-jericho,Chris Jericho,AEW,Mens,MainEvent
+9,wwe-raw-cm-punk,CM Punk,Raw,Mens,MainEvent
+10,wwe-smackdown-bianca-belair,Bianca Belair,SmackDown,Womens,MainEvent
+11,wwe-raw-iyo-sky,IYO SKY,Raw,Womens,MainEvent
+12,wwe-smackdown-gunther,Gunther,SmackDown,Mens,MainEvent
+13,wwe-smackdown-drew-mcintyre,Drew McIntyre,SmackDown,Mens,MainEvent
+14,wwe-smackdown-randy-orton,Randy Orton,SmackDown,Mens,MainEvent
+15,wwe-raw-liv-morgan,Liv Morgan,Raw,Womens,MainEvent
+16,aew-aew-will-ospreay,Will Ospreay,AEW,Mens,MainEvent
+17,wwe-raw-stephanie-vaquer,Stephanie Vaquer,Raw,Womens,MainEvent
+18,wwe-raw-naomi,Naomi,Raw,Womens,MainEvent
+19,aew-aew-mercedes-mon,Mercedes Moné,AEW,Womens,MainEvent
+20,wwe-raw-asuka,Asuka,Raw,Womens,MainEvent
+21,wwe-raw-bron-breakker,Bron Breakker,Raw,Mens,MainEvent
+22,aew-aew-jon-moxley,Jon Moxley,AEW,Mens,MainEvent
+23,wwe-smackdown-charlotte-flair,Charlotte Flair,SmackDown,Womens,Midcard
+24,aew-aew-swerve-strickland,Swerve Strickland,AEW,Mens,UpperCard
+25,wwe-smackdown-jade-cargill,Jade Cargill,SmackDown,Womens,MainEvent
+26,aew-aew-willow-nightingale,Willow Nightingale,AEW,Womens,MainEvent
+27,aew-aew-thekla,Thekla,AEW,Womens,MainEvent
+28,wwe-smackdown-tiffany-stratton,Tiffany Stratton,SmackDown,Womens,Midcard
+29,aew-aew-jay-white,Jay White,AEW,Mens,UpperCard
+30,aew-aew-mjf,MJF,AEW,Mens,UpperCard
+31,wwe-smackdown-jacob-fatu,Jacob Fatu,SmackDown,Mens,MainEvent
+32,wwe-raw-jey-uso,Jey Uso,Raw,Mens,Midcard
+33,wwe-raw-logan-paul,Logan Paul,Raw,Mens,Midcard
+34,aew-aew-eddie-kingston,Eddie Kingston,AEW,Mens,UpperCard
+35,aew-aew-pac,PAC,AEW,Mens,UpperCard
+36,aew-aew-adam-copeland,Adam Copeland,AEW,Mens,UpperCard
+37,wwe-raw-bayley,Bayley,Raw,Womens,UpperCard
+38,aew-aew-samoa-joe,Samoa Joe,AEW,Mens,UpperCard
+39,aew-aew-orange-cassidy,Orange Cassidy,AEW,Mens,MainEvent
+40,aew-aew-kevin-knight,Kevin Knight,AEW,Mens,MainEvent
+41,aew-aew-dax-harwood,Dax Harwood,AEW,Mens,MainEvent
+42,aew-aew-megan-bayne,Megan Bayne,AEW,Womens,MainEvent
+43,wwe-smackdown-sami-zayn,Sami Zayn,SmackDown,Mens,Midcard
+44,wwe-raw-la-knight,LA Knight,Raw,Mens,Midcard
+45,wwe-smackdown-nia-jax,Nia Jax,SmackDown,Womens,UpperCard
+46,wwe-raw-bronson-reed,Bronson Reed,Raw,Mens,UpperCard
+47,aew-aew-bobby-lashley,Bobby Lashley,AEW,Mens,UpperCard
+48,wwe-smackdown-kevin-owens,Kevin Owens,SmackDown,Mens,UpperCard
+49,aew-aew-kyle-o-reilly,Kyle O'Reilly,AEW,Mens,MainEvent
+50,aew-aew-cash-wheeler,Cash Wheeler,AEW,Mens,MainEvent
+51,wwe-smackdown-damian-priest,Damian Priest,SmackDown,Mens,Midcard
+52,wwe-raw-raquel-rodriguez,Raquel Rodriguez,Raw,Womens,UpperCard
+53,wwe-raw-nattie,Nattie,Raw,Womens,UpperCard
+54,wwe-smackdown-giulia,Giulia,SmackDown,Womens,UpperCard
+55,aew-aew-roderick-strong,Roderick Strong,AEW,Mens,MainEvent
+56,aew-aew-ricochet,Ricochet,AEW,Mens,UpperCard
+57,aew-aew-darby-allin,Darby Allin,AEW,Mens,MainEvent
+58,wwe-raw-finn-b-lor,Finn Bálor,Raw,Mens,Midcard
+59,wwe-raw-sheamus,Sheamus,Raw,Mens,UpperCard
+60,wwe-raw-dominik-mysterio,Dominik Mysterio,Raw,Mens,Midcard
+61,aew-aew-mark-davis,Mark Davis,AEW,Mens,MainEvent
+62,wwe-smackdown-alexa-bliss,Alexa Bliss,SmackDown,Womens,Midcard
+63,wwe-smackdown-shinsuke-nakamura,Shinsuke Nakamura,SmackDown,Mens,Midcard
+64,wwe-raw-jimmy-uso,Jimmy Uso,Raw,Mens,Midcard
+65,wwe-smackdown-ilja-dragunov,Ilja Dragunov,SmackDown,Mens,Midcard
+66,wwe-smackdown-chelsea-green,Chelsea Green,SmackDown,Womens,Midcard
+67,wwe-raw-roxanne-perez,Roxanne Perez,Raw,Womens,Midcard
+68,aew-aew-tommaso-ciampa,Tommaso Ciampa,AEW,Mens,Midcard
+69,aew-aew-mark-briscoe,Mark Briscoe,AEW,Mens,Midcard
+70,wwe-raw-penta,Penta,Raw,Mens,Midcard
+71,aew-aew-christian-cage,Christian Cage,AEW,Mens,Midcard
+72,aew-aew-dr-britt-baker-d-m-d,"Dr. Britt Baker, D.M.D.",AEW,Womens,Midcard
+73,wwe-smackdown-solo-sikoa,Solo Sikoa,SmackDown,Mens,Midcard
+74,wwe-raw-original-el-grande-americano,Original El Grande Americano,Raw,Mens,Midcard
+75,aew-aew-nick-jackson,Nick Jackson,AEW,Mens,Midcard
+76,aew-aew-matt-jackson,Matt Jackson,AEW,Mens,Midcard
+77,wwe-raw-el-grande-americano,El Grande Americano,Raw,Mens,Midcard
+78,aew-aew-timeless-toni-storm,"""Timeless"" Toni Storm",AEW,Womens,Midcard
+79,aew-aew-lena-kross,Lena Kross,AEW,Womens,MainEvent
+80,wwe-smackdown-trick-williams,Trick Williams,SmackDown,Mens,Midcard
+81,wwe-raw-rey-mysterio,Rey Mysterio,Raw,Mens,Midcard
+82,aew-aew-thunder-rosa,Thunder Rosa,AEW,Womens,Midcard
+83,wwe-raw-lyra-valkyria,Lyra Valkyria,Raw,Womens,Midcard
+88,wwe-raw-ethan-page,Ethan Page,Raw,Mens,Midcard
+90,wwe-smackdown-carmelo-hayes,Carmelo Hayes,SmackDown,Mens,Midcard
+94,wwe-raw-austin-theory,Austin Theory,Raw,Mens,Midcard
+96,wwe-smackdown-ricky-saints,Ricky Saints,SmackDown,Mens,Midcard
+97,wwe-raw-joe-hendry,Joe Hendry,Raw,Mens,Midcard
+98,wwe-smackdown-michin,Michin,SmackDown,Womens,Midcard
+99,wwe-smackdown-the-miz,The Miz,SmackDown,Mens,Midcard
+100,wwe-smackdown-lash-legend,Lash Legend,SmackDown,Womens,Midcard
+101,wwe-smackdown-jordynne-grace,Jordynne Grace,SmackDown,Womens,Midcard
+102,wwe-smackdown-r-truth,R-Truth,SmackDown,Mens,Midcard
+103,wwe-raw-montez-ford,Montez Ford,Raw,Mens,Midcard
+104,wwe-smackdown-jacy-jayne,Jacy Jayne,SmackDown,Womens,Midcard
+105,wwe-nxt-kelani-jordan,Kelani Jordan,NXT,Womens,Midcard
+106,wwe-raw-dragon-lee,Dragon Lee,Raw,Mens,Midcard
+107,wwe-nxt-tony-d-angelo,Tony D'Angelo,NXT,Mens,Midcard
+108,wwe-raw-jd-mcdonagh,JD McDonagh,Raw,Mens,Midcard
+109,wwe-raw-je-von-evans,Je'Von Evans,Raw,Mens,Midcard
+110,wwe-raw-angelo-dawkins,Angelo Dawkins,Raw,Mens,Midcard
+111,wwe-raw-maxxine-dupri,Maxxine Dupri,Raw,Womens,Midcard
+112,wwe-nxt-lola-vice,Lola Vice,NXT,Womens,Midcard
+113,wwe-smackdown-fallon-henley,Fallon Henley,SmackDown,Womens,Midcard
+114,wwe-smackdown-blake-monroe,Blake Monroe,SmackDown,Womens,Midcard
+115,wwe-nxt-tank-ledger,Tank Ledger,NXT,Mens,Prospect
+116,wwe-nxt-hank-walker,Hank Walker,NXT,Mens,Prospect
+117,wwe-raw-ivar,Ivar,Raw,Mens,Enhancement
+118,wwe-raw-sol-ruca,Sol Ruca,Raw,Womens,Prospect
+119,wwe-nxt-jaida-parker,Jaida Parker,NXT,Womens,Prospect
+120,wwe-raw-erik,Erik,Raw,Mens,Enhancement
+122,wwe-nxt-noam-dar,Noam Dar,NXT,Mens,Prospect
+123,wwe-raw-brutus-creed,Brutus Creed,Raw,Mens,Enhancement
+126,wwe-nxt-izzi-dame,Izzi Dame,NXT,Womens,Prospect
+127,wwe-raw-ivy-nile,Ivy Nile,Raw,Womens,Prospect
+128,wwe-smackdown-johnny-gargano,Johnny Gargano,SmackDown,Mens,Enhancement
+152,wwe-smackdown-nathan-frazer,Nathan Frazer,SmackDown,Mens,Enhancement
+153,wwe-nxt-charlie-dempsey,Charlie Dempsey,NXT,Mens,Prospect
+155,wwe-smackdown-axiom,Axiom,SmackDown,Mens,Enhancement
+159,wwe-nxt-myles-borne,Myles Borne,NXT,Mens,Prospect

@@ -1,4 +1,6 @@
 import type { GameState, SegmentResult, ShowResult, SocialCategory, SocialPost, SocialTone, Wrestler } from "./types";
+import { getRatingsBattleSnapshot } from "./cpuRivalLoop";
+import { getRivalMarketEvents } from "./market";
 
 type SocialPostDraft = Omit<SocialPost, "id" | "weekNumber" | "seasonNumber" | "showName"> & {
   priority: number;
@@ -172,6 +174,8 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
   const titleDefenseSegments = result.segmentResults.filter((segment) => segment.titleNote && !isTitleChangeNote(segment.titleNote));
   const rivalrySegments = result.segmentResults.filter((segment) => segment.rivalryNote);
   const posts: SocialPostDraft[] = [];
+  const ratingsBattle = getRatingsBattleSnapshot(game, result);
+  const latestMarketMove = [...game.marketState.transactions, ...getRivalMarketEvents(game)].filter((transaction) => transaction.seasonNumber === game.seasonNumber).at(-1);
 
   posts.push({
     category: "fan_praise",
@@ -187,6 +191,34 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
     relatedRivalryIds: getRelatedRivalryIds(bestSegment),
     relatedChampionshipIds: getRelatedChampionshipIds(bestSegment),
   });
+
+  if (ratingsBattle && ratingsBattle.entries.some((entry) => !entry.isPlayer && entry.latestScore !== undefined)) {
+    const playerEntry = ratingsBattle.entries.find((entry) => entry.isPlayer);
+    const nearestRival = ratingsBattle.entries.find((entry) => !entry.isPlayer);
+    const playerRankRead = playerEntry ? `#${playerEntry.rank}` : "unranked";
+
+    posts.push({
+      category: "analyst_take",
+      author: "Ratings Desk Live",
+      tone: ratingsBattle.playerRank === 1 ? "impressed" : ratingsBattle.playerRank >= ratingsBattle.entries.length ? "skeptical" : "analytical",
+      priority: 12,
+      text: nearestRival
+        ? `${game.brandName} sits ${playerRankRead} in the ratings race after ${result.showName}. ${nearestRival.brandName} is the rival desk everyone is measuring against now, and the office mandate is watching.`
+        : `${game.brandName} sits ${playerRankRead} in the ratings race after ${result.showName}. The CPU desks are active pressure, not a hidden fail state.`,
+      relatedWrestlerIds: bestSegment.participantIds,
+    });
+  }
+
+  if (latestMarketMove) {
+    posts.push({
+      category: "dirt_sheet",
+      author: "Market Wire",
+      tone: latestMarketMove.type === "release" ? "skeptical" : latestMarketMove.type === "trade" && latestMarketMove.accepted === false ? "chaotic" : "analytical",
+      priority: 10,
+      text: `${latestMarketMove.note} The market race is now part of the office pressure, but the show still moves only after the GM advances the week.`,
+      relatedWrestlerIds: latestMarketMove.wrestlerIds,
+    });
+  }
 
   posts.push({
     category: "analyst_take",

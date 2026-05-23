@@ -1,4 +1,5 @@
 import { getRosterFinanceValueForWrestler } from "./financeCatalog";
+import { getActivePlayerPayroll, getMarketTransactionCostsForWeek } from "./market";
 import type { FinanceReport, GameState, ShowResult, Wrestler } from "./types";
 
 type TalentCostProfile = {
@@ -96,6 +97,8 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
     result.broadcastOverrunLevel === "major" ? 16000 : result.broadcastOverrunLevel === "moderate" ? 8000 : result.broadcastOverrunLevel === "minor" ? 2500 : 0;
   const revenueMultiplier = 1 - overrunRevenueDrag;
   const talentCostProfile = getTalentCostProfile(bookedWrestlers, isPle);
+  const payrollCost = getActivePlayerPayroll(game);
+  const transactionCosts = getMarketTransactionCostsForWeek(game, result.seasonNumber, result.week);
 
   const attendance = roundMoney(
     clamp(
@@ -114,7 +117,7 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
   const ticketRevenue = roundMoney(attendance * averageTicketPrice);
   const merchRevenue = roundMoney(attendance * merchPerHead);
   const mediaRevenue = roundMoney(((isPle ? 120000 : 62000) + result.totalScore * (isPle ? 550 : 240) + averageDraw * (isPle ? 150 : 85) + titleMatches * (isPle ? 10000 : 3500)) * revenueMultiplier);
-  const talentCost = roundMoney(talentCostProfile.showTalentCost + segmentCount * (isPle ? 2500 : 1200));
+  const talentCost = roundMoney(talentCostProfile.showTalentCost + segmentCount * (isPle ? 2500 : 1200) + payrollCost + transactionCosts);
   const productionCost = roundMoney(
     (isPle ? 240000 : 65000) +
       runtimeMinutes * (isPle ? 500 : 250) +
@@ -138,6 +141,14 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
 
   if (talentCostProfile.missingFinanceRows) {
     notes.push(`${talentCostProfile.missingFinanceRows} booked ${talentCostProfile.missingFinanceRows === 1 ? "talent used" : "talents used"} a conservative cost fallback because catalog finance data was missing.`);
+  }
+
+  if (payrollCost > 0) {
+    notes.push(`Weekly roster payroll added ${payrollCost.toLocaleString()} to the talent ledger.`);
+  }
+
+  if (transactionCosts > 0) {
+    notes.push(`Market transactions booked this week added ${transactionCosts.toLocaleString()} in signing, release, or trade costs.`);
   }
 
   if (profitLoss < 0) {
@@ -178,6 +189,8 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
     ],
     expenseBreakdown: [
       { id: "talentCost", label: "Talent Cost", amount: talentCost },
+      { id: "payrollCost", label: "Payroll Included", amount: payrollCost },
+      { id: "transactionCost", label: "Market Transactions", amount: transactionCosts },
       { id: "productionCost", label: "Production Cost", amount: productionCost },
     ],
   };

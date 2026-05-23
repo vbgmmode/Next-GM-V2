@@ -16,6 +16,8 @@ import type {
 } from "./types";
 import { generateFinanceReport } from "./finance";
 import { generateSocialPosts } from "./social";
+import { generateCpuWeeklyResults } from "./cpuRivalLoop";
+import { draftPool } from "./seed";
 import { getSegmentValidationRange } from "./matchFormatCatalog";
 import { getChampionshipDivisionGroup, wrestlerFitsChampionshipDivision } from "./titleCatalog";
 
@@ -402,20 +404,28 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
   lockerRoomFallout.injuryNotes = injuryNotes;
   const injuredWrestlers = applyInjuryFallout(updatedWrestlers, injuryNotes, game.currentWeek);
   const financeReport = generateFinanceReport(result, game);
+  const gameBeforeCpuSocial = {
+    ...game,
+    money: financeReport.endingMoney,
+    wrestlers: injuredWrestlers,
+    championships: updatedChampionships,
+    rivalries: updatedRivalries,
+    championshipHistory: [...(game.championshipHistory ?? []), ...titleHistoryEvents],
+    rivalryHistory: [...(game.rivalryHistory ?? []), ...rivalryHistoryEvents],
+    financeReports: [...game.financeReports, financeReport],
+    showHistory: [...game.showHistory, result],
+  };
+  const rivalBrands = generateCpuWeeklyResults(gameBeforeCpuSocial, result, draftPool);
+  const gameWithCpuResults = {
+    ...gameBeforeCpuSocial,
+    rivalBrands,
+  };
 
   return {
     result,
     game: {
-      ...game,
-      money: financeReport.endingMoney,
-      wrestlers: injuredWrestlers,
-      championships: updatedChampionships,
-      rivalries: updatedRivalries,
-      championshipHistory: [...(game.championshipHistory ?? []), ...titleHistoryEvents],
-      rivalryHistory: [...(game.rivalryHistory ?? []), ...rivalryHistoryEvents],
-      socialPosts: [...game.socialPosts, ...generateSocialPosts(result, game)],
-      financeReports: [...game.financeReports, financeReport],
-      showHistory: [...game.showHistory, result],
+      ...gameWithCpuResults,
+      socialPosts: [...game.socialPosts, ...generateSocialPosts(result, gameWithCpuResults)],
     },
   };
 }
