@@ -174,7 +174,13 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
       posts.push({
         category: "rivalry_heat",
         author: "@AngleWatch",
-        tone: segment.rivalryNote?.includes("stale") || segment.rivalryNote?.includes("cooled") ? "skeptical" : "excited",
+        tone:
+          segment.rivalryNote?.includes("stale") ||
+          segment.rivalryNote?.includes("cooled") ||
+          segment.rivalryNote?.includes("lost the room") ||
+          segment.rivalryNote?.includes("running on fumes")
+            ? "skeptical"
+            : "excited",
         text: segment.rivalryNote ?? "",
         relatedWrestlerIds: segment.participantIds,
         relatedRivalryIds: getRelatedRivalryIds(segment),
