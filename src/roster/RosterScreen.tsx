@@ -1,16 +1,13 @@
 import { useMemo, useState } from "react";
 import { DynastyManagementShell, type DynastyManagementCta } from "../components/DynastyManagementShell";
 import { getRosterAffiliations } from "../game/affiliationCatalog";
-import { formatWeekCount } from "../booking/bookingUtils";
-import { getInjuryStatusLabel, getRosterPressureTags, getTopOverusedWrestler, getTopUnderusedWrestler } from "../game/rosterContextReads";
+import { getRosterPressureTags, getTopOverusedWrestler, getTopUnderusedWrestler } from "../game/rosterContextReads";
+import { LockerRoomPulsePanel } from "./LockerRoomPulsePanel";
 import { RosterPanel } from "./RosterPanel";
 import { RosterSelectedStrip, RosterSelectedStripEmpty } from "./RosterSelectedStrip";
 import {
-  getAverageRosterMoraleLabel,
-  getMoraleTrendSvgPoints,
   getRosterFilterLabel,
   getRosterFilterMatch,
-  getRosterMoraleTrend,
   getRosterSortLabel,
   getWrestlerChampionships,
   getWrestlerIdentitySnapshot,
@@ -49,9 +46,6 @@ export function RosterScreen({ game, latestResult, onNavigate, onOpenProfile }: 
   const featuredAffiliations = rosterAffiliations
     .filter((affiliation) => affiliation.memberWrestlerIds.length > 1)
     .slice(0, 3);
-  const moraleTrend = getRosterMoraleTrend(game);
-  const moraleTrendLine = getMoraleTrendSvgPoints(moraleTrend);
-  const averageMorale = moraleTrend[moraleTrend.length - 1]?.value ?? getAverageRosterMoraleLabel(game.wrestlers);
   const selectedWrestler = visibleWrestlers.find((wrestler) => wrestler.id === selectedWrestlerId) ?? visibleWrestlers[0] ?? game.wrestlers[0];
   const selectedPressureTags = selectedWrestler ? getRosterPressureTags(selectedWrestler, game.currentWeek) : [];
   const selectedValueProfile = selectedWrestler ? getWrestlerValueProfile(selectedWrestler) : undefined;
@@ -59,10 +53,6 @@ export function RosterScreen({ game, latestResult, onNavigate, onOpenProfile }: 
   const selectedLockerRead = selectedWrestler ? getWrestlerLockerRoomRead(selectedWrestler, game) : undefined;
   const selectedChampionships = selectedWrestler ? getWrestlerChampionships(selectedWrestler.id, game.championships) : [];
   const selectedAffiliations = selectedWrestler ? rosterAffiliations.filter((affiliation) => affiliation.memberWrestlerIds.includes(selectedWrestler.id)) : [];
-  const injuryWatch = game.wrestlers
-    .filter((wrestler) => wrestler.injuryStatus !== "healthy" || getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk"))
-    .sort((a, b) => b.fatigue - a.fatigue)
-    .slice(0, 4);
   const filterOptions: RosterFilter[] = ["all", "mens", "womens", "champions"];
   const sortOptions: RosterSort[] = ["momentum", "popularity", "fatigue", "morale"];
   const filterCounts = filterOptions.reduce(
@@ -151,52 +141,7 @@ export function RosterScreen({ game, latestResult, onNavigate, onOpenProfile }: 
         </section>
 
         <aside className="roster-pulse-rail" aria-label="Locker room pulse">
-          <RosterPanel kicker="Locker Room Pulse" title="Room Status">
-            <section className="roster-side-panel morale-trend-panel" aria-label="Average morale trend">
-              <div className="roster-side-heading">
-                <span>Morale Trend</span>
-                <strong>{averageMorale} Avg</strong>
-              </div>
-              <svg className="morale-trend-plot" role="img" viewBox="0 0 100 36" aria-label={`Average morale trend ending at ${averageMorale}`}>
-                <polyline points={moraleTrendLine} />
-                {moraleTrend.map((point, index) => {
-                  const x = moraleTrend.length <= 1 ? 50 : (index / (moraleTrend.length - 1)) * 100;
-                  const y = 34 - (Math.max(0, Math.min(100, point.value)) / 100) * 32;
-                  return <circle cx={x} cy={y} key={`${point.label}-${index}`} r="1.8" />;
-                })}
-              </svg>
-              <div className="morale-trend-axis-labels" aria-hidden="true">
-                <span>Y: Morale</span>
-                <span>X: Week</span>
-              </div>
-              <div className="morale-trend-labels">
-                {moraleTrend.map((point, index) => (
-                  <span key={`${point.label}-${index}`}>
-                    {point.label} <strong>{point.value}</strong>
-                  </span>
-                ))}
-              </div>
-            </section>
-
-            <section className="roster-side-panel" aria-label="Injury report">
-              <div className="roster-side-heading">
-                <span>Injury Report</span>
-                <strong>{injuryWatch.length ? `${injuryWatch.length} Flagged` : "Clear"}</strong>
-              </div>
-              <div className="roster-note-list">
-                {injuryWatch.length ? (
-                  injuryWatch.map((wrestler) => (
-                    <article className="injury-line-item" key={wrestler.id}>
-                      <strong>{wrestler.name}</strong>
-                      <span>{wrestler.injuryStatus === "healthy" ? "At risk" : formatWeekCount(wrestler.injuryWeeksRemaining)}</span>
-                    </article>
-                  ))
-                ) : (
-                  <p className="roster-muted-copy">No injury or medical-risk read is leading the board.</p>
-                )}
-              </div>
-            </section>
-          </RosterPanel>
+          <LockerRoomPulsePanel game={game} />
         </aside>
         </div>
 

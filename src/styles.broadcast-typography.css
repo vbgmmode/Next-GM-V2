@@ -62,7 +62,7 @@ h6,
 .dashboard-dynasty-shell :is(.dashboard-dynasty-logo-lockup span, .dashboard-dynasty-logo-lockup strong, .dashboard-dynasty-header-module strong, .dashboard-dynasty-next-show strong, .dashboard-dynasty-section-heading span, .dashboard-dynasty-brand-rating strong),
 .dynasty-management-shell :is(.dashboard-dynasty-logo-lockup span, .dashboard-dynasty-logo-lockup strong, .dashboard-dynasty-header-module strong, .dashboard-dynasty-next-show strong, .dashboard-dynasty-section-heading span, .dashboard-dynasty-brand-rating strong),
 .booking-dynasty-shell :is(.booking-panel-heading span, .booking-panel-kicker, .booking-segment-rail-title strong, .booking-status-strip strong),
-.roster-dynasty-shell :is(.roster-panel-heading span, .roster-panel-kicker, .wrestler-card-head h3, .wrestler-card-overall, .roster-selected-strip .roster-panel-heading span),
+.roster-dynasty-shell :is(.roster-panel-heading span, .roster-panel-kicker, .wrestler-card-head h3, .wrestler-card-overall, .roster-selected-strip .roster-panel-heading span, .locker-room-pulse-title h3, .locker-room-pulse-metric-head b, .locker-room-pulse-notes-head strong, .locker-room-pulse-injury-name strong, .locker-room-pulse-note p strong),
 .roster-profile-shell :is(.roster-panel-heading span, .roster-panel-kicker) {
   font-family: var(--font-display);
   font-weight: var(--font-weight-display);
@@ -73,7 +73,7 @@ h6,
 .dashboard-dynasty-shell :is(.dashboard-dynasty-header-module span, .dashboard-dynasty-next-show span, .dashboard-dynasty-next-show em, .dashboard-dynasty-section-heading b),
 .dynasty-management-shell :is(.dashboard-dynasty-header-module span, .dashboard-dynasty-next-show span, .dashboard-dynasty-next-show em, .dashboard-dynasty-section-heading b),
 .booking-dynasty-shell :is(.booking-panel-heading b, .booking-btn, .booking-filter-btn, .booking-rail-item-title),
-.roster-dynasty-shell :is(.roster-panel-heading b, .roster-btn, .roster-filter-btn, .roster-search-field span, .roster-sort-box span, .roster-quick-reads span, .wrestler-card-meta-line, .wrestler-card-foot, .wrestler-card-stamina span, .wrestler-card-morale span, .pressure-tags span),
+.roster-dynasty-shell :is(.roster-panel-heading b, .roster-btn, .roster-filter-btn, .roster-search-field span, .roster-sort-box span, .roster-quick-reads span, .wrestler-card-meta-line, .wrestler-card-foot, .wrestler-card-stamina span, .wrestler-card-morale span, .pressure-tags span, .locker-room-pulse-metric-head strong, .locker-room-pulse-metric-head em, .locker-room-pulse-chart-x span, .locker-room-pulse-injury-row span, .locker-room-pulse-injury-row small, .locker-room-pulse-view-all),
 .roster-profile-shell :is(.roster-panel-heading b, .roster-btn, .pressure-tags span) {
   font-family: var(--font-ui);
   font-weight: var(--font-weight-ui-bold);

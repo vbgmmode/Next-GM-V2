@@ -90,6 +90,24 @@ export function getWrestlerTitleLine(wrestlerId: string, championships: Champion
   return titles.map((championship) => getChampionshipAcronym(championship.name)).join(" / ");
 }
 
+export function getWrestlerDivisionHighlightClass(wrestler: Wrestler) {
+  const division = wrestler.division?.toLowerCase();
+
+  if (division === "womens") {
+    return "division-womens";
+  }
+
+  if (division === "mens") {
+    return "division-mens";
+  }
+
+  return "division-neutral";
+}
+
+export function isWrestlerChampion(wrestlerId: string, championships: Championship[]) {
+  return getWrestlerChampionships(wrestlerId, championships).length > 0;
+}
+
 export function getWrestlerMatchRecord(wrestlerId: string, showHistory: ShowResult[]) {
   return showHistory.reduce(
     (record, show) => {
@@ -142,41 +160,81 @@ function getShowMoraleDelta(result: ShowResult) {
   return moraleMoves.reduce((sum, item) => sum + (item.moraleChange ?? 0), 0);
 }
 
-export function getRosterMoraleTrend(game: GameState) {
+export type MoraleTrendPoint = {
+  label: string;
+  value: number;
+  weekIndex: number;
+};
+
+export function getSeasonWeekCount(game: GameState) {
+  const maxCalendarWeek = game.calendar.reduce((max, week) => Math.max(max, week.weekNumber), 0);
+  return maxCalendarWeek || 12;
+}
+
+export const MORALE_CHART_VIEW_HEIGHT = 36;
+export const MORALE_CHART_Y_MIN = 50;
+export const MORALE_CHART_Y_MAX = 100;
+export const MORALE_CHART_Y_TICKS = [100, 75, 50] as const;
+
+const MORALE_CHART_PLOT_TOP = 4;
+const MORALE_CHART_PLOT_BOTTOM = 32;
+
+export function getMoralePlotY(value: number) {
+  const clamped = Math.max(MORALE_CHART_Y_MIN, Math.min(MORALE_CHART_Y_MAX, value));
+  const ratio = (MORALE_CHART_Y_MAX - clamped) / (MORALE_CHART_Y_MAX - MORALE_CHART_Y_MIN);
+  return MORALE_CHART_PLOT_TOP + ratio * (MORALE_CHART_PLOT_BOTTOM - MORALE_CHART_PLOT_TOP);
+}
+
+export function getMoraleChartYLabelTopPercent(tick: number) {
+  return (getMoralePlotY(tick) / MORALE_CHART_VIEW_HEIGHT) * 100;
+}
+
+function getMoralePlotX(weekIndex: number, seasonWeekCount: number) {
+  return (weekIndex / seasonWeekCount) * 100;
+}
+
+export function getRosterMoraleTrend(game: GameState): MoraleTrendPoint[] {
   const rosterCount = Math.max(1, game.wrestlers.length);
   const currentAverage = getAverageRosterMorale(game.wrestlers);
   const seasonResults = game.showHistory
     .filter((result) => result.seasonNumber === game.seasonNumber)
     .sort((a, b) => a.week - b.week);
   const openingAverage = seasonResults.reduce((average, result) => average - getShowMoraleDelta(result) / rosterCount, currentAverage);
-  const points = [{ label: "Open", value: Math.round(openingAverage) }];
+  const points: MoraleTrendPoint[] = [{ label: "Open", value: Math.round(openingAverage), weekIndex: 0 }];
   let runningAverage = openingAverage;
 
   seasonResults.forEach((result) => {
     runningAverage += getShowMoraleDelta(result) / rosterCount;
-    points.push({ label: `W${result.week}`, value: Math.round(runningAverage) });
+    points.push({ label: `W${result.week}`, value: Math.round(runningAverage), weekIndex: result.week });
   });
 
   if (!seasonResults.some((result) => result.week === game.currentWeek)) {
-    points.push({ label: `W${game.currentWeek}`, value: currentAverage });
+    points.push({ label: `W${game.currentWeek}`, value: currentAverage, weekIndex: game.currentWeek });
   }
 
-  return points.slice(-6);
+  return points;
 }
 
-export function getMoraleTrendSvgPoints(points: { label: string; value: number }[]) {
-  if (points.length <= 1) {
-    const value = points[0]?.value ?? 0;
-    return `50,${34 - (Math.max(0, Math.min(100, value)) / 100) * 32}`;
+export function getMoraleTrendSvgPoints(points: MoraleTrendPoint[], seasonWeekCount: number) {
+  if (points.length === 0) {
+    return "";
+  }
+
+  if (points.length === 1) {
+    const point = points[0];
+    return `${getMoralePlotX(point.weekIndex, seasonWeekCount).toFixed(1)},${getMoralePlotY(point.value).toFixed(1)}`;
   }
 
   return points
-    .map((point, index) => {
-      const x = (index / (points.length - 1)) * 100;
-      const y = 34 - (Math.max(0, Math.min(100, point.value)) / 100) * 32;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
+    .map((point) => `${getMoralePlotX(point.weekIndex, seasonWeekCount).toFixed(1)},${getMoralePlotY(point.value).toFixed(1)}`)
     .join(" ");
+}
+
+export function getMoraleTrendPlotCoordinate(point: MoraleTrendPoint, seasonWeekCount: number) {
+  return {
+    x: getMoralePlotX(point.weekIndex, seasonWeekCount),
+    y: getMoralePlotY(point.value),
+  };
 }
 
 export function getAverageRosterMoraleLabel(wrestlers: Wrestler[]) {

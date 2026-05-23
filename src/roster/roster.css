@@ -253,98 +253,368 @@
   padding: 1px;
 }
 
-.roster-pulse-rail .roster-panel {
-  flex: 1 1 auto;
-  overflow: hidden;
+.roster-pulse-rail {
+  min-height: 0;
 }
 
-.roster-side-panel {
-  border-left: 3px solid rgba(var(--dynasty-accent-rgb), 0.45);
-  display: grid;
-  gap: 8px;
-  padding-left: 8px;
-}
-
-.roster-side-heading {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
-}
-
-.roster-side-heading span,
-.roster-side-heading strong {
-  font-size: 0.86rem;
-  font-weight: 900;
-}
-
-.roster-side-heading strong {
-  color: var(--accent-gold-bright, var(--bc-prestige));
-}
-
-.morale-trend-panel {
-  border-left-color: rgba(var(--bc-positive-rgb), 0.58);
-}
-
-.morale-trend-plot {
+.roster-pulse-rail .locker-room-pulse-panel {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px) 0 50% / 100% 50%,
-    rgba(8, 9, 13, 0.52);
-  border: 1px solid rgba(var(--bc-positive-rgb), 0.18);
-  height: 54px;
-  width: 100%;
-}
-
-.morale-trend-plot polyline {
-  fill: none;
-  stroke: var(--bc-positive);
-  stroke-linecap: round;
-  stroke-width: 2.4;
-}
-
-.morale-trend-plot circle {
-  fill: var(--accent-gold-bright, var(--bc-prestige));
-}
-
-.morale-trend-axis-labels,
-.morale-trend-labels {
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+    rgba(10, 12, 16, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: space-between;
+  flex-direction: column;
+  font-family: var(--font-ui);
+  font-weight: var(--font-weight-ui);
+  gap: 0;
+  height: 100%;
+  letter-spacing: 0.01em;
+  min-height: 0;
+  overflow: hidden;
+  text-transform: none;
 }
 
-.morale-trend-axis-labels span,
-.morale-trend-labels span {
-  color: var(--text-muted, var(--bc-text-muted));
-  font-size: 0.76rem;
-  font-weight: 900;
+.locker-room-pulse-title {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 14px 10px;
 }
 
-.roster-note-list {
+.locker-room-pulse-title h3 {
+  color: var(--dashboard-dynasty-hot, var(--bc-brand-primary));
+  font-family: var(--font-display);
+  font-size: 1.22rem;
+  font-weight: var(--font-weight-display);
+  letter-spacing: var(--broadcast-tracking-display);
+  line-height: 0.95;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.locker-room-pulse-panel > .locker-room-pulse-block {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: grid;
-  gap: 6px;
-  max-height: 120px;
+  gap: 10px;
+  min-height: 0;
+  padding: 12px 14px;
+}
+
+.locker-room-pulse-panel > .locker-room-pulse-block:last-child {
+  border-bottom: 0;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
 }
 
-.injury-line-item {
+.locker-room-pulse-metric-head {
   align-items: center;
-  background: rgba(14, 17, 24, 0.66);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-left: 3px solid var(--bc-warning);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.locker-room-pulse-icon {
+  align-items: center;
+  display: inline-flex;
+  font-size: 1rem;
+  justify-content: center;
+  width: 18px;
+}
+
+.locker-room-pulse-metric-head strong {
+  color: white;
+  font-family: var(--font-ui);
+  font-size: 0.92rem;
+  font-weight: var(--font-weight-ui-bold);
+  letter-spacing: var(--broadcast-tracking-kicker);
+  text-transform: uppercase;
+}
+
+.locker-room-pulse-emoji {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.locker-room-pulse-metric-head b {
+  color: white;
+  font-family: var(--font-display);
+  font-size: 1.28rem;
+  font-weight: var(--font-weight-display);
+  letter-spacing: var(--broadcast-tracking-display);
+  line-height: 0.95;
+}
+
+.locker-room-pulse-metric-head em {
+  font-family: var(--font-ui);
+  font-size: 0.92rem;
+  font-style: normal;
+  font-weight: var(--font-weight-ui-bold);
+  letter-spacing: 0.02em;
+}
+
+.locker-room-pulse-metric-head em.is-up {
+  color: var(--bc-positive);
+}
+
+.locker-room-pulse-metric-head em.is-down {
+  color: #ff9aa3;
+}
+
+.locker-room-pulse-metric-head em.is-critical {
+  color: var(--dashboard-dynasty-hot, var(--bc-brand-primary));
+  font-size: 0.78rem;
+  letter-spacing: var(--broadcast-tracking-kicker);
+  margin-left: auto;
+  text-transform: uppercase;
+}
+
+.locker-room-pulse-copy {
+  color: var(--text-soft, var(--bc-text-secondary));
+  font-size: 0.94rem;
+  font-weight: var(--font-weight-ui);
+  letter-spacing: 0.01em;
+  line-height: 1.45;
+  margin: 0;
+  text-transform: none;
+}
+
+.locker-room-pulse-chart {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 28px minmax(0, 1fr);
+}
+
+.locker-room-pulse-chart-y {
+  color: var(--text-muted, var(--bc-text-muted));
+  font-family: var(--font-ui);
+  font-size: 0.74rem;
+  font-weight: var(--font-weight-ui-bold);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  position: relative;
+  text-align: right;
+  text-transform: none;
+}
+
+.locker-room-pulse-chart-y-scaled {
+  height: 72px;
+}
+
+.locker-room-pulse-chart-y-scaled span {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+}
+
+.locker-room-pulse-chart-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.locker-room-pulse-plot {
+  background: rgba(8, 9, 13, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: block;
+  height: 72px;
+  width: 100%;
+}
+
+.locker-room-pulse-grid-line {
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 0.4;
+}
+
+.locker-room-pulse-plot polyline {
+  fill: none;
+  stroke: var(--dashboard-dynasty-hot, var(--bc-brand-primary));
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+.locker-room-pulse-plot circle {
+  fill: var(--dashboard-dynasty-hot, var(--bc-brand-primary));
+}
+
+.locker-room-pulse-future-band {
+  fill: rgba(255, 255, 255, 0.025);
+}
+
+.locker-room-pulse-progress-line {
+  stroke: rgba(255, 255, 255, 0.14);
+  stroke-dasharray: 1.2 1.6;
+  stroke-width: 0.5;
+}
+
+.locker-room-pulse-chart-x {
+  color: var(--text-muted, var(--bc-text-muted));
+  display: flex;
+  font-family: var(--font-ui);
+  font-size: 0.74rem;
+  font-weight: var(--font-weight-ui-bold);
+  justify-content: space-between;
+  letter-spacing: var(--broadcast-tracking-kicker);
+  text-transform: uppercase;
+}
+
+.locker-room-pulse-chart-x-season {
+  display: block;
+  height: 14px;
+  margin-top: 2px;
+  position: relative;
+}
+
+.locker-room-pulse-chart-x-season span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.locker-room-pulse-chart-x-season span.is-start {
+  transform: translateX(0);
+}
+
+.locker-room-pulse-chart-x-season span.is-season-end,
+.locker-room-pulse-chart-x-season span.is-muted {
+  color: rgba(158, 168, 186, 0.72);
+  transform: translateX(-100%);
+}
+
+.locker-room-pulse-injury-list {
+  display: grid;
+  gap: 8px;
+}
+
+.locker-room-pulse-injury-row {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) auto;
+}
+
+.locker-room-pulse-injury-name {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.locker-room-pulse-injury-portrait {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  height: 26px;
+  width: 26px;
+}
+
+.locker-room-pulse-injury-name strong {
+  color: white;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: var(--font-weight-display);
+  letter-spacing: var(--broadcast-tracking-display);
+  line-height: 0.95;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.locker-room-pulse-injury-row span,
+.locker-room-pulse-injury-row small {
+  color: var(--text-muted, var(--bc-text-muted));
+  font-family: var(--font-ui);
+  font-size: 0.76rem;
+  font-weight: var(--font-weight-ui-bold);
+  letter-spacing: var(--broadcast-tracking-kicker);
+  text-transform: uppercase;
+}
+
+.locker-room-pulse-injury-row.is-critical span {
+  color: #ffb3bd;
+}
+
+.locker-room-pulse-notes-head {
+  align-items: center;
   display: flex;
   justify-content: space-between;
-  padding: 6px 8px;
 }
 
-.injury-line-item strong,
-.injury-line-item span {
-  font-size: 0.86rem;
-  font-weight: 900;
+.locker-room-pulse-notes-head strong {
+  color: white;
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: var(--font-weight-display);
+  letter-spacing: var(--broadcast-tracking-display);
+  text-transform: uppercase;
 }
 
-.injury-line-item span {
-  color: var(--accent-gold-bright, var(--bc-prestige));
+.locker-room-pulse-view-all {
+  background: transparent;
+  border: 0;
+  color: var(--text-muted, var(--bc-text-muted));
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 0.76rem;
+  font-weight: var(--font-weight-ui-bold);
+  letter-spacing: var(--broadcast-tracking-kicker);
+  padding: 0;
+  text-transform: uppercase;
+}
+
+.locker-room-pulse-notes {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.locker-room-pulse-note {
+  align-items: start;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 14px minmax(0, 1fr);
+}
+
+.locker-room-pulse-note p {
+  color: var(--text-soft, var(--bc-text-secondary));
+  font-size: 0.94rem;
+  font-weight: var(--font-weight-ui);
+  letter-spacing: 0.01em;
+  line-height: 1.45;
+  margin: 0;
+  text-transform: none;
+}
+
+.locker-room-pulse-note p strong {
+  color: white;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: var(--font-weight-display);
+  letter-spacing: var(--broadcast-tracking-display);
+  text-transform: uppercase;
+}
+
+.locker-room-pulse-note-icon {
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: var(--font-weight-ui-black);
+  line-height: 1.45;
+}
+
+.locker-room-pulse-note-icon.is-up {
+  color: var(--bc-positive);
+}
+
+.locker-room-pulse-note-icon.is-watch {
+  color: var(--bc-warning);
+}
+
+.locker-room-pulse-note-icon.is-down {
+  color: var(--dashboard-dynasty-hot, var(--bc-brand-primary));
 }
 
 .roster-muted-copy,
@@ -691,40 +961,111 @@
   width: 96px;
 }
 
-.roster-profile-identity-strip {
+.roster-profile-identity-strip,
+.roster-profile-shell .pressure-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
+  margin: 0;
 }
 
-.roster-profile-identity-strip span {
+.roster-dynasty-shell .wrestler-card .pressure-tags span,
+.roster-profile-shell .pressure-tags span {
   background: rgba(8, 9, 13, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
   color: var(--text-soft, var(--bc-text-secondary));
-  font-size: 0.8rem;
+  flex: 0 1 auto;
+  font-size: 0.78rem;
   font-weight: 900;
-  padding: 5px 6px;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding: 2px 5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roster-dynasty-shell .wrestler-card .pressure-tags .identity-chip,
+.roster-profile-shell .pressure-tags .identity-chip {
+  border: 1px solid rgba(216, 35, 50, 0.36);
+  color: #ff9aa3;
+}
+
+.roster-dynasty-shell .wrestler-card .pressure-tags .value-tier-chip {
+  border: 1px solid rgba(111, 226, 212, 0.34);
+  color: #6fe2d4;
+  font-size: 0.66rem;
+  letter-spacing: 0.03em;
+  padding: 1px 4px;
+}
+
+.roster-profile-shell .pressure-tags .value-tier-chip {
+  border: 1px solid rgba(216, 35, 50, 0.36);
+  color: #ff9aa3;
+  font-size: 0.78rem;
+  letter-spacing: normal;
+  padding: 2px 5px;
+}
+
+.roster-profile-shell .pressure-tags .value-tier-chip-missing {
+  border-style: dashed;
+  color: #9ea8ba;
 }
 
 .roster-profile-layout {
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.75fr);
+  grid-template-columns: minmax(280px, 0.62fr) minmax(0, 1.38fr);
   min-height: 0;
   overflow: hidden;
 }
 
-.roster-profile-main,
-.roster-profile-side {
+.roster-profile-main {
+  align-content: start;
   display: grid;
   gap: 8px;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
+}
+
+.roster-profile-side {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding-right: 2px;
+}
+
+.roster-profile-shell .roster-profile-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+    rgba(10, 12, 16, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
 }
 
 .roster-profile-expandable {
   gap: 8px;
+}
+
+.roster-profile-expandable.expanded {
+  gap: 10px;
+}
+
+.roster-profile-expandable.expanded .roster-profile-expandable-head {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
+}
+
+.roster-profile-expandable.expanded .roster-profile-panel-summary {
+  display: none;
 }
 
 .roster-profile-expandable-head {
@@ -776,8 +1117,195 @@
   color: var(--text-soft, var(--bc-text-secondary));
   font-size: 0.86rem;
   font-weight: 800;
-  line-height: 1.25;
+  line-height: 1.35;
   margin: 0;
+}
+
+.roster-profile-panel-body {
+  display: grid;
+  gap: 12px;
+}
+
+.roster-profile-shell .roster-profile-panel-body {
+  background: rgba(8, 10, 14, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  color: var(--text-soft, var(--bc-text-secondary));
+  font-size: 0.94rem;
+  font-weight: 600;
+  line-height: 1.5;
+  padding: 12px;
+  text-transform: none;
+}
+
+.roster-profile-shell .roster-profile-panel-body p,
+.roster-profile-shell .roster-profile-panel-body small {
+  margin: 0;
+}
+
+.roster-profile-shell .roster-readout-list {
+  display: grid;
+  gap: 10px;
+}
+
+.roster-profile-shell .roster-readout-list p {
+  display: grid;
+  gap: 4px;
+  line-height: 1.45;
+}
+
+.roster-profile-shell .roster-readout-list p strong {
+  color: var(--accent-gold, var(--bc-prestige));
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.roster-profile-shell .roster-readout-list .roster-muted-copy {
+  color: var(--text-muted, var(--bc-text-muted));
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.roster-profile-shell .roster-identity-snapshot-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.roster-profile-shell .roster-identity-snapshot-panel > strong {
+  color: white;
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.roster-profile-shell .roster-identity-snapshot-panel > p {
+  color: var(--text-soft, var(--bc-text-secondary));
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.roster-profile-shell .roster-identity-snapshot-panel > small {
+  color: var(--text-muted, var(--bc-text-muted));
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.roster-profile-shell .roster-locker-room-read {
+  border-left: 3px solid rgba(var(--dynasty-accent-rgb), 0.45);
+  display: grid;
+  gap: 6px;
+  padding: 2px 0 2px 10px;
+}
+
+.roster-profile-shell .roster-locker-room-read span {
+  color: var(--accent-gold, var(--bc-prestige));
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.roster-profile-shell .roster-locker-room-read strong {
+  color: white;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.roster-profile-shell .roster-locker-room-read p {
+  color: var(--text-soft, var(--bc-text-secondary));
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.roster-profile-shell .roster-locker-room-read small {
+  color: var(--text-muted, var(--bc-text-muted));
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.roster-profile-shell .roster-profile-list {
+  display: grid;
+  gap: 10px;
+}
+
+.roster-profile-shell .roster-profile-context-row,
+.roster-profile-shell .roster-profile-history-row {
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.roster-profile-shell .roster-profile-context-row strong,
+.roster-profile-shell .roster-profile-history-row strong {
+  color: white;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.roster-profile-shell .roster-profile-context-row span,
+.roster-profile-shell .roster-profile-context-row p,
+.roster-profile-shell .roster-profile-context-row small,
+.roster-profile-shell .roster-profile-history-row span,
+.roster-profile-shell .roster-profile-history-row p {
+  color: var(--text-soft, var(--bc-text-secondary));
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.roster-profile-shell .roster-profile-history-row b {
+  font-size: 1.08rem;
+}
+
+.roster-profile-shell .roster-history-list {
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.roster-profile-shell .roster-history-event {
+  gap: 4px;
+  padding-left: 10px;
+}
+
+.roster-profile-shell .roster-history-event span {
+  color: var(--accent-gold, var(--bc-prestige));
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.roster-profile-shell .roster-history-event p {
+  color: var(--text-soft, var(--bc-text-secondary));
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.roster-profile-shell .roster-empty-copy.compact,
+.roster-profile-shell .roster-muted-copy {
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.45;
+  text-transform: none;
+}
+
+.roster-profile-shell .roster-profile-panel-body .social-post.compact-social p {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  text-transform: none;
 }
 
 .roster-profile-panel-body,
@@ -790,6 +1318,10 @@
 .roster-profile-stat-rows {
   display: grid;
   gap: 5px;
+}
+
+.roster-profile-shell .roster-profile-stat-rows {
+  gap: 8px;
 }
 
 .roster-profile-stat-row {
@@ -820,6 +1352,23 @@
   color: var(--text-soft, var(--bc-text-secondary));
   font-size: 1rem;
   font-weight: 800;
+}
+
+.roster-profile-shell .roster-profile-stat-row {
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
+.roster-profile-shell .roster-profile-stat-row span {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.roster-profile-shell .roster-profile-stat-row small {
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-transform: none;
 }
 
 .roster-profile-context-row,
@@ -926,10 +1475,99 @@
   flex-direction: column;
   gap: 8px;
   height: 224px;
+  isolation: isolate;
   max-height: 224px;
   min-height: 224px;
   overflow: hidden;
   padding: 10px;
+  position: relative;
+}
+
+.roster-dynasty-shell .wrestler-card::before {
+  content: "";
+  height: 3px;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 2;
+}
+
+.roster-dynasty-shell .wrestler-card.division-mens::before {
+  background: linear-gradient(90deg, rgba(94, 184, 255, 0.15), #5eb8ff 24%, #9bdcff 50%, #5eb8ff 76%, rgba(94, 184, 255, 0.15));
+  box-shadow: 0 0 12px rgba(94, 184, 255, 0.72), 0 2px 16px rgba(94, 184, 255, 0.34);
+}
+
+.roster-dynasty-shell .wrestler-card.division-womens::before {
+  background: linear-gradient(90deg, rgba(255, 110, 180, 0.15), #ff6eb4 24%, #ffb3d9 50%, #ff6eb4 76%, rgba(255, 110, 180, 0.15));
+  box-shadow: 0 0 12px rgba(255, 110, 180, 0.72), 0 2px 16px rgba(255, 110, 180, 0.34);
+}
+
+.roster-dynasty-shell .wrestler-card.division-neutral::before {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.28) 50%, rgba(255, 255, 255, 0.04));
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.16);
+}
+
+.roster-dynasty-shell .wrestler-card.is-champion::after {
+  border: 1px solid rgba(246, 193, 86, 0.34);
+  box-shadow:
+    inset 0 0 0 1px rgba(246, 193, 86, 0.1),
+    0 0 18px rgba(246, 193, 86, 0.24);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+.roster-dynasty-shell .wrestler-card.is-champion.division-mens::before,
+.roster-dynasty-shell .wrestler-card.is-champion.division-womens::before,
+.roster-dynasty-shell .wrestler-card.is-champion.division-neutral::before {
+  background:
+    linear-gradient(
+      90deg,
+      var(--card-neon-edge, rgba(255, 255, 255, 0.15)) 0%,
+      var(--card-neon-edge, rgba(255, 255, 255, 0.15)) 18%,
+      #f6c156 42%,
+      #ffe08a 50%,
+      #f6c156 58%,
+      var(--card-neon-edge, rgba(255, 255, 255, 0.15)) 82%,
+      var(--card-neon-edge, rgba(255, 255, 255, 0.15)) 100%
+    );
+  box-shadow:
+    0 0 14px rgba(246, 193, 86, 0.78),
+    0 0 10px var(--card-neon-glow, rgba(255, 255, 255, 0.35)),
+    0 2px 18px rgba(246, 193, 86, 0.32);
+  height: 4px;
+}
+
+.roster-dynasty-shell .wrestler-card.division-mens.is-champion {
+  --card-neon-edge: rgba(94, 184, 255, 0.82);
+  --card-neon-glow: rgba(94, 184, 255, 0.42);
+}
+
+.roster-dynasty-shell .wrestler-card.division-womens.is-champion {
+  --card-neon-edge: rgba(255, 110, 180, 0.82);
+  --card-neon-glow: rgba(255, 110, 180, 0.42);
+}
+
+.roster-dynasty-shell .wrestler-card.is-champion .wrestler-card-portrait {
+  box-shadow:
+    0 0 0 1px rgba(246, 193, 86, 0.62),
+    0 0 12px rgba(246, 193, 86, 0.48);
+}
+
+.roster-dynasty-shell .wrestler-card.is-champion .roster-card-kicker {
+  color: #ffe08a;
+  text-shadow: 0 0 10px rgba(246, 193, 86, 0.45);
+}
+
+.roster-dynasty-shell .wrestler-card.selected.is-champion::after {
+  box-shadow:
+    inset 0 0 0 1px rgba(246, 193, 86, 0.18),
+    0 0 20px rgba(246, 193, 86, 0.28),
+    0 0 0 1px rgba(var(--dynasty-accent-rgb), 0.22);
 }
 
 .roster-dynasty-shell .wrestler-card-head {

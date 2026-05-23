@@ -6,11 +6,13 @@ import {
   getMoraleTone,
   getRosterAlignmentLabel,
   getRosterContractWeeksLabel,
+  getWrestlerDivisionHighlightClass,
   getWrestlerIdentitySnapshot,
   getWrestlerMatchRecord,
   getWrestlerOverall,
   getWrestlerStatus,
   getWrestlerTitleLine,
+  isWrestlerChampion,
 } from "./rosterReads";
 import { getWrestlerValueProfile } from "./rosterValueReads";
 
@@ -37,6 +39,8 @@ export function WrestlerCard({
   const record = getWrestlerMatchRecord(wrestler.id, game.showHistory);
   const titleLine = getWrestlerTitleLine(wrestler.id, game.championships);
   const contractWeeksLabel = getRosterContractWeeksLabel(game);
+  const divisionHighlightClass = getWrestlerDivisionHighlightClass(wrestler);
+  const championHighlight = isWrestlerChampion(wrestler.id, game.championships);
 
   function handleCardKeyDown(event: React.KeyboardEvent<HTMLElement>) {
     if (event.key === "Enter" || event.key === " ") {
@@ -49,7 +53,7 @@ export function WrestlerCard({
     <article
       aria-label={`Select ${wrestler.name}`}
       aria-pressed={isSelected}
-      className={`wrestler-card status-${status.toLowerCase()} ${isSelected ? "selected" : ""}`}
+      className={`wrestler-card ${divisionHighlightClass} ${championHighlight ? "is-champion" : ""} status-${status.toLowerCase()} ${isSelected ? "selected" : ""}`}
       onClick={() => onSelectWrestler(wrestler.id)}
       onKeyDown={handleCardKeyDown}
       role="button"

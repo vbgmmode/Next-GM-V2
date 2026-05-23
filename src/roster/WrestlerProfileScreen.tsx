@@ -6,7 +6,6 @@ import { getWrestlerAffiliations } from "../game/affiliationCatalog";
 import { formatAffiliationKind, getAffiliationMemberNames } from "./rosterDisplayUtils";
 import { getInjuryStatusLabel, getRosterPressureTags, getWeeksSinceLastBooked } from "../game/rosterContextReads";
 import { getRivalryRelationship, getRivalryStoryline } from "../game/rivalryCatalog";
-import { getWrestlerIdentityContext } from "../game/wrestlerIdentityContext";
 import { RosterPanel } from "./RosterPanel";
 import { RosterProfilePanel } from "./RosterProfilePanel";
 import {
@@ -26,12 +25,10 @@ import {
 import {
   getGMRead,
   getInjuryDetail,
-  getRosterAlignmentLabel,
   getWrestlerChampionships,
   getWrestlerIdentitySnapshot,
   getWrestlerLockerRoomRead,
   getWrestlerRivalries,
-  getWrestlerStatus,
 } from "./rosterReads";
 import type { ProfilePanelId, WrestlerProfileScreenProps } from "./rosterTypes";
 import { getWrestlerValueProfile } from "./rosterValueReads";
@@ -45,7 +42,6 @@ export function WrestlerProfileScreen({
   returnScreen,
   wrestler,
 }: WrestlerProfileScreenProps) {
-  const status = getWrestlerStatus(wrestler);
   const pressureTags = getRosterPressureTags(wrestler, game.currentWeek);
   const championships = getWrestlerChampionships(wrestler.id, game.championships);
   const titleSceneRows = getWrestlerTitleSceneRows(wrestler, game);
@@ -57,10 +53,10 @@ export function WrestlerProfileScreen({
   const affiliations = getWrestlerAffiliations(wrestler.id, game.wrestlers);
   const gmRead = getGMRead(wrestler, game);
   const weeksSinceLastBooked = getWeeksSinceLastBooked(wrestler, game.currentWeek);
-  const identity = getWrestlerIdentityContext(wrestler);
   const identitySnapshot = getWrestlerIdentitySnapshot(wrestler, game);
   const valueProfile = getWrestlerValueProfile(wrestler);
   const lockerRoomRead = getWrestlerLockerRoomRead(wrestler, game);
+  const showValueTierChip = valueProfile.valueTierLabel.toLowerCase() !== "protected star";
   const [expandedProfilePanels, setExpandedProfilePanels] = useState<Set<ProfilePanelId>>(() => new Set(["stats", "gmRead"]));
   const profileStatRows = [
     { label: "Popularity", value: `${wrestler.popularity}` },
@@ -125,13 +121,23 @@ export function WrestlerProfileScreen({
           <div className="roster-profile-hero-body">
             <WrestlerPortrait className="roster-profile-hero-portrait" wrestler={wrestler} />
             <div className="roster-profile-hero-main">
-              <div className="roster-profile-identity-strip">
-                <span>{identity.role}</span>
-                <span>{getRosterAlignmentLabel(wrestler)}</span>
-                <span>{status}</span>
-                <span>{getInjuryStatusLabel(wrestler.injuryStatus)}</span>
-                {pressureTags.length ? pressureTags.map((tag) => <span key={tag}>{tag}</span>) : <span>Balanced</span>}
-                {championships.length ? championships.map((championship) => <span key={championship.id}>{championship.name}</span>) : null}
+              <div className="pressure-tags">
+                {identitySnapshot.labels
+                  .filter((label) => {
+                    const normalizedLabel = label.toLowerCase();
+                    return normalizedLabel !== "protected star" && normalizedLabel !== "champion";
+                  })
+                  .slice(0, 2)
+                  .map((label) => (
+                    <span className="identity-chip" key={label}>
+                      {label}
+                    </span>
+                  ))}
+                {showValueTierChip ? (
+                  <span className={`value-tier-chip ${valueProfile.contextMode === "missing" ? "value-tier-chip-missing" : ""}`}>
+                    {valueProfile.valueTierLabel}
+                  </span>
+                ) : null}
               </div>
             </div>
           </div>
@@ -156,6 +162,48 @@ export function WrestlerProfileScreen({
                     <small>{row.note ?? ""}</small>
                   </article>
                 ))}
+              </div>
+            </RosterProfilePanel>
+          </div>
+
+          <aside className="roster-profile-side">
+            <RosterProfilePanel
+              className="roster-profile-gm-panel"
+              expanded={profilePanelExpanded("gmRead")}
+              eyebrow="GM Read"
+              id="gmRead"
+              onToggle={toggleProfilePanel}
+              summary={gmReadSummary}
+              title="Decision Context"
+            >
+              <div className="roster-identity-snapshot-panel" aria-label="Identity snapshot">
+                <div className="pressure-tags">
+                  {identitySnapshot.labels.map((label) => (
+                    <span className="identity-chip" key={label}>
+                      {label}
+                    </span>
+                  ))}
+                </div>
+                <strong>{identitySnapshot.roleRead}</strong>
+                <p>{identitySnapshot.bookingUseRead}</p>
+                <small>{identitySnapshot.usageRead}</small>
+              </div>
+              <div className={`roster-locker-room-read tone-${lockerRoomRead.tone}`} aria-label={`${wrestler.name} locker room read`}>
+                <span>Locker Room Read</span>
+                <strong>{lockerRoomRead.headline}</strong>
+                <p>{lockerRoomRead.detail}</p>
+                <small>{lockerRoomRead.note}</small>
+              </div>
+              <div className="roster-readout-list">
+                <p>
+                  <strong>Useful:</strong> {gmRead.usefulness}
+                </p>
+                <p>
+                  <strong>Risk:</strong> {gmRead.risk}
+                </p>
+                <p>
+                  <strong>Need:</strong> {gmRead.need}
+                </p>
               </div>
             </RosterProfilePanel>
 
@@ -239,48 +287,6 @@ export function WrestlerProfileScreen({
                 ) : (
                   <div className="roster-empty-copy compact">No show appearances recorded yet.</div>
                 )}
-              </div>
-            </RosterProfilePanel>
-          </div>
-
-          <aside className="roster-profile-side">
-            <RosterProfilePanel
-              className="roster-profile-gm-panel"
-              expanded={profilePanelExpanded("gmRead")}
-              eyebrow="GM Read"
-              id="gmRead"
-              onToggle={toggleProfilePanel}
-              summary={gmReadSummary}
-              title="Decision Context"
-            >
-              <div className="roster-identity-snapshot-panel" aria-label="Identity snapshot">
-                <div className="pressure-tags">
-                  {identitySnapshot.labels.map((label) => (
-                    <span className="identity-chip" key={label}>
-                      {label}
-                    </span>
-                  ))}
-                </div>
-                <strong>{identitySnapshot.roleRead}</strong>
-                <p>{identitySnapshot.bookingUseRead}</p>
-                <small>{identitySnapshot.usageRead}</small>
-              </div>
-              <div className={`roster-locker-room-read tone-${lockerRoomRead.tone}`} aria-label={`${wrestler.name} locker room read`}>
-                <span>Locker Room Read</span>
-                <strong>{lockerRoomRead.headline}</strong>
-                <p>{lockerRoomRead.detail}</p>
-                <small>{lockerRoomRead.note}</small>
-              </div>
-              <div className="roster-readout-list">
-                <p>
-                  <strong>Useful:</strong> {gmRead.usefulness}
-                </p>
-                <p>
-                  <strong>Risk:</strong> {gmRead.risk}
-                </p>
-                <p>
-                  <strong>Need:</strong> {gmRead.need}
-                </p>
               </div>
             </RosterProfilePanel>
 
