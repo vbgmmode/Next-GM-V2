@@ -480,7 +480,12 @@
 }
 
 .roster-selected-portrait,
-.wrestler-card-portrait {
+.wrestler-card-portrait,
+.draft-talent-portrait,
+.draft-spotlight-portrait,
+.draft-review-portrait,
+.draft-spine-portrait,
+.profile-hero-portrait {
   align-items: center;
   background:
     linear-gradient(145deg, rgba(var(--bc-brand-primary-rgb), 0.24), transparent 58%),
@@ -495,6 +500,29 @@
   overflow: hidden;
   position: relative;
   text-transform: uppercase;
+}
+
+.wrestler-portrait img {
+  display: block;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  pointer-events: none;
+  user-select: none;
+  width: 100%;
+}
+
+.wrestler-portrait.has-portrait::after {
+  background: linear-gradient(180deg, transparent 54%, rgba(0, 0, 0, 0.42));
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.wrestler-portrait.missing-portrait > span {
+  position: relative;
+  z-index: 1;
 }
 
 .roster-selected-portrait {
@@ -1815,9 +1843,7 @@ button:disabled {
   padding: 5px 7px;
 }
 
-.rival-intel-panel,
-.market-office-mandate,
-.market-panel {
+.rival-intel-panel {
   background:
     linear-gradient(135deg, rgba(246, 193, 86, 0.1), rgba(111, 226, 212, 0.05)),
     rgba(8, 10, 15, 0.84);
@@ -1834,20 +1860,17 @@ button:disabled {
   padding: 12px;
 }
 
-.rival-intel-panel.mandate-critical,
-.market-office-mandate.mandate-critical {
+.rival-intel-panel.mandate-critical {
   border-color: rgba(255, 94, 94, 0.36);
   border-left-color: #ff5e5e;
 }
 
-.rival-intel-panel.mandate-surging,
-.market-office-mandate.mandate-surging {
+.rival-intel-panel.mandate-surging {
   border-color: rgba(89, 208, 131, 0.36);
   border-left-color: #59d083;
 }
 
-.rival-intel-head,
-.market-office-mandate {
+.rival-intel-head {
   align-items: start;
   display: flex;
   gap: 14px;
@@ -1856,9 +1879,7 @@ button:disabled {
 
 .rival-intel-head h3,
 .rival-intel-head p,
-.rival-intel-panel p,
-.market-office-mandate p,
-.market-panel p {
+.rival-intel-panel p {
   margin: 0;
 }
 
@@ -1869,29 +1890,18 @@ button:disabled {
   padding: 6px 8px;
 }
 
-.rival-intel-grid,
-.market-mandate-metrics,
-.market-grid {
+.rival-intel-grid {
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.market-grid {
-  align-items: start;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.rival-intel-feed,
-.market-list,
-.market-transaction-list {
+.rival-intel-feed {
   display: grid;
   gap: 8px;
 }
 
-.rival-intel-feed article,
-.market-transaction-list article,
-.market-row {
+.rival-intel-feed article {
   background: rgba(14, 17, 24, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
@@ -1903,62 +1913,19 @@ button:disabled {
   text-align: left;
 }
 
-.market-row {
-  cursor: pointer;
-}
-
-.market-row.is-selected {
-  border-color: rgba(246, 193, 86, 0.38);
-  box-shadow: inset 3px 0 0 #f6c156;
-}
-
-.market-row span,
-.rival-intel-feed span,
-.market-transaction-list span,
-.trade-builder span {
+.rival-intel-feed span {
   color: #9ea8ba;
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
 }
 
-.market-row strong,
-.rival-intel-feed strong,
-.market-transaction-list strong {
+.rival-intel-feed strong {
   color: #f4f7fb;
   font-size: 0.88rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.market-row small,
-.market-transaction-list small {
-  color: #c9d1dc;
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-
-.trade-builder {
-  display: grid;
-  gap: 10px;
-}
-
-.trade-builder label {
-  display: grid;
-  gap: 6px;
-}
-
-.trade-builder select {
-  background: rgba(4, 6, 10, 0.84);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #f4f7fb;
-  min-width: 0;
-  padding: 10px;
-}
-
-.market-feed-panel {
-  margin-top: 14px;
 }
 
 .brand-pulse-panel {
@@ -2595,6 +2562,18 @@ button:disabled {
   padding: 14px;
 }
 
+.draft-spotlight:has(.draft-spotlight-portrait) {
+  grid-template-columns: 94px minmax(220px, 0.8fr) minmax(0, 1fr) minmax(180px, 0.34fr);
+}
+
+.draft-spotlight-portrait {
+  align-self: stretch;
+  aspect-ratio: 3 / 4;
+  font-size: 1.2rem;
+  min-height: 124px;
+  width: 94px;
+}
+
 .draft-spotlight-main {
   display: grid;
   gap: 8px;
@@ -2632,7 +2611,7 @@ button:disabled {
 }
 
 .draft-spotlight-stack span,
-.draft-review-spine span {
+.draft-review-spine-label {
   color: #9ea8ba;
   font-size: 0.7rem;
   font-weight: 900;
@@ -2776,6 +2755,24 @@ button:disabled {
   padding: 14px;
 }
 
+.draft-talent-title {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+}
+
+.draft-talent-title > div {
+  min-width: 0;
+}
+
+.draft-talent-portrait {
+  aspect-ratio: 1;
+  flex: 0 0 54px;
+  font-size: 0.86rem;
+  width: 54px;
+}
+
 .draft-talent-head button {
   min-height: 38px;
 }
@@ -2874,6 +2871,44 @@ button:disabled {
   display: grid;
   gap: 8px;
   padding: 12px;
+}
+
+.draft-review-lead {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  min-width: 0;
+}
+
+.draft-review-lead > div {
+  min-width: 0;
+}
+
+.draft-review-portrait {
+  aspect-ratio: 3 / 4;
+  flex: 0 0 86px;
+  font-size: 1.08rem;
+  min-height: 112px;
+  width: 86px;
+}
+
+.draft-review-spine strong {
+  align-items: center;
+  display: flex;
+  grid-template-columns: none;
+}
+
+.draft-spine-portrait {
+  aspect-ratio: 1;
+  flex: 0 0 36px;
+  font-size: 0.62rem;
+  width: 36px;
+}
+
+.draft-spine-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
 
 .war-room-read {
@@ -4891,6 +4926,19 @@ h3 {
   gap: 24px;
   justify-content: space-between;
   padding: 44px 0 28px;
+}
+
+.profile-hero-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.profile-hero-portrait {
+  aspect-ratio: 3 / 4;
+  flex: 0 0 118px;
+  font-size: 1.34rem;
+  min-height: 152px;
+  width: 118px;
 }
 
 .profile-screen {
@@ -11027,14 +11075,11 @@ h3 {
   .championship-scene-support,
   .title-identity-grid,
   .ratings-battle-summary,
-  .rival-intel-grid,
-  .market-mandate-metrics,
-  .market-grid {
+  .rival-intel-grid {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto;
   }
 
-  .market-office-mandate,
   .rival-intel-head {
     flex-direction: column;
   }

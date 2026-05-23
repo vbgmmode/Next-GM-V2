@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { GameNav, Header, Metric } from "./components/gameShell";
+import { formatMoney } from "./game/formatters";
 import {
   MAX_SAVE_SLOTS,
   createSaveRecord,
@@ -13,7 +15,6 @@ import { getRosterAffiliations, getWrestlerAffiliations } from "./game/affiliati
 import { getFinancePressureLabel } from "./game/finance";
 import { financeModelSummaryByRole, getRosterFinanceValueForWrestler } from "./game/financeCatalog";
 import {
-  getContractForWrestler,
   getMarketSnapshot,
   getRivalMarketEvents,
   proposePlayerTrade,
@@ -44,6 +45,7 @@ import {
 } from "./game/stipulationCatalog";
 import { migrateSavedGameState } from "./game/migration";
 import { getWrestlerIdentityContext } from "./game/wrestlerIdentityContext";
+import { getWrestlerPortraitSrc } from "./game/wrestlerPortraits";
 import {
   buildBroadcastFalloutSnapshot,
   buildPostShowCauseLedger,
@@ -141,6 +143,7 @@ import type {
 } from "./game/types";
 import type { GameScreen, ProfileReturnScreen, SavedGameState } from "./game/migration";
 import type { StoredSaveRecord } from "./gameStorage";
+import { MarketScreen } from "./screens/MarketScreen";
 
 type RosterSort = "popularity" | "momentum" | "fatigue" | "morale";
 type RosterFilter = "all" | "mens" | "womens" | "champions" | "injured" | "hot" | "tired" | "morale" | "underused";
@@ -616,11 +619,6 @@ const showRuntimeOvertimeMinutes = 135;
 const tvRuntimeWarningMinutes = 150;
 const maxBookingSegments = 24;
 const qaHarnessParam = "qa";
-
-function formatMoney(amount: number) {
-  const sign = amount < 0 ? "-" : "";
-  return `${sign}$${Math.abs(amount).toLocaleString()}`;
-}
 
 function formatBudgetTier(tier: StartingBudgetTier) {
   return tier === "Unlimited" ? "Unlimited" : tier;
@@ -1411,6 +1409,25 @@ function getWrestlerInitials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+function WrestlerPortrait({ className, wrestler }: { className: string; wrestler: Pick<Wrestler, "id" | "name"> }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const portraitSrc = imageFailed ? undefined : getWrestlerPortraitSrc(wrestler.id);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [wrestler.id]);
+
+  return (
+    <span className={`${className} wrestler-portrait ${portraitSrc ? "has-portrait" : "missing-portrait"}`} aria-hidden="true">
+      {portraitSrc ? (
+        <img alt="" draggable={false} onError={() => setImageFailed(true)} src={portraitSrc} />
+      ) : (
+        <span>{getWrestlerInitials(wrestler.name)}</span>
+      )}
+    </span>
+  );
 }
 
 function getMoraleEmoji(morale: number) {
@@ -6574,6 +6591,7 @@ function NewGameSetupScreen({
             {rivalDraftActivity ? <RivalDraftActivityPanel snapshot={rivalDraftActivity} /> : null}
             <DraftFinanceSummary readout={draftFinanceReadout} />
             <section className="draft-spotlight" aria-label="Best available spotlight">
+              {boardLeader ? <WrestlerPortrait className="draft-spotlight-portrait" wrestler={boardLeader} /> : null}
               <div className="draft-spotlight-main">
                 <p className="eyebrow">Best Available Spotlight</p>
                 <h3>{boardLeader?.name ?? "No Matching Talent"}</h3>
@@ -6758,19 +6776,25 @@ function NewGameSetupScreen({
             <h2>{brandName.trim() || defaultCareer.brandName} Draft Debrief</h2>
             <p className="lede">The board is locked. Review how this class fits {gmName.trim() || defaultCareer.gmName}'s room and the brand chair before Week 1 hits the tape.</p>
             <section className="draft-review-hero" aria-label="Draft review broadcast recap">
-              <div>
+              <div className="draft-review-lead">
+                {topStar ? <WrestlerPortrait className="draft-review-portrait" wrestler={topStar} /> : null}
+                <div>
                 <p className="eyebrow">Opening Night Graphic</p>
                 <h3>{topStar?.name ?? "Locker Room TBD"}</h3>
                 <p>{topStar ? `Franchise player read with ${topStar.popularity} popularity and ${topStar.momentum} momentum.` : "Complete the draft to generate a roster lead."}</p>
+                </div>
               </div>
               <div className="draft-review-spine">
-                <span>Locker Room Spine</span>
+                <span className="draft-review-spine-label">Locker Room Spine</span>
                 {draftReviewSpine.map((wrestler, index) => (
                   <strong key={wrestler.id}>
-                    {index + 1}. {wrestler.name}
-                    <small>
-                      {getDraftTag(wrestler.roleTier)} · Pop {wrestler.popularity} · Mom {wrestler.momentum}
-                    </small>
+                    <WrestlerPortrait className="draft-spine-portrait" wrestler={wrestler} />
+                    <span className="draft-spine-copy">
+                      {index + 1}. {wrestler.name}
+                      <small>
+                        {getDraftTag(wrestler.roleTier)} · Pop {wrestler.popularity} · Mom {wrestler.momentum}
+                      </small>
+                    </span>
                   </strong>
                 ))}
               </div>
@@ -7245,9 +7269,12 @@ function DraftTalentCard({
   return (
     <article className="draft-talent-card">
       <div className="draft-talent-head">
-        <div>
-          <p className="eyebrow">{wrestler.draftRank ? `Top 200 #${wrestler.draftRank}` : "Draft File"}</p>
-          <h3>{wrestler.name}</h3>
+        <div className="draft-talent-title">
+          <WrestlerPortrait className="draft-talent-portrait" wrestler={wrestler} />
+          <div>
+            <p className="eyebrow">{wrestler.draftRank ? `Top 200 #${wrestler.draftRank}` : "Draft File"}</p>
+            <h3>{wrestler.name}</h3>
+          </div>
         </div>
         {onAction ? (
           <button disabled={disabled} onClick={onAction}>
@@ -8550,9 +8577,7 @@ function RosterScreen({
         <section className="roster-selected-dock" aria-label="Selected superstar">
           {selectedWrestler && selectedValueProfile && selectedIdentity && selectedLockerRead ? (
             <>
-              <div className="roster-selected-portrait" aria-hidden="true">
-                <span>{getWrestlerInitials(selectedWrestler.name)}</span>
-              </div>
+              <WrestlerPortrait className="roster-selected-portrait" wrestler={selectedWrestler} />
               <div className="roster-selected-summary">
                 <p className="eyebrow">Selected Superstar</p>
                 <h3>{selectedWrestler.name}</h3>
@@ -8694,7 +8719,8 @@ function WrestlerProfileScreen({
       <Header game={game} />
       <GameNav currentScreen="profile" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
       <section className="profile-hero">
-        <div>
+        <WrestlerPortrait className="profile-hero-portrait" wrestler={wrestler} />
+        <div className="profile-hero-main">
           <p className="eyebrow">Wrestler Profile</p>
           <h2>{wrestler.name}</h2>
           <div className="identity-strip">
@@ -10055,164 +10081,6 @@ function SocialScreen({
   );
 }
 
-function MarketScreen({
-  game,
-  latestResult,
-  onNavigate,
-  onProposeTrade,
-  onReleaseWrestler,
-  onSignFreeAgent,
-}: {
-  game: GameState;
-  latestResult?: ShowResult;
-  onNavigate: (screen: GameScreen) => void;
-  onProposeTrade: (outgoingWrestlerId: string, targetWrestlerId: string) => void;
-  onReleaseWrestler: (wrestlerId: string) => void;
-  onSignFreeAgent: (wrestlerId: string) => void;
-}) {
-  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
-  const snapshot = getMarketSnapshot(game, draftPool);
-  const office = game.marketState.officeMandate;
-  const [selectedFreeAgentId, setSelectedFreeAgentId] = useState(snapshot.freeAgents[0]?.id ?? "");
-  const [selectedOutgoingId, setSelectedOutgoingId] = useState(game.wrestlers[0]?.id ?? "");
-  const [selectedTargetId, setSelectedTargetId] = useState(snapshot.rivalTradeTargets[0]?.wrestler.id ?? "");
-  const selectedFreeAgent = snapshot.freeAgents.find((wrestler) => wrestler.id === selectedFreeAgentId) ?? snapshot.freeAgents[0];
-  const selectedOutgoing = game.wrestlers.find((wrestler) => wrestler.id === selectedOutgoingId) ?? game.wrestlers[0];
-  const selectedTarget = snapshot.rivalTradeTargets.find((target) => target.wrestler.id === selectedTargetId) ?? snapshot.rivalTradeTargets[0];
-  const latestRivalEvents = getRivalMarketEvents(game).slice(0, 4);
-  const visibleTransactions = [...game.marketState.transactions, ...latestRivalEvents].sort((a, b) => b.weekNumber - a.weekNumber || b.id.localeCompare(a.id)).slice(0, 8);
-
-  function contractRead(wrestlerId: string) {
-    const contract = getContractForWrestler(game, wrestlerId);
-
-    return contract ? `${contract.contractWeeksRemaining} wk · ${formatMoney(contract.weeklySalary)}/wk · Penalty ${formatMoney(contract.releasePenalty)}` : "No active contract read";
-  }
-
-  return (
-    <main className="app-shell gameplay-command-shell market-command-shell">
-      <Header game={game} />
-      <GameNav currentScreen="market" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
-
-      <section className={`market-office-mandate mandate-${office.mandateStatus}`} aria-label="Office mandate">
-        <div>
-          <p className="eyebrow">Office Mandates</p>
-          <h2>{office.mandateStatus === "critical" ? "Ownership Pressure Is Critical" : office.mandateStatus === "surging" ? "Ownership Is Backing The Desk" : office.mandateStatus === "watch" ? "Ownership Is Watching The Ledger" : "Office Mandate Stable"}</h2>
-          <p>{office.mandateHistory.at(-1)?.note ?? "The office is waiting for the next resolved week before changing the mandate read."}</p>
-        </div>
-        <div className="market-mandate-metrics">
-          <Metric label="Owner Trust" value={`${office.ownerTrust}`} />
-          <Metric label="Reputation" value={`${office.brandReputation}`} />
-          <Metric label="Payroll" value={formatMoney(snapshot.payroll)} detail={`${snapshot.expiringContracts} expiring`} />
-          <Metric label="Roster Slots" value={`${game.wrestlers.length}/${snapshot.rosterLimit}`} />
-        </div>
-      </section>
-
-      <section className="market-grid" aria-label="Market command grid">
-        <article className="command-panel market-panel">
-          <div className="section-heading">
-            <p className="eyebrow">Free Agency</p>
-            <h3>Open Market Board</h3>
-          </div>
-          <div className="market-list">
-            {snapshot.freeAgents.slice(0, 8).map((wrestler) => {
-              const finance = getRosterFinanceValueForWrestler(wrestler);
-              const isSelected = selectedFreeAgent?.id === wrestler.id;
-
-              return (
-                <button className={isSelected ? "market-row is-selected" : "market-row"} key={wrestler.id} onClick={() => setSelectedFreeAgentId(wrestler.id)} type="button">
-                  <span>{wrestler.name}</span>
-                  <strong>{formatMoney(finance?.weeklyHireRateUsd ?? 0)}/wk</strong>
-                  <small>{wrestler.roleTier} · Rank #{wrestler.draftRank ?? "n/a"}</small>
-                </button>
-              );
-            })}
-          </div>
-          <button className="primary-action" disabled={!selectedFreeAgent || game.wrestlers.length >= snapshot.rosterLimit} onClick={() => selectedFreeAgent && onSignFreeAgent(selectedFreeAgent.id)}>
-            Sign {selectedFreeAgent?.name ?? "Talent"}
-          </button>
-        </article>
-
-        <article className="command-panel market-panel">
-          <div className="section-heading">
-            <p className="eyebrow">Contracts / Releases</p>
-            <h3>Locker Room Ledger</h3>
-          </div>
-          <div className="market-list">
-            {game.wrestlers.slice(0, 10).map((wrestler) => (
-              <button className={selectedOutgoing?.id === wrestler.id ? "market-row is-selected" : "market-row"} key={wrestler.id} onClick={() => setSelectedOutgoingId(wrestler.id)} type="button">
-                <span>{wrestler.name}</span>
-                <strong>{formatMoney(getContractForWrestler(game, wrestler.id)?.weeklySalary ?? 0)}/wk</strong>
-                <small>{contractRead(wrestler.id)}</small>
-              </button>
-            ))}
-          </div>
-          <button className="secondary-action" disabled={!selectedOutgoing || game.wrestlers.length <= 8} onClick={() => selectedOutgoing && onReleaseWrestler(selectedOutgoing.id)}>
-            Release {selectedOutgoing?.name ?? "Talent"}
-          </button>
-        </article>
-
-        <article className="command-panel market-panel">
-          <div className="section-heading">
-            <p className="eyebrow">Trade Wire</p>
-            <h3>Limited Rival Visibility</h3>
-          </div>
-          <div className="trade-builder">
-            <label>
-              <span>Send</span>
-              <select value={selectedOutgoing?.id ?? ""} onChange={(event) => setSelectedOutgoingId(event.target.value)}>
-                {game.wrestlers.map((wrestler) => (
-                  <option key={wrestler.id} value={wrestler.id}>{wrestler.name}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Target</span>
-              <select value={selectedTarget?.wrestler.id ?? ""} onChange={(event) => setSelectedTargetId(event.target.value)}>
-                {snapshot.rivalTradeTargets.map((target) => (
-                  <option key={`${target.brand.id}-${target.wrestler.id}`} value={target.wrestler.id}>
-                    {target.wrestler.name} · {target.brand.brandName}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          {selectedTarget ? (
-            <p className="social-preview-text">
-              {selectedTarget.brand.brandName} visibility is limited to market-eligible talent, contract pressure, and public form. Acceptance resolves deterministically after proposal.
-            </p>
-          ) : null}
-          <button className="primary-action" disabled={!selectedOutgoing || !selectedTarget} onClick={() => selectedOutgoing && selectedTarget && onProposeTrade(selectedOutgoing.id, selectedTarget.wrestler.id)}>
-            Propose Trade
-          </button>
-        </article>
-      </section>
-
-      <section className="command-panel market-panel market-feed-panel" aria-label="Transaction feed">
-        <div className="section-heading">
-          <p className="eyebrow">Transaction Wire</p>
-          <h3>{snapshot.latestTransaction?.note ?? "No market movement yet"}</h3>
-        </div>
-        <div className="market-transaction-list">
-          {visibleTransactions.length ? (
-            visibleTransactions.map((transaction) => (
-              <article key={transaction.id}>
-                <span>
-                  S{transaction.seasonNumber} W{transaction.weekNumber} · {transaction.type.toUpperCase()}
-                </span>
-                <strong>{transaction.wrestlerNames.join(" / ") || "Market Desk"}</strong>
-                <p>{transaction.note}</p>
-                <small>{transaction.amount ? formatMoney(transaction.amount) : "No fee"}</small>
-              </article>
-            ))
-          ) : (
-            <p className="muted-copy">The market opens after Draft Night. CPU and player moves will land here as resolved transactions.</p>
-          )}
-        </div>
-      </section>
-    </main>
-  );
-}
-
 function FinanceScreen({
   game,
   latestResult,
@@ -11270,7 +11138,7 @@ function WrestlerCard({
       <div className="wrestler-card-head">
         <div className="wrestler-card-select" aria-hidden="true">
           <span className="wrestler-card-overall">{overall}</span>
-          <span className="wrestler-card-portrait">{getWrestlerInitials(wrestler.name)}</span>
+          <WrestlerPortrait className="wrestler-card-portrait" wrestler={wrestler} />
         </div>
         <div>
           {titleLine ? <p className="eyebrow">{titleLine}</p> : null}
@@ -11659,86 +11527,6 @@ function RivalryControl({
           ))}
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function GameNav({
-  currentScreen,
-  hasResults,
-  hasWeekReview,
-  onNavigate,
-}: {
-  currentScreen: GameScreen;
-  hasResults: boolean;
-  hasWeekReview?: boolean;
-  onNavigate: (screen: GameScreen) => void;
-}) {
-  const showWeekReview = hasWeekReview ?? hasResults;
-
-  return (
-    <nav className="game-nav" aria-label="Game navigation">
-      <button className={currentScreen === "dashboard" ? "active-filter" : ""} onClick={() => onNavigate("dashboard")}>
-        Dashboard
-      </button>
-      <button className={currentScreen === "booking" ? "active-filter" : ""} onClick={() => onNavigate("booking")}>
-        Booking
-      </button>
-      <button className={currentScreen === "roster" ? "active-filter" : ""} onClick={() => onNavigate("roster")}>
-        Roster
-      </button>
-      <button className={currentScreen === "market" ? "active-filter" : ""} onClick={() => onNavigate("market")}>
-        Market
-      </button>
-      <button className={currentScreen === "championships" ? "active-filter" : ""} onClick={() => onNavigate("championships")}>
-        Championships
-      </button>
-      <button className={currentScreen === "rivalries" ? "active-filter" : ""} onClick={() => onNavigate("rivalries")}>
-        Rivalries
-      </button>
-      <button className={currentScreen === "calendar" ? "active-filter" : ""} onClick={() => onNavigate("calendar")}>
-        Calendar
-      </button>
-      <button className={currentScreen === "social" ? "active-filter" : ""} onClick={() => onNavigate("social")}>
-        Social
-      </button>
-      <button className={currentScreen === "finance" ? "active-filter" : ""} onClick={() => onNavigate("finance")}>
-        Finance
-      </button>
-      {hasResults ? (
-        <button className={currentScreen === "results" ? "active-filter" : ""} onClick={() => onNavigate("results")}>
-          Results
-        </button>
-      ) : null}
-      {showWeekReview ? (
-        <button className={currentScreen === "weekReview" ? "active-filter" : ""} onClick={() => onNavigate("weekReview")}>
-          Week Review
-        </button>
-      ) : null}
-    </nav>
-  );
-}
-
-function Header({ game }: { game: GameState }) {
-  return (
-    <header className="top-bar">
-      <strong>Next GM</strong>
-      <span>
-        {game.brandName} · GM {game.gmName}
-      </span>
-      <span>
-        Season {game.seasonNumber} · Week {game.currentWeek}
-      </span>
-    </header>
-  );
-}
-
-function Metric({ label, value, detail }: { label: string; value: string; detail?: string }) {
-  return (
-    <div className="metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
-      {detail ? <small>{detail}</small> : null}
     </div>
   );
 }

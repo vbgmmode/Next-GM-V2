@@ -1,0 +1,134 @@
+.market-office-mandate,
+.market-panel {
+  background:
+    linear-gradient(135deg, rgba(246, 193, 86, 0.1), rgba(111, 226, 212, 0.05)),
+    rgba(8, 10, 15, 0.84);
+  border: 1px solid rgba(246, 193, 86, 0.18);
+  border-left: 4px solid #f6c156;
+  border-radius: 6px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+}
+
+.market-office-mandate.mandate-critical {
+  border-color: rgba(255, 94, 94, 0.36);
+  border-left-color: #ff5e5e;
+}
+
+.market-office-mandate.mandate-surging {
+  border-color: rgba(89, 208, 131, 0.36);
+  border-left-color: #59d083;
+}
+
+.market-office-mandate {
+  align-items: start;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+}
+
+.market-office-mandate p,
+.market-panel p {
+  margin: 0;
+}
+
+.market-mandate-metrics,
+.market-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.market-grid {
+  align-items: start;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.market-list,
+.market-transaction-list {
+  display: grid;
+  gap: 8px;
+}
+
+.market-transaction-list article,
+.market-row {
+  background: rgba(14, 17, 24, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: inherit;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.market-row {
+  cursor: pointer;
+}
+
+.market-row.is-selected {
+  border-color: rgba(246, 193, 86, 0.38);
+  box-shadow: inset 3px 0 0 #f6c156;
+}
+
+.market-row span,
+.market-transaction-list span,
+.trade-builder span {
+  color: #9ea8ba;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.market-row strong,
+.market-transaction-list strong {
+  color: #f4f7fb;
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.market-row small,
+.market-transaction-list small {
+  color: #c9d1dc;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.trade-builder {
+  display: grid;
+  gap: 10px;
+}
+
+.trade-builder label {
+  display: grid;
+  gap: 6px;
+}
+
+.trade-builder select {
+  background: rgba(4, 6, 10, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f4f7fb;
+  min-width: 0;
+  padding: 10px;
+}
+
+.market-feed-panel {
+  margin-top: 14px;
+}
+
+@media (max-width: 820px) {
+  .market-mandate-metrics,
+  .market-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
+
+  .market-office-mandate {
+    flex-direction: column;
+  }
+}

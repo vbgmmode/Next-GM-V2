@@ -17,7 +17,7 @@ draft_rank,id,name,brand,division,role_tier
 16,aew-aew-will-ospreay,Will Ospreay,AEW,Mens,MainEvent
 17,wwe-raw-stephanie-vaquer,Stephanie Vaquer,Raw,Womens,MainEvent
 18,wwe-raw-naomi,Naomi,Raw,Womens,MainEvent
-19,aew-aew-mercedes-mon,Mercedes Moné,AEW,Womens,MainEvent
+19,aew-aew-mercedes-mone,Mercedes Moné,AEW,Womens,MainEvent
 20,wwe-raw-asuka,Asuka,Raw,Womens,MainEvent
 21,wwe-raw-bron-breakker,Bron Breakker,Raw,Mens,MainEvent
 22,aew-aew-jon-moxley,Jon Moxley,AEW,Mens,MainEvent
@@ -56,7 +56,7 @@ draft_rank,id,name,brand,division,role_tier
 55,aew-aew-roderick-strong,Roderick Strong,AEW,Mens,MainEvent
 56,aew-aew-ricochet,Ricochet,AEW,Mens,UpperCard
 57,aew-aew-darby-allin,Darby Allin,AEW,Mens,MainEvent
-58,wwe-raw-finn-b-lor,Finn Bálor,Raw,Mens,Midcard
+58,wwe-raw-finn-balor,Finn Bálor,Raw,Mens,Midcard
 59,wwe-raw-sheamus,Sheamus,Raw,Mens,UpperCard
 60,wwe-raw-dominik-mysterio,Dominik Mysterio,Raw,Mens,Midcard
 61,aew-aew-mark-davis,Mark Davis,AEW,Mens,MainEvent
