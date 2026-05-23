@@ -1945,6 +1945,70 @@ function canSegmentAttachChampionship(segment: Segment, championship: Championsh
   return false;
 }
 
+function buildSanctionedTitleMatchSegment(game: GameState, sourceSegment: Segment, championshipId: string) {
+  const championship = game.championships.find((title) => title.id === championshipId);
+
+  if (!championship || sourceSegment.type !== "Match") {
+    return undefined;
+  }
+
+  const isTagTitle = isTagChampionship(championship);
+  const option = getCatalogOptionById(isTagTitle ? "M020" : "M001") ?? getDefaultCatalogOption("Match");
+
+  if (!option) {
+    return undefined;
+  }
+
+  const makeCandidate = (participantIds: string[]): Segment => ({
+    ...sourceSegment,
+    type: "Match",
+    participantIds,
+    championshipId: undefined,
+    rivalryId: undefined,
+    segmentCatalogId: option.id,
+    segmentDisplayName: option.label,
+    durationMinutes: option.defaultDurationMinutes,
+    participantMin: option.minParticipants,
+    participantMax: option.maxParticipants,
+  });
+  const getAttachedCandidate = (candidate: Segment) => {
+    if (!isValidSegment(candidate, game.wrestlers) || !canSegmentAttachChampionship(candidate, championship, game.wrestlers)) {
+      return undefined;
+    }
+
+    return { ...candidate, championshipId: championship.id };
+  };
+  const scene = getTitleDivisionScene(championship, game.wrestlers, game.rivalries, game.currentWeek, game.championships);
+  const challengerPool = scene.eligibleRoster.length ? scene.eligibleRoster : scene.topContenders;
+
+  if (!isTagTitle) {
+    for (const contender of challengerPool) {
+      const candidate = makeCandidate([...championship.championIds, contender.id]);
+      const attachedCandidate = getAttachedCandidate(candidate);
+
+      if (attachedCandidate) {
+        return attachedCandidate;
+      }
+    }
+
+    return undefined;
+  }
+
+  for (let firstIndex = 0; firstIndex < challengerPool.length; firstIndex += 1) {
+    for (let secondIndex = firstIndex + 1; secondIndex < challengerPool.length; secondIndex += 1) {
+      const contenderPairIds = [challengerPool[firstIndex].id, challengerPool[secondIndex].id];
+      const candidate = makeCandidate([...championship.championIds, ...contenderPairIds]);
+      const attachedCandidate = getAttachedCandidate(candidate);
+
+      if (attachedCandidate) {
+        return attachedCandidate;
+      }
+    }
+  }
+
+  return undefined;
+}
+
 function getTopContenders(championship: Championship, wrestlers: Wrestler[], limit = 3) {
   return getTitleDivisionScene(championship, wrestlers).topContenders.slice(0, limit);
 }
@@ -5588,6 +5652,41 @@ function App() {
     });
   }
 
+  function buildSegmentTitleMatch(segmentId: string, championshipId: string) {
+    setGame((current) => {
+      if (!current) {
+        return current;
+      }
+
+      let changed = false;
+      const updatedGame = {
+        ...current,
+        currentShow: current.currentShow.map((segment) => {
+          if (segment.id !== segmentId) {
+            return segment;
+          }
+
+          const titleSegment = buildSanctionedTitleMatchSegment(current, segment, championshipId);
+
+          if (!titleSegment) {
+            return segment;
+          }
+
+          changed = true;
+          return titleSegment;
+        }),
+      };
+
+      if (!changed) {
+        return current;
+      }
+
+      persistGameSnapshot(updatedGame, "booking");
+      setBookingFocusSegmentId(segmentId);
+      return updatedGame;
+    });
+  }
+
   function setSegmentStipulation(segmentId: string, stipulationId: string) {
     setGame((current) => {
       if (!current) {
@@ -5884,6 +5983,7 @@ function App() {
         game={game}
         isQaHarness={isQaHarness}
         onAddSegment={addSegment}
+        onBuildTitleMatch={buildSegmentTitleMatch}
         onConsumeFocusSegment={() => setBookingFocusSegmentId(undefined)}
         onNavigate={navigateTo}
         onRemoveSegment={removeSegment}
@@ -7441,6 +7541,7 @@ function BookingScreen({
   focusSegmentId,
   game,
   isQaHarness,
+  onBuildTitleMatch,
   onConsumeFocusSegment,
   onAddSegment,
   onNavigate,
@@ -7457,6 +7558,7 @@ function BookingScreen({
   focusSegmentId?: string;
   game: GameState;
   isQaHarness?: boolean;
+  onBuildTitleMatch: (segmentId: string, championshipId: string) => void;
   onConsumeFocusSegment: () => void;
   onAddSegment: (type: SegmentType, segmentId?: string) => void;
   onNavigate: (screen: GameScreen) => void;
@@ -7816,6 +7918,7 @@ function BookingScreen({
               championships={game.championships}
               game={game}
               onApplyCatalogOption={(option) => applyCatalogOption(composerSegment, option)}
+              onBuildTitleMatch={onBuildTitleMatch}
               onSetSegmentStipulation={(segmentId, stipulationId) => onSetSegmentStipulation(segmentId, stipulationId)}
               onCancel={cancelSegmentSetup}
               onClose={returnToCardBoard}
@@ -7885,6 +7988,7 @@ function SegmentComposer({
   championships,
   game,
   onApplyCatalogOption,
+  onBuildTitleMatch,
   onCancel,
   onClose,
   onOpenProfile,
@@ -7902,6 +8006,7 @@ function SegmentComposer({
   championships: Championship[];
   game: GameState;
   onApplyCatalogOption: (option: SegmentCatalogOption) => void;
+  onBuildTitleMatch: (segmentId: string, championshipId: string) => void;
   onCancel?: () => void;
   onClose: () => void;
   onOpenProfile: (wrestlerId: string) => void;
@@ -8039,6 +8144,7 @@ function SegmentComposer({
       <TitleMatchControl
         championships={championships}
         game={game}
+        onBuildTitleMatch={onBuildTitleMatch}
         onSetSegmentChampionship={onSetSegmentChampionship}
         segment={segment}
         wrestlers={wrestlers}
@@ -10892,12 +10998,14 @@ function WrestlerCard({
 function TitleMatchControl({
   championships,
   game,
+  onBuildTitleMatch,
   onSetSegmentChampionship,
   segment,
   wrestlers,
 }: {
   championships: Championship[];
   game: GameState;
+  onBuildTitleMatch: (segmentId: string, championshipId: string) => void;
   onSetSegmentChampionship: (segmentId: string, championshipId: string) => void;
   segment: Segment;
   wrestlers: Wrestler[];
@@ -10917,13 +11025,18 @@ function TitleMatchControl({
     const selectedSides = selectedTagChampionship ? getTagTitleSides(segment, selectedTagChampionship) : undefined;
     const tagHealthChampionship = selectedTagChampionship ?? eligibleChampionships[0];
     const tagHealthDiagnostics = tagHealthChampionship ? getTagDivisionHealthDiagnostics(tagHealthChampionship, game) : [];
+    const buildableTagChampionships = !eligibleChampionships.length
+      ? tagChampionships.filter((championship) => buildSanctionedTitleMatchSegment(game, segment, championship.id))
+      : [];
     const tagTitleStatus = (() => {
       if (!tagChampionships.length) {
         return "No tag championship is assigned to this brand yet.";
       }
 
       if (segment.participantIds.length !== 4) {
-        return "Needs exactly four unique wrestlers before a tag title defense can be sanctioned.";
+        return buildableTagChampionships.length
+          ? "Choose a tag title below to auto-fill the champion pair and legal challengers into this slot."
+          : "Needs exactly four unique wrestlers before a tag title defense can be sanctioned.";
       }
 
       if (!isValidSegment(segment, wrestlers)) {
@@ -10958,18 +11071,24 @@ function TitleMatchControl({
           <span>Title Controls</span>
           <strong>{tagTitleStatus}</strong>
         </div>
-        {eligibleChampionships.length || segment.championshipId ? (
+        {eligibleChampionships.length || buildableTagChampionships.length || segment.championshipId ? (
           <div className="title-buttons">
-            <button className={!segment.championshipId ? "active-filter" : ""} onClick={() => onSetSegmentChampionship(segment.id, "")}>
-              Non-Title
-            </button>
-            {eligibleChampionships.map((championship) => (
+            {eligibleChampionships.length || segment.championshipId ? (
+              <button className={!segment.championshipId ? "active-filter" : ""} onClick={() => onSetSegmentChampionship(segment.id, "")}>
+                Non-Title
+              </button>
+            ) : null}
+            {(eligibleChampionships.length ? eligibleChampionships : buildableTagChampionships).map((championship) => (
               <button
                 className={segment.championshipId === championship.id ? "active-filter" : ""}
                 key={championship.id}
-                onClick={() => onSetSegmentChampionship(segment.id, championship.id)}
+                onClick={() =>
+                  eligibleChampionships.length
+                    ? onSetSegmentChampionship(segment.id, championship.id)
+                    : onBuildTitleMatch(segment.id, championship.id)
+                }
               >
-                {championship.name} · Tag Defense
+                {championship.name} · {eligibleChampionships.length ? "Tag Defense" : "Build Tag Defense"}
               </button>
             ))}
           </div>
@@ -11005,6 +11124,9 @@ function TitleMatchControl({
   const sameDivisionTitleOptions = completeMatch ? singlesChampionships.filter((championship) => doSegmentParticipantsFitChampionship(segment, championship, wrestlers)) : [];
   const selectedParticipantNames = getWrestlerNames(segment.participantIds, wrestlers);
   const titleDefenseOptions = eligibleChampionships.filter((championship) => canSegmentContestChampionship(segment, championship, wrestlers));
+  const buildableChampionships = isTitleMatch && !eligibleChampionships.length
+    ? championships.filter((championship) => buildSanctionedTitleMatchSegment(game, segment, championship.id))
+    : [];
   const controlLabel = isTitleMatch ? "Title Match" : "Title Context";
   const clearLabel = isTitleMatch ? "Non-Title" : "No Title Context";
   const emptyMessage =
@@ -11019,7 +11141,9 @@ function TitleMatchControl({
     }
 
     if (!segment.participantIds.length) {
-      return "Select competitors to see whether this can become a sanctioned title defense.";
+      return buildableChampionships.length
+        ? "Choose a championship below to auto-fill the champion and challenger into this match slot."
+        : "Select competitors to see whether this can become a sanctioned title defense.";
     }
 
     if (!completeMatch) {
@@ -11034,6 +11158,10 @@ function TitleMatchControl({
 
     if (sameDivisionTitleOptions.length) {
       return `Title-adjacent, not a title match: ${selectedParticipantNames} fit the division, but no current champion is in this match.`;
+    }
+
+    if (buildableChampionships.length) {
+      return "This slot is not title-eligible yet. Choose a championship below to rebuild it as a sanctioned defense.";
     }
 
     return "Title blocked: these competitors do not fit the same current title division.";
@@ -11070,18 +11198,24 @@ function TitleMatchControl({
         <span>{isTitleMatch ? "Defense Status" : "Title Scene Status"}</span>
         <strong>{titleDefenseStatus}</strong>
       </div>
-      {eligibleChampionships.length ? (
+      {eligibleChampionships.length || buildableChampionships.length ? (
         <div className="title-buttons">
-          <button className={!segment.championshipId ? "active-filter" : ""} onClick={() => onSetSegmentChampionship(segment.id, "")}>
-            {clearLabel}
-          </button>
-          {eligibleChampionships.map((championship) => (
+          {eligibleChampionships.length ? (
+            <button className={!segment.championshipId ? "active-filter" : ""} onClick={() => onSetSegmentChampionship(segment.id, "")}>
+              {clearLabel}
+            </button>
+          ) : null}
+          {(eligibleChampionships.length ? eligibleChampionships : buildableChampionships).map((championship) => (
             <button
               className={segment.championshipId === championship.id ? "active-filter" : ""}
               key={championship.id}
-              onClick={() => onSetSegmentChampionship(segment.id, championship.id)}
+              onClick={() =>
+                eligibleChampionships.length
+                  ? onSetSegmentChampionship(segment.id, championship.id)
+                  : onBuildTitleMatch(segment.id, championship.id)
+              }
             >
-              {championship.name} · {isTitleMatch ? "Sanctioned Defense" : championship.division}
+              {championship.name} · {eligibleChampionships.length ? (isTitleMatch ? "Sanctioned Defense" : championship.division) : "Build Defense"}
             </button>
           ))}
         </div>
