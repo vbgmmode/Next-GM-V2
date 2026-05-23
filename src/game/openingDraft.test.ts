@@ -1,0 +1,93 @@
+import { describe, expect, it } from "vitest";
+import { createNewGame, createRivalBrandUniverse, createRivalGMAssignments, draftPool } from "./seed";
+import { getOpeningDraftRoundOrder, simulateOpeningDraft } from "./openingDraft";
+import type { DraftMode } from "./types";
+
+const rivalBrands = createRivalBrandUniverse(createRivalGMAssignments("Raw"));
+const draftSeed = "Raw-Test GM";
+
+function getState(playerPickCount: number, mode: DraftMode = "snake") {
+  return simulateOpeningDraft({
+    draftMode: mode,
+    draftSeed,
+    draftPool,
+    playerBrandName: "Raw",
+    rivalBrands,
+    playerDraftedWrestlers: draftPool.slice(0, playerPickCount),
+  });
+}
+
+describe("openingDraft", () => {
+  it("puts the player on the first Season 1 clock", () => {
+    const state = getState(0);
+
+    expect(state.currentPick?.chair.kind).toBe("player");
+    expect(state.currentPick?.overallPick).toBe(1);
+    expect(state.upcomingPicks[0]?.chair.brandName).toBe("Raw");
+  });
+
+  it("reverses every other round for snake drafts", () => {
+    const chairs = getState(0).chairs;
+    const firstRound = getOpeningDraftRoundOrder("snake", chairs, 0, draftSeed).map((chair) => chair.id);
+    const secondRound = getOpeningDraftRoundOrder("snake", chairs, 1, draftSeed).map((chair) => chair.id);
+
+    expect(firstRound[0]).toBe("player");
+    expect(secondRound).toEqual([...firstRound].reverse());
+  });
+
+  it("keeps the same order every round for linear drafts", () => {
+    const chairs = getState(0, "linear").chairs;
+    const firstRound = getOpeningDraftRoundOrder("linear", chairs, 0, draftSeed).map((chair) => chair.id);
+    const secondRound = getOpeningDraftRoundOrder("linear", chairs, 1, draftSeed).map((chair) => chair.id);
+
+    expect(firstRound[0]).toBe("player");
+    expect(secondRound).toEqual(firstRound);
+  });
+
+  it("uses deterministic fresh round orders for randomized drafts", () => {
+    const chairs = getState(0, "random").chairs;
+    const firstRun = getOpeningDraftRoundOrder("random", chairs, 1, draftSeed).map((chair) => chair.id);
+    const secondRun = getOpeningDraftRoundOrder("random", chairs, 1, draftSeed).map((chair) => chair.id);
+    const nextRound = getOpeningDraftRoundOrder("random", chairs, 2, draftSeed).map((chair) => chair.id);
+
+    expect(secondRun).toEqual(firstRun);
+    expect(nextRound).not.toEqual(firstRun);
+  });
+
+  it("uses equal seeded lottery order for opening weighted lottery drafts", () => {
+    const chairs = getState(0, "lottery").chairs;
+    const firstRound = getOpeningDraftRoundOrder("lottery", chairs, 0, draftSeed).map((chair) => chair.id);
+    const secondRound = getOpeningDraftRoundOrder("lottery", chairs, 1, draftSeed).map((chair) => chair.id);
+    const repeatedSecondRound = getOpeningDraftRoundOrder("lottery", chairs, 1, draftSeed).map((chair) => chair.id);
+
+    expect(firstRound[0]).toBe("player");
+    expect(secondRound).toEqual(repeatedSecondRound);
+    expect(new Set(chairs.map((chair) => chair.lotteryWeight))).toEqual(new Set([1]));
+  });
+
+  it("recomputes CPU claims when a player pick is undone", () => {
+    const onePick = getState(1);
+    const twoPicks = getState(2);
+    const undoneBackToOnePick = getState(1);
+
+    expect(twoPicks.cpuClaimedWrestlerIds.length).toBeGreaterThan(onePick.cpuClaimedWrestlerIds.length);
+    expect(undoneBackToOnePick.cpuClaimedWrestlerIds).toEqual(onePick.cpuClaimedWrestlerIds);
+  });
+
+  it("creates no duplicate ownership across player and CPU opening rosters", () => {
+    const game = createNewGame({
+      brandName: "Raw",
+      brandStyle: "Raw",
+      gmName: "Test GM",
+      rivalGMAssignments: createRivalGMAssignments("Raw"),
+      draftMode: "snake",
+      draftedWrestlers: draftPool.slice(0, 12),
+    });
+    const playerIds = game.wrestlers.map((wrestler) => wrestler.id);
+    const cpuIds = game.rivalBrands.flatMap((brand) => brand.rosterWrestlerIds);
+    const allOwnedIds = [...playerIds, ...cpuIds];
+
+    expect(playerIds).toHaveLength(12);
+    expect(new Set(allOwnedIds)).toHaveLength(allOwnedIds.length);
+  });
+});

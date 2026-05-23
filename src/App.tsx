@@ -46,6 +46,7 @@ import {
   type CpuResultsFeedSnapshot,
   type RatingsBattleSnapshot,
 } from "./game/cpuRivalLoop";
+import { simulateOpeningDraft } from "./game/openingDraft";
 import {
   bookingSegmentTypes,
   getCatalogOptionById,
@@ -5518,13 +5519,23 @@ function NewGameSetupScreen({
   const startingBudgetAmount = getStartingBudgetAmount(startingBudgetTier);
   const draftFinanceReadout = getDraftFinanceReadout(draftedWrestlers, startingBudgetTier, startingBudgetAmount);
   const canPreview = gmName.trim().length > 0 && brandName.trim().length > 0;
+  const signedBrandName = brandName.trim() || defaultCareer.brandName;
+  const signedGmName = gmName.trim() || defaultCareer.gmName;
   const draftSearchTerm = draftSearch.trim().toLowerCase();
-  const draftSeed = `${brandStyle}-${gmName.trim() || defaultCareer.gmName}`;
+  const draftSeed = `${brandStyle}-${signedGmName}`;
   const draftedIds = new Set(draftedWrestlers.map((wrestler) => wrestler.id));
   const previewRivalBrands = createRivalBrandUniverse(rivalGMAssignments);
+  const openingDraftState = simulateOpeningDraft({
+    draftMode,
+    draftSeed,
+    draftPool,
+    playerBrandName: signedBrandName,
+    rivalBrands: previewRivalBrands,
+    playerDraftedWrestlers: draftedWrestlers,
+  });
   const rivalDraftActivity = getCpuDraftPreviewSnapshot(previewRivalBrands, draftedWrestlers, draftPool, draftMode, draftSeed);
-  const cpuClaimedDraftIds = new Set(rivalDraftActivity?.claimedWrestlerIds ?? []);
-  const availableDraftCount = draftPool.length - draftedWrestlers.length - cpuClaimedDraftIds.size;
+  const cpuClaimedDraftIds = new Set(openingDraftState.cpuClaimedWrestlerIds);
+  const availableDraftCount = openingDraftState.availableCount;
   const availableWrestlers = draftPool
     .filter((wrestler) => !draftedIds.has(wrestler.id))
     .filter((wrestler) => !cpuClaimedDraftIds.has(wrestler.id))
@@ -5546,15 +5557,20 @@ function NewGameSetupScreen({
   const draftArchetypeCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.archetype);
   const draftDivisionCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.division);
   const picksRemaining = Math.max(0, draftPickCount - draftedWrestlers.length);
+  const currentDraftPick = openingDraftState.currentPick;
+  const currentPlayerPickLabel = `${Math.min(draftedWrestlers.length + 1, draftPickCount)} / ${draftPickCount}`;
+  const currentOverallPickLabel = currentDraftPick ? `Pick ${currentDraftPick.overallPick}` : "Locked";
   const draftClockRead =
     draftedWrestlers.length === 0
-      ? `Draft floor is open. You have ${draftPickCount} clean picks to build your first locker-room direction.`
+      ? `${signedBrandName} owns the first chair. Your opening pick starts the live four-brand board.`
       : draftPickCount - draftedWrestlers.length <= 2
-        ? "Final stretch. This final lane cements your Week 1 identity."
-        : `${draftedWrestlers.length + 1} of ${draftPickCount} is the next lane and ${Math.max(
-            0,
-            draftPickCount - draftedWrestlers.length,
-          )} picks remain to define the room.`;
+        ? "Final stretch. CPU rival boards have taken their swings; this closing lane cements Week 1 identity."
+        : currentDraftPick
+          ? `Overall pick ${currentDraftPick.overallPick} is back in your room. ${Math.max(
+              0,
+              draftPickCount - draftedWrestlers.length,
+            )} player picks remain to define the roster.`
+          : "The opening draft board is locked.";
   const rosterClassRead = (() => {
     if (!draftedWrestlers.length) {
       return "No class read yet. The board is still open, and every pick sets the early identity of this campaign.";
@@ -5579,7 +5595,7 @@ function NewGameSetupScreen({
     .slice(-5)
     .map((id) => draftPool.find((wrestler) => wrestler.id === id))
     .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
-  const upNextRivals = previewRivalBrands.slice(0, 4);
+  const upNextPicks = openingDraftState.upcomingPicks.slice(1, 5);
 
   useEffect(() => {
     if (!availableWrestlers.length) {
@@ -5688,8 +5704,6 @@ function NewGameSetupScreen({
             : step === "draft"
               ? "Week 1"
               : "Career";
-  const signedBrandName = brandName.trim() || defaultCareer.brandName;
-  const signedGmName = gmName.trim() || defaultCareer.gmName;
   const rivalSummary = previewRivalBrands.map((brand) => `${brand.brandName}: ${brand.assignedGMName}`).join(" / ");
   const setupBrandLabel = hasReachedBrandStep ? brandName.trim() || "Choose Brand" : "Unassigned";
   const setupTheme = hasReachedBrandStep ? getBroadcastTheme(brandStyle) : "neutral";
@@ -5906,12 +5920,12 @@ function NewGameSetupScreen({
               </div>
               <div className="draft-hud-metric timer">
                 <span>On The Clock</span>
-                <strong>{picksRemaining ? `${picksRemaining} Picks` : "Locked"}</strong>
+                <strong>{currentOverallPickLabel}</strong>
               </div>
               <div className="draft-brand-badge">
                 <span>Your Pick</span>
                 <strong>{signedBrandName}</strong>
-                <small>{draftedWrestlers.length + 1 > draftPickCount ? draftPickCount : draftedWrestlers.length + 1} / {draftPickCount}</small>
+                <small>{currentPlayerPickLabel}</small>
               </div>
             </header>
 
@@ -6031,13 +6045,21 @@ function NewGameSetupScreen({
                         <Metric label="Mic Skill" value={`${focusedDraftWrestler.promoSkill}`} />
                       </div>
                       <div className="draft-focus-contract">
-                        <span>Draft Value <strong>{focusedDraftCost ? formatMoney(focusedDraftCost) : "Catalog Pending"}</strong></span>
                         <span>Condition <strong>Fat {focusedDraftWrestler.fatigue} / Morale {focusedDraftWrestler.morale}</strong></span>
                       </div>
                     </div>
-                    <div className="draft-focus-overall">
-                      <span>Overall</span>
-                      <strong>{focusedDraftOverall}</strong>
+                    <div className="draft-focus-readouts">
+                      <div className="draft-focus-overall">
+                        <span>Overall</span>
+                        <strong>{focusedDraftOverall}</strong>
+                      </div>
+                      <div className="draft-focus-cost">
+                        <span>Draft Value</span>
+                        <strong>{focusedDraftCost ? formatMoney(focusedDraftCost) : "Catalog Pending"}</strong>
+                        {focusedDraftFinance?.weeklyHireRateUsd ? (
+                          <small>{formatMoney(focusedDraftFinance.weeklyHireRateUsd)} / week</small>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -6065,11 +6087,11 @@ function NewGameSetupScreen({
                   <strong>{availableDraftCount} Open</strong>
                 </div>
                 <div className="draft-rival-list">
-                  {previewRivalBrands.map((brand, index) => (
+                  {previewRivalBrands.map((brand) => (
                     <article key={brand.id}>
                       <strong>{brand.brandName}</strong>
                       <span>{brand.assignedGMName}</span>
-                      <small>Round 1 / Pick {draftedWrestlers.length + index + 2}</small>
+                      <small>{openingDraftState.rostersByChairId[brand.id]?.length ?? 0} / {draftPickCount} claimed</small>
                       <em>{formatMoney(brand.budget)}</em>
                     </article>
                   ))}
@@ -6148,7 +6170,7 @@ function NewGameSetupScreen({
               </article>
               <article className="draft-bottom-panel info">
                 <p className="eyebrow">Draft Information</p>
-                <strong>{draftedWrestlers.length + 1 > draftPickCount ? draftPickCount : draftedWrestlers.length + 1} / {draftPickCount}</strong>
+                <strong>{currentPlayerPickLabel}</strong>
                 <small>{activeDraftFilters.length ? activeDraftFilters.join(" / ") : "Open Board"}</small>
                 <div className="draft-pick-dots">
                   {Array.from({ length: draftPickCount }).map((_, index) => (
@@ -6159,8 +6181,8 @@ function NewGameSetupScreen({
               <article className="draft-bottom-panel up-next">
                 <p className="eyebrow">Up Next</p>
                 <div>
-                  {upNextRivals.map((brand) => (
-                    <span key={brand.id}>{brand.brandName}</span>
+                  {upNextPicks.map((pick) => (
+                    <span key={`${pick.roundIndex}-${pick.pickInRound}-${pick.chair.id}`}>{pick.chair.brandName}</span>
                   ))}
                 </div>
               </article>

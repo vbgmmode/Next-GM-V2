@@ -18,8 +18,8 @@ import type {
   ShowType,
   Wrestler,
 } from "./types";
-import { getDraftRoundOrder } from "./draftOrder";
 import { createMarketContract, getCpuBudgetDefault } from "./market";
+import { simulateOpeningDraft } from "./openingDraft";
 
 const cpuDraftPicksPerBrand = 12;
 const cpuStartingMoney = 1800000;
@@ -155,49 +155,6 @@ function rankScores(entries: { id: string; score: number }[]) {
     .forEach((entry, index) => ranks.set(entry.id, index + 1));
 
   return ranks;
-}
-
-function getStyleDraftBonus(style: string, wrestler: Wrestler) {
-  switch (style) {
-    case "Ratings Chaser":
-      return wrestler.popularity * 0.34 + wrestler.momentum * 0.2;
-    case "Talent Developer":
-      return (wrestler.roleTier === "Prospect" ? 18 : 0) + wrestler.ringSkill * 0.22;
-    case "Locker Room General":
-      return wrestler.morale * 0.24 + (100 - wrestler.fatigue) * 0.18;
-    case "Chaos Booker":
-      return wrestler.momentum * 0.34 + (wrestler.archetype === "Brawler" ? 12 : 0);
-    case "Sports Realist":
-      return wrestler.ringSkill * 0.36 + (100 - wrestler.fatigue) * 0.16;
-    case "Big Money Promoter":
-      return wrestler.popularity * 0.42 + wrestler.promoSkill * 0.18;
-    default:
-      return wrestler.popularity * 0.24 + wrestler.ringSkill * 0.18 + wrestler.promoSkill * 0.16;
-  }
-}
-
-function getDivisionNeedBonus(roster: Wrestler[], wrestler: Wrestler) {
-  const sameDivisionCount = roster.filter((item) => item.division === wrestler.division).length;
-  const targetBalanceBonus = sameDivisionCount <= 3 ? 12 : sameDivisionCount <= 5 ? 4 : -8;
-  const tierBonus = roster.filter((item) => item.roleTier === wrestler.roleTier).length <= 2 ? 5 : 0;
-
-  return targetBalanceBonus + tierBonus;
-}
-
-function scoreCpuDraftCandidate(brand: RivalBrandState, wrestler: Wrestler, roster: Wrestler[], round: number) {
-  const rankScore = wrestler.draftRank ? Math.max(0, 220 - wrestler.draftRank) : 80;
-  const sourceBrandBonus = wrestler.sourceBrand === brand.brandKey ? 10 : 0;
-  const roundNoise = hashString(`${brand.id}-${wrestler.id}-${round}`) % 9;
-
-  return (
-    rankScore +
-    wrestler.popularity * 0.46 +
-    Math.max(wrestler.ringSkill, wrestler.promoSkill) * 0.34 +
-    getStyleDraftBonus(brand.assignedGMStyle, wrestler) +
-    getDivisionNeedBonus(roster, wrestler) +
-    sourceBrandBonus +
-    roundNoise
-  );
 }
 
 function createCpuRosterMember(wrestler: Wrestler, seasonNumber: number, weekNumber: number, acquisitionSource: CpuRosterMemberState["acquisitionSource"]): CpuRosterMemberState {
@@ -362,49 +319,29 @@ export function allocateCpuDraftRosters(
   cpuPickCount = cpuDraftPicksPerBrand,
   draftMode: DraftMode = "snake",
   draftSeed = "next-gm-draft",
+  playerBrandName = "Player Brand",
 ): RivalBrandState[] {
-  const playerIds = new Set(playerDraftedWrestlers.map((wrestler) => wrestler.id));
-  const available = new Map(draftPool.filter((wrestler) => !playerIds.has(wrestler.id)).map((wrestler) => [wrestler.id, wrestler]));
-  const rosterByBrand = new Map(rivalBrands.map((brand) => [brand.id, brand.rosterWrestlerIds.map((id) => findWrestler(id, draftPool)).filter((wrestler): wrestler is Wrestler => Boolean(wrestler))]));
-  const nextBrands = rivalBrands.map((brand) => ({ ...brand, rosterWrestlerIds: [...brand.rosterWrestlerIds], rosterState: [...brand.rosterState] }));
-  const draftOrderBrands = nextBrands.map((brand) => ({
-    id: brand.id,
-    brandName: brand.brandName,
-    lotteryWeight: 1,
-  }));
-
-  nextBrands.forEach((brand) => {
-    brand.rosterWrestlerIds.forEach((id) => available.delete(id));
+  const draftState = simulateOpeningDraft({
+    draftMode,
+    draftSeed,
+    draftPool,
+    playerBrandName,
+    rivalBrands,
+    playerDraftedWrestlers,
+    cpuPickTarget: cpuPickCount,
   });
 
-  for (let round = 0; round < cpuPickCount; round += 1) {
-    const roundOrder = getDraftRoundOrder(draftMode, draftOrderBrands, round, draftSeed);
+  const nextBrands = rivalBrands.map((brand) => {
+    const draftedRoster = draftState.rostersByChairId[brand.id] ?? [];
+    const existingById = new Map(brand.rosterState.map((member) => [member.wrestlerId, member]));
+    const rosterState = draftedRoster.map((wrestler) => existingById.get(wrestler.id) ?? createCpuRosterMember(wrestler, 1, 1, "draft"));
 
-    roundOrder.forEach((brandRef) => {
-      const brand = nextBrands.find((entry) => entry.id === brandRef.id);
-
-      if (!brand) {
-        return;
-      }
-
-      const roster = rosterByBrand.get(brand.id) ?? [];
-
-      if (roster.length >= cpuPickCount || !available.size) {
-        return;
-      }
-
-      const pick = [...available.values()].sort((a, b) => scoreCpuDraftCandidate(brand, b, roster, round) - scoreCpuDraftCandidate(brand, a, roster, round) || (a.draftRank ?? 999) - (b.draftRank ?? 999))[0];
-
-      if (!pick) {
-        return;
-      }
-
-      available.delete(pick.id);
-      roster.push(pick);
-      brand.rosterWrestlerIds = [...brand.rosterWrestlerIds, pick.id];
-      brand.rosterState = [...brand.rosterState.filter((member) => member.wrestlerId !== pick.id), createCpuRosterMember(pick, 1, 1, "draft")];
-    });
-  }
+    return {
+      ...brand,
+      rosterWrestlerIds: draftedRoster.map((wrestler) => wrestler.id),
+      rosterState,
+    };
+  });
 
   return nextBrands.map((brand) => ensureCpuBrandDepth(brand, draftPool, 1));
 }
@@ -424,7 +361,7 @@ export function getCpuDraftPreviewSnapshot(
     rivalBrands.map((brand) => ({ ...brand, rosterWrestlerIds: [], rosterState: [], activityHistory: [...brand.activityHistory] })),
     playerDraftedWrestlers,
     draftPool,
-    Math.min(cpuDraftPicksPerBrand, playerDraftedWrestlers.length),
+    cpuDraftPicksPerBrand,
     draftMode,
     draftSeed,
   );

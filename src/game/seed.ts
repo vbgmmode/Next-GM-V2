@@ -410,6 +410,7 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
     undefined,
     career.draftMode,
     `${career.brandStyle}-${career.gmName}`,
+    career.brandName,
   );
 
   const newGame: GameState = {

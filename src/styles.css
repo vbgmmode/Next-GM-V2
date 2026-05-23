@@ -11666,11 +11666,11 @@ h3 {
     rgba(6, 8, 12, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.12);
   display: grid;
-  gap: 14px;
-  grid-template-columns: minmax(190px, 0.62fr) minmax(0, 1fr) 94px;
+  gap: 10px;
+  grid-template-columns: minmax(170px, 0.56fr) minmax(0, 1fr) minmax(112px, 0.34fr);
   min-height: 0;
   overflow: hidden;
-  padding: 12px;
+  padding: 10px;
 }
 
 .draft-focus-portrait {
@@ -11689,13 +11689,13 @@ h3 {
 
 .draft-focus-copy {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .draft-focus-copy h2 {
   color: #f4f7fb;
-  font-size: clamp(2.2rem, 5vw, 4.6rem);
+  font-size: clamp(1.8rem, 3.6vw, 3.2rem);
   line-height: 0.86;
   margin: 0;
 }
@@ -11727,24 +11727,60 @@ h3 {
 
 .draft-focus-stat-grid {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .draft-focus-stat-grid .metric {
-  min-height: 62px;
-  padding: 8px;
+  min-height: 54px;
+  padding: 6px;
+}
+
+.draft-focus-readouts {
+  align-self: start;
+  display: grid;
+  gap: 8px;
 }
 
 .draft-focus-overall {
-  align-self: start;
   background: rgba(8, 9, 13, 0.82);
   border: 1px solid rgba(246, 193, 86, 0.32);
   display: grid;
   gap: 4px;
-  padding: 12px;
+  padding: 10px;
   text-align: center;
   text-transform: uppercase;
+}
+
+.draft-focus-cost {
+  background: rgba(8, 9, 13, 0.82);
+  border: 1px solid rgba(246, 193, 86, 0.24);
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.draft-focus-cost span {
+  color: #9ea8ba;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.draft-focus-cost strong {
+  color: #f6c156;
+  font-family: var(--font-display);
+  font-size: clamp(1rem, 1.8vw, 1.35rem);
+  line-height: 0.95;
+}
+
+.draft-focus-cost small {
+  color: #9ea8ba;
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: none;
 }
 
 .draft-focus-overall span {
