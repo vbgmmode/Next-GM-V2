@@ -354,7 +354,7 @@ function getTitleSceneTalentScore(wrestler: Wrestler, championship: Championship
 }
 
 
-function getTitleDivisionScene(championship: Championship, wrestlers: Wrestler[], rivalries: Rivalry[] = [], currentWeek = 1, championships: Championship[] = []) {
+export function getTitleDivisionScene(championship: Championship, wrestlers: Wrestler[], rivalries: Rivalry[] = [], currentWeek = 1, championships: Championship[] = []) {
   const championIds = new Set(championship.championIds);
   const otherChampionIds = new Set(
     championships.filter((title) => title.id !== championship.id).flatMap((title) => title.championIds),

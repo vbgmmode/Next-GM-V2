@@ -13,7 +13,7 @@
   color: white;
   cursor: pointer;
   display: inline-flex;
-  font-size: 0.62rem;
+  font-size: 0.86rem;
   font-weight: 900;
   gap: 6px;
   justify-content: center;
@@ -81,7 +81,7 @@
 .booking-dynasty-shell .booking-btn small {
   color: var(--text-muted);
   display: block;
-  font-size: 0.54rem;
+  font-size: 0.76rem;
   font-weight: 700;
 }
 
@@ -121,7 +121,7 @@
 
 .booking-panel-kicker {
   color: var(--accent-gold);
-  font-size: 0.58rem;
+  font-size: 0.8rem;
   font-weight: 1000;
   margin-bottom: 4px;
   text-transform: uppercase;
@@ -140,13 +140,13 @@
 
 .booking-panel-heading span {
   color: white;
-  font-size: 0.82rem;
+  font-size: 1.02rem;
   font-weight: 1000;
 }
 
 .booking-panel-heading b {
   color: var(--text-soft);
-  font-size: 0.58rem;
+  font-size: 0.8rem;
   font-weight: 900;
 }
 
@@ -173,7 +173,7 @@
   align-items: center;
   color: var(--text-soft);
   display: flex;
-  font-size: 0.68rem;
+  font-size: 0.94rem;
   font-weight: 800;
   gap: 8px;
   justify-content: space-between;
@@ -292,7 +292,7 @@
 
 .booking-segment-copy strong {
   color: white;
-  font-size: 0.62rem;
+  font-size: 0.86rem;
   font-weight: 1000;
   line-height: 1.15;
   overflow: hidden;
@@ -303,7 +303,7 @@
 .booking-segment-copy em {
   color: var(--text-soft);
   display: block;
-  font-size: 0.54rem;
+  font-size: 0.76rem;
   font-style: normal;
   font-weight: 700;
   line-height: 1.15;
@@ -322,14 +322,14 @@
 
 .booking-segment-duration {
   color: var(--accent-gold);
-  font-size: 0.6rem;
+  font-size: 0.82rem;
   font-weight: 900;
 }
 
 .booking-segment-status {
   align-items: center;
   display: inline-flex;
-  font-size: 0.52rem;
+  font-size: 0.96rem;
   font-weight: 900;
   gap: 3px;
 }
@@ -383,7 +383,7 @@
 
 .booking-add-slot-row strong {
   color: white;
-  font-size: 0.62rem;
+  font-size: 0.86rem;
   font-weight: 1000;
 }
 
@@ -408,7 +408,7 @@
 }
 
 .booking-rail-actions > .booking-btn {
-  font-size: 0.56rem;
+  font-size: 1rem;
   height: 32px;
   letter-spacing: 0;
   line-height: 1;
@@ -427,14 +427,14 @@
 
 .booking-clear-confirm strong {
   color: #ffb0b0;
-  font-size: 0.72rem;
+  font-size: 0.96rem;
   text-transform: uppercase;
 }
 
 .booking-clear-confirm span,
 .booking-empty-copy {
   color: var(--text-soft);
-  font-size: 0.72rem;
+  font-size: 0.96rem;
   line-height: 1.35;
   margin: 0;
 }
@@ -464,7 +464,7 @@
 
 .booking-type-grid small {
   color: var(--text-muted);
-  font-size: 0.56rem;
+  font-size: 1rem;
   line-height: 1.25;
 }
 
@@ -493,14 +493,14 @@
 .booking-rundown-error strong {
   color: var(--accent-gold-bright);
   flex: 0 0 auto;
-  font-size: 0.66rem;
+  font-size: 0.88rem;
   text-transform: uppercase;
 }
 
 .booking-producer-note span,
 .booking-rundown-error span {
   color: var(--text-soft);
-  font-size: 0.72rem;
+  font-size: 0.96rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -594,13 +594,13 @@
 
 .booking-hero-badge span {
   color: var(--text-muted);
-  font-size: 0.52rem;
+  font-size: 0.96rem;
   font-weight: 900;
 }
 
 .booking-hero-badge strong {
   color: white;
-  font-size: 0.6rem;
+  font-size: 0.82rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -666,7 +666,7 @@
 
 .booking-stage-slot-team {
   color: var(--text-muted);
-  font-size: 0.5rem;
+  font-size: 0.7rem;
   font-weight: 900;
 }
 
@@ -687,7 +687,7 @@
 
 .booking-stage-slot-label {
   color: var(--text-soft);
-  font-size: 0.56rem;
+  font-size: 1rem;
   font-weight: 800;
   max-width: 84px;
   overflow: hidden;
@@ -721,20 +721,20 @@
 .booking-strip-format span,
 .booking-strip-duration span {
   color: var(--text-muted);
-  font-size: 0.52rem;
+  font-size: 0.96rem;
   font-weight: 900;
 }
 
 .booking-strip-format strong,
 .booking-strip-duration strong {
   color: white;
-  font-size: 0.68rem;
+  font-size: 0.94rem;
   font-weight: 1000;
 }
 
 .booking-strip-format small {
   color: var(--text-soft);
-  font-size: 0.54rem;
+  font-size: 0.76rem;
 }
 
 .booking-strip-duration {
@@ -804,7 +804,7 @@
 
 .booking-overlay-head h3 {
   color: white;
-  font-size: 0.72rem;
+  font-size: 0.96rem;
   font-weight: 1000;
   margin: 0;
   text-transform: uppercase;
@@ -819,7 +819,7 @@
 
 .booking-overlay-note {
   color: var(--text-soft);
-  font-size: 0.68rem;
+  font-size: 0.94rem;
   line-height: 1.35;
   margin: 0 0 8px;
 }
@@ -861,14 +861,14 @@
 
 .booking-picker-copy strong {
   color: white;
-  font-size: 0.66rem;
+  font-size: 0.88rem;
   font-weight: 1000;
   text-transform: uppercase;
 }
 
 .booking-picker-copy em {
   color: var(--text-soft);
-  font-size: 0.58rem;
+  font-size: 0.8rem;
   font-style: normal;
 }
 
@@ -882,7 +882,7 @@
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--accent-gold-bright);
-  font-size: 0.5rem;
+  font-size: 0.7rem;
   font-weight: 900;
   padding: 1px 4px;
   text-transform: uppercase;
@@ -912,20 +912,20 @@
 
 .booking-picker-card strong {
   color: white;
-  font-size: 0.66rem;
+  font-size: 0.88rem;
   font-weight: 1000;
 }
 
 .booking-picker-card span,
 .booking-picker-card em {
   color: var(--text-soft);
-  font-size: 0.56rem;
+  font-size: 1rem;
   font-style: normal;
 }
 
 .booking-picker-card small {
   color: var(--text-muted);
-  font-size: 0.52rem;
+  font-size: 0.96rem;
 }
 
 .booking-action-stack {
@@ -941,7 +941,7 @@
 }
 
 .booking-action-stack .booking-btn strong {
-  font-size: 0.64rem;
+  font-size: 0.86rem;
 }
 
 .booking-desk-stage,
@@ -953,7 +953,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--accent-gold-bright);
   flex: 1 1 auto;
-  font-size: 0.62rem;
+  font-size: 0.86rem;
   font-weight: 1000;
   min-width: 0;
   padding: 4px 7px;
@@ -1041,7 +1041,7 @@
 
 .booking-type-option-label {
   color: white;
-  font-size: 0.68rem;
+  font-size: 0.94rem;
   font-weight: 1000;
   letter-spacing: 0.04em;
   line-height: 1.1;
@@ -1049,7 +1049,7 @@
 
 .booking-type-option-copy {
   color: var(--text-soft);
-  font-size: 0.58rem;
+  font-size: 0.8rem;
   font-weight: 700;
   line-height: 1.35;
   text-transform: none;
@@ -1070,7 +1070,7 @@
 
 .booking-type-picker-note {
   color: var(--text-muted);
-  font-size: 0.58rem;
+  font-size: 0.8rem;
   line-height: 1.35;
   margin: 0;
   text-align: center;
@@ -1089,7 +1089,7 @@
 
 .booking-duration-slider strong {
   color: white;
-  font-size: 0.62rem;
+  font-size: 0.86rem;
   font-weight: 900;
   text-align: center;
 }
@@ -1180,7 +1180,7 @@
 
 .booking-runtime-heat-marker-label {
   color: var(--dashboard-dynasty-green);
-  font-size: 0.48rem;
+  font-size: 0.68rem;
   font-variant-numeric: tabular-nums;
   font-weight: 900;
   line-height: 1;
@@ -1213,7 +1213,7 @@
 
 .booking-runtime-heat-pip {
   color: var(--dashboard-dynasty-hot);
-  font-size: 0.56rem;
+  font-size: 1rem;
   font-weight: 900;
   line-height: 1;
   text-shadow: 0 0 10px rgba(var(--dynasty-accent-rgb), 0.55);
@@ -1242,7 +1242,7 @@
 
 .booking-runtime-heat-copy strong {
   color: white;
-  font-size: 0.6rem;
+  font-size: 0.82rem;
   font-weight: 900;
   line-height: 1.1;
   overflow: hidden;
@@ -1252,7 +1252,7 @@
 
 .booking-runtime-heat-copy em {
   color: var(--text-soft);
-  font-size: 0.52rem;
+  font-size: 0.96rem;
   font-style: normal;
   font-weight: 700;
   line-height: 1.15;
@@ -1262,7 +1262,7 @@
 }
 
 .booking-runtime-heat-status {
-  font-size: 0.52rem;
+  font-size: 0.96rem;
   font-weight: 900;
   letter-spacing: 0.03em;
   line-height: 1.1;
@@ -1325,7 +1325,7 @@
 }
 
 .booking-status-actions-column .booking-btn {
-  font-size: 0.54rem;
+  font-size: 0.76rem;
   min-height: 26px;
   padding: 0 8px;
   white-space: nowrap;
@@ -1386,7 +1386,7 @@
 
 .booking-coverage-pip {
   color: var(--dashboard-dynasty-hot);
-  font-size: 0.56rem;
+  font-size: 1rem;
   font-weight: 900;
   line-height: 1;
   text-shadow: 0 0 8px rgba(var(--dynasty-accent-rgb), 0.45);
@@ -1399,7 +1399,7 @@
 
 .booking-coverage-row-top strong {
   color: white;
-  font-size: 0.62rem;
+  font-size: 0.86rem;
   font-weight: 900;
   min-width: 0;
   overflow: hidden;
@@ -1408,7 +1408,7 @@
 }
 
 .booking-coverage-row-top em {
-  font-size: 0.52rem;
+  font-size: 0.96rem;
   font-style: normal;
   font-weight: 900;
   line-height: 1.1;
@@ -1452,7 +1452,7 @@
 .booking-coverage-heat-line em,
 .booking-coverage-heat-line b {
   color: var(--text-soft);
-  font-size: 0.58rem;
+  font-size: 0.8rem;
   font-style: normal;
   font-weight: 900;
   text-transform: uppercase;
@@ -1502,7 +1502,7 @@
 .booking-metric-grid span,
 .booking-risk-list span {
   color: var(--text-muted);
-  font-size: 0.56rem;
+  font-size: 1rem;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -1510,14 +1510,14 @@
 .booking-metric-grid strong,
 .booking-risk-list strong {
   color: white;
-  font-size: 0.72rem;
+  font-size: 0.96rem;
   font-weight: 1000;
 }
 
 .booking-metric-grid em {
   color: var(--text-muted);
   display: block;
-  font-size: 0.54rem;
+  font-size: 0.76rem;
   font-style: normal;
 }
 
@@ -1553,7 +1553,7 @@
 .booking-rivalry-meter-line em,
 .booking-rivalry-meter-line b {
   color: var(--text-soft);
-  font-size: 0.58rem;
+  font-size: 0.8rem;
   font-style: normal;
   font-weight: 900;
   text-transform: uppercase;
@@ -1576,7 +1576,7 @@
 
 .booking-roster-row .booked-tag,
 .booking-roster-row .open-tag {
-  font-size: 0.58rem;
+  font-size: 0.8rem;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -1617,7 +1617,7 @@
 
 .booking-status-totals strong {
   color: white;
-  font-size: 0.72rem;
+  font-size: 0.96rem;
   font-weight: 1000;
   text-transform: uppercase;
 }
@@ -1636,7 +1636,7 @@
 
 .booking-balance-row span {
   color: var(--text-muted);
-  font-size: 0.62rem;
+  font-size: 0.86rem;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -1653,7 +1653,7 @@
 
 .booking-balance-row em {
   color: var(--text-soft);
-  font-size: 0.62rem;
+  font-size: 0.86rem;
   font-style: normal;
   font-weight: 800;
 }

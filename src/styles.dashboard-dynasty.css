@@ -193,7 +193,7 @@
 .dashboard-dynasty-next-show span,
 .dashboard-dynasty-kicker {
   color: var(--dashboard-dynasty-muted);
-  font-size: 0.67rem;
+  font-size: 0.82rem;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -221,7 +221,7 @@
 
 .dashboard-dynasty-next-show em {
   color: var(--dashboard-dynasty-soft);
-  font-size: 0.72rem;
+  font-size: 0.88rem;
   font-style: normal;
   font-weight: 900;
 }
@@ -268,9 +268,9 @@
 }
 
 .dynasty-management-cta .dynasty-management-cta-button {
-  font-size: clamp(0.66rem, 0.78vw, 0.78rem);
-  line-height: 1;
-  min-height: 34px;
+  font-size: clamp(0.82rem, 0.85vw, 0.94rem);
+  line-height: 1.1;
+  min-height: 36px;
   min-width: 0;
   overflow: hidden;
   padding: 0 12px;
@@ -299,7 +299,7 @@
 }
 
 .dashboard-dynasty-nav-bridge {
-  flex: 0 0 40px;
+  flex: 0 0 44px;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
@@ -309,7 +309,7 @@
   align-items: stretch;
   display: flex;
   gap: 0;
-  height: 40px;
+  height: 44px;
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
@@ -329,7 +329,7 @@
   border-right: 0;
   color: var(--dashboard-dynasty-soft);
   flex: 1 0 auto;
-  font-size: 0.7rem;
+  font-size: 0.88rem;
   font-weight: 900;
   min-height: 0;
   min-width: 0;
