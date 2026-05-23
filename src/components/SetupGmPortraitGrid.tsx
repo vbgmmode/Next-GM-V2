@@ -24,11 +24,7 @@ export function SetupGmPortraitGrid({
             role="option"
             type="button"
           >
-            <img alt="" className="setup-gm-portrait-image" src={persona.portraitSrc} />
-            <span className="setup-gm-portrait-copy">
-              <strong>{persona.name}</strong>
-              <small>{persona.style}</small>
-            </span>
+            <img alt={persona.name} className="setup-gm-portrait-image" src={persona.portraitSrc} />
           </button>
         );
       })}

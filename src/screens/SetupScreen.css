@@ -469,6 +469,187 @@
   border-radius: 2px;
 }
 
+.setup-dynasty-shell .setup-gm-desk.bc-command-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: 10px 12px;
+}
+
+.setup-dynasty-shell .setup-gm-desk .bc-command-panel__head {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex: 0 0 auto;
+  gap: 8px;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+}
+
+.setup-dynasty-shell .setup-gm-desk .bc-command-panel__head h2 {
+  font-size: clamp(1rem, 1.45vw, 1.2rem);
+  line-height: 0.95;
+  margin: 0;
+}
+
+.setup-dynasty-shell .setup-gm-desk .bc-eyebrow {
+  font-size: 0.58rem;
+  margin-bottom: 1px;
+}
+
+.setup-dynasty-shell .setup-gm-desk .bc-command-panel__body {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 6px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.setup-dynasty-shell .setup-gm-desk .setup-gm-portrait-grid {
+  align-self: stretch;
+  gap: 6px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  height: 100%;
+  justify-self: stretch;
+  min-height: 0;
+  width: 100%;
+}
+
+.setup-dynasty-shell .setup-gm-desk .setup-gm-portrait-grid button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  min-height: 0;
+  padding: 0;
+}
+
+.setup-dynasty-shell .setup-gm-desk .setup-gm-portrait-grid button:hover:not(.is-selected) .setup-gm-portrait-image {
+  filter: brightness(1.05);
+}
+
+.setup-dynasty-shell .setup-gm-desk .setup-gm-portrait-grid button.is-selected {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  transform: none;
+}
+
+.setup-dynasty-shell .setup-gm-desk .setup-gm-portrait-grid button.is-selected .setup-gm-portrait-image {
+  box-shadow:
+    0 0 0 2px rgba(var(--bc-brand-secondary-rgb), 0.82),
+    0 0 14px rgba(var(--bc-brand-secondary-rgb), 0.22);
+}
+
+.setup-dynasty-shell .setup-gm-desk .setup-gm-portrait-image {
+  aspect-ratio: 418 / 314;
+  background: transparent;
+  display: block;
+  height: 100%;
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: center;
+  transition:
+    box-shadow 160ms ease,
+    filter 160ms ease;
+  width: 100%;
+}
+
+.setup-dynasty-shell .setup-gm-desk .setup-gm-footer {
+  align-items: center;
+  border-top: 1px solid var(--dashboard-dynasty-border);
+  display: grid;
+  flex: 0 0 auto;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 0;
+  padding-top: 8px;
+}
+
+.setup-dynasty-shell .setup-gm-desk .setup-gm-identity-note {
+  margin: 0;
+  padding: 6px 10px;
+}
+
+.setup-dynasty-shell .setup-gm-desk .setup-gm-identity-note p {
+  display: -webkit-box;
+  font-size: 0.66rem;
+  line-height: 1.25;
+  margin: 0;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.setup-dynasty-shell .setup-gm-desk .setup-gm-identity-note strong {
+  color: var(--bc-brand-selected, #f6c156);
+  font-family: var(--font-display);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.setup-dynasty-shell .setup-gm-desk .setup-gm-actions.title-actions {
+  border-top: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.setup-dynasty-shell .setup-gm-desk .setup-gm-actions button {
+  min-height: 34px;
+  white-space: nowrap;
+}
+
+.setup-gm-portrait-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.setup-gm-portrait-grid button {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 42%),
+    rgba(8, 10, 14, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  color: inherit;
+  cursor: pointer;
+  display: block;
+  overflow: hidden;
+  padding: 0;
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.setup-gm-portrait-grid button:hover:not(.is-selected) {
+  border-color: rgba(200, 208, 223, 0.28);
+  transform: translateY(-1px);
+}
+
+.setup-gm-portrait-grid button.is-selected {
+  border-color: rgba(var(--bc-brand-secondary-rgb), 0.72);
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--bc-brand-secondary-rgb), 0.18),
+    0 0 18px rgba(var(--bc-brand-secondary-rgb), 0.12);
+}
+
+.setup-gm-portrait-image {
+  display: block;
+  width: 100%;
+}
+
 .setup-dynasty-shell .identity-grid button {
   border-radius: 2px;
 }
@@ -488,6 +669,12 @@
 
   .setup-dynasty-shell .setup-rules-difficulty-section .identity-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .setup-dynasty-shell .setup-gm-desk .setup-gm-portrait-grid {
+    gap: 5px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -510,6 +697,15 @@
   .setup-dynasty-shell .setup-layout {
     grid-template-columns: 1fr;
     height: auto;
+  }
+
+  .setup-dynasty-shell .setup-gm-desk .setup-gm-portrait-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+  }
+
+  .setup-dynasty-shell .setup-gm-desk .setup-gm-footer {
+    grid-template-columns: 1fr;
   }
 
   .setup-dynasty-shell .setup-command-panel .bc-hero-decision {

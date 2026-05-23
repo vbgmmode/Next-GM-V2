@@ -3,6 +3,7 @@ import { CommandPanel, HeroDecisionPanel, MetricTile, getBroadcastTheme } from "
 import { GameNav, Header, Metric } from "./components/gameShell";
 import { DynastyManagementShell, type DynastyManagementCta } from "./components/DynastyManagementShell";
 import { SuperstarPortrait as WrestlerPortrait } from "./components/SuperstarPortrait";
+import { SetupGmPortraitGrid } from "./components/SetupGmPortraitGrid";
 import {
   DashboardDynastyAlert,
   DashboardDynastyIntensityMeter,
@@ -104,6 +105,7 @@ import {
   getDraftedRosterValue,
   getStartingBudgetAmount,
 } from "./game/seed";
+import { getGmPersonaByStyle, gmPersonas } from "./game/gmPersonas";
 import {
   getBestSegment,
   getCurrentCalendarWeek,
@@ -456,56 +458,6 @@ type ChoiceOption<T extends string = string> = {
   label: T;
 };
 
-const gmStyleOptions: ChoiceOption<GMStyle>[] = [
-  {
-    label: "Creative Visionary",
-    description: "Story-first leader built for long arcs, character turns, and patient payoffs.",
-  },
-  {
-    label: "Talent Developer",
-    description: "Locker-room builder who protects prospects and turns overlooked wrestlers into stars.",
-  },
-  {
-    label: "Ruthless Executive",
-    description: "Business-first operator who makes cold calls when the pressure hits.",
-  },
-  {
-    label: "Ratings Chaser",
-    description: "Spectacle-first GM chasing headlines, big swings, and must-watch TV.",
-  },
-  {
-    label: "Locker Room General",
-    description: "Morale-first leader who keeps egos aligned and the room bought in.",
-  },
-  {
-    label: "Star Maker",
-    description: "Obsessed with finding the next face of the company before everyone else sees it.",
-  },
-  {
-    label: "Chaos Booker",
-    description: "Thrives on swerves, shocks, controversy, and wild live-TV energy.",
-  },
-  {
-    label: "Sports Realist",
-    description: "Treats the brand like a fight league where rankings, stakes, and credibility matter.",
-  },
-  {
-    label: "Brand Architect",
-    description: "Builds a clear identity, sharp presentation, and a long-term audience promise.",
-  },
-  {
-    label: "Veteran Operator",
-    description: "Steady, political, experienced, and hard to rattle when the office gets loud.",
-  },
-  {
-    label: "Cult Favorite",
-    description: "Internet-savvy and fan-trust driven, with room for unconventional acts.",
-  },
-  {
-    label: "Big Money Promoter",
-    description: "Sells premium attractions, business spectacle, and the biggest room possible.",
-  },
-];
 const brandStyleOptions: ChoiceOption<BrandStyle>[] = [
   {
     label: "Raw",
@@ -5572,7 +5524,7 @@ function NewGameSetupScreen({
   const [draftAvailabilityFilter, setDraftAvailabilityFilter] = useState(draftAvailabilityFilters[0]);
   const [draftArchetypeFilter, setDraftArchetypeFilter] = useState(draftArchetypeFilters[0]);
   const [draftFocusId, setDraftFocusId] = useState<string>();
-  const selectedGmStyle = gmStyleOptions.find((option) => option.label === gmStyle) ?? gmStyleOptions[0];
+  const selectedGmPersona = getGmPersonaByStyle(gmStyle);
   const selectedBrandStyle = brandStyleOptions.find((option) => option.label === brandStyle) ?? brandStyleOptions[0];
   const selectedDifficulty = difficultyOptions.find((option) => option.label === difficulty) ?? difficultyOptions[1];
   const startingBudgetAmount = getStartingBudgetAmount(startingBudgetTier);
@@ -5837,29 +5789,29 @@ function NewGameSetupScreen({
 
         {step === "gm" ? (
           <div className="setup-panel setup-command-panel">
-            <CommandPanel eyebrow="Choose GM Identity" title="Who Runs The Room?" tone="brand">
-              <label className="setup-field">
-                GM Name
-                <input value={gmName} onChange={(event) => setGmName(event.target.value)} />
-              </label>
-              <ChoiceGrid
-                choices={gmStyleOptions}
-                selected={gmStyle}
-                onSelect={(choice) => setGmStyle(choice as GMStyle)}
-                variant="identity"
+            <CommandPanel className="setup-gm-desk" eyebrow="Choose GM Identity" title="Who Runs The Room?" tone="brand">
+              <SetupGmPortraitGrid
+                onSelect={(persona) => {
+                  setGmName(persona.name);
+                  setGmStyle(persona.style);
+                }}
+                personas={gmPersonas}
+                selectedStyle={gmStyle}
               />
-              <div className="identity-note">
-                <p className="eyebrow">Selected Identity</p>
-                <strong>{selectedGmStyle.label}</strong>
-                <p>{selectedGmStyle.description} This is your leadership reputation in the room; it frames the fantasy without adding hidden bonuses.</p>
-              </div>
-              <div className="title-actions">
-                <button className="secondary-action" onClick={() => setStep("rules")}>
-                  Back
-                </button>
-                <button className="primary-action" disabled={!gmName.trim()} onClick={() => setStep("brand")}>
-                  Continue
-                </button>
+              <div className="setup-gm-footer">
+                <div className="identity-note setup-gm-identity-note">
+                  <p>
+                    <strong>{selectedGmPersona.name}</strong> · {selectedGmPersona.style} — {selectedGmPersona.description}
+                  </p>
+                </div>
+                <div className="title-actions setup-gm-actions">
+                  <button className="secondary-action" onClick={() => setStep("rules")}>
+                    Back
+                  </button>
+                  <button className="primary-action" onClick={() => setStep("brand")}>
+                    Continue
+                  </button>
+                </div>
               </div>
             </CommandPanel>
           </div>

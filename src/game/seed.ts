@@ -108,7 +108,7 @@ export function createRivalBrandUniverse(rivalGMAssignments: RivalGMAssignment[]
 }
 
 export const defaultCareer: Required<Omit<NewCareerOptions, "draftedWrestlers">> = {
-  gmName: "Alex Monroe",
+  gmName: "Mara Voss",
   gmStyle: "Creative Visionary",
   brandName: "Raw",
   brandStyle: "Raw",
