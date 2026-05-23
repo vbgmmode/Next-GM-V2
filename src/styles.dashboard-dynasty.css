@@ -32,6 +32,12 @@
   width: 100%;
 }
 
+.dashboard-dynasty-shell.broadcast-theme-red {
+  --dashboard-dynasty-accent-rgb: 216, 35, 50;
+  --dashboard-dynasty-accent: #d82332;
+  --dashboard-dynasty-hot: #ff5361;
+}
+
 .dashboard-dynasty-shell.broadcast-theme-blue {
   --dashboard-dynasty-accent-rgb: 44, 125, 255;
   --dashboard-dynasty-accent: #2c7dff;
@@ -92,7 +98,7 @@
 }
 
 .dynasty-management-header {
-  grid-template-columns: 200px 1.25fr 0.8fr 0.8fr 1fr 224px;
+  grid-template-columns: 200px 1.25fr 0.8fr 0.8fr 1fr minmax(224px, 1.2fr);
 }
 
 .dashboard-dynasty-logo-lockup,
@@ -107,6 +113,11 @@
   min-width: 0;
   overflow: hidden;
   position: relative;
+}
+
+.dashboard-dynasty-header-module,
+.dashboard-dynasty-next-show.dynasty-management-cta {
+  overflow: visible;
 }
 
 .dashboard-dynasty-logo-lockup {
@@ -142,10 +153,6 @@
 
 .dashboard-dynasty-logo-lockup strong,
 .dashboard-dynasty-header-module strong,
-.dashboard-dynasty-next-show strong,
-.dashboard-dynasty-header-module span,
-.dashboard-dynasty-next-show span,
-.dashboard-dynasty-next-show em,
 .dashboard-dynasty-section-heading span,
 .dashboard-dynasty-section-heading b,
 .dashboard-dynasty-mini-stat-grid span,
@@ -226,10 +233,43 @@
   font-weight: 900;
 }
 
+.dashboard-dynasty-header-module span,
+.dashboard-dynasty-next-show span,
+.dashboard-dynasty-next-show em {
+  line-height: 1.15;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: unset;
+  white-space: normal;
+}
+
+.dashboard-dynasty-header-module strong,
+.dashboard-dynasty-next-show strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-dynasty-next-show em {
+  white-space: normal;
+}
+
 .dynasty-management-cta {
   border-left: 3px solid var(--dashboard-dynasty-accent);
   gap: 6px;
+  min-width: 0;
+  overflow: visible;
   padding: 9px 12px;
+}
+
+.dynasty-management-cta span {
+  display: block;
+  line-height: 1.15;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: unset;
+  white-space: normal;
 }
 
 .dynasty-management-cta--positive {
@@ -272,8 +312,10 @@
   line-height: 1.1;
   min-height: 36px;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
+  overflow-wrap: anywhere;
   padding: 0 12px;
+  text-overflow: unset;
   white-space: normal;
   width: 100%;
 }
@@ -404,10 +446,6 @@
   padding: 10px 0 2px;
 }
 
-.dynasty-management-scroll .finance-summary-strip {
-  margin-top: 0;
-}
-
 .dashboard-dynasty-column,
 .dashboard-dynasty-panel {
   min-height: 0;
@@ -505,6 +543,24 @@
 .dashboard-dynasty-metric-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 8px;
+}
+
+.dashboard-dynasty-metrics .dashboard-dynasty-metric-grid {
+  flex: 0 0 auto;
+}
+
+.dashboard-dynasty-chart-shell {
+  flex: 1 1 auto;
+  min-height: 92px;
+  min-width: 0;
+  width: 100%;
+}
+
+.dashboard-dynasty-chart {
+  display: block;
+  height: 100%;
+  min-height: 92px;
+  width: 100%;
 }
 
 .dashboard-dynasty-mini-stat-grid div,
@@ -709,9 +765,9 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.055);
   display: grid;
   gap: 6px;
-  grid-template-columns: 26px minmax(130px, 1.6fr) 32px minmax(68px, 0.85fr) 38px 68px 40px 42px 52px 52px;
+  grid-template-columns: 26px minmax(130px, 1.6fr) 32px 52px 52px 40px 56px 52px 52px;
   min-height: 34px;
-  min-width: 760px;
+  min-width: 692px;
   padding: 0 7px;
   text-transform: uppercase;
 }
@@ -762,6 +818,43 @@
   display: inline-flex;
   justify-content: center;
   padding: 4px 0;
+}
+
+.dashboard-dynasty-overall .dashboard-dynasty-stat-value strong {
+  color: white;
+}
+
+.dashboard-dynasty-stat-value {
+  align-items: baseline;
+  display: inline-flex;
+  gap: 4px;
+  justify-content: center;
+  min-width: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.dashboard-dynasty-stat-value strong {
+  color: var(--dashboard-dynasty-text);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+}
+
+.dashboard-dynasty-stat-value em {
+  font-size: 0.58rem;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.dashboard-dynasty-stat-value em.is-up {
+  color: var(--dashboard-dynasty-green);
+}
+
+.dashboard-dynasty-stat-value em.is-down {
+  color: var(--dashboard-dynasty-danger);
 }
 
 .dashboard-dynasty-roster-footer {
@@ -1116,12 +1209,21 @@
   color: var(--dashboard-dynasty-danger) !important;
 }
 
-.dashboard-dynasty-role {
+.dashboard-dynasty-alignment {
   align-items: center;
-  color: var(--dashboard-dynasty-gold) !important;
   display: inline-flex;
-  font-size: 0.66rem !important;
+  font-size: 0.92rem !important;
   justify-content: center;
+  line-height: 1;
+  text-transform: none !important;
+}
+
+.dashboard-dynasty-alignment--face {
+  filter: drop-shadow(0 0 6px rgba(111, 226, 212, 0.28));
+}
+
+.dashboard-dynasty-alignment--heel {
+  filter: drop-shadow(0 0 6px rgba(255, 83, 97, 0.28));
 }
 
 .dashboard-dynasty-shell .superstar-portrait,
@@ -1197,13 +1299,6 @@
   justify-content: center;
 }
 
-.dashboard-dynasty-chart {
-  display: block;
-  flex: 1 1 auto;
-  min-height: 76px;
-  width: 100%;
-}
-
 .dashboard-dynasty-chart-grid {
   stroke: rgba(255, 255, 255, 0.08);
   stroke-width: 1;
@@ -1241,7 +1336,7 @@
   }
 
   .dynasty-management-header {
-    grid-template-columns: 150px 1fr 0.72fr 0.72fr 0.82fr 190px;
+    grid-template-columns: 150px 1fr 0.72fr 0.72fr 0.82fr minmax(190px, 1.1fr);
   }
 
   .dashboard-dynasty-nav-bridge .game-nav button {
@@ -1258,8 +1353,8 @@
   }
 
   .dashboard-dynasty-roster-row {
-    grid-template-columns: 24px minmax(118px, 1.4fr) 30px minmax(58px, 0.75fr) 34px 58px 36px 38px 48px 48px;
-    min-width: 680px;
+    grid-template-columns: 24px minmax(118px, 1.4fr) 30px 34px 58px 36px 38px 48px 48px;
+    min-width: 622px;
   }
 
   .dashboard-dynasty-center-bottom-grid {
@@ -1369,10 +1464,9 @@
     min-width: 430px;
   }
 
-  .dashboard-dynasty-roster-row > :nth-child(4),
-  .dashboard-dynasty-roster-row > :nth-child(7),
-  .dashboard-dynasty-roster-row > :nth-child(9),
-  .dashboard-dynasty-roster-row > :nth-child(10) {
+  .dashboard-dynasty-roster-row > :nth-child(6),
+  .dashboard-dynasty-roster-row > :nth-child(8),
+  .dashboard-dynasty-roster-row > :nth-child(9) {
     display: none;
   }
 

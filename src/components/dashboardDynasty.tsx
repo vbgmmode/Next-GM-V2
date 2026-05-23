@@ -1,5 +1,5 @@
 import { SuperstarPortrait } from "./SuperstarPortrait";
-import type { DashboardAlert, DashboardMoraleLevel, DashboardRoleLevel } from "../game/dashboardViewModel";
+import type { DashboardAlert, DashboardAlignmentLevel, DashboardMoraleLevel } from "../game/dashboardViewModel";
 import type { Wrestler } from "../game/types";
 
 type PortraitSize = "sm" | "md" | "lg";
@@ -23,22 +23,18 @@ const moraleLabels: Record<DashboardMoraleLevel, string> = {
   neutral: "OK",
 };
 
-const roleLabels: Record<DashboardRoleLevel, string> = {
-  ace: "Ace",
-  main: "Main",
-  mid: "Mid",
-  prospect: "Prospect",
-  tag: "Tag",
-  upper: "Upper",
+const alignmentLabels: Record<DashboardAlignmentLevel, string> = {
+  face: "Face",
+  heel: "Heel",
+  neutral: "Tweener",
+  unknown: "Unknown",
 };
 
-const roleMarks: Record<DashboardRoleLevel, string> = {
-  ace: "A",
-  main: "M",
-  mid: "C",
-  prospect: "P",
-  tag: "T",
-  upper: "U",
+const alignmentMarks: Record<DashboardAlignmentLevel, string> = {
+  face: "😇",
+  heel: "😈",
+  neutral: "😐",
+  unknown: "❔",
 };
 
 export function DashboardDynastyAlert({ alert }: { alert: DashboardAlert }) {
@@ -84,10 +80,35 @@ export function DashboardDynastyProgress({ complete, progress }: { complete: boo
   );
 }
 
-export function DashboardDynastyRole({ role }: { role: DashboardRoleLevel }) {
+export function DashboardDynastyAlignment({ alignment }: { alignment: DashboardAlignmentLevel }) {
   return (
-    <span className={`dashboard-dynasty-role dashboard-dynasty-role--${role}`} aria-label={roleLabels[role]} title={roleLabels[role]}>
-      {roleMarks[role]}
+    <span
+      className={`dashboard-dynasty-alignment dashboard-dynasty-alignment--${alignment}`}
+      aria-label={alignmentLabels[alignment]}
+      title={alignmentLabels[alignment]}
+    >
+      {alignmentMarks[alignment]}
+    </span>
+  );
+}
+
+export function DashboardDynastyStatValue({
+  delta,
+  label,
+  value,
+}: {
+  delta?: number;
+  label: string;
+  value: number;
+}) {
+  const deltaLabel = delta === undefined ? null : `${delta > 0 ? "+" : ""}${delta}`;
+  const ariaLabel =
+    delta === undefined ? `${label} ${value}` : `${label} ${value}, ${delta > 0 ? "up" : "down"} ${Math.abs(delta)} last week`;
+
+  return (
+    <span className="dashboard-dynasty-stat-value" aria-label={ariaLabel}>
+      <strong>{value}</strong>
+      {deltaLabel && delta !== undefined ? <em className={delta > 0 ? "is-up" : "is-down"}>{deltaLabel}</em> : null}
     </span>
   );
 }
@@ -105,11 +126,13 @@ export function DashboardDynastyStamina({ value }: { value: number }) {
 export function DashboardDynastyShowScoreChart({ points }: { points: Array<{ label: string; value: number }> }) {
   if (!points.length) {
     return (
-      <svg className="dashboard-dynasty-chart dashboard-dynasty-chart--empty" viewBox="0 0 280 92" role="img" aria-label="No show history yet">
-        <text className="dashboard-dynasty-chart-label" x="140" y="48" textAnchor="middle">
-          No resolved shows
-        </text>
-      </svg>
+      <div className="dashboard-dynasty-chart-shell">
+        <svg className="dashboard-dynasty-chart dashboard-dynasty-chart--empty" preserveAspectRatio="xMidYMid meet" viewBox="0 0 280 92" role="img" aria-label="No show history yet">
+          <text className="dashboard-dynasty-chart-label" x="140" y="48" textAnchor="middle">
+            No resolved shows
+          </text>
+        </svg>
+      </div>
     );
   }
 
@@ -119,6 +142,7 @@ export function DashboardDynastyShowScoreChart({ points }: { points: Array<{ lab
   const padTop = 18;
   const padBottom = 18;
   const plotHeight = height - padTop - padBottom;
+  const plotRight = width - 12;
   const minValue = Math.min(...points.map((point) => point.value));
   const maxValue = Math.max(...points.map((point) => point.value));
   const range = Math.max(maxValue - minValue, 1);
@@ -131,24 +155,26 @@ export function DashboardDynastyShowScoreChart({ points }: { points: Array<{ lab
   const linePath = coords.map((point, index) => `${index === 0 ? "M" : "L"}${point.x} ${point.y}`).join(" ");
 
   return (
-    <svg className="dashboard-dynasty-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Recent show score trend">
-      <defs>
-        <linearGradient id="dashboardDynastyChartGlow" x1="0" x2="1" y1="0" y2="0">
-          <stop offset="0%" stopColor="var(--dashboard-dynasty-accent)" />
-          <stop offset="100%" stopColor="var(--dashboard-dynasty-hot)" />
-        </linearGradient>
-      </defs>
-      <path className="dashboard-dynasty-chart-grid" d="M12 18H270M12 46H270M12 74H270" />
-      <path className="dashboard-dynasty-chart-shadow" d={linePath} />
-      <path className="dashboard-dynasty-chart-line" d={linePath} />
-      {coords.map((point) => (
-        <circle className="dashboard-dynasty-chart-node" cx={point.x} cy={point.y} r="3.8" key={point.label} />
-      ))}
-      {coords.map((point) => (
-        <text className="dashboard-dynasty-chart-label" x={point.x} y="89" key={`${point.label}-label`} textAnchor="middle">
-          {point.label}
-        </text>
-      ))}
-    </svg>
+    <div className="dashboard-dynasty-chart-shell">
+      <svg className="dashboard-dynasty-chart" preserveAspectRatio="xMidYMid meet" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Recent show score trend">
+        <defs>
+          <linearGradient id="dashboardDynastyChartGlow" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor="var(--dashboard-dynasty-accent)" />
+            <stop offset="100%" stopColor="var(--dashboard-dynasty-hot)" />
+          </linearGradient>
+        </defs>
+        <path className="dashboard-dynasty-chart-grid" d={`M12 18H${plotRight}M12 46H${plotRight}M12 74H${plotRight}`} />
+        <path className="dashboard-dynasty-chart-shadow" d={linePath} />
+        <path className="dashboard-dynasty-chart-line" d={linePath} />
+        {coords.map((point) => (
+          <circle className="dashboard-dynasty-chart-node" cx={point.x} cy={point.y} r="3.8" key={point.label} />
+        ))}
+        {coords.map((point) => (
+          <text className="dashboard-dynasty-chart-label" x={point.x} y="89" key={`${point.label}-label`} textAnchor="middle">
+            {point.label}
+          </text>
+        ))}
+      </svg>
+    </div>
   );
 }

@@ -11,7 +11,7 @@ import { getCurrentCalendarWeek, getShowGrade, isValidSegment } from "./scoring"
 import type { GameState, Segment, ShowResult, Wrestler } from "./types";
 
 export type DashboardMoraleLevel = "happy" | "neutral" | "angry";
-export type DashboardRoleLevel = "ace" | "main" | "upper" | "mid" | "prospect" | "tag";
+export type DashboardAlignmentLevel = "face" | "heel" | "neutral" | "unknown";
 
 export type DashboardAlert = {
   id: string;
@@ -68,12 +68,14 @@ export type DashboardViewModel = {
     morale: DashboardMoraleLevel;
     name: string;
     overall: number;
+    overallDelta?: number;
     pop: number;
+    popDelta?: number;
     rank: number;
-    role: DashboardRoleLevel;
+    alignment: DashboardAlignmentLevel;
     selected?: boolean;
     stamina: number;
-    style: string;
+    staminaDelta?: number;
   }>;
   rosterSizeLabel: string;
   seasonWeekLabel: string;
@@ -101,26 +103,103 @@ function getLatestFinanceReport(game: GameState) {
   return game.financeReports[game.financeReports.length - 1];
 }
 
+function mapAlignment(alignment?: string): DashboardAlignmentLevel {
+  const normalized = alignment?.trim().toLowerCase();
+
+  if (normalized === "face" || normalized === "babyface") {
+    return "face";
+  }
+
+  if (normalized === "heel") {
+    return "heel";
+  }
+
+  if (normalized === "tweener" || normalized === "neutral") {
+    return "neutral";
+  }
+
+  return "unknown";
+}
+
 function mapMorale(morale: number): DashboardMoraleLevel {
   if (morale >= 65) return "happy";
   if (morale >= 45) return "neutral";
   return "angry";
 }
 
-function mapRole(roleTier?: string): DashboardRoleLevel {
-  switch (roleTier) {
-    case "MainEvent":
-      return "ace";
-    case "UpperCard":
-      return "upper";
-    case "Midcard":
-      return "mid";
-    case "Prospect":
-    case "Enhancement":
-      return "prospect";
-    default:
-      return "main";
+function getWrestlerAverageSegmentScore(show: ShowResult | undefined, wrestlerId: string) {
+  if (!show) {
+    return undefined;
   }
+
+  const scores = show.segmentResults
+    .filter((segment) => segment.participantIds.includes(wrestlerId))
+    .map((segment) => segment.score);
+
+  if (!scores.length) {
+    return undefined;
+  }
+
+  return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+}
+
+function getLastShowRosterDeltas(game: GameState, lastShow?: ShowResult, previousShow?: ShowResult) {
+  const totals = new Map<string, { fatigue: number; momentum: number }>();
+
+  if (lastShow) {
+    for (const segment of lastShow.segmentResults) {
+      for (const [wrestlerId, change] of Object.entries(segment.momentumChanges)) {
+        const current = totals.get(wrestlerId) ?? { fatigue: 0, momentum: 0 };
+        current.momentum += change;
+        totals.set(wrestlerId, current);
+      }
+
+      for (const [wrestlerId, change] of Object.entries(segment.fatigueChanges)) {
+        const current = totals.get(wrestlerId) ?? { fatigue: 0, momentum: 0 };
+        current.fatigue += change;
+        totals.set(wrestlerId, current);
+      }
+    }
+  }
+
+  return {
+    getOverallDelta(wrestlerId: string) {
+      const lastAverage = getWrestlerAverageSegmentScore(lastShow, wrestlerId);
+      const previousAverage = getWrestlerAverageSegmentScore(previousShow, wrestlerId);
+
+      if (lastAverage === undefined || previousAverage === undefined) {
+        return undefined;
+      }
+
+      const delta = lastAverage - previousAverage;
+
+      return delta === 0 ? undefined : delta;
+    },
+    getPopDelta(wrestlerId: string) {
+      const delta = totals.get(wrestlerId)?.momentum;
+
+      if (delta === undefined || delta === 0) {
+        return undefined;
+      }
+
+      return delta;
+    },
+    getStaminaDelta(wrestlerId: string) {
+      if (!lastShow) {
+        return undefined;
+      }
+
+      const fatigueGain = totals.get(wrestlerId)?.fatigue ?? 0;
+      const recovery = game.currentWeek > lastShow.week ? 6 : 0;
+      const netChange = -fatigueGain + recovery;
+
+      if (netChange === 0) {
+        return undefined;
+      }
+
+      return netChange;
+    },
+  };
 }
 
 function segmentLabel(game: GameState, segment: Segment) {
@@ -196,6 +275,8 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
   const sortedRoster = [...game.wrestlers].sort(
     (a, b) => b.popularity + b.momentum - (a.popularity + a.momentum) || a.name.localeCompare(b.name),
   );
+  const previousShow = game.showHistory.at(-2);
+  const rosterDeltas = getLastShowRosterDeltas(game, lastShow, previousShow);
 
   const roster = sortedRoster.map((wrestler, index) => {
     const finance = getRosterFinanceValueForWrestler(wrestler);
@@ -207,12 +288,14 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
       morale: mapMorale(wrestler.morale),
       name: wrestler.name,
       overall: Math.round((wrestler.ringSkill + wrestler.promoSkill) / 2),
+      overallDelta: rosterDeltas.getOverallDelta(wrestler.id),
       pop: wrestler.popularity,
+      popDelta: rosterDeltas.getPopDelta(wrestler.id),
       rank: index + 1,
-      role: mapRole(wrestler.roleTier),
+      alignment: mapAlignment(wrestler.alignment),
       selected: index === 0,
       stamina: Math.max(0, 100 - wrestler.fatigue),
-      style: wrestler.wrestlingStyle ?? wrestler.archetype ?? "-",
+      staminaDelta: rosterDeltas.getStaminaDelta(wrestler.id),
     };
   });
 

@@ -2,6 +2,7 @@ import type {
   BrandStyle,
   CalendarWeek,
   Championship,
+  DraftMode,
   GameDifficulty,
   GameState,
   GMStyle,
@@ -31,6 +32,7 @@ export type NewCareerOptions = {
   brandStyle?: BrandStyle;
   difficulty?: GameDifficulty;
   startingBudgetTier?: StartingBudgetTier;
+  draftMode?: DraftMode;
   rivalGMAssignments?: RivalGMAssignment[];
   draftedWrestlers?: Wrestler[];
 };
@@ -112,6 +114,7 @@ export const defaultCareer: Required<Omit<NewCareerOptions, "draftedWrestlers">>
   brandStyle: "Raw",
   difficulty: "Medium",
   startingBudgetTier: "$2M",
+  draftMode: "snake",
   rivalGMAssignments: createRivalGMAssignments("Raw"),
 };
 
@@ -400,7 +403,14 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
   const startingRoster = cloneWrestlers(options.draftedWrestlers?.length ? options.draftedWrestlers : roster);
   const startingMoney = getOpeningMoneyAfterDraft(career.startingBudgetTier, options.draftedWrestlers);
 
-  const rivalBrands = allocateCpuDraftRosters(createRivalBrandUniverse(career.rivalGMAssignments), startingRoster, draftPool);
+  const rivalBrands = allocateCpuDraftRosters(
+    createRivalBrandUniverse(career.rivalGMAssignments),
+    startingRoster,
+    draftPool,
+    undefined,
+    career.draftMode,
+    `${career.brandStyle}-${career.gmName}`,
+  );
 
   const newGame: GameState = {
     seasonNumber: 1,
@@ -412,6 +422,7 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
     brandStyle: career.brandStyle,
     difficulty: career.difficulty,
     startingBudgetTier: career.startingBudgetTier,
+    draftMode: career.draftMode,
     rivalGMAssignments: career.rivalGMAssignments,
     rivalBrands,
     createdAt: new Date().toISOString(),

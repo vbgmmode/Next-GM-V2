@@ -23,6 +23,8 @@ export type GameDifficulty = "Easy" | "Medium" | "Hard" | "Legendary";
 
 export type StartingBudgetTier = "$1M" | "$2M" | "$4M" | "Unlimited";
 
+export type DraftMode = "snake" | "linear" | "random" | "lottery";
+
 export type PrototypeBrand = "Raw" | "SmackDown" | "NXT" | "AEW";
 
 export type GMStyle =
@@ -646,6 +648,7 @@ export type GameState = {
   brandStyle: BrandStyle;
   difficulty: GameDifficulty;
   startingBudgetTier: StartingBudgetTier;
+  draftMode: DraftMode;
   rivalGMAssignments: RivalGMAssignment[];
   rivalBrands: RivalBrandState[];
   createdAt: string;

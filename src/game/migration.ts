@@ -30,6 +30,7 @@ import type {
   SeasonArchiveSummary,
   ShowResult,
   StartingBudgetTier,
+  DraftMode,
   Wrestler,
 } from "./types";
 import {
@@ -111,6 +112,18 @@ function isGameDifficulty(value: unknown): value is GameDifficulty {
 
 function isStartingBudgetTier(value: unknown): value is StartingBudgetTier {
   return value === "$1M" || value === "$2M" || value === "$4M" || value === "Unlimited";
+}
+
+function normalizeDraftMode(value: unknown): DraftMode {
+  if (value === "open" || value === "brand") {
+    return "snake";
+  }
+
+  return isDraftMode(value) ? value : defaultCareer.draftMode;
+}
+
+function isDraftMode(value: unknown): value is DraftMode {
+  return value === "snake" || value === "linear" || value === "random" || value === "lottery";
 }
 
 function normalizeRivalGMAssignments(value: unknown): RivalGMAssignment[] {
@@ -730,6 +743,7 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
   const rivalGMAssignments = normalizeRivalGMAssignments(savedGame.rivalGMAssignments);
   const safeRivalGMAssignments = rivalGMAssignments.length ? rivalGMAssignments : createRivalGMAssignments(brandStyle);
   const startingBudgetTier = isStartingBudgetTier(savedGame.startingBudgetTier) ? savedGame.startingBudgetTier : defaultCareer.startingBudgetTier;
+  const draftMode = normalizeDraftMode(savedGame.draftMode);
   const fallbackMoney = getStartingBudgetAmount(startingBudgetTier);
   const seasonStartingMoney = savedGame.seasonStartingMoney ?? savedGame.money ?? fallbackMoney;
 
@@ -764,6 +778,7 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
       brandStyle,
       difficulty: isGameDifficulty(savedGame.difficulty) ? savedGame.difficulty : defaultCareer.difficulty,
       startingBudgetTier,
+      draftMode,
       rivalGMAssignments: safeRivalGMAssignments,
       rivalBrands,
       createdAt: savedGame.createdAt ?? new Date().toISOString(),

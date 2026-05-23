@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { CommandPanel, HeroDecisionPanel, MetricTile, getBroadcastTheme } from "./components/broadcast";
 import { GameNav, Header, Metric } from "./components/gameShell";
 import { DynastyManagementShell, type DynastyManagementCta } from "./components/DynastyManagementShell";
 import { SuperstarPortrait as WrestlerPortrait } from "./components/SuperstarPortrait";
@@ -8,9 +9,9 @@ import {
   DashboardDynastyMorale,
   DashboardDynastyPortrait,
   DashboardDynastyProgress,
-  DashboardDynastyRole,
+  DashboardDynastyAlignment,
   DashboardDynastyShowScoreChart,
-  DashboardDynastyStamina,
+  DashboardDynastyStatValue,
 } from "./components/dashboardDynasty";
 import { buildDashboardViewModel } from "./game/dashboardViewModel";
 import { formatMoney } from "./game/formatters";
@@ -26,7 +27,7 @@ import { advanceGameWeek, startNextSeason } from "./game/advanceWeek";
 import { generateExternalAiSocialCommentary } from "./game/aiCommentary";
 import { getRosterAffiliations, getWrestlerAffiliations } from "./game/affiliationCatalog";
 import { getFinancePressureLabel } from "./game/finance";
-import { financeModelSummaryByRole, getRosterFinanceValueForWrestler } from "./game/financeCatalog";
+import { getRosterFinanceValueForWrestler } from "./game/financeCatalog";
 import {
   getMarketSnapshot,
   getRivalMarketEvents,
@@ -60,20 +61,12 @@ import {
 import { migrateSavedGameState } from "./game/migration";
 import { getWrestlerIdentityContext } from "./game/wrestlerIdentityContext";
 import {
-  buildBroadcastFalloutSnapshot,
-  buildPostShowCauseLedger,
   getLivingWorldPressureSnapshot,
   getPleBuildPressureSnapshot,
   getWeeklyDecisionPressureSnapshot,
-  getWeekReviewHandoffSnapshot,
-  getWeekReviewOfficeSnapshot,
-  type BroadcastFalloutSnapshot,
-  type CauseLedgerSection,
   type LivingWorldPressureSnapshot,
   type PleBuildPressureSnapshot,
   type WeeklyDecisionPressureSnapshot,
-  type WeekReviewHandoffSnapshot,
-  type WeekReviewOfficeSnapshot,
 } from "./game/gameContextReads";
 import {
   getInjuryStatusLabel,
@@ -150,6 +143,7 @@ import type {
   SocialCategory,
   SocialPost,
   ShowType,
+  DraftMode,
   StartingBudgetTier,
   Wrestler,
   WrestlerAffiliation,
@@ -157,21 +151,36 @@ import type {
 import type { GameScreen, ProfileReturnScreen, SavedGameState } from "./game/migration";
 import type { StoredSaveRecord } from "./gameStorage";
 import { CalendarScreen } from "./screens/CalendarScreen";
+import { FinanceScreen } from "./screens/FinanceScreen";
 import { MarketScreen } from "./screens/MarketScreen";
+import { ResultsScreen } from "./screens/ResultsScreen";
+import { WeekReviewScreen } from "./screens/WeekReviewScreen";
 import { RivalriesScreen, type RivalryCreateInput } from "./screens/RivalriesScreen";
+import {
+  getBestRevenueReport,
+  getFinanceGrossRevenue,
+  getFinanceReportForResult,
+  getSeasonFinanceReports,
+  getWorstProfitReport,
+} from "./screens/financeScreenReads";
 import { scheduleRivalryEndInGame } from "./game/rivalryEnd";
 import "./screens/CalendarScreen.css";
 import "./screens/ChampionshipsScreen.css";
+import "./screens/FinanceScreen.css";
+import "./screens/ResultsScreen.css";
 import "./screens/RivalriesScreen.css";
+import "./screens/WeekReviewScreen.css";
+import "./screens/SetupScreen.css";
 import { BookingScreen } from "./booking";
 import { RosterScreen, WrestlerProfileScreen } from "./roster";
+import { getWrestlerValueProfile } from "./roster/rosterValueReads";
+import type { WrestlerValueProfile } from "./roster/rosterTypes";
 import { SocialScreen, formatSocialCategory } from "./social";
 
 type RosterSort = "popularity" | "momentum" | "fatigue" | "morale";
 type RosterFilter = "all" | "mens" | "womens" | "champions" | "injured" | "hot" | "tired" | "morale" | "underused";
 type RosterStatus = "Hot" | "Tired" | "Frustrated" | "Steady";
 type ProfilePanelId = "stats" | "gmRead" | "contractValue" | "affiliations" | "showHistory" | "championships" | "rivalries" | "social";
-type FinancePanelId = "talentValue" | "latestReport" | "seasonReads" | "financeHistory";
 type SetupStep = "contract" | "gm" | "brand" | "rules" | "draft";
 type DraftSort = "rank" | "starPower" | "popularity" | "momentum" | "ringSkill" | "promoSkill" | "fatigue";
 type DraftReservePressure = "Healthy" | "Tight" | "Over Budget";
@@ -211,36 +220,6 @@ type DraftFinanceReadout = {
   projectedReserve: number;
   rosterValue: number;
   startingBudgetAmount: number;
-};
-
-type WrestlerValueProfile = {
-  contextMode: "active" | "missing";
-  valueTierLabel: string;
-  draftValueLabel: string;
-  weeklyValueLabel: string;
-  dossierRead: string;
-  costRead: string;
-};
-
-type TalentValuePressure = {
-  bargainCount: number;
-  gmRead: string;
-  mappedCount: number;
-  missingCount: number;
-  premiumCount: number;
-  totalCount: number;
-};
-
-type FinanceOfficeRead = {
-  headline: string;
-  detail: string;
-  focusLabel: string;
-  pressureLabel: PressureLabel;
-  items: {
-    label: string;
-    value: string;
-    detail: string;
-  }[];
 };
 
 type FreeAgentWatchEntry = {
@@ -283,19 +262,6 @@ type WrestlerIdentitySnapshot = {
   usageRead: string;
   bookingUseRead: string;
 };
-
-const valueProfileFallbackSummary = financeModelSummaryByRole.reduce(
-  (acc, summary) => {
-    return {
-      minDraftValue: Math.min(acc.minDraftValue, summary.minDraftValueUsd),
-      maxDraftValue: Math.max(acc.maxDraftValue, summary.maxDraftValueUsd),
-      medianWeeklyHireRate: Math.max(acc.medianWeeklyHireRate, summary.medianWeeklyHireRateUsd),
-    };
-  },
-  { minDraftValue: Number.POSITIVE_INFINITY, maxDraftValue: Number.NEGATIVE_INFINITY, medianWeeklyHireRate: 0 },
-);
-
-const hasValueSummary = valueProfileFallbackSummary.minDraftValue < Number.POSITIVE_INFINITY;
 
 type SmartRundownResult = {
   error?: string;
@@ -593,6 +559,34 @@ const difficultyOptions: ChoiceOption<GameDifficulty>[] = [
     description: "Ruthless expectations for players who want pressure immediately.",
   },
 ];
+const setupBudgetModeOptions: ChoiceOption<"Money Based" | "Sandbox">[] = [
+  {
+    label: "Money Based",
+    description: "Default $2M opening war chest. Payroll and market moves spend real budget.",
+  },
+  {
+    label: "Sandbox",
+    description: "Unlimited money for fantasy booking and experimentation.",
+  },
+];
+const setupDraftModeOptions: ChoiceOption<"Snake Draft" | "Linear Draft" | "Randomized Each Round" | "Weighted Lottery">[] = [
+  {
+    label: "Snake Draft",
+    description: "Brand order reverses every round. Fairest default for a four-chair league.",
+  },
+  {
+    label: "Linear Draft",
+    description: "Same brand order every round. The first chair keeps the timing edge.",
+  },
+  {
+    label: "Randomized Each Round",
+    description: "Fresh random brand order every round. Chaotic, unpredictable, good for party drafts.",
+  },
+  {
+    label: "Weighted Lottery",
+    description: "Early picks weighted toward weaker chairs. Full season weighting arrives in later saves.",
+  },
+];
 const budgetOptions: ChoiceOption<StartingBudgetTier>[] = [
   {
     label: "$1M",
@@ -618,8 +612,61 @@ const tvRuntimeWarningMinutes = 150;
 const maxBookingSegments = 24;
 const qaHarnessParam = "qa";
 
+const setupDraftModeLabelByMode: Record<DraftMode, (typeof setupDraftModeOptions)[number]["label"]> = {
+  snake: "Snake Draft",
+  linear: "Linear Draft",
+  random: "Randomized Each Round",
+  lottery: "Weighted Lottery",
+};
+
+function getSetupDraftRulesDetail(mode: DraftMode) {
+  const label = setupDraftModeLabelByMode[mode];
+  return setupDraftModeOptions.find((option) => option.label === label)?.description ?? "";
+}
+
+function getSetupDraftModeLabel(mode: DraftMode) {
+  return setupDraftModeLabelByMode[mode];
+}
+
+function selectSetupDraftMode(choice: string): DraftMode {
+  switch (choice) {
+    case "Linear Draft":
+      return "linear";
+    case "Randomized Each Round":
+      return "random";
+    case "Weighted Lottery":
+      return "lottery";
+    default:
+      return "snake";
+  }
+}
+
 function formatBudgetTier(tier: StartingBudgetTier) {
   return tier === "Unlimited" ? "Unlimited" : tier;
+}
+
+function getSetupBudgetModeLabel(tier: StartingBudgetTier) {
+  return tier === "Unlimited" ? "Sandbox" : "Money Based";
+}
+
+function selectSetupBudgetMode(mode: string) {
+  return mode === "Sandbox" ? "Unlimited" : "$2M";
+}
+
+function formatSetupBudgetHeaderReadout(tier: StartingBudgetTier) {
+  return tier === "Unlimited" ? "Sandbox" : formatMoney(getStartingBudgetAmount("$2M"));
+}
+
+function formatSetupBudgetRulesReadout(tier: StartingBudgetTier, amount: number) {
+  return tier === "Unlimited" ? "Sandbox" : formatStartingBudgetReadout("$2M", getStartingBudgetAmount("$2M"));
+}
+
+function getSetupBudgetRulesDetail(tier: StartingBudgetTier, amount: number) {
+  if (tier === "Unlimited") {
+    return budgetOptions.find((option) => option.label === "Unlimited")?.description ?? "Unlimited sandbox money.";
+  }
+
+  return `$2M default opening war chest. ${budgetOptions.find((option) => option.label === "$2M")?.description ?? ""}`.trim();
 }
 
 function formatStartingBudgetReadout(tier: StartingBudgetTier, amount: number) {
@@ -3466,225 +3513,6 @@ function getBestShow(showHistory: ShowResult[], seasonNumber?: number) {
   return results.reduce<ShowResult | undefined>((best, result) => (!best || result.totalScore > best.totalScore ? result : best), undefined);
 }
 
-function getLatestFinanceReport(game: GameState) {
-  return game.financeReports[game.financeReports.length - 1];
-}
-
-function getFinanceReportForResult(game: GameState, result: ShowResult) {
-  return game.financeReports.find((report) => report.id === `${result.id}-finance`);
-}
-
-function getSeasonFinanceReports(game: GameState) {
-  return game.financeReports.filter((report) => report.seasonNumber === game.seasonNumber);
-}
-
-function getLegacyFinanceRevenue(report: FinanceReport) {
-  return report.ticketRevenue + report.merchRevenue + report.mediaRevenue;
-}
-
-function getLegacyFinanceExpenses(report: FinanceReport) {
-  return report.talentCost + report.productionCost;
-}
-
-function getFinanceGrossRevenue(report: FinanceReport) {
-  return report.grossRevenue ?? getLegacyFinanceRevenue(report);
-}
-
-function getFinanceTotalExpenses(report: FinanceReport) {
-  return report.totalExpenses ?? getLegacyFinanceExpenses(report);
-}
-
-function getFinanceRevenueBreakdown(report: FinanceReport) {
-  return report.revenueBreakdown?.length
-    ? report.revenueBreakdown
-    : [
-        { id: "ticketRevenue", label: "Ticket Revenue", amount: report.ticketRevenue },
-        { id: "merchRevenue", label: "Merch Revenue", amount: report.merchRevenue },
-        { id: "mediaRevenue", label: "Media Revenue", amount: report.mediaRevenue },
-      ];
-}
-
-function getFinanceExpenseBreakdown(report: FinanceReport) {
-  return report.expenseBreakdown?.length
-    ? report.expenseBreakdown
-    : [
-        { id: "talentCost", label: "Talent Cost", amount: report.talentCost },
-        { id: "productionCost", label: "Production Cost", amount: report.productionCost },
-      ];
-}
-
-function getFinanceReportModelLabel(report: FinanceReport) {
-  return report.modelVersion ? "Legacy-Compatible v2" : "Legacy Report";
-}
-
-function getVenueMarketContextReadout(report: FinanceReport | undefined, seasonReports: FinanceReport[]) {
-  if (!report) {
-    return {
-      label: "Venue context pending",
-      read: "Run a show to close books and get a venue/market read from the actual report.",
-      summary: "No closed reports yet this run.",
-    };
-  }
-
-  const seasonPeerReports = seasonReports.filter((peer) => peer.seasonNumber === report.seasonNumber);
-  const avgAttendance = seasonPeerReports.length
-    ? Math.round(
-        seasonPeerReports.reduce((total, peer) => total + peer.attendance, 0) / Math.max(1, seasonPeerReports.length),
-      )
-    : undefined;
-  const avgGrossRevenue = seasonPeerReports.length
-    ? Math.round(
-        seasonPeerReports.reduce((total, peer) => total + getFinanceGrossRevenue(peer), 0) / Math.max(1, seasonPeerReports.length),
-      )
-    : undefined;
-  const avgProfit = seasonPeerReports.length
-    ? Math.round(
-        seasonPeerReports.reduce((total, peer) => total + peer.profitLoss, 0) / Math.max(1, seasonPeerReports.length),
-      )
-    : undefined;
-  const attendance = report.attendance;
-  const showScore = report.showScore;
-  const gross = getFinanceGrossRevenue(report);
-  const costs = getFinanceTotalExpenses(report);
-  const isStrongCrowd = avgAttendance === undefined ? attendance >= 5500 : attendance >= avgAttendance * 1.2;
-  const isWeakCrowd = avgAttendance === undefined ? attendance <= 2800 : attendance <= avgAttendance * 0.75;
-  const isScoreStrong = showScore >= 82;
-  const isFinanciallyEfficient = avgGrossRevenue === undefined
-    ? report.profitLoss >= 1200
-    : gross >= Math.max(avgGrossRevenue, 1) * 0.78 && report.profitLoss >= 800;
-  const isCostHeavy = isWeakCrowd
-    ? costs >= gross * 1.1 && report.profitLoss < 0
-    : gross > 0
-      ? costs / Math.max(1, gross) >= 0.75
-      : false;
-
-  let label = "Regional TV Market";
-  if (report.showType === "ple") {
-    if (isStrongCrowd && isFinanciallyEfficient && isScoreStrong) {
-      label = "Premium PLE Market";
-    } else if (isCostHeavy) {
-      label = "Costly Production City";
-    } else if (isStrongCrowd || showScore >= 78) {
-      label = "Strong Touring Market";
-    } else {
-      label = "Regional TV Market";
-    }
-  } else if (isCostHeavy) {
-    label = "Costly Production City";
-  } else if (isStrongCrowd && isFinanciallyEfficient && isScoreStrong) {
-    label = "Hot Wrestling Town";
-  } else if (isFinanciallyEfficient && showScore >= 75) {
-    label = "Efficient House";
-  } else if (isStrongCrowd || report.weekNumber % 3 === 0) {
-    label = "Strong Touring Market";
-  } else if (isWeakCrowd) {
-    label = "Regional TV Market";
-  }
-
-  const crowdRead = avgAttendance === undefined
-    ? `Crowd landed at ${attendance.toLocaleString()} checks this board.`
-    : `${attendance.toLocaleString()} attendance vs ${avgAttendance.toLocaleString()} this-season average.`;
-  const moneyRead = avgProfit === undefined
-    ? `Profit/Loss tracked at ${formatMoney(report.profitLoss)} from ${formatMoney(gross)} gross.`
-    : `${formatMoney(report.profitLoss)} closed with a score ${showScore} ${report.profitLoss >= avgProfit ? "above" : "below"} season pace.`;
-  const summary = `${crowdRead} ${moneyRead}`;
-
-  return {
-    label,
-    read: summary,
-    summary,
-  };
-}
-
-function getBestRevenueReport(reports: FinanceReport[]) {
-  return reports.reduce<FinanceReport | undefined>((best, report) => {
-    const revenue = getFinanceGrossRevenue(report);
-    const bestRevenue = best ? getFinanceGrossRevenue(best) : -Infinity;
-    return revenue > bestRevenue ? report : best;
-  }, undefined);
-}
-
-function getWorstProfitReport(reports: FinanceReport[]) {
-  return reports.reduce<FinanceReport | undefined>((worst, report) => (!worst || report.profitLoss < worst.profitLoss ? report : worst), undefined);
-}
-
-function getFinanceOfficeRead(game: GameState): FinanceOfficeRead {
-  const latestReport = getLatestFinanceReport(game);
-  const seasonReports = getSeasonFinanceReports(game);
-  const totalProfitLoss = seasonReports.reduce((sum, report) => sum + report.profitLoss, 0);
-  const pressureLabel = getFinancePressureLabel(game.money, latestReport?.profitLoss ?? 0);
-  const bestRevenueReport = getBestRevenueReport(seasonReports);
-  const worstProfitReport = getWorstProfitReport(seasonReports);
-  const profitableWeeks = seasonReports.filter((report) => report.profitLoss >= 0).length;
-  const lossWeeks = seasonReports.length - profitableWeeks;
-  const averageProfitLoss = seasonReports.length ? Math.round(totalProfitLoss / seasonReports.length) : 0;
-  const latestGrossRevenue = latestReport ? getFinanceGrossRevenue(latestReport) : 0;
-  const latestTotalExpenses = latestReport ? getFinanceTotalExpenses(latestReport) : 0;
-  const costRatio = latestGrossRevenue > 0 ? latestTotalExpenses / latestGrossRevenue : 0;
-
-  const headline =
-    pressureLabel === "Critical"
-      ? "Ownership Pressure Is Loud"
-      : pressureLabel === "Tight"
-        ? "Front Office Is Tight"
-        : pressureLabel === "Surging"
-          ? "Business Office Has Room"
-          : "Books Are Stable";
-  const businessFeel =
-    pressureLabel === "Critical"
-      ? "exposed"
-      : pressureLabel === "Tight"
-        ? "tight"
-        : pressureLabel === "Surging"
-          ? "hot"
-          : "stable";
-  const detail = latestReport
-    ? `${latestReport.showName} closed at ${formatMoney(latestReport.profitLoss)}. The brand feels ${businessFeel} with ${formatMoney(game.money)} on hand after ${seasonReports.length} closed report${seasonReports.length === 1 ? "" : "s"}.`
-    : `${formatMoney(game.money)} is on hand and no show books have closed yet. The office read is current cash pressure only until the first report lands.`;
-
-  return {
-    headline,
-    detail,
-    focusLabel: latestReport ? `${latestReport.showName} · ${formatMoney(latestReport.profitLoss)}` : "Books pending",
-    pressureLabel,
-    items: [
-      {
-        label: "Money Pressure",
-        value: pressureLabel,
-        detail: `${formatMoney(game.money)} available. This read uses current cash and the latest closed P/L only.`,
-      },
-      {
-        label: "Latest Close",
-        value: latestReport ? `${formatMoney(latestReport.profitLoss)} · Week ${latestReport.weekNumber}` : "No report yet",
-        detail: latestReport
-          ? `${formatMoney(latestGrossRevenue)} gross against ${formatMoney(latestTotalExpenses)} costs.`
-          : "Run a show to close the first business report.",
-      },
-      {
-        label: "Season Trend",
-        value: seasonReports.length ? formatMoney(totalProfitLoss) : "No ledger",
-        detail: seasonReports.length
-          ? `${profitableWeeks} profitable / ${lossWeeks} loss week${seasonReports.length === 1 ? "" : "s"} · ${formatMoney(averageProfitLoss)} average P/L.`
-          : "Season trend begins after the first completed show.",
-      },
-      {
-        label: "Business Swing",
-        value: bestRevenueReport ? bestRevenueReport.showName : "No swing yet",
-        detail: bestRevenueReport && worstProfitReport
-          ? `Best gross: ${formatMoney(getFinanceGrossRevenue(bestRevenueReport))} in Week ${bestRevenueReport.weekNumber}. Toughest close: ${formatMoney(worstProfitReport.profitLoss)} in Week ${worstProfitReport.weekNumber}.`
-          : "Best and worst week context will appear once reports exist.",
-      },
-      {
-        label: "Cost Control",
-        value: latestReport ? (costRatio >= 0.9 ? "Exposed" : costRatio >= 0.7 ? "Tight" : "Controlled") : "Pending",
-        detail: latestReport
-          ? `${Math.round(costRatio * 100)}% of latest gross went to reported costs. This is a closed-report read, not a forecast.`
-          : "Cost control needs a closed report before the office can read it.",
-      },
-    ],
-  };
-}
-
 function getSeasonTitleHistory(game: GameState) {
   return (game.championshipHistory ?? []).filter((event) => event.seasonNumber === game.seasonNumber);
 }
@@ -3851,109 +3679,9 @@ function getPrimaryStrength(wrestler: Wrestler) {
   return `Balanced ring and promo value gives you booking flexibility.`;
 }
 
-function getWrestlerValueProfile(wrestler: Wrestler): WrestlerValueProfile {
-  const financeRow = getRosterFinanceValueForWrestler(wrestler);
-
-  if (!financeRow) {
-    return {
-      contextMode: "missing",
-      valueTierLabel: "Profile Pending",
-      draftValueLabel: "Draft value not mapped",
-      weeklyValueLabel: "Weekly signal unavailable",
-      dossierRead: "Contract-value context is not yet available for this wrestler in the current catalog mapping.",
-      costRead: "Use core booking context as the decision input until this roster profile maps.",
-    };
-  }
-
-  const summary = financeModelSummaryByRole.find(
-    (row) => row.roleTier.toLowerCase() === (financeRow.roleTier ?? wrestler.roleTier ?? "unknown").toLowerCase().trim(),
-  );
-  const minDraftValue = summary?.minDraftValueUsd ?? (hasValueSummary ? valueProfileFallbackSummary.minDraftValue : 0);
-  const maxDraftValue = summary?.maxDraftValueUsd ?? (hasValueSummary ? valueProfileFallbackSummary.maxDraftValue : 0);
-  const draftRange = Math.max(1, maxDraftValue - minDraftValue);
-  const draftValueRatio = Math.max(
-    0,
-    Math.min(1, (financeRow.draftValueUsd - minDraftValue) / draftRange),
-  );
-  const roleHireMedian = summary?.medianWeeklyHireRateUsd ?? (hasValueSummary ? valueProfileFallbackSummary.medianWeeklyHireRate : financeRow.weeklyHireRateUsd || 1);
-  const weeklyPressureRatio = financeRow.weeklyHireRateUsd / Math.max(roleHireMedian, 1);
-  const roleTierLabel = financeRow.roleTier || wrestler.roleTier || "Roster";
-  const isMainEventRole = roleTierLabel.toLowerCase() === "mainevent";
-  const isHighCost = weeklyPressureRatio >= 1.45;
-  const isRiskySpend = isHighCost || financeRow.releasePenaltyPct >= 28;
-  const isPremiumBand = draftValueRatio >= 0.7;
-  const isTopBand = draftValueRatio >= 0.9;
-
-  const valueTierLabel = isTopBand
-    ? isHighCost
-      ? "High-Cost Attraction"
-      : isMainEventRole
-        ? "Main Event Investment"
-        : "Premium Draw"
-    : isPremiumBand
-      ? isRiskySpend
-        ? "Risky Spend"
-        : "Premium Draw"
-      : draftValueRatio >= 0.4
-        ? "Rising Value"
-        : "Bargain Workhorse";
-
-  const dossierRead = isTopBand
-    ? isMainEventRole
-      ? `${wrestler.name} is carrying a top-end profile where brand positioning and booking rhythm have outsized impact.`
-      : `${wrestler.name} carries a heavy value footprint in the current roster map.`
-    : draftValueRatio >= 0.4
-      ? `${wrestler.name} shows reliable value with upside if protected for higher-value stories.`
-      : `${wrestler.name} reads as a productive value anchor with room for workload shaping.`;
-
-  const costRead = isRiskySpend
-    ? "Expect elevated weekly-cost pressure and use this wrestler in moments that justify the commitment."
-    : isTopBand
-      ? "High-value commitments should be framed as deliberate GM calls, not routine depth options."
-      : draftValueRatio < 0.4
-        ? "Good for depth, experimentation, and controlled TV seasoning windows."
-        : "Use with moderate planning around milestone spots and long-term card identity.";
-
-  return {
-    contextMode: "active",
-    valueTierLabel,
-    draftValueLabel: `${formatMoney(financeRow.draftValueUsd)} opening-rights read`,
-    weeklyValueLabel: `${formatMoney(financeRow.weeklyHireRateUsd)} / week context`,
-    dossierRead,
-    costRead,
-  };
-}
-
 function getRosterContractWeeksLabel(game: GameState) {
   const seasonWeeksRemaining = Math.max(0, 13 - game.currentWeek);
   return `${seasonWeeksRemaining} WK${seasonWeeksRemaining === 1 ? "" : "S"} LEFT`;
-}
-
-function getTalentValuePressure(wrestlers: Wrestler[]): TalentValuePressure {
-  const profiles = wrestlers.map(getWrestlerValueProfile);
-  const mappedProfiles = profiles.filter((profile) => profile.contextMode === "active");
-  const premiumLabels = new Set(["Premium Draw", "Main Event Investment", "High-Cost Attraction", "Risky Spend"]);
-  const bargainLabels = new Set(["Bargain Workhorse", "Rising Value"]);
-  const premiumCount = mappedProfiles.filter((profile) => premiumLabels.has(profile.valueTierLabel)).length;
-  const bargainCount = mappedProfiles.filter((profile) => bargainLabels.has(profile.valueTierLabel)).length;
-  const missingCount = profiles.length - mappedProfiles.length;
-  const gmRead =
-    mappedProfiles.length === 0
-      ? "Talent value context is still pending for this roster. Finance pressure should be read from closed show reports until mappings are available."
-      : premiumCount > bargainCount + 2
-        ? "This roster leans top-heavy. The office read is prestige value with elevated weekly-cost pressure, not a payroll restriction."
-        : bargainCount > premiumCount + 2
-          ? "This roster has a strong value base. You have room to shape TV identity without every slot needing a premium draw."
-          : "Roster value is balanced across premium anchors and useful value pieces. Treat this as context for booking emphasis, not an enforced budget gate.";
-
-  return {
-    bargainCount,
-    gmRead,
-    mappedCount: mappedProfiles.length,
-    missingCount,
-    premiumCount,
-    totalCount: profiles.length,
-  };
 }
 
 function getFreeAgentWatchlist(wrestlers: Wrestler[], maxEntries = 8) {
@@ -4255,128 +3983,6 @@ function getWrestlerIdentitySnapshot(wrestler: Wrestler, game: GameState): Wrest
     roleRead,
     usageRead,
     bookingUseRead,
-  };
-}
-
-function buildBroadcastRecap(result: ShowResult) {
-  const bestSegment = getBestSegment(result);
-  const bestNames = bestSegment.participantNames.join(" / ");
-  const titleFallout = result.titleNotes?.length ? ` Title fallout: ${result.titleNotes.join(" ")}` : "";
-  const rivalryFallout = result.rivalryNotes?.length ? ` Story movement: ${result.rivalryNotes[0]}` : "";
-  const runtimeFallout = result.broadcastOverrunNotes?.length ? ` Production note: ${result.broadcastOverrunNotes[0]}` : "";
-  const scoreTone = result.totalScore >= 85 ? "premium" : result.totalScore >= 70 ? "controlled" : result.totalScore >= 55 ? "uneven" : "cold";
-  const showFrame =
-    result.showType === "ple"
-      ? `${result.showName} gave ${result.brandName} a ${scoreTone} major-event receipt`
-      : `${result.brandName} posted a ${scoreTone} ${result.totalScore} (${getShowGrade(result.totalScore)})`;
-
-  return `${showFrame} in Week ${result.week}. ${bestNames} delivered the strongest ${bestSegment.type.toLowerCase()} at ${bestSegment.score}. ${result.biggestMomentumGain.name} gained the most momentum, while ${result.biggestFatigueIncrease.name} took the biggest fatigue hit.${runtimeFallout}${titleFallout}${rivalryFallout}`;
-}
-
-type ResultsRecapTone = "strong" | "title" | "story" | "danger" | "reveal" | "steady" | "quiet";
-
-type ResultsRecapBeat = {
-  id: string;
-  label: string;
-  value: string;
-  detail: string;
-  tone: ResultsRecapTone;
-};
-
-function getOpenChallengeReveals(result: ShowResult) {
-  return result.segmentResults.filter((segment) => segment.type === "Open Challenge" && segment.resolvedOpponentName);
-}
-
-function buildResultsRecapPackage(result: ShowResult, broadcastFallout: BroadcastFalloutSnapshot, causeLedger: CauseLedgerSection[]) {
-  const bestSegment = getBestSegment(result);
-  const titleHistoryEvents = result.titleHistoryEvents ?? [];
-  const titleChanges = titleHistoryEvents.filter((event) => event.eventType === "title_change");
-  const rivalryHistoryEvents = result.rivalryHistoryEvents ?? [];
-  const injuryNotes = result.lockerRoomFallout?.injuryNotes ?? [];
-  const moraleDrops = result.lockerRoomFallout?.moraleDrops ?? [];
-  const moraleBoosts = result.lockerRoomFallout?.moraleBoosts ?? [];
-  const openChallengeReveals = getOpenChallengeReveals(result);
-  const headline: ResultsRecapBeat = titleChanges[0]
-    ? {
-        id: "headline-title",
-        label: "Headline Fallout",
-        value: titleChanges[0].championshipName,
-        detail: titleChanges[0].note,
-        tone: "title",
-      }
-    : injuryNotes[0]
-      ? {
-          id: "headline-injury",
-          label: "Headline Fallout",
-          value: injuryNotes[0].wrestlerName,
-          detail: injuryNotes[0].note,
-          tone: "danger",
-        }
-      : openChallengeReveals[0]
-        ? {
-            id: "headline-open-challenge",
-            label: "Headline Fallout",
-            value: openChallengeReveals[0].resolvedOpponentName ?? "Open Challenge",
-            detail: `${openChallengeReveals[0].resolvedOpponentName} answered ${openChallengeReveals[0].participantNames[0] ?? "the challenge"}.`,
-            tone: "reveal",
-          }
-        : result.rivalryNotes[0]
-          ? {
-              id: "headline-rivalry",
-              label: "Headline Fallout",
-              value: "Story Movement",
-              detail: result.rivalryNotes[0],
-              tone: "story",
-            }
-          : {
-              id: "headline-segment",
-              label: "Biggest Moment",
-              value: bestSegment.participantNames.join(" / ") || bestSegment.type,
-              detail: bestSegment.recapNote ?? `${bestSegment.type} led the card with a ${bestSegment.score}.`,
-              tone: bestSegment.score >= 85 ? "strong" : bestSegment.score < 60 ? "danger" : "steady",
-            };
-
-  const consequenceReel: ResultsRecapBeat[] = [
-    {
-      id: "title-scene",
-      label: "Title Scene",
-      value: titleChanges.length ? `${titleChanges.length} change${titleChanges.length === 1 ? "" : "s"}` : titleHistoryEvents.length ? `${titleHistoryEvents.length} logged` : "Quiet",
-      detail: titleChanges[0]?.note ?? result.titleNotes[0] ?? "No title change or defense fallout was logged from this result.",
-      tone: titleChanges.length ? "title" : titleHistoryEvents.length ? "steady" : "quiet",
-    },
-    {
-      id: "rivalry-heat",
-      label: "Rivalry Heat",
-      value: rivalryHistoryEvents.length ? `${rivalryHistoryEvents.length} move${rivalryHistoryEvents.length === 1 ? "" : "s"}` : result.rivalryNotes.length ? `${result.rivalryNotes.length} note${result.rivalryNotes.length === 1 ? "" : "s"}` : "No move",
-      detail: result.rivalryNotes[0] ?? "No rivalry movement was logged from this result.",
-      tone: rivalryHistoryEvents.length || result.rivalryNotes.length ? "story" : "quiet",
-    },
-    {
-      id: "locker-room",
-      label: "Locker Room",
-      value: injuryNotes.length ? `${injuryNotes.length} injury` : moraleBoosts.length || moraleDrops.length ? `${moraleBoosts.length + moraleDrops.length} morale` : "Level",
-      detail: injuryNotes[0]?.note ?? moraleDrops[0]?.note ?? moraleBoosts[0]?.note ?? "No injury or morale fallout note was logged from this result.",
-      tone: injuryNotes.length ? "danger" : moraleDrops.length ? "story" : moraleBoosts.length ? "strong" : "quiet",
-    },
-    {
-      id: "open-challenge",
-      label: "Open Challenge",
-      value: openChallengeReveals.length ? `${openChallengeReveals.length} reveal${openChallengeReveals.length === 1 ? "" : "s"}` : "None",
-      detail: openChallengeReveals[0]
-        ? `${openChallengeReveals[0].resolvedOpponentName} answered ${openChallengeReveals[0].participantNames[0] ?? "the challenge"}.`
-        : "No Open Challenge reveal was part of this result.",
-      tone: openChallengeReveals.length ? "reveal" : "quiet",
-    },
-  ];
-
-  const causeDriver = causeLedger[0]?.items[0]?.detail;
-  const falloutDriver = broadcastFallout.items[0]?.detail;
-
-  return {
-    verdict: buildBroadcastRecap(result),
-    headline,
-    consequenceReel,
-    whyItMattered: causeDriver ?? falloutDriver ?? `${result.showName} closed at ${result.totalScore} (${getShowGrade(result.totalScore)}), with ${bestSegment.participantNames.join(" / ") || "the top segment"} leading the score shape.`,
   };
 }
 
@@ -4694,6 +4300,7 @@ function App() {
     brandStyle: BrandStyle;
     difficulty: GameDifficulty;
     startingBudgetTier: StartingBudgetTier;
+    draftMode: DraftMode;
     rivalGMAssignments: RivalGMAssignment[];
     draftedWrestlers: Wrestler[];
   }) {
@@ -5943,6 +5550,7 @@ function NewGameSetupScreen({
     brandStyle: BrandStyle;
     difficulty: GameDifficulty;
     startingBudgetTier: StartingBudgetTier;
+    draftMode: DraftMode;
     rivalGMAssignments: RivalGMAssignment[];
     draftedWrestlers: Wrestler[];
   }) => void;
@@ -5954,6 +5562,7 @@ function NewGameSetupScreen({
   const [brandStyle, setBrandStyle] = useState<BrandStyle>(defaultCareer.brandStyle);
   const [difficulty, setDifficulty] = useState<GameDifficulty>(defaultCareer.difficulty);
   const [startingBudgetTier, setStartingBudgetTier] = useState<StartingBudgetTier>(defaultCareer.startingBudgetTier);
+  const [draftMode, setDraftMode] = useState<DraftMode>(defaultCareer.draftMode);
   const [rivalGMAssignments, setRivalGMAssignments] = useState<RivalGMAssignment[]>(() => createRivalGMAssignments(defaultCareer.brandStyle));
   const [draftedWrestlers, setDraftedWrestlers] = useState<Wrestler[]>([]);
   const [draftSearch, setDraftSearch] = useState("");
@@ -5966,15 +5575,14 @@ function NewGameSetupScreen({
   const selectedGmStyle = gmStyleOptions.find((option) => option.label === gmStyle) ?? gmStyleOptions[0];
   const selectedBrandStyle = brandStyleOptions.find((option) => option.label === brandStyle) ?? brandStyleOptions[0];
   const selectedDifficulty = difficultyOptions.find((option) => option.label === difficulty) ?? difficultyOptions[1];
-  const selectedBudget = budgetOptions.find((option) => option.label === startingBudgetTier) ?? budgetOptions[1];
-  const selectedBudgetDescription = selectedBudget.description ?? "";
   const startingBudgetAmount = getStartingBudgetAmount(startingBudgetTier);
   const draftFinanceReadout = getDraftFinanceReadout(draftedWrestlers, startingBudgetTier, startingBudgetAmount);
   const canPreview = gmName.trim().length > 0 && brandName.trim().length > 0;
   const draftSearchTerm = draftSearch.trim().toLowerCase();
+  const draftSeed = `${brandStyle}-${gmName.trim() || defaultCareer.gmName}`;
   const draftedIds = new Set(draftedWrestlers.map((wrestler) => wrestler.id));
   const previewRivalBrands = createRivalBrandUniverse(rivalGMAssignments);
-  const rivalDraftActivity = getCpuDraftPreviewSnapshot(previewRivalBrands, draftedWrestlers, draftPool);
+  const rivalDraftActivity = getCpuDraftPreviewSnapshot(previewRivalBrands, draftedWrestlers, draftPool, draftMode, draftSeed);
   const cpuClaimedDraftIds = new Set(rivalDraftActivity?.claimedWrestlerIds ?? []);
   const availableDraftCount = draftPool.length - draftedWrestlers.length - cpuClaimedDraftIds.size;
   const availableWrestlers = draftPool
@@ -6058,6 +5666,7 @@ function NewGameSetupScreen({
       brandStyle,
       difficulty,
       startingBudgetTier,
+      draftMode,
       rivalGMAssignments,
       draftedWrestlers,
     });
@@ -6093,6 +5702,16 @@ function NewGameSetupScreen({
     setDraftFocusId(undefined);
   }
 
+  function resetDraftSelections() {
+    setDraftedWrestlers([]);
+    setDraftFocusId(undefined);
+  }
+
+  function applyDraftMode(mode: DraftMode) {
+    setDraftMode(mode);
+    resetDraftSelections();
+  }
+
   function selectBrandStyle(choice: string) {
     const nextBrandStyle = choice as BrandStyle;
     const currentBrandStyleLabel = brandStyleOptions.find((option) => option.label === brandStyle)?.label ?? defaultCareer.brandName;
@@ -6114,6 +5733,8 @@ function NewGameSetupScreen({
     { id: "draft", label: "Draft", detail: "Build roster" },
   ];
   const activeSetupIndex = setupSteps.findIndex((item) => item.id === step);
+  const brandStepIndex = setupSteps.findIndex((item) => item.id === "brand");
+  const hasReachedBrandStep = activeSetupIndex >= brandStepIndex;
   const currentStepLabel = setupSteps[activeSetupIndex]?.label ?? "Career";
   const nextActionLabel =
     step === "contract"
@@ -6130,152 +5751,203 @@ function NewGameSetupScreen({
   const signedBrandName = brandName.trim() || defaultCareer.brandName;
   const signedGmName = gmName.trim() || defaultCareer.gmName;
   const rivalSummary = previewRivalBrands.map((brand) => `${brand.brandName}: ${brand.assignedGMName}`).join(" / ");
+  const setupBrandLabel = hasReachedBrandStep ? brandName.trim() || "Choose Brand" : "Unassigned";
+  const setupTheme = hasReachedBrandStep ? getBroadcastTheme(brandStyle) : "neutral";
 
   return (
-    <main className={`setup-screen setup-step-${step}`}>
+    <main
+      className={`dashboard-dynasty-shell setup-dynasty-shell ${hasReachedBrandStep ? `broadcast-theme-${setupTheme}` : "setup-pre-brand"} setup-screen setup-step-${step}`}
+      data-broadcast-theme={setupTheme}
+    >
+      <header className="dashboard-dynasty-header setup-dynasty-header">
+        <section className="dashboard-dynasty-logo-lockup">
+          <span>Next GM</span>
+          <strong className={hasReachedBrandStep ? "" : "setup-pending-label"}>{setupBrandLabel}</strong>
+        </section>
+        <section className="dashboard-dynasty-header-module">
+          <span>Career Start</span>
+          <strong>{currentStepLabel} Desk</strong>
+        </section>
+        <section className="dashboard-dynasty-header-module">
+          <span>Progress</span>
+          <strong>
+            {activeSetupIndex + 1} / {setupSteps.length}
+          </strong>
+        </section>
+        <section className="dashboard-dynasty-header-module">
+          <span>Difficulty</span>
+          <strong>{difficulty}</strong>
+        </section>
+        <section className="dashboard-dynasty-header-module">
+          <span>Opening Budget</span>
+          <strong className="dashboard-dynasty-gold">{formatSetupBudgetHeaderReadout(startingBudgetTier)}</strong>
+        </section>
+        <section className="dashboard-dynasty-next-show setup-dynasty-cta">
+          <span>Next Action</span>
+          <strong>{nextActionLabel}</strong>
+        </section>
+      </header>
+
+      {step === "draft" ? null : (
+        <div className="setup-dynasty-progress" aria-label="Career start progress">
+          {setupSteps.map((item, index) => (
+            <div
+              className={`setup-dynasty-progress-step${step === item.id ? " is-active" : ""}${index < activeSetupIndex ? " is-complete" : ""}`}
+              key={item.id}
+            >
+              <span>Step {index + 1}</span>
+              <strong>{item.label}</strong>
+              <small>{item.detail}</small>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="setup-dynasty-body">
       <section className="setup-shell">
         <div className={`setup-layout${step === "draft" ? " draft-war-room-layout" : ""}`}>
-          {step === "draft" ? null : (
-            <nav className="setup-step-rail" aria-label="Career start steps">
-              <p className="eyebrow">Career Start</p>
-              {setupSteps.map((item, index) => (
-                <span className={step === item.id ? "active-step" : index < activeSetupIndex ? "complete-step" : ""} key={item.id}>
-                  <strong>{item.label}</strong>
-                  <small>{item.detail}</small>
-                </span>
-              ))}
-            </nav>
-          )}
-
           <div className={`setup-workspace${step === "draft" ? " draft-war-room-workspace" : ""}`}>
-            {step === "draft" ? null : (
-              <div className="setup-workspace-head">
-              <div>
-                <p className="eyebrow">{currentStepLabel} Desk</p>
-                <h1>{signedBrandName}</h1>
-              </div>
-              <strong>{nextActionLabel}</strong>
-            </div>
-            )}
 
         {step === "contract" ? (
           <div className="setup-panel setup-command-panel">
-            <p className="eyebrow">Sign The Contract</p>
-            <h1>You're Hired</h1>
-            <p className="lede">
-              A national broadcast window is open, the roster is restless, and the GM room is filling up. Ownership is hiring you to run a brand over seasons, not just survive one hot night.
-            </p>
-            <div className="title-actions">
-              <button className="primary-action" onClick={() => setStep("rules")}>
-                Accept The Job
-              </button>
-              <button className="secondary-action" onClick={onCancel}>
-                Back
-              </button>
-            </div>
+            <HeroDecisionPanel
+              actions={
+                <>
+                  <button className="primary-action" onClick={() => setStep("rules")}>
+                    Accept The Job
+                  </button>
+                  <button className="secondary-action" onClick={onCancel}>
+                    Back
+                  </button>
+                </>
+              }
+              eyebrow="Sign The Contract"
+              metrics={
+                <>
+                  <MetricTile detail="PLEs in Weeks 4, 8, and 12" label="Season" tone="prestige" value="12 Weeks" />
+                  <MetricTile detail={`${draftPickCount} picks to open the room`} label="Draft Night" tone="brand" value={`0 / ${draftPickCount}`} />
+                  <MetricTile detail="Four major brands in the GM universe" label="Universe" tone="info" value="4 Brands" />
+                </>
+              }
+              summary="A national broadcast window is open, the roster is restless, and the GM room is filling up. Ownership is hiring you to run a brand over seasons, not just survive one hot night."
+              title="You're Hired"
+            />
           </div>
         ) : null}
 
         {step === "gm" ? (
           <div className="setup-panel setup-command-panel">
-            <p className="eyebrow">Choose GM Identity</p>
-            <h2>Who Runs The Room?</h2>
-            <label className="setup-field">
-              GM Name
-              <input value={gmName} onChange={(event) => setGmName(event.target.value)} />
-            </label>
-            <ChoiceGrid
-              choices={gmStyleOptions}
-              selected={gmStyle}
-              onSelect={(choice) => setGmStyle(choice as GMStyle)}
-              variant="identity"
-            />
-            <div className="identity-note">
-              <p className="eyebrow">Selected Identity</p>
-              <strong>{selectedGmStyle.label}</strong>
-              <p>{selectedGmStyle.description} This is your leadership reputation in the room; it frames the fantasy without adding hidden bonuses.</p>
-            </div>
-            <div className="title-actions">
-              <button className="secondary-action" onClick={() => setStep("rules")}>
-                Back
-              </button>
-              <button className="primary-action" disabled={!gmName.trim()} onClick={() => setStep("brand")}>
-                Continue
-              </button>
-            </div>
+            <CommandPanel eyebrow="Choose GM Identity" title="Who Runs The Room?" tone="brand">
+              <label className="setup-field">
+                GM Name
+                <input value={gmName} onChange={(event) => setGmName(event.target.value)} />
+              </label>
+              <ChoiceGrid
+                choices={gmStyleOptions}
+                selected={gmStyle}
+                onSelect={(choice) => setGmStyle(choice as GMStyle)}
+                variant="identity"
+              />
+              <div className="identity-note">
+                <p className="eyebrow">Selected Identity</p>
+                <strong>{selectedGmStyle.label}</strong>
+                <p>{selectedGmStyle.description} This is your leadership reputation in the room; it frames the fantasy without adding hidden bonuses.</p>
+              </div>
+              <div className="title-actions">
+                <button className="secondary-action" onClick={() => setStep("rules")}>
+                  Back
+                </button>
+                <button className="primary-action" disabled={!gmName.trim()} onClick={() => setStep("brand")}>
+                  Continue
+                </button>
+              </div>
+            </CommandPanel>
           </div>
         ) : null}
 
         {step === "brand" ? (
           <div className="setup-panel setup-command-panel">
-            <p className="eyebrow">Choose Your Seat</p>
-            <h2>Which Brand Chair Is Yours?</h2>
-            <label className="setup-field">
-              Brand Name
-              <input value={brandName} onChange={(event) => setBrandName(event.target.value)} />
-            </label>
-            <ChoiceGrid
-              choices={brandStyleOptions}
-              selected={brandStyle}
-              onSelect={selectBrandStyle}
-              variant="identity"
-            />
-            <div className="identity-note">
-              <p className="eyebrow">Selected Brand Chair</p>
-              <strong>{selectedBrandStyle.label}</strong>
-              <p>{selectedBrandStyle.description} This frames the show you are taking into the GM universe; it does not add hidden gameplay modifiers.</p>
-            </div>
-            <div className="title-actions">
-              <button className="secondary-action" onClick={() => setStep("gm")}>
-                Back
-              </button>
-              <button className="primary-action" disabled={!canPreview} onClick={() => setStep("draft")}>
-                Enter Draft Night
-              </button>
-            </div>
+            <CommandPanel eyebrow="Choose Your Seat" title="Which Brand Chair Is Yours?" tone="brand">
+              <label className="setup-field">
+                Brand Name
+                <input value={brandName} onChange={(event) => setBrandName(event.target.value)} />
+              </label>
+              <ChoiceGrid
+                choices={brandStyleOptions}
+                selected={brandStyle}
+                onSelect={selectBrandStyle}
+                variant="identity"
+              />
+              <div className="identity-note">
+                <p className="eyebrow">Selected Brand Chair</p>
+                <strong>{selectedBrandStyle.label}</strong>
+                <p>{selectedBrandStyle.description} This frames the show you are taking into the GM universe; it does not add hidden gameplay modifiers.</p>
+              </div>
+              <div className="title-actions">
+                <button className="secondary-action" onClick={() => setStep("gm")}>
+                  Back
+                </button>
+                <button className="primary-action" disabled={!canPreview} onClick={() => setStep("draft")}>
+                  Enter Draft Night
+                </button>
+              </div>
+            </CommandPanel>
           </div>
         ) : null}
 
         {step === "rules" ? (
           <div className="setup-panel setup-command-panel">
-            <p className="eyebrow">Game Rules</p>
-            <h2>Set The Pressure Level</h2>
-            <p className="lede">Lock the ownership mandate before Draft Night. Difficulty frames the pressure of the job for now; budget sets your opening war chest.</p>
-            <div className="rules-grid">
-              <section>
-                <p className="eyebrow">Difficulty</p>
-                <ChoiceGrid
-                  choices={difficultyOptions}
-                  selected={difficulty}
-                  onSelect={(choice) => setDifficulty(choice as GameDifficulty)}
-                  variant="identity"
-                />
-              </section>
-              <section>
-                <p className="eyebrow">Starting Budget</p>
-                <ChoiceGrid
-                  choices={budgetOptions}
-                  selected={startingBudgetTier}
-                  onSelect={(choice) => setStartingBudgetTier(choice as StartingBudgetTier)}
-                  variant="identity"
-                />
-              </section>
-            </div>
-            <div className="identity-note">
-              <p className="eyebrow">Selected Rules</p>
-              <strong>
-                {difficulty} / {formatStartingBudgetReadout(startingBudgetTier, startingBudgetAmount)}
-              </strong>
-              <p>{selectedDifficulty.description} {formatStartingBudgetDetail(startingBudgetTier, startingBudgetAmount, selectedBudgetDescription)}</p>
-            </div>
-            <div className="title-actions">
-              <button className="secondary-action" onClick={() => setStep("contract")}>
-                Back
-              </button>
-              <button className="primary-action" onClick={() => setStep("gm")}>
-                Choose GM Identity
-              </button>
-            </div>
+            <CommandPanel className="setup-rules-desk" eyebrow="Game Rules" title="Set The Pressure Level" tone="brand">
+              <p className="lede setup-rules-lede">Choose difficulty, budget mode, and draft order before Draft Night.</p>
+              <div className="setup-rules-compact">
+                <section className="setup-rules-difficulty-section">
+                  <p className="eyebrow">Difficulty</p>
+                  <ChoiceGrid
+                    choices={difficultyOptions}
+                    selected={difficulty}
+                    onSelect={(choice) => setDifficulty(choice as GameDifficulty)}
+                    variant="identity"
+                  />
+                </section>
+                <div className="setup-rules-modes-row">
+                  <section className="setup-rules-budget-section">
+                    <p className="eyebrow">Budget Mode</p>
+                    <ChoiceGrid
+                      choices={setupBudgetModeOptions}
+                      selected={getSetupBudgetModeLabel(startingBudgetTier)}
+                      onSelect={(choice) => setStartingBudgetTier(selectSetupBudgetMode(choice))}
+                      variant="identity"
+                    />
+                  </section>
+                  <section className="setup-rules-draft-section">
+                    <p className="eyebrow">Draft Mode</p>
+                    <ChoiceGrid
+                      choices={setupDraftModeOptions}
+                      selected={getSetupDraftModeLabel(draftMode)}
+                      onSelect={(choice) => applyDraftMode(selectSetupDraftMode(choice))}
+                      variant="identity"
+                    />
+                  </section>
+                </div>
+              </div>
+              <div className="identity-note setup-rules-summary">
+                <p className="eyebrow">Selected Rules</p>
+                <strong>
+                  {difficulty} / {formatSetupBudgetRulesReadout(startingBudgetTier, startingBudgetAmount)} / {getSetupDraftModeLabel(draftMode)}
+                </strong>
+                <p>
+                  {selectedDifficulty.description} {getSetupBudgetRulesDetail(startingBudgetTier, startingBudgetAmount)} {getSetupDraftRulesDetail(draftMode)}
+                </p>
+              </div>
+              <div className="title-actions setup-rules-actions">
+                <button className="secondary-action" onClick={() => setStep("contract")}>
+                  Back
+                </button>
+                <button className="primary-action" onClick={() => setStep("gm")}>
+                  Choose GM Identity
+                </button>
+              </div>
+            </CommandPanel>
           </div>
         ) : null}
 
@@ -6583,47 +6255,9 @@ function NewGameSetupScreen({
         ) : null}
 
           </div>
-
-          {step === "draft" ? null : (
-          <aside className="setup-summary-rail" aria-label="Career setup summary">
-            <p className="eyebrow">Career Summary</p>
-            <h2>{signedBrandName}</h2>
-            <div className="setup-summary-list">
-              <article>
-                <span>GM</span>
-                <strong>{signedGmName}</strong>
-                <small>{gmStyle}</small>
-              </article>
-              <article>
-                <span>Brand Chair</span>
-                <strong>{brandStyle}</strong>
-                <small>{selectedBrandStyle.description}</small>
-              </article>
-              <article>
-                <span>Rules</span>
-                <strong>{difficulty}</strong>
-                <small>{formatStartingBudgetReadout(startingBudgetTier, startingBudgetAmount)} opening budget</small>
-              </article>
-              <article>
-                <span>Draft</span>
-                <strong>{draftedWrestlers.length}/{draftPickCount}</strong>
-                <small>{picksRemaining ? `${picksRemaining} picks left` : "Ready for Week 1"}</small>
-              </article>
-              <article>
-                <span>Season</span>
-                <strong>12 Weeks</strong>
-                <small>PLEs in Weeks 4, 8, and 12</small>
-              </article>
-            </div>
-            <div className="setup-rival-summary">
-              <span>Rival Chairs</span>
-              <strong>{previewRivalBrands.length ? `${previewRivalBrands.length} assigned` : "Pending"}</strong>
-              <small>{rivalSummary || "Choose a brand to fill the other desks."}</small>
-            </div>
-          </aside>
-          )}
         </div>
       </section>
+      </div>
     </main>
   );
 }
@@ -6900,54 +6534,6 @@ function LivingWorldPressurePanel({ snapshot }: { snapshot: LivingWorldPressureS
   );
 }
 
-function WeekReviewHandoffPanel({ snapshot }: { snapshot: WeekReviewHandoffSnapshot }) {
-  return (
-    <section className="week-handoff-panel" aria-label="Next week setup">
-      <div className="week-handoff-head">
-        <div>
-          <p className="eyebrow">GM Handoff</p>
-          <h3>{snapshot.headline}</h3>
-        </div>
-        <strong>Next Week Setup</strong>
-      </div>
-      <p className="week-handoff-copy">{snapshot.detail}</p>
-      <div className="week-handoff-grid">
-        {snapshot.items.map((item) => (
-          <article className={`week-handoff-item item-${item.tone}`} key={item.id}>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-            <p>{item.detail}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function WeekReviewOfficePanel({ snapshot }: { snapshot: WeekReviewOfficeSnapshot }) {
-  return (
-    <section className="week-office-panel" aria-label="GM office after-action">
-      <div className="week-office-head">
-        <div>
-          <p className="eyebrow">GM Office Readout</p>
-          <h3>{snapshot.headline}</h3>
-        </div>
-        <strong>After-Action</strong>
-      </div>
-      <p className="week-office-copy">{snapshot.detail}</p>
-      <div className="week-office-grid">
-        {snapshot.items.map((item) => (
-          <article className={`week-office-item item-${item.tone}`} key={item.id}>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-            <p>{item.detail}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function PleBuildPressurePanel({ compact = false, snapshot }: { compact?: boolean; snapshot: PleBuildPressureSnapshot }) {
   return (
     <section className={`ple-build-panel${compact ? " compact" : ""}`} aria-label="PLE build pressure">
@@ -7167,8 +6753,7 @@ function DashboardScreen({
               <div className="dashboard-dynasty-roster-row dashboard-dynasty-roster-head" role="row">
                 <span>#</span>
                 <span>Superstar</span>
-                <span>Role</span>
-                <span>Style</span>
+                <span>Side</span>
                 <span>Pop</span>
                 <span>Sta</span>
                 <span>Mor</span>
@@ -7187,16 +6772,15 @@ function DashboardScreen({
                         {wrestler ? <DashboardDynastyPortrait wrestler={wrestler} size="sm" /> : null}
                         <strong title={member.name}>{member.name}</strong>
                       </div>
-                      <DashboardDynastyRole role={member.role} />
-                      <span title={member.style}>{member.style}</span>
-                      <span>{member.pop}</span>
-                      <span>
-                        <DashboardDynastyStamina value={member.stamina} />
-                      </span>
+                      <DashboardDynastyAlignment alignment={member.alignment} />
+                      <DashboardDynastyStatValue delta={member.popDelta} label="Popularity" value={member.pop} />
+                      <DashboardDynastyStatValue delta={member.staminaDelta} label="Stamina" value={member.stamina} />
                       <span>
                         <DashboardDynastyMorale morale={member.morale} />
                       </span>
-                      <span className="dashboard-dynasty-overall">{member.overall}</span>
+                      <span className="dashboard-dynasty-overall">
+                        <DashboardDynastyStatValue delta={member.overallDelta} label="Overall" value={member.overall} />
+                      </span>
                       <span>{member.contract}</span>
                       <span>{member.cost}</span>
                     </div>
@@ -7820,841 +7404,6 @@ function ChampionshipsScreen({
   );
 }
 
-
-function FinanceScreen({
-  game,
-  latestResult,
-  onNavigate,
-}: {
-  game: GameState;
-  latestResult?: ShowResult;
-  onNavigate: (screen: GameScreen) => void;
-}) {
-  const latestReport = getLatestFinanceReport(game);
-  const seasonReports = getSeasonFinanceReports(game);
-  const totalProfitLoss = seasonReports.reduce((sum, report) => sum + report.profitLoss, 0);
-  const bestRevenueReport = getBestRevenueReport(seasonReports);
-  const worstProfitReport = getWorstProfitReport(seasonReports);
-  const pressureLabel = getFinancePressureLabel(game.money, latestReport?.profitLoss ?? 0);
-  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
-  const talentValuePressure = getTalentValuePressure(game.wrestlers);
-  const venueMarketReadout = getVenueMarketContextReadout(latestReport, seasonReports);
-  const officeRead = getFinanceOfficeRead(game);
-  const [expandedFinancePanels, setExpandedFinancePanels] = useState<Set<FinancePanelId>>(() => new Set());
-
-  function toggleFinancePanel(panelId: FinancePanelId) {
-    setExpandedFinancePanels((currentPanels) => {
-      const nextPanels = new Set(currentPanels);
-      if (nextPanels.has(panelId)) {
-        nextPanels.delete(panelId);
-      } else {
-        nextPanels.add(panelId);
-      }
-      return nextPanels;
-    });
-  }
-  const financeCta: DynastyManagementCta = hasCurrentWeekReview
-    ? {
-        eyebrow: "Office Waiting",
-        label: "Week Review",
-        onClick: () => onNavigate("weekReview"),
-        tone: "warning",
-      }
-    : {
-        eyebrow: "Next Action",
-        label: "Book Show",
-        onClick: () => onNavigate("booking"),
-        tone: "brand",
-      };
-
-  return (
-    <DynastyManagementShell currentScreen="finance" cta={financeCta} game={game} latestResult={latestResult} onNavigate={onNavigate}>
-      <section className="dynasty-management-scroll">
-      <section className="status-grid finance-summary-strip" aria-label="Finance summary">
-        <Metric label="Current Money" value={formatMoney(game.money)} />
-        <Metric label="Pressure" value={pressureLabel} />
-        <Metric label="Season P/L" value={formatMoney(totalProfitLoss)} />
-        <Metric label="Reports" value={`${game.financeReports.length}`} />
-      </section>
-
-      <section className={`finance-office-desk pressure-${officeRead.pressureLabel.toLowerCase()}`} aria-label="Finance GM office pressure">
-        <div className="finance-office-head">
-          <div>
-            <p className="eyebrow">GM Office Pressure</p>
-            <h3>{officeRead.headline}</h3>
-            <p>{officeRead.detail}</p>
-          </div>
-          <strong>{officeRead.focusLabel}</strong>
-        </div>
-        <div className="finance-office-grid">
-          {officeRead.items.map((item) => (
-            <article key={item.label}>
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
-              <p>{item.detail}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <FinanceExpandablePanel
-        className="finance-spotlight talent-value-pressure-panel"
-        expanded={expandedFinancePanels.has("talentValue")}
-        eyebrow="Talent Value Pressure"
-        id="talentValue"
-        summary={`${talentValuePressure.mappedCount}/${talentValuePressure.totalCount} mapped · ${talentValuePressure.premiumCount} premium · ${talentValuePressure.bargainCount} value`}
-        title="Roster Value Read"
-        onToggle={toggleFinancePanel}
-      >
-        <div className="spotlight-grid compact-grid">
-          <Metric label="Premium / High-Cost" value={`${talentValuePressure.premiumCount}`} detail="Premium draw lanes" />
-          <Metric label="Bargain / Rising" value={`${talentValuePressure.bargainCount}`} detail="Value-base lanes" />
-          <Metric
-            label="Mapped Profiles"
-            value={`${talentValuePressure.mappedCount}/${talentValuePressure.totalCount}`}
-            detail={talentValuePressure.missingCount ? `${talentValuePressure.missingCount} pending` : "All roster values mapped"}
-          />
-        </div>
-      </FinanceExpandablePanel>
-
-      {latestReport ? (
-        <FinanceExpandablePanel
-          className="finance-report-card"
-          expanded={expandedFinancePanels.has("latestReport")}
-          eyebrow={`Latest Report · ${getShowTypeLabel(latestReport.showType)} · ${getFinanceReportModelLabel(latestReport)}`}
-          id="latestReport"
-          summary={`${formatMoney(latestReport.profitLoss)} · Score ${latestReport.showScore} · ${latestReport.attendance.toLocaleString()} attendance`}
-          title={latestReport.showName}
-          onToggle={toggleFinancePanel}
-        >
-          <p className="social-preview-text">
-            <strong>{venueMarketReadout.label}</strong> · {venueMarketReadout.read}
-          </p>
-          <div className="spotlight-grid">
-            <Metric label="Attendance" value={latestReport.attendance.toLocaleString()} />
-            <Metric label="Revenue" value={formatMoney(getFinanceGrossRevenue(latestReport))} />
-            <Metric label="Costs" value={formatMoney(getFinanceTotalExpenses(latestReport))} />
-            <Metric label="Profit/Loss" value={formatMoney(latestReport.profitLoss)} />
-            <Metric label="Ending Money" value={formatMoney(latestReport.endingMoney)} />
-            <Metric label="Show Score" value={`${latestReport.showScore}`} />
-          </div>
-          <div className="finance-breakdown-grid" aria-label="Latest report breakdown">
-            <FinanceBreakdownList title="Revenue" items={getFinanceRevenueBreakdown(latestReport)} />
-            <FinanceBreakdownList title="Expenses" items={getFinanceExpenseBreakdown(latestReport)} />
-          </div>
-          <div className="finance-notes">
-            {latestReport.notes.map((note, index) => (
-              <p key={`${note}-${index}`}>{note}</p>
-            ))}
-          </div>
-        </FinanceExpandablePanel>
-      ) : (
-        <div className="empty-state">No finance reports yet. Run a show and the brand office will close the books after results.</div>
-      )}
-
-      {seasonReports.length ? (
-        <FinanceExpandablePanel
-          expanded={expandedFinancePanels.has("seasonReads")}
-          eyebrow="Season Business Reads"
-          id="seasonReads"
-          summary={`${seasonReports.length} closed report${seasonReports.length === 1 ? "" : "s"} · ${formatMoney(totalProfitLoss)} season P/L`}
-          title="Best And Worst Closes"
-          onToggle={toggleFinancePanel}
-        >
-          <section className="command-grid">
-            <article className="command-panel">
-              <div className="section-heading">
-                <p className="eyebrow">Best Revenue Week</p>
-                <h3>{bestRevenueReport?.showName ?? "None"}</h3>
-              </div>
-              <p className="social-preview-text">
-                {bestRevenueReport
-                  ? `${formatMoney(getFinanceGrossRevenue(bestRevenueReport))} revenue in Week ${bestRevenueReport.weekNumber}.`
-                  : "No revenue booked yet."}
-              </p>
-            </article>
-            <article className="command-panel">
-              <div className="section-heading">
-                <p className="eyebrow">Worst Profit/Loss</p>
-                <h3>{worstProfitReport?.showName ?? "None"}</h3>
-              </div>
-              <p className="social-preview-text">
-                {worstProfitReport ? `${formatMoney(worstProfitReport.profitLoss)} in Week ${worstProfitReport.weekNumber}.` : "No report yet."}
-              </p>
-            </article>
-          </section>
-        </FinanceExpandablePanel>
-      ) : null}
-
-      {game.financeReports.length ? (
-        <FinanceExpandablePanel
-          expanded={expandedFinancePanels.has("financeHistory")}
-          eyebrow="Finance History"
-          id="financeHistory"
-          summary={`${game.financeReports.length} closed report${game.financeReports.length === 1 ? "" : "s"}`}
-          title="Closed Books"
-          onToggle={toggleFinancePanel}
-        >
-          <section className="finance-history" aria-label="Finance history">
-            {[...game.financeReports].reverse().map((report) => (
-              <article className="finance-history-row" key={report.id}>
-                <div>
-                  <p className="eyebrow">
-                    Season {report.seasonNumber} · Week {report.weekNumber} · {getShowTypeLabel(report.showType)}
-                  </p>
-                  <h3>{report.showName}</h3>
-                </div>
-                <div className="finance-row-numbers">
-                  <span>Attendance {report.attendance.toLocaleString()}</span>
-                  <span>{getFinanceReportModelLabel(report)}</span>
-                  <strong>{formatMoney(report.profitLoss)}</strong>
-                </div>
-              </article>
-            ))}
-          </section>
-        </FinanceExpandablePanel>
-      ) : null}
-      </section>
-    </DynastyManagementShell>
-  );
-}
-
-function FinanceExpandablePanel({
-  children,
-  className,
-  expanded,
-  eyebrow,
-  id,
-  onToggle,
-  summary,
-  title,
-}: {
-  children: ReactNode;
-  className?: string;
-  expanded: boolean;
-  eyebrow: string;
-  id: FinancePanelId;
-  onToggle: (panelId: FinancePanelId) => void;
-  summary: string;
-  title: string;
-}) {
-  const contentId = `finance-panel-${id}`;
-
-  return (
-    <section className={`finance-expandable-panel ${expanded ? "is-expanded" : "is-collapsed"} ${className ?? ""}`} aria-label={eyebrow}>
-      <button className="finance-expandable-toggle" aria-controls={contentId} aria-expanded={expanded} onClick={() => onToggle(id)} type="button">
-        <div>
-          <span>{eyebrow}</span>
-          <strong>{title}</strong>
-        </div>
-        <em>{summary}</em>
-        <b>{expanded ? "Collapse" : "Expand"}</b>
-      </button>
-      {expanded ? (
-        <div className="finance-expandable-body" id={contentId}>
-          {children}
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function FinanceBreakdownList({
-  items,
-  title,
-}: {
-  items: NonNullable<FinanceReport["revenueBreakdown"]>;
-  title: string;
-}) {
-  return (
-    <article className="finance-breakdown-panel">
-      <span>{title}</span>
-      {items.map((item) => (
-        <div className="finance-breakdown-row" key={item.id}>
-          <strong>{item.label}</strong>
-          <em>{formatMoney(item.amount)}</em>
-        </div>
-      ))}
-    </article>
-  );
-}
-
-function PostShowCauseLedger({ collapsible = false, compact = false, sections }: { collapsible?: boolean; compact?: boolean; sections: CauseLedgerSection[] }) {
-  const [isExpanded, setIsExpanded] = useState(!collapsible);
-
-  if (!sections.length) {
-    return (
-      <section className="cause-ledger-panel compact" aria-label="Post-show cause ledger">
-        <div className="section-heading">
-          <p className="eyebrow">Cause Ledger</p>
-          <h3>Limited Record</h3>
-        </div>
-        <p className="cause-ledger-empty">This result has limited legacy data, so there is no deeper cause ledger beyond the visible recap.</p>
-      </section>
-    );
-  }
-
-  const visibleSections = compact ? sections.slice(0, 4) : sections;
-  const itemCount = visibleSections.reduce((count, section) => count + section.items.length, 0);
-
-  return (
-    <section className={`cause-ledger-panel ${compact ? "compact" : ""} ${collapsible ? "is-collapsible" : ""} ${isExpanded ? "is-expanded" : "is-collapsed"}`} aria-label="Post-show cause ledger">
-      {collapsible ? (
-        <button className="cause-ledger-toggle" aria-expanded={isExpanded} aria-controls="post-show-cause-ledger-body" onClick={() => setIsExpanded((open) => !open)} type="button">
-          <div>
-            <span>Post-Show Cause Ledger</span>
-            <strong>{compact ? "Why The Week Moved" : "Why It Happened"}</strong>
-          </div>
-          <em>{visibleSections.length} driver group{visibleSections.length === 1 ? "" : "s"} · {itemCount} read{itemCount === 1 ? "" : "s"}</em>
-          <b>{isExpanded ? "Collapse" : "Expand"}</b>
-        </button>
-      ) : (
-        <div className="section-heading">
-          <p className="eyebrow">Post-Show Cause Ledger</p>
-          <h3>{compact ? "Why The Week Moved" : "Why It Happened"}</h3>
-        </div>
-      )}
-      {isExpanded ? (
-        <div className="cause-ledger-grid" id={collapsible ? "post-show-cause-ledger-body" : undefined}>
-          {visibleSections.map((section) => (
-            <article className="cause-ledger-section" key={section.id}>
-              <span>{section.label}</span>
-              <div>
-                {section.items.map((item) => (
-                  <div className={`cause-ledger-item item-${item.tone}`} key={item.id}>
-                    <strong>{item.label}</strong>
-                    <p>{item.detail}</p>
-                  </div>
-                ))}
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function BroadcastFalloutPanel({ snapshot }: { snapshot: BroadcastFalloutSnapshot }) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  return (
-    <section className={`broadcast-fallout-panel ${isExpanded ? "is-expanded" : "is-collapsed"}`} aria-label="Operational fallout log">
-      <button className="broadcast-fallout-toggle" aria-expanded={isExpanded} aria-controls="operational-fallout-body" onClick={() => setIsExpanded((open) => !open)} type="button">
-        <div>
-          <span>Operational Fallout</span>
-          <strong>Resolved Consequence Notes</strong>
-        </div>
-        <em>{snapshot.items.length} resolved note{snapshot.items.length === 1 ? "" : "s"}</em>
-        <b>{isExpanded ? "Collapse" : "Expand"}</b>
-      </button>
-      {isExpanded ? (
-        <div className="broadcast-fallout-body" id="operational-fallout-body">
-          <p className="broadcast-fallout-copy">{snapshot.detail}</p>
-          <div className="broadcast-fallout-grid">
-            {snapshot.items.map((item) => (
-              <article className={`broadcast-fallout-item item-${item.tone}`} key={item.id}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <p>{item.detail}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function ResultsScreen({
-  game,
-  canContinueWeekReview,
-  onContinueWeekReview,
-  onNavigate,
-  result,
-}: {
-  game: GameState;
-  canContinueWeekReview: boolean;
-  onContinueWeekReview: () => void;
-  result: ShowResult;
-  onNavigate: (screen: GameScreen) => void;
-}) {
-  const bestSegment = getBestSegment(result);
-  const financeReport = getFinanceReportForResult(game, result);
-  const broadcastFallout = buildBroadcastFalloutSnapshot(result);
-  const titleHistoryEvents = result.titleHistoryEvents ?? [];
-  const titleChanges = titleHistoryEvents.filter((event) => event.eventType === "title_change");
-  const isPleResult = result.showType === "ple";
-  const baseCauseLedger = buildPostShowCauseLedger(game, result, financeReport);
-  const titleChangeCauseLedgerItems = titleChanges.map((event) => ({
-    id: `title-change-${event.id}`,
-    label: "Crowning Impact",
-    detail: `${event.championshipName}: ${event.note}${getChampionshipEventPairLine(event) ? ` ${getChampionshipEventPairLine(event)}.` : ""}`,
-    tone: "strong" as const,
-  }));
-  const pleCauseLedgerItem = {
-    id: "major-event-wrap",
-    label: "Major Event Wrap",
-    detail: `This major-event broadcast carried ${titleChanges.length ? `${titleChanges.length} title change${titleChanges.length === 1 ? "" : "s"}` : "no title changes"} and ${
-      result.rivalryHistoryEvents?.length ? `${result.rivalryHistoryEvents.length} rivalry movement event${result.rivalryHistoryEvents.length === 1 ? "" : "s"}` : "no rivalry movement"
-    }.`,
-    tone: "strong" as const,
-  };
-  const resultsStakeItems = [...(isPleResult ? [pleCauseLedgerItem] : []), ...titleChangeCauseLedgerItems];
-  const causeLedger = resultsStakeItems.length
-    ? baseCauseLedger.some((section) => section.id === "stakes")
-      ? baseCauseLedger.map((section) => (section.id === "stakes" ? { ...section, items: [...resultsStakeItems, ...section.items] } : section))
-      : [{ id: "stakes", label: "Title And Rivalry Drivers", items: resultsStakeItems }, ...baseCauseLedger]
-    : baseCauseLedger;
-  const pleResultRead = isPleResult
-    ? `Major-event night complete; the room now moves on the fallout instead of the build notes.`
-    : `Broadcast locked; review the fallout before calendar movement.`;
-  const recapPackage = buildResultsRecapPackage(result, broadcastFallout, causeLedger);
-  const ratingsBattle = getRatingsBattleSnapshot(game, result);
-  const cpuResultsFeed = getCpuResultsFeedSnapshot(game, result);
-  const [isSegmentBreakdownOpen, setIsSegmentBreakdownOpen] = useState(false);
-  const resultsCta: DynastyManagementCta = {
-    disabled: !canContinueWeekReview,
-    eyebrow: canContinueWeekReview ? "Fallout Ready" : "Reviewed",
-    label: canContinueWeekReview ? "Continue to Week Review" : "Week Review Complete",
-    onClick: onContinueWeekReview,
-    tone: canContinueWeekReview ? "warning" : "neutral",
-  };
-
-  return (
-    <DynastyManagementShell
-      className="gameplay-command-shell results-command-shell"
-      currentScreen="results"
-      cta={resultsCta}
-      game={game}
-      latestResult={result}
-      onNavigate={onNavigate}
-    >
-      <section className={`results-recap-package ${isPleResult ? "ple-panel" : ""}`} aria-label="Broadcast recap package">
-        <section className="results-hero">
-          <div className="results-scoreboard">
-            <p className="eyebrow">
-              Season {result.seasonNumber} · Week {result.week} · {getShowTypeLabel(result.showType)}
-            </p>
-            <div className="results-score-line">
-              <h2>{result.totalScore}</h2>
-              <strong>{getShowGrade(result.totalScore)}</strong>
-            </div>
-            <p className="results-show-name">{result.showName}</p>
-          </div>
-          <div className="results-broadcast-verdict">
-            <p className="eyebrow">{isPleResult ? "Major Event Recap" : "Broadcast Recap"}</p>
-            <h3>{broadcastFallout.headline}</h3>
-            <p>
-              {isPleResult ? `${getShowTypeLabel(result.showType)} package locked. ${pleResultRead} ` : ""}
-              {recapPackage.verdict}
-            </p>
-          </div>
-        </section>
-
-        <section className="results-headline-grid" aria-label="Headline fallout">
-          <article className={`results-headline-card tone-${recapPackage.headline.tone}`}>
-            <span>{recapPackage.headline.label}</span>
-            <strong>{recapPackage.headline.value}</strong>
-            <p>{recapPackage.headline.detail}</p>
-          </article>
-          <article className="results-performer-swing">
-            <span>Who Moved</span>
-            <div>
-              <strong>{result.biggestMomentumGain.name}</strong>
-              <small>Momentum +{result.biggestMomentumGain.amount}</small>
-            </div>
-            <div>
-              <strong>{result.biggestFatigueIncrease.name}</strong>
-              <small>Fatigue +{result.biggestFatigueIncrease.amount}</small>
-            </div>
-          </article>
-        </section>
-
-        <section className="results-consequence-reel" aria-label="Consequence reel">
-          {recapPackage.consequenceReel.map((beat) => (
-            <article className={`results-reel-card tone-${beat.tone}`} key={beat.id}>
-              <span>{beat.label}</span>
-              <strong>{beat.value}</strong>
-              <p>{beat.detail}</p>
-            </article>
-          ))}
-        </section>
-
-        <section className="results-why-strip" aria-label="Why this week mattered">
-          <div>
-            <p className="eyebrow">Why This Week Mattered</p>
-            <h3>{bestSegment.participantNames.join(" / ") || bestSegment.type}</h3>
-          </div>
-          <p>{recapPackage.whyItMattered}</p>
-        </section>
-      </section>
-
-      <section className="results-support-scroll" aria-label="Resolved support panels">
-        <PostShowCauseLedger sections={causeLedger} collapsible />
-
-        <BroadcastFalloutPanel snapshot={broadcastFallout} />
-
-        <RivalIntelligencePanel game={game} />
-        {ratingsBattle ? <RatingsBattlePanel snapshot={ratingsBattle} /> : null}
-        {cpuResultsFeed ? <CpuResultsFeedPanel snapshot={cpuResultsFeed} /> : null}
-
-        {result.broadcastOverrunNotes?.length ? (
-          <section className="broadcast-overrun-fallout" aria-label="Broadcast overrun fallout">
-            <div className="section-heading">
-              <p className="eyebrow">Broadcast Timing</p>
-              <h3>{result.broadcastOverrunLevel === "major" ? "Major Overrun" : result.broadcastOverrunLevel === "moderate" ? "Overrun Pressure" : "Minor Overrun"}</h3>
-            </div>
-            {result.broadcastOverrunNotes.map((note, index) => (
-              <p key={`${note}-${index}`}>{note}</p>
-            ))}
-          </section>
-        ) : null}
-
-        {result.lockerRoomFallout?.injuryNotes?.length ? (
-          <section className="locker-room-fallout" aria-label="Injury fallout">
-            <div className="section-heading">
-              <p className="eyebrow">Injury Fallout</p>
-              <h3>Medical Update</h3>
-            </div>
-            <div className="fallout-grid">
-              {result.lockerRoomFallout.injuryNotes.map((item) => (
-                <div key={`${item.wrestlerId}-${item.status}`}>
-                  <span>{getInjuryStatusLabel(item.status)}</span>
-                  <p>{item.note}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        <section className={`results-list ${isSegmentBreakdownOpen ? "is-expanded" : "is-collapsed"}`} aria-label="Segment results">
-          <button
-            className="results-breakdown-toggle"
-            aria-expanded={isSegmentBreakdownOpen}
-            aria-controls="results-segment-breakdown"
-            onClick={() => setIsSegmentBreakdownOpen((open) => !open)}
-            type="button"
-          >
-            <div>
-              <span>Broadcast Breakdown</span>
-              <strong>Segment By Segment</strong>
-            </div>
-            <em>{result.segmentResults.length} resolved segment{result.segmentResults.length === 1 ? "" : "s"}</em>
-            <b>{isSegmentBreakdownOpen ? "Collapse" : "Expand"}</b>
-          </button>
-          {isSegmentBreakdownOpen ? (
-            <div className="results-breakdown-body" id="results-segment-breakdown">
-              {result.segmentResults.map((segment, index) => (
-                <article className="result-row" key={segment.segmentId}>
-                  <div>
-                    <p className="eyebrow">
-                      Segment {index + 1} · {segment.type}
-                    </p>
-                    <h3>{getSegmentResultParticipantsLabel(segment, game.wrestlers)}</h3>
-                    <p>
-                      Momentum +{getResultChange(segment.momentumChanges)} · Fatigue +{getResultChange(segment.fatigueChanges)}
-                    </p>
-                    <p>
-                      {segment.actualDurationMinutes !== undefined
-                        ? `Runtime ${segment.plannedDurationMinutes ?? 0} planned / ${segment.actualDurationMinutes} actual · ${formatRuntimeVariance(segment.durationVarianceMinutes)}`
-                        : "Runtime not recorded for this legacy segment"}
-                      {segment.overrunAffected ? " · closing block compressed" : ""}
-                    </p>
-                    {segment.recapNote ? <p>{segment.recapNote}</p> : null}
-                    {getResolvedSegmentStipulationLabel(segment) ? <p className="title-note">Match stipulation: {getResolvedSegmentStipulationLabel(segment)}</p> : null}
-                    {segment.titleNote ? <p className="title-note">{segment.titleNote}</p> : null}
-                    {segment.rivalryNote ? <p className="rivalry-note">{segment.rivalryNote}</p> : null}
-                  </div>
-                  <strong>{segment.score}</strong>
-                </article>
-              ))}
-            </div>
-          ) : null}
-        </section>
-      </section>
-    </DynastyManagementShell>
-  );
-}
-
-function WeekReviewScreen({
-  game,
-  onAdvanceWeek,
-  onNavigate,
-  result,
-}: {
-  game: GameState;
-  onAdvanceWeek: () => void;
-  onNavigate: (screen: GameScreen) => void;
-  result: ShowResult;
-}) {
-  const bestSegment = getBestSegment(result);
-  const financeReport = getFinanceReportForResult(game, result);
-  const buzzPreview = game.socialPosts.filter((post) => post.seasonNumber === result.seasonNumber && post.weekNumber === result.week).slice(-3).reverse();
-  const bookedIds = [...new Set(result.segmentResults.flatMap((segment) => segment.participantIds))];
-  const injuryRiskWrestlers = game.wrestlers.filter(
-    (wrestler) => bookedIds.includes(wrestler.id) && getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk"),
-  );
-  const rivalryIds = [...new Set(result.segmentResults.map((segment) => segment.rivalryId).filter((id): id is string => Boolean(id)))];
-  const reviewedRivalries = rivalryIds
-    .map((id) => game.rivalries.find((rivalry) => rivalry.id === id))
-    .filter((rivalry): rivalry is Rivalry => Boolean(rivalry));
-  const titleHistoryEvents = result.titleHistoryEvents ?? [];
-  const titleChanges = titleHistoryEvents.filter((event) => event.eventType === "title_change");
-  const rivalryHistoryEvents = result.rivalryHistoryEvents ?? [];
-  const nextWeek = game.calendar.find((week) => week.weekNumber === result.week + 1);
-  const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= result.week + 1 && !week.completed);
-  const weeksUntilNextPle = nextPle ? Math.max(0, nextPle.weekNumber - result.week) : 0;
-  const weekReviewOffice = getWeekReviewOfficeSnapshot(game, result, financeReport);
-  const weekReviewHandoff = getWeekReviewHandoffSnapshot(game, result, financeReport);
-  const ratingsBattle = getRatingsBattleSnapshot(game, result);
-  const cpuResultsFeed = getCpuResultsFeedSnapshot(game, result);
-  const isPleResult = result.showType === "ple";
-  const weekReviewCta: DynastyManagementCta = {
-    eyebrow: "Calendar Action",
-    label: result.week >= 12 ? "Season Review" : "Advance Week",
-    onClick: onAdvanceWeek,
-    tone: result.week >= 12 ? "brand" : "positive",
-  };
-
-  return (
-    <DynastyManagementShell
-      className="gameplay-command-shell week-review-command-shell"
-      currentScreen="weekReview"
-      cta={weekReviewCta}
-      game={game}
-      latestResult={result}
-      onNavigate={onNavigate}
-    >
-      <section className="week-review-command-board" aria-label="Week review command board">
-        <section className="week-review-aftermath-hero" aria-label={isPleResult ? "PLE week aftermath" : "Week aftermath"}>
-          <div className="week-review-scoreboard">
-            <p className="eyebrow">
-              Season {result.seasonNumber} · Week {result.week} · {getShowTypeLabel(result.showType)}
-            </p>
-            <div className="week-review-score-line">
-              <h2>{result.totalScore}</h2>
-              <strong>{getShowGrade(result.totalScore)}</strong>
-            </div>
-            <p>{result.showName}</p>
-          </div>
-          <div className="week-review-aftermath-copy">
-            <p className="eyebrow">{isPleResult ? "PLE Aftermath" : "Week Aftermath"}</p>
-            <h3>{isPleResult ? "Major-Event Consequences" : "After-Action Consequences"}</h3>
-            <p>
-              {financeReport
-                ? `${result.showName} closed through ${financeReport.attendance.toLocaleString()} paid doors and ${formatMoney(financeReport.profitLoss)} net movement in the office books.`
-                : "The office loaded this review without a finance snapshot."}
-            </p>
-            <p>
-              {titleChanges.length
-                ? `${titleChanges.length} title change${titleChanges.length === 1 ? "" : "s"} were logged, alongside ${result.rivalryHistoryEvents?.length ?? 0} rivalry event${(result.rivalryHistoryEvents?.length ?? 0) === 1 ? "" : "s"}.`
-                : "No title transitions were logged on this show."}
-            </p>
-          </div>
-          <div className="week-review-hero-metrics">
-            <Metric label="Best Segment" value={`${bestSegment.score}`} detail={getSegmentResultParticipantsLabel(bestSegment, game.wrestlers)} />
-            <Metric
-              label="Runtime"
-              value={result.actualRuntimeMinutes !== undefined ? `${result.actualRuntimeMinutes} min` : "Legacy"}
-              detail={result.plannedRuntimeMinutes !== undefined ? `Planned ${result.plannedRuntimeMinutes} min` : "No runtime record"}
-            />
-          </div>
-        </section>
-
-        <section className="week-review-main-board" aria-label="GM after-action handoff">
-          <WeekReviewOfficePanel snapshot={weekReviewOffice} />
-          <WeekReviewHandoffPanel snapshot={weekReviewHandoff} />
-        </section>
-
-        <aside className="week-review-side-rail" aria-label="Next week and world pressure">
-          <section className="week-review-side-panel" aria-label="Next week teaser">
-            <div className="section-heading">
-              <p className="eyebrow">Next Week</p>
-              <h3>{nextWeek ? nextWeek.showName : "Season Review"}</h3>
-            </div>
-            <div className="week-review-side-metrics">
-              <Metric label="Next Show" value={nextWeek ? nextWeek.showName : "Season Complete"} detail={nextWeek ? getShowTypeLabel(nextWeek.showType) : "Review the year"} />
-              <Metric
-                label="Next PLE"
-                value={nextPle ? nextPle.showName : "None"}
-                detail={nextPle ? `${weeksUntilNextPle} week${weeksUntilNextPle === 1 ? "" : "s"} away` : "No remaining PLE"}
-              />
-              <Metric label="Action" value={result.week >= 12 ? "Review Season" : "Advance Week"} detail="Calendar moves after this screen" />
-            </div>
-          </section>
-
-          {buzzPreview.length ? (
-            <section className="week-review-side-panel week-review-social-panel" aria-label="Week review social buzz">
-              <div className="section-heading">
-                <p className="eyebrow">Social Buzz</p>
-                <h3>IWC Readout</h3>
-              </div>
-              <div className="week-review-social-list">
-                {buzzPreview.map((post) => (
-                  <article className="social-preview" key={post.id}>
-                    <span>{formatSocialCategory(post.category)}</span>
-                    <strong>{post.author}</strong>
-                    <p>{post.text}</p>
-                  </article>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          <RivalIntelligencePanel compact game={game} />
-        </aside>
-
-        <section className="week-review-consequence-strip" aria-label="Week review consequence strip">
-          <section className="locker-room-fallout week-review-strip-panel" aria-label="Roster fallout">
-            <div className="section-heading">
-              <p className="eyebrow">Roster Fallout</p>
-              <h3>Locker Room Pressure</h3>
-            </div>
-            <div className="fallout-grid">
-              {result.lockerRoomFallout?.moraleDrops.length ? (
-                <div>
-                  <span>Morale Drops</span>
-                  {result.lockerRoomFallout.moraleDrops.map((item) => (
-                    <p key={`${item.wrestlerId}-drop`}>
-                      {item.note} {item.moraleChange ? `(${item.moraleChange})` : ""}
-                    </p>
-                  ))}
-                </div>
-              ) : null}
-              {result.lockerRoomFallout?.moraleBoosts.length ? (
-                <div>
-                  <span>Morale Boosts</span>
-                  {result.lockerRoomFallout.moraleBoosts.map((item) => (
-                    <p key={`${item.wrestlerId}-boost`}>
-                      {item.note} {item.moraleChange ? `(+${item.moraleChange})` : ""}
-                    </p>
-                  ))}
-                </div>
-              ) : null}
-              {result.lockerRoomFallout?.overuseWarnings.length ? (
-                <div>
-                  <span>Overuse Warnings</span>
-                  {result.lockerRoomFallout.overuseWarnings.map((item) => (
-                    <p key={`${item.wrestlerId}-overuse`}>{item.note}</p>
-                  ))}
-                </div>
-              ) : null}
-              {result.lockerRoomFallout?.underuseWarnings.length ? (
-                <div>
-                  <span>Underuse Warnings</span>
-                  {result.lockerRoomFallout.underuseWarnings.map((item) => (
-                    <p key={`${item.wrestlerId}-underuse`}>{item.note}</p>
-                  ))}
-                </div>
-              ) : null}
-              {result.lockerRoomFallout?.injuryNotes?.length ? (
-                <div>
-                  <span>New Injuries</span>
-                  {result.lockerRoomFallout.injuryNotes.map((item) => (
-                    <p key={`${item.wrestlerId}-injury`}>
-                      {item.note} {item.description}
-                    </p>
-                  ))}
-                </div>
-              ) : null}
-              {injuryRiskWrestlers.length ? (
-                <div>
-                  <span>Injury Risk Warnings</span>
-                  {injuryRiskWrestlers.map((wrestler) => (
-                    <p key={`${wrestler.id}-injury-risk`}>
-                      {wrestler.name} finished the show at {wrestler.fatigue} fatigue.
-                    </p>
-                  ))}
-                </div>
-              ) : null}
-              {!result.lockerRoomFallout?.moraleDrops.length &&
-              !result.lockerRoomFallout?.moraleBoosts.length &&
-              !result.lockerRoomFallout?.overuseWarnings.length &&
-              !result.lockerRoomFallout?.underuseWarnings.length &&
-              !result.lockerRoomFallout?.injuryNotes?.length &&
-              !injuryRiskWrestlers.length ? (
-                <div>
-                  <span>Locker Room</span>
-                  <p>No major roster pressure moved after this show. The room stays level for now.</p>
-                </div>
-              ) : null}
-            </div>
-          </section>
-
-          <section className="story-fallout week-review-strip-panel" aria-label="Rivalry and title fallout">
-            <div className="section-heading">
-              <p className="eyebrow">Rivalry / Title Fallout</p>
-              <h3>Story Movement</h3>
-            </div>
-            {rivalryHistoryEvents.length ? (
-              <div className="history-list">
-                {rivalryHistoryEvents.map((event) => (
-                  <article className="history-event" key={event.id}>
-                    <span>{formatRivalryEventType(event.eventType)} · {event.rivalryName}</span>
-                    <p>{event.note}</p>
-                  </article>
-                ))}
-              </div>
-            ) : result.rivalryNotes.length ? (
-              <div className="history-list">
-                {result.rivalryNotes.map((note, index) => (
-                  <article className="history-event" key={`${note}-${index}`}>
-                    <span>Rivalry Note</span>
-                    <p>{note}</p>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <p>No attached rivalry movement.</p>
-            )}
-            {result.segmentResults.some((segment) => getResolvedSegmentStipulationLabel(segment)) ? (
-              <div className="history-list compact-history">
-                {result.segmentResults
-                  .map((segment, index) => ({ segment, index, label: getResolvedSegmentStipulationLabel(segment) }))
-                  .filter((entry) => entry.label)
-                  .map((entry) => (
-                    <article className="history-event" key={`${entry.segment.segmentId}-${entry.index}`}>
-                      <span>Segment {entry.index + 1} · {entry.segment.type}</span>
-                      <p>
-                        {entry.label} for {getSegmentResultParticipantsLabel(entry.segment, game.wrestlers)}
-                      </p>
-                    </article>
-                  ))}
-              </div>
-            ) : null}
-            {reviewedRivalries.length ? (
-              <div className="spotlight-grid compact-grid">
-                {reviewedRivalries.map((rivalry) => (
-                  <Metric
-                    detail={`Freshness ${rivalry.freshness} · ${formatRivalryStatus(rivalry.status)}`}
-                    key={rivalry.id}
-                    label={rivalry.name}
-                    value={`Heat ${rivalry.heat}`}
-                  />
-                ))}
-              </div>
-            ) : null}
-          </section>
-
-          {ratingsBattle ? <RatingsBattlePanel compact snapshot={ratingsBattle} /> : null}
-          {cpuResultsFeed ? <CpuResultsFeedPanel compact snapshot={cpuResultsFeed} /> : null}
-          {result.broadcastOverrunNotes?.length ? (
-            <section className="broadcast-overrun-fallout week-review-overrun-panel" aria-label="Week review broadcast overrun">
-              <div className="section-heading">
-                <p className="eyebrow">Broadcast Fallout</p>
-                <h3>Closing Block Pressure</h3>
-              </div>
-              {result.broadcastOverrunNotes.map((note, index) => (
-                <p key={`${note}-${index}`}>{note}</p>
-              ))}
-            </section>
-          ) : null}
-        </section>
-      </section>
-    </DynastyManagementShell>
-  );
-}
 
 function SeasonReviewScreen({
   game,
