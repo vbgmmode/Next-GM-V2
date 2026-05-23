@@ -154,6 +154,20 @@ function createTransaction(
   };
 }
 
+function removePlayerWrestlerOwnership(game: GameState, wrestlerId: string): GameState {
+  return {
+    ...game,
+    wrestlers: game.wrestlers.filter((item) => item.id !== wrestlerId),
+    championships: game.championships.map((championship) => ({
+      ...championship,
+      championIds: championship.championIds.filter((id) => id !== wrestlerId),
+      contenderIds: championship.contenderIds?.filter((id) => id !== wrestlerId),
+    })),
+    rivalries: game.rivalries.filter((rivalry) => !rivalry.participantIds.includes(wrestlerId)),
+    currentShow: game.currentShow.map((segment) => ({ ...segment, participantIds: segment.participantIds.filter((id) => id !== wrestlerId) })),
+  };
+}
+
 export function signPlayerFreeAgent(game: GameState, wrestlerId: string, draftPool: Wrestler[], requestedWeeks?: number): GameState {
   const wrestler = getAvailableFreeAgents(game, draftPool).find((item) => item.id === wrestlerId);
 
@@ -202,18 +216,11 @@ export function releasePlayerWrestler(game: GameState, wrestlerId: string): Game
   const rivalryWarning = game.rivalries.some((rivalry) => rivalry.participantIds.includes(wrestlerId));
   const warningCopy = titleWarning || rivalryWarning ? " Office logged title/rivalry disruption risk." : "";
   const transaction = createTransaction(game, "release", [wrestler.id], [wrestler.name], releasePenalty, `${game.brandName} released ${wrestler.name}.${warningCopy}`);
+  const cleanedGame = removePlayerWrestlerOwnership(game, wrestlerId);
 
   return {
-    ...game,
+    ...cleanedGame,
     money: game.money - releasePenalty,
-    wrestlers: game.wrestlers.filter((item) => item.id !== wrestlerId),
-    championships: game.championships.map((championship) => ({
-      ...championship,
-      championIds: championship.championIds.filter((id) => id !== wrestlerId),
-      contenderIds: championship.contenderIds?.filter((id) => id !== wrestlerId),
-    })),
-    rivalries: game.rivalries.filter((rivalry) => !rivalry.participantIds.includes(wrestlerId)),
-    currentShow: game.currentShow.map((segment) => ({ ...segment, participantIds: segment.participantIds.filter((id) => id !== wrestlerId) })),
     marketState: {
       ...game.marketState,
       playerContracts: game.marketState.playerContracts.map((item) => (item.wrestlerId === wrestlerId ? { ...item, contractStatus: "released", contractWeeksRemaining: 0 } : item)),
@@ -271,11 +278,22 @@ export function proposePlayerTrade(game: GameState, outgoingWrestlerId: string, 
 
   const nextPlayerContract = targetContract ? { ...targetContract, ownerType: "player" as const, ownerBrandId: "player", acquisitionSource: "trade" as const } : createMarketContract(target, "player", "player", "trade");
   const nextRivalContract = outgoingContract ? { ...outgoingContract, ownerType: "rival" as const, ownerBrandId: rivalBrand.id, acquisitionSource: "trade" as const } : createMarketContract(outgoing, "rival", rivalBrand.id, "trade");
+  const cleanedGame = removePlayerWrestlerOwnership(game, outgoing.id);
 
   return {
-    ...game,
+    ...cleanedGame,
     money: game.money - transactionFee,
-    wrestlers: [...game.wrestlers.filter((wrestler) => wrestler.id !== outgoing.id), { ...target, appearancesThisSeason: 0, lastBookedWeek: 0, consecutiveWeeksBooked: 0 }],
+    wrestlers: [
+      ...cleanedGame.wrestlers,
+      {
+        ...target,
+        appearancesThisSeason: 0,
+        lastBookedWeek: 0,
+        consecutiveWeeksBooked: 0,
+        injuryStatus: target.injuryStatus ?? "healthy",
+        injuryWeeksRemaining: target.injuryWeeksRemaining ?? 0,
+      },
+    ],
     rivalBrands: game.rivalBrands.map((brand) =>
       brand.id === rivalBrand.id
         ? {
@@ -286,7 +304,7 @@ export function proposePlayerTrade(game: GameState, outgoingWrestlerId: string, 
               {
                 wrestlerId: outgoing.id,
                 contractId: nextRivalContract.id,
-                acquisitionSource: "free_agent",
+                acquisitionSource: "trade",
                 acquiredSeasonNumber: game.seasonNumber,
                 acquiredWeekNumber: game.currentWeek,
                 momentum: outgoing.momentum,
@@ -313,6 +331,10 @@ export function proposePlayerTrade(game: GameState, outgoingWrestlerId: string, 
 }
 
 function ageContract(contract: MarketContract): MarketContract {
+  if (contract.contractStatus === "released" || contract.contractStatus === "expired") {
+    return contract;
+  }
+
   const contractWeeksRemaining = Math.max(0, contract.contractWeeksRemaining - 1);
   const contractStatus = contractWeeksRemaining <= 0 ? "expired" : contractWeeksRemaining <= 3 ? "expiring" : "active";
 
@@ -320,16 +342,18 @@ function ageContract(contract: MarketContract): MarketContract {
 }
 
 export function advancePlayerContracts(game: GameState): GameState {
-  const expiredContracts = game.marketState.playerContracts.filter((contract) => ageContract(contract).contractStatus === "expired");
+  const expiredContracts = game.marketState.playerContracts.filter(
+    (contract) => (contract.contractStatus === "active" || contract.contractStatus === "expiring") && ageContract(contract).contractStatus === "expired",
+  );
   const expiredIds = new Set(expiredContracts.map((contract) => contract.wrestlerId));
   const expiryTransactions = expiredContracts.map((contract) => {
     const wrestlerName = getWrestlerName(contract.wrestlerId, game.wrestlers, "Released talent");
     return createTransaction(game, "expiry", [contract.wrestlerId], [wrestlerName], 0, `${wrestlerName}'s contract expired and the market reopened that slot.`);
   });
+  const cleanedGame = [...expiredIds].reduce((nextGame, wrestlerId) => removePlayerWrestlerOwnership(nextGame, wrestlerId), game);
 
   return {
-    ...game,
-    wrestlers: game.wrestlers.filter((wrestler) => !expiredIds.has(wrestler.id)),
+    ...cleanedGame,
     marketState: {
       ...game.marketState,
       playerContracts: game.marketState.playerContracts.map(ageContract),
@@ -347,11 +371,14 @@ export function advanceCpuMarket(game: GameState, draftPool: Wrestler[]): GameSt
   const cpuCooldowns: MarketState["cooldowns"] = [];
 
   const marketBrands = game.rivalBrands.map((brand) => {
+      const agedContracts = brand.contracts.map(ageContract);
       let nextBrand: RivalBrandState = {
         ...brand,
-        contracts: brand.contracts.map(ageContract),
+        contracts: agedContracts,
       };
-      const expiredContracts = nextBrand.contracts.filter((contract) => contract.contractStatus === "expired");
+      const expiredContracts = brand.contracts.filter(
+        (contract) => (contract.contractStatus === "active" || contract.contractStatus === "expiring") && ageContract(contract).contractStatus === "expired",
+      );
 
       expiredContracts.forEach((contract) => {
         const wrestler = draftPool.find((item) => item.id === contract.wrestlerId);
@@ -419,6 +446,15 @@ export function advanceCpuMarket(game: GameState, draftPool: Wrestler[]): GameSt
           toBrandId: brand.id,
           toBrandName: brand.brandName,
         });
+        const claim = {
+          id: `${transaction.id}-claim`,
+          seasonNumber: game.seasonNumber,
+          weekNumber: game.currentWeek,
+          wrestlerId: signing.id,
+          wrestlerName: signing.name,
+          brandName: brand.brandName,
+          note: transaction.note,
+        };
         ownedIds.add(signing.id);
         nextBrand = {
           ...nextBrand,
@@ -443,7 +479,18 @@ export function advanceCpuMarket(game: GameState, draftPool: Wrestler[]): GameSt
             },
           ],
           contracts: [...nextBrand.contracts, contract],
+          freeAgentClaims: [...nextBrand.freeAgentClaims, claim],
           marketTransactions: [...nextBrand.marketTransactions, transaction],
+          activityHistory: [
+            ...nextBrand.activityHistory,
+            {
+              id: `${transaction.id}-activity`,
+              seasonNumber: game.seasonNumber,
+              weekNumber: game.currentWeek,
+              label: "Free Agent Signing",
+              note: transaction.note,
+            },
+          ],
         };
       }
 

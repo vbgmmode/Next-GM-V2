@@ -73,7 +73,7 @@ export function advanceGameWeek(game: GameState): GameState {
 
   const withCpu = {
     ...nextGame,
-    rivalBrands: advanceCpuRivalWeek(nextGame, draftPool),
+    rivalBrands: advanceCpuRivalWeek(nextGame),
   };
   const withMarket = advanceCpuMarket(advancePlayerContracts(withCpu), draftPool);
 

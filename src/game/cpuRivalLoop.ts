@@ -1,7 +1,6 @@
 import type {
   CpuChampionshipState,
   CpuFinanceReport,
-  CpuFreeAgentClaim,
   CpuRivalryState,
   CpuRosterMemberState,
   CpuSegmentResult,
@@ -21,7 +20,6 @@ import type {
 import { createMarketContract, getCpuBudgetDefault } from "./market";
 
 const cpuDraftPicksPerBrand = 12;
-const cpuMaxRosterSize = 15;
 const cpuStartingMoney = 1800000;
 
 export type CpuDraftPreviewNote = {
@@ -786,33 +784,7 @@ export function generateCpuWeeklyResults(game: GameState, playerResult: ShowResu
   });
 }
 
-function getClaimedRosterIds(game: GameState) {
-  return new Set([...game.wrestlers.map((wrestler) => wrestler.id), ...game.rivalBrands.flatMap((brand) => brand.rosterWrestlerIds)]);
-}
-
-function pickCpuFreeAgent(brand: RivalBrandState, game: GameState, draftPool: Wrestler[], claimedIds = getClaimedRosterIds(game)) {
-  if (brand.rosterWrestlerIds.length >= cpuMaxRosterSize) {
-    return undefined;
-  }
-
-  const available = draftPool.filter((wrestler) => !claimedIds.has(wrestler.id));
-
-  if (!available.length) {
-    return undefined;
-  }
-
-  const shouldClaim = (hashString(`${brand.id}-free-agent-${game.seasonNumber}-${game.currentWeek}`) % 100) >= 58;
-
-  if (!shouldClaim) {
-    return undefined;
-  }
-
-  return [...available].sort((a, b) => scoreCpuDraftCandidate(brand, b, getCpuRosterWrestlers(brand, draftPool), game.currentWeek) - scoreCpuDraftCandidate(brand, a, getCpuRosterWrestlers(brand, draftPool), game.currentWeek))[0];
-}
-
-export function advanceCpuRivalWeek(game: GameState, draftPool: Wrestler[]): RivalBrandState[] {
-  const claimedIds = getClaimedRosterIds(game);
-
+export function advanceCpuRivalWeek(game: GameState): RivalBrandState[] {
   return game.rivalBrands.map((brand) => {
     const recoveredRoster = brand.rosterState.map((member) => {
       const injuryWeeksRemaining = Math.max(0, member.injuryWeeksRemaining - 1);
@@ -826,59 +798,8 @@ export function advanceCpuRivalWeek(game: GameState, draftPool: Wrestler[]): Riv
         injuryWeeksRemaining,
       };
     });
-    const recoveredBrand = { ...brand, rosterState: recoveredRoster };
-    const freeAgent = pickCpuFreeAgent(recoveredBrand, { ...game, rivalBrands: game.rivalBrands.map((item) => (item.id === brand.id ? recoveredBrand : item)) }, draftPool, claimedIds);
 
-    if (!freeAgent) {
-      return recoveredBrand;
-    }
-
-    claimedIds.add(freeAgent.id);
-
-    const claim: CpuFreeAgentClaim = {
-      id: `${brand.id}-claim-s${game.seasonNumber}-w${game.currentWeek}-${freeAgent.id}`,
-      seasonNumber: game.seasonNumber,
-      weekNumber: game.currentWeek,
-      wrestlerId: freeAgent.id,
-      wrestlerName: freeAgent.name,
-      brandName: brand.brandName,
-      note: `${brand.assignedGMName} claimed ${freeAgent.name} from the watchlist to reinforce ${brand.brandName}.`,
-    };
-    const contract = createMarketContract(freeAgent, "rival", brand.id, "free_agent");
-    const signingCost = contract.weeklySalary * contract.contractWeeksRemaining;
-    const marketTransaction = {
-      id: `${claim.id}-market`,
-      seasonNumber: claim.seasonNumber,
-      weekNumber: claim.weekNumber,
-      type: "signing" as const,
-      wrestlerIds: [freeAgent.id],
-      wrestlerNames: [freeAgent.name],
-      toBrandId: brand.id,
-      toBrandName: brand.brandName,
-      amount: signingCost,
-      accepted: true,
-      note: claim.note,
-    };
-
-    return {
-      ...recoveredBrand,
-      budget: recoveredBrand.budget - signingCost,
-      rosterWrestlerIds: [...recoveredBrand.rosterWrestlerIds, freeAgent.id],
-      rosterState: [...recoveredBrand.rosterState, { ...createCpuRosterMember(freeAgent, game.seasonNumber, game.currentWeek + 1, "free_agent"), contractId: contract.id }],
-      contracts: [...recoveredBrand.contracts, contract],
-      freeAgentClaims: [...recoveredBrand.freeAgentClaims, claim],
-      marketTransactions: [...recoveredBrand.marketTransactions, marketTransaction],
-      activityHistory: [
-        ...recoveredBrand.activityHistory,
-        {
-          id: `${claim.id}-activity`,
-          seasonNumber: claim.seasonNumber,
-          weekNumber: claim.weekNumber,
-          label: "Free Agent Claim",
-          note: claim.note,
-        },
-      ],
-    };
+    return { ...brand, rosterState: recoveredRoster };
   });
 }
 
