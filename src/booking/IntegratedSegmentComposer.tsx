@@ -86,10 +86,15 @@ function TalentSlotButton({
   }
 
   return (
-    <button className={`booking-stage-slot ${wrestler ? "is-filled" : "is-empty"}`.trim()} onClick={onClick} type="button">
+    <button
+      aria-label={wrestler ? `${wrestler.name} slot` : "Open talent slot"}
+      className={`booking-stage-slot ${wrestler ? "is-filled" : "is-empty"}`.trim()}
+      onClick={onClick}
+      type="button"
+    >
       {teamLabel ? <span className="booking-stage-slot-team">{teamLabel}</span> : null}
       {wrestler ? <DashboardDynastyPortrait size="lg" wrestler={wrestler} /> : <span className="booking-stage-slot-empty">+ Talent</span>}
-      <span className="booking-stage-slot-label">{wrestler?.name ?? "Open Slot"}</span>
+      {wrestler ? null : <span className="booking-stage-slot-label">Open Slot</span>}
     </button>
   );
 }

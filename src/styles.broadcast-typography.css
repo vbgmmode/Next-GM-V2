@@ -44,7 +44,8 @@ h6,
 .dynasty-management-shell,
 .booking-dynasty-shell,
 .roster-dynasty-shell,
-.roster-profile-shell {
+.roster-profile-shell,
+.social-dynasty-shell {
   font-family: var(--font-ui);
   font-weight: var(--font-weight-ui);
   letter-spacing: var(--broadcast-tracking-ui);
@@ -63,7 +64,8 @@ h6,
 .dynasty-management-shell :is(.dashboard-dynasty-logo-lockup span, .dashboard-dynasty-logo-lockup strong, .dashboard-dynasty-header-module strong, .dashboard-dynasty-next-show strong, .dashboard-dynasty-section-heading span, .dashboard-dynasty-brand-rating strong),
 .booking-dynasty-shell :is(.booking-panel-heading span, .booking-panel-kicker, .booking-segment-rail-title strong, .booking-status-strip strong),
 .roster-dynasty-shell :is(.roster-panel-heading span, .roster-panel-kicker, .wrestler-card-head h3, .wrestler-card-overall, .roster-selected-strip .roster-panel-heading span, .locker-room-pulse-title h3, .locker-room-pulse-metric-head b, .locker-room-pulse-notes-head strong, .locker-room-pulse-injury-name strong, .locker-room-pulse-note p strong),
-.roster-profile-shell :is(.roster-panel-heading span, .roster-panel-kicker) {
+.roster-profile-shell :is(.roster-panel-heading span, .roster-panel-kicker),
+.social-dynasty-shell :is(.social-timeline-header h2, .social-timeline-display-name, .social-trends-card h3, .social-desk-head-copy h3, .social-desk-head-copy strong, .social-desk-badge strong, .social-desk-brand strong, .social-desk-brand-name, .social-desk-score, .social-trends-item strong, .social-trends-topic strong, .social-trends-cpu strong, .social-trends-desk-copy strong, .social-timeline-empty strong) {
   font-family: var(--font-display);
   font-weight: var(--font-weight-display);
   letter-spacing: var(--broadcast-tracking-display);
@@ -74,7 +76,8 @@ h6,
 .dynasty-management-shell :is(.dashboard-dynasty-header-module span, .dashboard-dynasty-next-show span, .dashboard-dynasty-next-show em, .dashboard-dynasty-section-heading b),
 .booking-dynasty-shell :is(.booking-panel-heading b, .booking-btn, .booking-filter-btn, .booking-rail-item-title),
 .roster-dynasty-shell :is(.roster-panel-heading b, .roster-btn, .roster-filter-btn, .roster-search-field span, .roster-sort-box span, .roster-quick-reads span, .wrestler-card-meta-line, .wrestler-card-foot, .wrestler-card-stamina span, .wrestler-card-morale span, .pressure-tags span, .locker-room-pulse-metric-head strong, .locker-room-pulse-metric-head em, .locker-room-pulse-chart-x span, .locker-room-pulse-injury-row span, .locker-room-pulse-injury-row small, .locker-room-pulse-view-all),
-.roster-profile-shell :is(.roster-panel-heading b, .roster-btn, .pressure-tags span) {
+.roster-profile-shell :is(.roster-panel-heading b, .roster-btn, .pressure-tags span),
+.social-dynasty-shell :is(.social-timeline-kicker, .social-timeline-count, .social-timeline-tab, .social-timeline-meta, .social-trends-item span, .social-trends-topic span, .social-trends-cpu span, .social-trends-mood span, .social-desk-kicker, .social-desk-badge span, .social-desk-table-head, .social-desk-rank, .social-desk-status) {
   font-family: var(--font-ui);
   font-weight: var(--font-weight-ui-bold);
   letter-spacing: var(--broadcast-tracking-ui);

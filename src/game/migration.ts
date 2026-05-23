@@ -18,6 +18,7 @@ import type {
   MarketCooldown,
   OfficeMandateState,
   OfficeMandateStatus,
+  WeeklyMarketBoard,
   SegmentType,
   RivalBrandState,
   RivalBrandTrend,
@@ -211,6 +212,8 @@ function normalizeMarketContract(value: unknown): MarketContract | undefined {
         ? candidate.contractStatus
         : "active",
     renewalRisk: typeof candidate.renewalRisk === "number" ? candidate.renewalRisk : 20,
+    paymentModel: candidate.paymentModel === "prepaid" ? "prepaid" : candidate.paymentModel === "weekly" ? "weekly" : undefined,
+    upfrontCostPaid: typeof candidate.upfrontCostPaid === "number" ? candidate.upfrontCostPaid : undefined,
   };
 }
 
@@ -299,6 +302,39 @@ function normalizeOfficeMandate(value: unknown): OfficeMandateState {
   };
 }
 
+function normalizeWeeklyMarketBoard(value: unknown): WeeklyMarketBoard | undefined {
+  const candidate = value as Partial<WeeklyMarketBoard>;
+
+  if (!candidate || typeof candidate.seasonNumber !== "number" || typeof candidate.weekNumber !== "number" || !Array.isArray(candidate.entries)) {
+    return undefined;
+  }
+
+  return {
+    seasonNumber: candidate.seasonNumber,
+    weekNumber: candidate.weekNumber,
+    entries: candidate.entries
+      .map((entry) => {
+        const boardEntry = entry as Partial<WeeklyMarketBoard["entries"][number]>;
+        const status =
+          boardEntry.status === "rival_signed" || boardEntry.status === "player_signed" || boardEntry.status === "available"
+            ? boardEntry.status
+            : undefined;
+
+        return typeof boardEntry.wrestlerId === "string" && status
+          ? {
+              wrestlerId: boardEntry.wrestlerId,
+              status,
+              weeklyAsk: typeof boardEntry.weeklyAsk === "number" ? boardEntry.weeklyAsk : 0,
+              rivalBrandId: typeof boardEntry.rivalBrandId === "string" ? boardEntry.rivalBrandId : undefined,
+              rivalBrandName: typeof boardEntry.rivalBrandName === "string" ? boardEntry.rivalBrandName : undefined,
+              transactionId: typeof boardEntry.transactionId === "string" ? boardEntry.transactionId : undefined,
+            }
+          : undefined;
+      })
+      .filter(Boolean) as WeeklyMarketBoard["entries"],
+  };
+}
+
 function normalizeMarketState(value: unknown, wrestlers: Wrestler[]): MarketState {
   const candidate = value as Partial<MarketState>;
   const defaultState = createDefaultMarketState(wrestlers);
@@ -309,6 +345,7 @@ function normalizeMarketState(value: unknown, wrestlers: Wrestler[]): MarketStat
     transactions: normalizeMarketTransactions(candidate?.transactions),
     cooldowns: normalizeMarketCooldowns(candidate?.cooldowns),
     officeMandate: normalizeOfficeMandate(candidate?.officeMandate),
+    weeklyBoard: normalizeWeeklyMarketBoard(candidate?.weeklyBoard),
   };
 }
 

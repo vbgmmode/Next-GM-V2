@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { advanceCpuRivalWeek } from "./cpuRivalLoop";
-import { advancePlayerContracts, proposePlayerTrade, releasePlayerWrestler } from "./market";
+import { advancePlayerContracts, ensureWeeklyMarketBoard, getExternalMarketOffer, proposePlayerTrade, releasePlayerWrestler, renewPlayerContract, signPlayerFreeAgent } from "./market";
 import { migrateSavedGameState } from "./migration";
 import { createNewGame, draftPool } from "./seed";
 import type { GameState, MarketContract, Segment } from "./types";
@@ -137,5 +137,68 @@ describe("market ownership invariants", () => {
     expect(migrated?.screen).toBe("market");
     expect(migrated?.game.marketState.playerContracts).toHaveLength(game.wrestlers.length);
     expect(migrated?.game.marketState.officeMandate.mandateStatus).toBe("stable");
+  });
+
+  it("creates a fixed weekly board with no more than six entries", () => {
+    const game = createNewGame();
+    const board = game.marketState.weeklyBoard;
+
+    expect(board?.seasonNumber).toBe(game.seasonNumber);
+    expect(board?.weekNumber).toBe(game.currentWeek);
+    expect(board?.entries.length).toBeLessThanOrEqual(6);
+    board?.entries
+      .filter((entry) => entry.status === "rival_signed")
+      .forEach((entry) => {
+        expect(game.rivalBrands.some((brand) => brand.id === entry.rivalBrandId && brand.rosterWrestlerIds.includes(entry.wrestlerId))).toBe(true);
+      });
+  });
+
+  it("only signs talent from the weekly board and marks the row signed by the player", () => {
+    const baseGame = createNewGame();
+    const game = Array.from({ length: 12 }, (_, index) => index + 1)
+      .map((week) =>
+        ensureWeeklyMarketBoard(
+          {
+            ...baseGame,
+            currentWeek: week,
+            marketState: { ...baseGame.marketState, weeklyBoard: undefined },
+          },
+          draftPool,
+        ),
+      )
+      .find((candidate) => candidate.marketState.weeklyBoard?.entries.some((entry) => entry.status === "available")) as GameState | undefined;
+
+    expect(game).toBeDefined();
+
+    const availableEntry = game?.marketState.weeklyBoard?.entries.find((entry) => entry.status === "available");
+    const wrestler = draftPool.find((item) => item.id === availableEntry?.wrestlerId);
+
+    expect(availableEntry).toBeDefined();
+    expect(wrestler).toBeDefined();
+
+    const offer = getExternalMarketOffer(wrestler!, game!.seasonNumber, game!.currentWeek, 3);
+    const updatedGame = signPlayerFreeAgent(game!, wrestler!.id, draftPool, 3);
+
+    expect(updatedGame.money).toBe(game!.money - offer.dueNow);
+    expect(updatedGame.wrestlers.some((item) => item.id === wrestler!.id)).toBe(true);
+    expect(updatedGame.marketState.weeklyBoard?.entries.find((entry) => entry.wrestlerId === wrestler!.id)?.status).toBe("player_signed");
+    expect(updatedGame.marketState.playerContracts.find((contract) => contract.wrestlerId === wrestler!.id)).toMatchObject({
+      contractWeeksRemaining: 3,
+      paymentModel: "prepaid",
+      releasePenalty: 0,
+    });
+  });
+
+  it("extends active contracts with prepaid renewal cash", () => {
+    const game = createNewGame();
+    const wrestler = game.wrestlers[0];
+    const updatedGame = renewPlayerContract(game, wrestler.id, 5);
+    const beforeContract = game.marketState.playerContracts.find((contract) => contract.wrestlerId === wrestler.id);
+    const afterContract = updatedGame.marketState.playerContracts.find((contract) => contract.wrestlerId === wrestler.id);
+
+    expect(afterContract?.contractWeeksRemaining).toBe((beforeContract?.contractWeeksRemaining ?? 0) + 5);
+    expect(afterContract?.paymentModel).toBe("prepaid");
+    expect(updatedGame.money).toBeLessThan(game.money);
+    expect(updatedGame.marketState.transactions.at(-1)?.type).toBe("renewal");
   });
 });

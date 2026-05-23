@@ -32,6 +32,7 @@ import {
   getRivalMarketEvents,
   proposePlayerTrade,
   releasePlayerWrestler,
+  renewPlayerContract,
   signPlayerFreeAgent,
 } from "./game/market";
 import {
@@ -156,26 +157,22 @@ import type {
 import type { GameScreen, ProfileReturnScreen, SavedGameState } from "./game/migration";
 import type { StoredSaveRecord } from "./gameStorage";
 import { MarketScreen } from "./screens/MarketScreen";
+import { RivalriesScreen, type RivalryCreateInput } from "./screens/RivalriesScreen";
+import { scheduleRivalryEndInGame } from "./game/rivalryEnd";
+import "./screens/ChampionshipsScreen.css";
+import "./screens/RivalriesScreen.css";
 import { BookingScreen } from "./booking";
 import { RosterScreen, WrestlerProfileScreen } from "./roster";
+import { SocialScreen, formatSocialCategory } from "./social";
 
 type RosterSort = "popularity" | "momentum" | "fatigue" | "morale";
 type RosterFilter = "all" | "mens" | "womens" | "champions" | "injured" | "hot" | "tired" | "morale" | "underused";
 type RosterStatus = "Hot" | "Tired" | "Frustrated" | "Steady";
 type ProfilePanelId = "stats" | "gmRead" | "contractValue" | "affiliations" | "showHistory" | "championships" | "rivalries" | "social";
 type FinancePanelId = "talentValue" | "latestReport" | "seasonReads" | "financeHistory";
-type SocialFilter = "All" | "Fan Reaction" | "Dirt Sheets" | "Analyst Takes" | "Title Scene" | "Rivalries";
-type IwcMoodTone = SocialPost["tone"];
 type SetupStep = "contract" | "gm" | "brand" | "rules" | "draft";
 type DraftSort = "rank" | "starPower" | "popularity" | "momentum" | "ringSkill" | "promoSkill" | "fatigue";
 type DraftReservePressure = "Healthy" | "Tight" | "Over Budget";
-type RivalryCreateInput = {
-  participantIds: string[];
-  structure: RivalryStructure;
-  stakes: RivalryStakes;
-  storylineId?: string;
-};
-
 type TitleMode = "home" | "load";
 
 type CareerPreview = {
@@ -247,21 +244,6 @@ type FinanceOfficeRead = {
 type FreeAgentWatchEntry = {
   profile: WrestlerValueProfile;
   wrestler: Wrestler;
-};
-
-type IwcMoodItem = {
-  id: string;
-  label: string;
-  value: string;
-  detail: string;
-};
-
-type IwcMoodSummary = {
-  headline: string;
-  detail: string;
-  weekLabel: string;
-  tone: IwcMoodTone;
-  items: IwcMoodItem[];
 };
 
 type GMRead = {
@@ -3313,7 +3295,7 @@ function formatRivalryStructure(structure: RivalryStructure) {
     case "tag_team":
       return "Tag 2v2";
     case "multi_person":
-      return "Multi";
+      return "Triple";
     default:
       return "Singles";
   }
@@ -3325,7 +3307,7 @@ function getRivalryStructureParticipantRange(structure: RivalryStructure) {
   }
 
   if (structure === "multi_person") {
-    return { min: 3, max: 4 };
+    return { min: 3, max: 3 };
   }
 
   return { min: 2, max: 2 };
@@ -3417,8 +3399,8 @@ function getRivalryCreationBlockReason(structure: RivalryStructure, participantI
     return "Singles rivalries need exactly two wrestlers.";
   }
 
-  if (structure === "multi_person" && (selectedIds.length < 3 || selectedIds.length > 4)) {
-    return "Multi rivalries need three or four wrestlers.";
+  if (structure === "multi_person" && selectedIds.length !== 3) {
+    return "Triple rivalries need exactly three wrestlers.";
   }
 
   const participants = selectedIds
@@ -3820,195 +3802,6 @@ function buildSeasonArchiveSummary(game: GameState): SeasonArchiveSummary {
       : undefined,
     championsSnapshot,
   };
-}
-
-function formatSocialCategory(category: SocialCategory) {
-  return category
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-function formatSocialTone(tone: SocialPost["tone"]) {
-  return tone.charAt(0).toUpperCase() + tone.slice(1);
-}
-
-function getSocialFilterCategory(filter: SocialFilter): SocialCategory[] | null {
-  if (filter === "Fan Reaction") {
-    return ["fan_praise", "push_complaint", "viral_moment", "ple_reaction", "fatigue_concern"];
-  }
-
-  if (filter === "Dirt Sheets") {
-    return ["dirt_sheet"];
-  }
-
-  if (filter === "Analyst Takes") {
-    return ["analyst_take"];
-  }
-
-  if (filter === "Title Scene") {
-    return ["title_scene"];
-  }
-
-  if (filter === "Rivalries") {
-    return ["rivalry_heat"];
-  }
-
-  return null;
-}
-
-function getDominantEntry<T extends string>(values: T[]) {
-  const counts = values.reduce<Map<T, number>>((map, value) => map.set(value, (map.get(value) ?? 0) + 1), new Map<T, number>());
-  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
-}
-
-function getIwcMoodHeadline(tone: IwcMoodTone, primaryCategory?: SocialCategory) {
-  if (tone === "chaotic") {
-    return "Timeline Is Chaotic";
-  }
-
-  if (tone === "angry") {
-    return "Fans Are Heated";
-  }
-
-  if (tone === "skeptical") {
-    return "Timeline Is Skeptical";
-  }
-
-  if (tone === "impressed" || tone === "excited") {
-    return primaryCategory === "title_scene" ? "Title Scene Has Buzz" : "Fans Are Buying In";
-  }
-
-  if (tone === "analytical") {
-    return "Discourse Is In The Tape Room";
-  }
-
-  return "Discourse Is In The Tape Room";
-}
-
-function getIwcArgumentLabel(category?: SocialCategory) {
-  if (category === "title_scene") {
-    return "Title Scene";
-  }
-
-  if (category === "rivalry_heat") {
-    return "Rivalry Heat";
-  }
-
-  if (category === "fatigue_concern") {
-    return "Workload";
-  }
-
-  if (category === "push_complaint") {
-    return "Booking Choice";
-  }
-
-  if (category === "viral_moment") {
-    return "Breakout Clip";
-  }
-
-  if (category === "ple_reaction") {
-    return "PLE Fallout";
-  }
-
-  if (category === "analyst_take") {
-    return "Match Quality";
-  }
-
-  if (category === "dirt_sheet") {
-    return "Backstage Read";
-  }
-
-  if (category === "fan_praise") {
-    return "Fan Praise";
-  }
-
-  return "No Argument";
-}
-
-function getIwcMoodSummary(game: GameState): IwcMoodSummary | undefined {
-  if (!game.socialPosts.length) {
-    return undefined;
-  }
-
-  const latestPost = game.socialPosts[game.socialPosts.length - 1];
-  const weekPosts = game.socialPosts.filter((post) => post.seasonNumber === latestPost.seasonNumber && post.weekNumber === latestPost.weekNumber);
-  const result = game.showHistory.find((show) => show.seasonNumber === latestPost.seasonNumber && show.week === latestPost.weekNumber);
-  const dominantTone = getDominantEntry(weekPosts.map((post) => post.tone));
-  const dominantCategory = getDominantEntry(weekPosts.map((post) => post.category));
-  const wrestlerCounts = new Map<string, number>();
-  const rivalryCounts = new Map<string, number>();
-  const championshipCounts = new Map<string, number>();
-
-  weekPosts.forEach((post) => {
-    post.relatedWrestlerIds.forEach((id) => wrestlerCounts.set(id, (wrestlerCounts.get(id) ?? 0) + 1));
-    post.relatedRivalryIds?.forEach((id) => rivalryCounts.set(id, (rivalryCounts.get(id) ?? 0) + 1));
-    post.relatedChampionshipIds?.forEach((id) => championshipCounts.set(id, (championshipCounts.get(id) ?? 0) + 1));
-  });
-
-  const topWrestlerId = [...wrestlerCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-  const topRivalryId = [...rivalryCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-  const topChampionshipId = [...championshipCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-  const topWrestler = game.wrestlers.find((wrestler) => wrestler.id === topWrestlerId);
-  const topRivalry = game.rivalries.find((rivalry) => rivalry.id === topRivalryId);
-  const topChampionship = game.championships.find((championship) => championship.id === topChampionshipId);
-  const tone = dominantTone?.[0] ?? "analytical";
-  const category = dominantCategory?.[0];
-  const toneLabel = formatSocialTone(tone);
-  const bestSegment = result ? getBestSegment(result) : undefined;
-  const argumentLabel = getIwcArgumentLabel(category);
-  const focusValue = topChampionship?.name ?? topRivalry?.name ?? topWrestler?.name ?? bestSegment?.participantNames.join(" / ") ?? latestPost.showName;
-  const focusDetail = topChampionship
-    ? `${topChampionship.name} is the belt showing up most in the resolved posts.`
-    : topRivalry
-      ? `${topRivalry.name} is the story thread fans keep circling.`
-      : topWrestler
-        ? `${topWrestler.name} is drawing the loudest individual attention.`
-        : bestSegment
-          ? `${bestSegment.participantNames.join(" / ")} gave the feed its cleanest reference point.`
-          : "The feed is talking about the show more than one person.";
-  const showDetail = result
-    ? `${result.showName} closed at ${result.totalScore} (${getShowGrade(result.totalScore)}), with ${bestSegment?.participantNames.join(" / ") ?? "the card"} as the strongest resolved beat.`
-    : `${latestPost.showName} has resolved posts, but no matching show result was found in history.`;
-
-  return {
-    headline: getIwcMoodHeadline(tone, category),
-    detail: `Resolved Week ${latestPost.weekNumber} posts only. This summarizes what the audience is arguing about after the show, not what will happen next.`,
-    weekLabel: `Season ${latestPost.seasonNumber} · Week ${latestPost.weekNumber} · ${latestPost.showName}`,
-    tone,
-    items: [
-      {
-        id: "argument",
-        label: "Main Argument",
-        value: argumentLabel,
-        detail: category
-          ? `${dominantCategory?.[1] ?? 0} post${dominantCategory?.[1] === 1 ? " is" : "s are"} centered on ${formatSocialCategory(category).toLowerCase()}.`
-          : "No dominant topic yet.",
-      },
-      {
-        id: "focus",
-        label: "Who/What Has The Feed",
-        value: focusValue,
-        detail: focusDetail,
-      },
-      {
-        id: "mood",
-        label: "Mood",
-        value: toneLabel,
-        detail: `${dominantTone?.[1] ?? 0} post${dominantTone?.[1] === 1 ? "" : "s"} carry ${toneLabel.toLowerCase()} energy.`,
-      },
-      {
-        id: "receipt",
-        label: "Resolved Receipt",
-        value: result ? `${result.totalScore} ${getShowGrade(result.totalScore)}` : "Posts Only",
-        detail: showDetail,
-      },
-    ],
-  };
-}
-
-function getRelatedWrestlerNames(post: SocialPost, wrestlers: Wrestler[]) {
-  return post.relatedWrestlerIds.map((id) => wrestlers.find((wrestler) => wrestler.id === id)?.name).filter(Boolean).join(" / ");
 }
 
 function getWrestlerChampionships(wrestlerId: string, championships: Championship[]) {
@@ -5686,13 +5479,35 @@ function App() {
     setScreen("dashboard");
   }
 
-  function signFreeAgent(wrestlerId: string) {
+  function signFreeAgent(wrestlerId: string, contractWeeks: number) {
     setGame((current) => {
       if (!current) {
         return current;
       }
 
-      const updatedGame = signPlayerFreeAgent(current, wrestlerId, draftPool);
+      const latestCurrentResult = current.showHistory[current.showHistory.length - 1];
+      if (latestCurrentResult?.week === current.currentWeek) {
+        return current;
+      }
+
+      const updatedGame = signPlayerFreeAgent(current, wrestlerId, draftPool, contractWeeks);
+      persistGameSnapshot(updatedGame, "market");
+      return updatedGame;
+    });
+  }
+
+  function renewContract(wrestlerId: string, contractWeeks: number) {
+    setGame((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const latestCurrentResult = current.showHistory[current.showHistory.length - 1];
+      if (latestCurrentResult?.week === current.currentWeek) {
+        return current;
+      }
+
+      const updatedGame = renewPlayerContract(current, wrestlerId, contractWeeks);
       persistGameSnapshot(updatedGame, "market");
       return updatedGame;
     });
@@ -5712,6 +5527,11 @@ function App() {
         return current;
       }
 
+      const latestCurrentResult = current.showHistory[current.showHistory.length - 1];
+      if (latestCurrentResult?.week === current.currentWeek) {
+        return current;
+      }
+
       if ((titleWarning || rivalryWarning) && !window.confirm(`${wrestler.name} is tied to ${titleWarning ? "a championship" : "an active rivalry"}. Release anyway?`)) {
         return current;
       }
@@ -5725,6 +5545,11 @@ function App() {
   function proposeTrade(outgoingWrestlerId: string, targetWrestlerId: string) {
     setGame((current) => {
       if (!current) {
+        return current;
+      }
+
+      const latestCurrentResult = current.showHistory[current.showHistory.length - 1];
+      if (latestCurrentResult?.week === current.currentWeek) {
         return current;
       }
 
@@ -5803,37 +5628,13 @@ function App() {
     });
   }
 
-  function endRivalry(rivalryId: string) {
+  function scheduleRivalryEnd(rivalryId: string, reason: string) {
     setGame((current) => {
       if (!current) {
         return current;
       }
 
-      const rivalry = current.rivalries.find((activeRivalry) => activeRivalry.id === rivalryId);
-      const endEvent: RivalryHistoryEvent | undefined = rivalry
-        ? {
-            id: `s${current.seasonNumber}-w${current.currentWeek}-${rivalryId}-ended`,
-            rivalryId,
-            rivalryName: rivalry.name,
-            participantIds: [...rivalry.participantIds],
-            weekNumber: current.currentWeek,
-            seasonNumber: current.seasonNumber,
-            eventType: "ended",
-            note: `${rivalry.name} ended at ${rivalry.heat} heat and ${rivalry.freshness} freshness.`,
-            heat: rivalry.heat,
-            freshness: rivalry.freshness,
-            status: rivalry.status,
-          }
-        : undefined;
-      const updatedGame = {
-        ...current,
-        rivalries: current.rivalries.filter((rivalry) => rivalry.id !== rivalryId),
-        rivalryHistory: endEvent ? [...(current.rivalryHistory ?? []), endEvent] : current.rivalryHistory,
-        currentShow: current.currentShow.map((segment) =>
-          segment.rivalryId === rivalryId ? { ...segment, rivalryId: undefined } : segment,
-        ),
-      };
-
+      const updatedGame = scheduleRivalryEndInGame(current, rivalryId, reason);
       persistGameSnapshot(updatedGame, "rivalries");
       return updatedGame;
     });
@@ -5914,6 +5715,7 @@ function App() {
         onNavigate={navigateTo}
         onProposeTrade={proposeTrade}
         onReleaseWrestler={releaseWrestler}
+        onRenewContract={renewContract}
         onSignFreeAgent={signFreeAgent}
       />
     );
@@ -5930,7 +5732,7 @@ function App() {
         latestResult={latestResult}
         onBookRivalry={bookRivalryStory}
         onCreateRivalry={createRivalry}
-        onEndRivalry={endRivalry}
+        onScheduleRivalryEnd={scheduleRivalryEnd}
         onNavigate={navigateTo}
       />
     );
@@ -7599,17 +7401,15 @@ function ChampionshipsScreen({
   onRevokeChampionship: (championshipId: string) => void;
   onSetContenders: (championshipId: string, wrestlerIds: string[]) => void;
 }) {
-  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
   const officeRead = getChampionshipOfficeRead(game);
   const [editContendersOpen, setEditContendersOpen] = useState(false);
   const [assignChampionOpen, setAssignChampionOpen] = useState(false);
-  const [isTitleOfficeExpanded, setIsTitleOfficeExpanded] = useState(false);
+  const [committeeExpanded, setCommitteeExpanded] = useState(false);
   const defaultSelectedChampionship =
     game.championships.find((championship) => championship.name === officeRead.attentionTitle) ??
     game.championships.find((championship) => championship.name === officeRead.prestigeTitle) ??
     game.championships[0];
   const [selectedChampionshipId, setSelectedChampionshipId] = useState(defaultSelectedChampionship?.id ?? "");
-  const [selectedTitleTab, setSelectedTitleTab] = useState<"scene" | "contenders" | "history">("scene");
   const championshipReads = game.championships.map((championship) => {
     const scene = getTitleDivisionScene(championship, game.wrestlers, game.rivalries, game.currentWeek, game.championships);
     const recentHistory = getChampionshipHistory(game, championship.id);
@@ -7674,12 +7474,82 @@ function ChampionshipsScreen({
     }
   }, [championshipReads, defaultSelectedChampionship?.id, selectedChampionshipId]);
 
-  function handleSelectChampionship(championshipId: string, nextTab: "scene" | "contenders" | "history" = "scene") {
+  function handleSelectChampionship(championshipId: string) {
     setSelectedChampionshipId(championshipId);
-    setSelectedTitleTab(nextTab);
     setEditContendersOpen(false);
     setAssignChampionOpen(false);
+    setCommitteeExpanded(false);
   }
+
+  const attentionTitleRead =
+    championshipReads.find((read) => read.championship.name === officeRead.attentionTitle) ?? selectedTitleRead;
+  const prestigeTitleRead = championshipReads.find((read) => read.championship.name === officeRead.prestigeTitle);
+  const priorityTitleReads = [attentionTitleRead, prestigeTitleRead].filter(
+    (read, index, reads): read is (typeof championshipReads)[number] =>
+      Boolean(read) && reads.findIndex((candidate) => candidate?.championship.id === read?.championship.id) === index,
+  );
+  const beltWallReads = championshipReads.filter(
+    (read) => !priorityTitleReads.some((priorityRead) => priorityRead.championship.id === read.championship.id),
+  );
+
+  function renderBeltRow(read: (typeof championshipReads)[number], isPriority = false) {
+    const { championship, pressureSnapshot, scene } = read;
+    const isSelected = selectedTitleRead?.championship.id === championship.id;
+    const champion = scene.champions[0];
+
+    return (
+      <button
+        className={`championship-belt-row ${isSelected ? "is-selected" : ""} ${isPriority ? "is-priority" : ""}`.trim()}
+        key={championship.id}
+        onClick={() => handleSelectChampionship(championship.id)}
+        type="button"
+      >
+        <span className="championship-belt-row-mark">{getChampionshipAcronym(championship.name)}</span>
+        {champion ? (
+          <WrestlerPortrait className="championship-row-portrait" wrestler={champion} />
+        ) : (
+          <span aria-hidden="true" className="championship-belt-row-mark">
+            —
+          </span>
+        )}
+        <span>
+          <strong>{championship.name}</strong>
+          <small>
+            {pressureSnapshot.primary.label} · {getWrestlerNames(championship.championIds, game.wrestlers) || "Vacant"}
+          </small>
+        </span>
+        <b>{championship.prestige}</b>
+      </button>
+    );
+  }
+
+  const beltsNeedingAttention = championshipReads.filter(
+    (read) => read.identityRead.tone === "watch" || read.identityRead.tone === "build",
+  ).length;
+  const titleUrgencyRead =
+    beltsNeedingAttention > 0
+      ? `${beltsNeedingAttention} belt${beltsNeedingAttention === 1 ? "" : "s"} on the clock · ${game.championships.length} live`
+      : `${game.championships.length} belt${game.championships.length === 1 ? "" : "s"} stable this week`;
+  const hasChampion = Boolean(selectedTitleRead?.championship.championIds.length);
+  const hasContenderLane = selectedContenderRows.length > 0;
+  const focusReady = Boolean(selectedTitleRead && hasChampion && hasContenderLane);
+  const focusBlocked = Boolean(selectedTitleRead && (!hasChampion || !hasContenderLane));
+  const decisionTone = focusReady ? "ready" : focusBlocked ? "blocked" : "neutral";
+  const decisionHeadline = !hasChampion
+    ? "Vacant Belt Needs A Champion"
+    : !hasContenderLane
+      ? "Thin Contender Lane"
+      : "Title Match Ready";
+  const mandateHeadline =
+    beltsNeedingAttention > 0
+      ? `${beltsNeedingAttention} Belt${beltsNeedingAttention === 1 ? "" : "s"} On The Clock`
+      : "Title Scenes Stable";
+  const mandateDetail = selectedTitleRead
+    ? `${getChampionshipAcronym(selectedTitleRead.championship.name)} · ${selectedTitleRead.pressureSnapshot.primary.label}`
+    : titleUrgencyRead;
+  const decisionBodyShort = selectedTitleRead
+    ? selectedTitleRead.pressureSnapshot.primary.detail.split(".")[0]?.trim() + (selectedTitleRead.pressureSnapshot.primary.detail.includes(".") ? "." : "")
+    : "Select a belt from the rail.";
   const championshipsCta: DynastyManagementCta = selectedTitleRead
     ? {
         eyebrow: "Selected Title",
@@ -7695,795 +7565,259 @@ function ChampionshipsScreen({
 
   return (
     <DynastyManagementShell className="championships-command-shell" currentScreen="championships" cta={championshipsCta} game={game} latestResult={latestResult} onNavigate={onNavigate}>
-      <section className="championship-command-board" aria-label="Championship title office">
-        <section className="championship-title-wall" aria-label="Championship spotlight wall">
-          <div className="championship-wall-head">
-            <div>
-              <p className="eyebrow">Champion Wall</p>
-              <h3>{game.championships.length} Active Title Scenes</h3>
-            </div>
-            <strong>All Belts Live</strong>
-          </div>
-          <div className="championship-spotlight-grid">
-            {championshipReads.map(({ championship, identityRead, pressureSnapshot, scene }) => {
-              const isSelected = selectedTitleRead?.championship.id === championship.id;
-
-              return (
-                <button
-                  className={`championship-spotlight-card tone-${pressureSnapshot.primary.tone} ${isSelected ? "selected" : ""}`}
-                  key={championship.id}
-                  onClick={() => handleSelectChampionship(championship.id)}
-                  type="button"
-                >
-                  <span className="championship-belt-mark">{getChampionshipAcronym(championship.name)}</span>
-                  <span className="championship-card-copy">
-                    <span>{getChampionshipOfficeLine(championship)}</span>
-                    <strong>{championship.name}</strong>
-                    <span className="championship-card-champions">
-                      {scene.champions.slice(0, 2).map((wrestler) => (
-                        <WrestlerPortrait className="championship-mini-portrait" key={wrestler.id} wrestler={wrestler} />
-                      ))}
-                      <small>{getWrestlerNames(championship.championIds, game.wrestlers) || "Vacant"}</small>
-                    </span>
-                  </span>
-                  <span className="championship-card-stats" aria-label={`${championship.name} quick read`}>
-                    <span>
-                      <b>Prestige</b>
-                      <strong>{championship.prestige}</strong>
-                    </span>
-                    <span>
-                      <b>Reign</b>
-                      <strong>{formatWeekCount(getReignLength(championship, game.currentWeek))}</strong>
-                    </span>
-                    <span>
-                      <b>Def</b>
-                      <strong>{championship.defenses}</strong>
-                    </span>
-                  </span>
-                  <span className="championship-card-read">
-                    <b>{identityRead.headline}</b>
-                    <small>{pressureSnapshot.primary.label} · {scene.topContenders.length} contender lane{scene.topContenders.length === 1 ? "" : "s"}</small>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+      <div className="championship-desk-body">
+        <section className={`championship-mandate-strip tone-${officeRead.tone}`} aria-label="Title office mandate">
+          <p className="eyebrow">Title Office</p>
+          <strong>{mandateHeadline}</strong>
+          <span>{mandateDetail}</span>
         </section>
 
-        {selectedTitleRead ? (
-          <section className="championship-focus-workspace" aria-label={`${selectedTitleRead.championship.name} focused title desk`}>
-            <div className="championship-focus-head">
-              <div className="championship-focus-title">
-                <span className="championship-belt-mark large">{getChampionshipAcronym(selectedTitleRead.championship.name)}</span>
-                <div>
-                  <p className="eyebrow">Selected Championship</p>
-                  <h3>{selectedTitleRead.championship.name}</h3>
-                </div>
+        <section className="championship-command-board" aria-label="Championship title desk">
+          <aside className="championship-belt-rail championship-panel" aria-label="Belt rail">
+            <div className="championship-panel-head">
+              <div>
+                <p className="eyebrow">Gold Scene</p>
+                <h2>Active Belts</h2>
               </div>
-              <div className="championship-focus-actions">
-                <button className="primary-action" onClick={() => onBookChampionship(selectedTitleRead.championship.id)}>
-                  Book Title
-                </button>
-              </div>
+              <strong>{game.championships.length} Live</strong>
             </div>
-
-            <div className="championship-focus-metrics">
-              <div className="metric championship-champion-metric">
-                <span>Champion</span>
-                {selectedTitleRead.scene.champions.length ? (
-                  <span className="championship-champion-portraits">
-                    {selectedTitleRead.scene.champions.slice(0, 2).map((wrestler) => (
-                      <WrestlerPortrait className="championship-mini-portrait" key={wrestler.id} wrestler={wrestler} />
-                    ))}
-                  </span>
-                ) : null}
-                <strong>{getWrestlerNames(selectedTitleRead.championship.championIds, game.wrestlers) || "Vacant"}</strong>
-                {selectedTitleRead.championship.championIds.length ? (
-                  <button className="danger-action" onClick={() => onRevokeChampionship(selectedTitleRead.championship.id)} type="button">
-                    Revoke
-                  </button>
-                ) : (
-                  <button className="secondary-action" onClick={() => setAssignChampionOpen((open) => !open)} type="button">
-                    Assign
-                  </button>
-                )}
-              </div>
-              <Metric label="Reign" value={`${getReignLength(selectedTitleRead.championship, game.currentWeek)} Week${getReignLength(selectedTitleRead.championship, game.currentWeek) === 1 ? "" : "s"}`} />
-              <Metric label="Defenses" value={`${selectedTitleRead.championship.defenses}`} />
-              <Metric label="Scene" value={selectedTitleRead.pressureSnapshot.primary.label} />
+            <p className="championship-belt-urgency">{beltsNeedingAttention > 0 ? `${beltsNeedingAttention} on the clock` : "All scenes steady"}</p>
+            <div className="championship-belt-list">
+              {priorityTitleReads.length ? (
+                <>
+                  <p className="eyebrow">On The Clock</p>
+                  {priorityTitleReads.map((read) => renderBeltRow(read, true))}
+                </>
+              ) : null}
+              {(beltWallReads.length ? beltWallReads : championshipReads).map((read) => renderBeltRow(read))}
             </div>
+          </aside>
 
-            {assignChampionOpen && !selectedTitleRead.championship.championIds.length ? (
-              <section className="championship-assign-panel" aria-label={`Assign ${selectedTitleRead.championship.name} champion`}>
-                <div>
-                  <span>Vacant Title Assignment</span>
-                  <strong>{selectedTitleRead.isTagTitle ? "Choose Champion Pair" : "Choose Champion"}</strong>
-                </div>
-                <div className="championship-assign-options">
-                  {selectedTitleRead.isTagTitle ? (
-                    assignableChampionPairs.length ? (
-                      assignableChampionPairs.map(([first, second]) => (
-                        <button
-                          key={`${first.id}-${second.id}`}
-                          onClick={() => {
-                            onAssignChampionship(selectedTitleRead.championship.id, [first.id, second.id]);
-                            setAssignChampionOpen(false);
-                          }}
-                          type="button"
-                        >
-                          <span className="championship-talent-option">
-                            <span className="championship-option-portraits">
-                              <WrestlerPortrait className="championship-mini-portrait" wrestler={first} />
-                              <WrestlerPortrait className="championship-mini-portrait" wrestler={second} />
-                            </span>
-                            <span>{first.name} / {second.name}</span>
-                          </span>
-                          <small>
-                            Pair assignment
-                            {[...getOtherChampionshipHolderLabels(first, game.championships, selectedTitleRead.championship.id), ...getOtherChampionshipHolderLabels(second, game.championships, selectedTitleRead.championship.id)].length
-                              ? " · Champion elsewhere"
-                              : ""}
-                          </small>
-                        </button>
+          {selectedTitleRead ? (
+            <section
+              className={`championship-focus-workspace championship-panel ${focusReady ? "is-ready" : focusBlocked ? "is-blocked" : ""}`.trim()}
+              aria-label={`${selectedTitleRead.championship.name} title focus`}
+            >
+              <div className="championship-focus-head">
+                <div className="championship-focus-title-block">
+                  <div className="championship-hero-portraits">
+                    {selectedTitleRead.scene.champions.length ? (
+                      selectedTitleRead.scene.champions.slice(0, 2).map((wrestler) => (
+                        <WrestlerPortrait className="championship-hero-portrait" key={wrestler.id} wrestler={wrestler} />
                       ))
                     ) : (
-                      <p className="muted-copy">No eligible same-division pair is available.</p>
-                    )
-                  ) : assignableChampionCandidates.length ? (
-                    assignableChampionCandidates.map((wrestler) => (
-                      <button
-                        key={wrestler.id}
-                        onClick={() => {
-                          onAssignChampionship(selectedTitleRead.championship.id, [wrestler.id]);
-                          setAssignChampionOpen(false);
-                        }}
-                        type="button"
-                      >
-                        <span className="championship-talent-option">
-                          <WrestlerPortrait className="championship-mini-portrait" wrestler={wrestler} />
-                          <span>{wrestler.name}</span>
-                        </span>
-                        <small>
-                          Momentum {wrestler.momentum} · Popularity {wrestler.popularity}
-                          {getOtherChampionshipHolderLabels(wrestler, game.championships, selectedTitleRead.championship.id).length
-                            ? " · Champion elsewhere"
-                            : ""}
-                        </small>
-                      </button>
-                    ))
-                  ) : (
-                    <p className="muted-copy">No eligible same-division champion is available.</p>
-                  )}
-                </div>
-              </section>
-            ) : null}
-
-            <div className="championship-focus-tabs" aria-label="Selected title detail tabs">
-              <button className={selectedTitleTab === "scene" ? "active-filter" : ""} onClick={() => setSelectedTitleTab("scene")} type="button">
-                Scene
-              </button>
-              <button className={selectedTitleTab === "contenders" ? "active-filter" : ""} onClick={() => setSelectedTitleTab("contenders")} type="button">
-                Contenders
-              </button>
-              <button className={selectedTitleTab === "history" ? "active-filter" : ""} onClick={() => setSelectedTitleTab("history")} type="button">
-                History
-              </button>
-            </div>
-
-            {selectedTitleTab === "scene" ? (
-              <div className="championship-focus-body">
-                <section className={`title-identity-panel tone-${selectedTitleRead.identityRead.tone}`} aria-label={`${selectedTitleRead.championship.name} title scene identity`}>
+                      <span className="championship-hero-vacant">
+                        <span>Vacant</span>
+                        <small>Belt Open</small>
+                      </span>
+                    )}
+                  </div>
                   <div>
-                    <span>Title Scene Identity</span>
-                    <strong>{selectedTitleRead.identityRead.headline}</strong>
+                    <p className="eyebrow">On The Desk</p>
+                    <h3 title={selectedTitleRead.championship.name}>{getChampionshipAcronym(selectedTitleRead.championship.name)}</h3>
+                    <p className="championship-focus-full-name">{selectedTitleRead.championship.name}</p>
+                    <div className="championship-focus-tags">
+                      <span>{selectedTitleRead.championship.division}</span>
+                      <span>{selectedTitleRead.championship.eligibleMatchScope === "tag_team" ? "Tag" : "Singles"}</span>
+                      <span>{selectedTitleRead.pressureSnapshot.primary.label}</span>
+                    </div>
                   </div>
-                  <p>{selectedTitleRead.identityRead.championIdentity}</p>
-                  <p>{selectedTitleRead.identityRead.divisionRead}</p>
-                  <div className="title-identity-grid">
-                    <article>
-                      <span>{selectedTitleRead.identityRead.healthLabel}</span>
-                      <p>{selectedTitleRead.identityRead.healthDetail}</p>
-                    </article>
-                    <article>
-                      <span>{selectedTitleRead.identityRead.heatLabel}</span>
-                      <p>{selectedTitleRead.identityRead.heatDetail}</p>
-                    </article>
-                    <article>
-                      <span>{selectedTitleRead.identityRead.depthLabel}</span>
-                      <p>{selectedTitleRead.identityRead.depthDetail}</p>
-                    </article>
-                  </div>
-                </section>
-                <section className={`championship-scene-summary pressure-${selectedTitleRead.pressureSnapshot.primary.tone}`} aria-label={`${selectedTitleRead.championship.name} title scene status`}>
-                  <article className="championship-scene-lead">
-                    <span>Pressure Read</span>
-                    <strong>{selectedTitleRead.pressureSnapshot.primary.label}</strong>
-                    <p>{selectedTitleRead.pressureSnapshot.primary.detail}</p>
-                  </article>
-                  <div className="championship-scene-support">
-                    <article>
-                      <span>Scene</span>
-                      <strong>{selectedTitleRead.titleRead.label}</strong>
-                      <small>{selectedTitleRead.titleRead.detail}</small>
-                    </article>
-                    <article>
-                      <span>Eligibility</span>
-                      <strong>{selectedTitleRead.championship.eligibleMatchScope === "tag_team" ? "Tag Scope" : `${selectedTitleRead.championship.division} Singles`}</strong>
-                      <small>{selectedTitleRead.championship.minimumDefenseFrequencyWeeks ? `Defense rhythm: about ${selectedTitleRead.championship.minimumDefenseFrequencyWeeks} weeks` : "Legacy title cadence"}</small>
-                    </article>
-                    <article>
-                      <span>Title Clock</span>
-                      <strong>{selectedTitleRead.pressureSnapshot.weeksSinceLastTitleEvent ? `${formatWeekCount(selectedTitleRead.pressureSnapshot.weeksSinceLastTitleEvent)} since title event` : "Fresh title event"}</strong>
-                      <small>Window read: about {formatWeekCount(selectedTitleRead.pressureSnapshot.defenseWindow)} · advisory only</small>
-                    </article>
-                  </div>
-                </section>
-                <div className="championship-office-notes" aria-label={`${selectedTitleRead.championship.name} office notes`}>
-                  <span>Office Notes</span>
-                  {selectedTitleRead.pressureSnapshot.diagnostics
-                    .filter((diagnostic) => diagnostic.label !== selectedTitleRead.pressureSnapshot.primary.label)
-                    .slice(0, 3)
-                    .map((diagnostic) => (
-                      <article className={`pressure-${diagnostic.tone}`} key={diagnostic.id}>
-                        <strong>{diagnostic.label}</strong>
-                        <p>{diagnostic.detail}</p>
-                      </article>
-                    ))}
                 </div>
-                {selectedTitleRead.tagDivisionHealth.length ? (
-                  <div className="title-pressure-deck" aria-label={`${selectedTitleRead.championship.name} tag division health`}>
-                    {selectedTitleRead.tagDivisionHealth.slice(0, 4).map((diagnostic) => (
-                      <article className={`title-pressure-chip pressure-${diagnostic.tone}`} key={diagnostic.id}>
-                        <span>{diagnostic.label}</span>
-                        <p>{diagnostic.detail}</p>
-                      </article>
-                    ))}
-                  </div>
-                ) : null}
+                <div className="championship-focus-badge">
+                  <span>Prestige</span>
+                  <strong>{selectedTitleRead.championship.prestige}</strong>
+                </div>
               </div>
-            ) : null}
 
-            {selectedTitleTab === "contenders" ? (
+              <div className="championship-focus-metrics">
+                <Metric
+                  label="Champion"
+                  value={getWrestlerNames(selectedTitleRead.championship.championIds, game.wrestlers) || "Vacant"}
+                />
+                <Metric label="Reign" value={`${getReignLength(selectedTitleRead.championship, game.currentWeek)} wk`} detail={`${selectedTitleRead.championship.defenses} def`} />
+                <Metric label="Contenders" value={`${selectedContenderRows.length}`} />
+                <Metric label="Prestige" value={`${selectedTitleRead.championship.prestige}`} />
+              </div>
+
               <div className="championship-focus-body">
-                <section className="championship-contender-board" aria-label={`${selectedTitleRead.championship.name} contender board`}>
-                  <div className="championship-contender-head">
-                    <div>
-                      <span>{selectedTitleRead.championship.division} Division</span>
-                      <strong>{selectedContenderRows.length ? `${selectedContenderRows.length} contender${selectedContenderRows.length === 1 ? "" : "s"}` : "No contenders"}</strong>
-                    </div>
-                    <div className="championship-contender-actions">
-                      <small>Champion: {formatTitleSceneNames(selectedTitleRead.scene.champions, "No champion assigned")}</small>
-                      <button className="secondary-action" onClick={() => setEditContendersOpen((open) => !open)} type="button">
-                        Edit
-                      </button>
-                    </div>
+                <div className={`championship-focus-decision tone-${decisionTone}`}>
+                  <div className="championship-focus-read">
+                    <p className="eyebrow">Title Desk</p>
+                    <h4>{decisionHeadline}</h4>
+                    <p>{decisionBodyShort}</p>
                   </div>
-                  {editContendersOpen ? (
-                    <div className="championship-add-contender-panel" aria-label={`Add ${selectedTitleRead.championship.name} contender`}>
-                      {selectedContenderRows.length ? (
-                        <div className="championship-edit-contender-list">
-                          {selectedContenderRows.map(({ index, wrestler }) => (
-                            <article key={wrestler.id}>
-                              <WrestlerPortrait className="championship-mini-portrait" wrestler={wrestler} />
-                              <strong>{String(index + 1).padStart(2, "0")} · {wrestler.name}</strong>
-                              <div>
-                                <button
-                                  className="secondary-action"
-                                  disabled={index === 0}
-                                  onClick={() => {
-                                    const nextIds = selectedContenderRows.map((row) => row.wrestler.id);
-                                    [nextIds[index - 1], nextIds[index]] = [nextIds[index], nextIds[index - 1]];
-                                    onSetContenders(selectedTitleRead.championship.id, nextIds);
-                                  }}
-                                  type="button"
-                                >
-                                  Up
-                                </button>
-                                <button
-                                  className="secondary-action"
-                                  disabled={index === selectedContenderRows.length - 1}
-                                  onClick={() => {
-                                    const nextIds = selectedContenderRows.map((row) => row.wrestler.id);
-                                    [nextIds[index], nextIds[index + 1]] = [nextIds[index + 1], nextIds[index]];
-                                    onSetContenders(selectedTitleRead.championship.id, nextIds);
-                                  }}
-                                  type="button"
-                                >
-                                  Down
-                                </button>
-                                <button
-                                  className="danger-action"
-                                  onClick={() => onSetContenders(selectedTitleRead.championship.id, selectedContenderRows.map((row) => row.wrestler.id).filter((id) => id !== wrestler.id))}
-                                  type="button"
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            </article>
-                          ))}
-                        </div>
-                      ) : null}
-                      {addableContenders.length ? (
-                        addableContenders.map((wrestler) => (
+                  <div className="championship-focus-controls">
+                    <button className="primary-action" onClick={() => onBookChampionship(selectedTitleRead.championship.id)} type="button">
+                      Book Title Match
+                    </button>
+                  </div>
+                </div>
+
+                <section className="championship-challenger-strip" aria-label={`${selectedTitleRead.championship.name} challenger lane`}>
+                  <div className="championship-challenger-strip-head">
+                    <span>Next Challengers</span>
+                    <strong>{selectedContenderRows.length ? `Top ${Math.min(3, selectedContenderRows.length)}` : "No Lane"}</strong>
+                  </div>
+                  <div className="championship-challenger-cards">
+                    {selectedContenderRows.length ? (
+                      selectedContenderRows.slice(0, 3).map(({ index, wrestler }) => (
+                        <article className="championship-challenger-card" key={wrestler.id}>
+                          <span>{String(index + 1).padStart(2, "0")}</span>
+                          <WrestlerPortrait className="championship-challenger-portrait" wrestler={wrestler} />
+                          <strong>{wrestler.name}</strong>
+                        </article>
+                      ))
+                    ) : (
+                      <p className="muted-copy">No challenger lane is visible yet.</p>
+                    )}
+                  </div>
+                </section>
+              </div>
+            </section>
+          ) : (
+            <section className="championship-focus-workspace championship-panel" aria-label="Title focus workspace">
+              <p className="muted-copy">Pick a belt from the rail to open the title desk.</p>
+            </section>
+          )}
+
+          <aside className="championship-action-rail" aria-label="Title office actions">
+            {selectedTitleRead ? (
+              <>
+                <article className="championship-panel">
+                  <div className="championship-panel-head">
+                    <div>
+                      <p className="eyebrow">Champion Control</p>
+                      <h2>Gold Holder</h2>
+                    </div>
+                    {selectedTitleRead.championship.championIds.length ? (
+                      <button className="danger-action" onClick={() => onRevokeChampionship(selectedTitleRead.championship.id)} type="button">
+                        Revoke
+                      </button>
+                    ) : (
+                      <button className="secondary-action" onClick={() => setAssignChampionOpen((open) => !open)} type="button">
+                        {assignChampionOpen ? "Cancel" : "Assign"}
+                      </button>
+                    )}
+                  </div>
+                  <p className="championship-action-note">{getWrestlerNames(selectedTitleRead.championship.championIds, game.wrestlers) || "Vacant belt — assign a champion or book the scene."}</p>
+                  {assignChampionOpen && !selectedTitleRead.championship.championIds.length ? (
+                    <div className="championship-assign-options">
+                      {selectedTitleRead.isTagTitle ? (
+                        assignableChampionPairs.length ? (
+                          assignableChampionPairs.map(([first, second]) => (
+                            <button
+                              key={`${first.id}-${second.id}`}
+                              onClick={() => {
+                                onAssignChampionship(selectedTitleRead.championship.id, [first.id, second.id]);
+                                setAssignChampionOpen(false);
+                              }}
+                              type="button"
+                            >
+                              {first.name} / {second.name}
+                            </button>
+                          ))
+                        ) : (
+                          <p className="muted-copy">No eligible pair available.</p>
+                        )
+                      ) : assignableChampionCandidates.length ? (
+                        assignableChampionCandidates.map((wrestler) => (
                           <button
                             key={wrestler.id}
                             onClick={() => {
-                              onSetContenders(selectedTitleRead.championship.id, [...selectedContenderRows.map((row) => row.wrestler.id), wrestler.id]);
+                              onAssignChampionship(selectedTitleRead.championship.id, [wrestler.id]);
+                              setAssignChampionOpen(false);
                             }}
                             type="button"
                           >
-                            <span className="championship-talent-option">
-                              <WrestlerPortrait className="championship-mini-portrait" wrestler={wrestler} />
-                              <span>{wrestler.name}</span>
-                            </span>
-                            <small>
-                              Momentum {wrestler.momentum} · Popularity {wrestler.popularity}
-                              {getOtherChampionshipHolderLabels(wrestler, game.championships, selectedTitleRead.championship.id).length
-                                ? " · Champion elsewhere"
-                                : ""}
-                            </small>
+                            {wrestler.name}
                           </button>
                         ))
                       ) : (
-                        <p className="muted-copy">No additional same-division candidates are available.</p>
+                        <p className="muted-copy">No eligible champion available.</p>
                       )}
+                    </div>
+                  ) : null}
+                </article>
+
+                <article className="championship-panel">
+                  <div className="championship-panel-head">
+                    <div>
+                      <p className="eyebrow">Contender Lane</p>
+                      <h2>Title Picture</h2>
+                    </div>
+                    <button className="secondary-action" onClick={() => setEditContendersOpen((open) => !open)} type="button">
+                      {editContendersOpen ? "Done" : "Edit"}
+                    </button>
+                  </div>
+                  {editContendersOpen ? (
+                    <div className="championship-add-contender-panel">
+                      {addableContenders.slice(0, 6).map((wrestler) => (
+                        <button
+                          key={wrestler.id}
+                          onClick={() => onSetContenders(selectedTitleRead.championship.id, [...selectedContenderRows.map((row) => row.wrestler.id), wrestler.id])}
+                          type="button"
+                        >
+                          + {wrestler.name}
+                        </button>
+                      ))}
                     </div>
                   ) : null}
                   <div className="championship-contender-list">
                     {selectedContenderRows.length ? (
-                      selectedContenderRows.map(({ index, lane, read, wrestler }) => (
+                      selectedContenderRows.map(({ index, wrestler }) => (
                         <article className="championship-contender-row" key={wrestler.id}>
                           <span>{String(index + 1).padStart(2, "0")}</span>
-                          <WrestlerPortrait className="championship-contender-portrait" wrestler={wrestler} />
-                          <div>
-                            <strong>{wrestler.name}</strong>
-                            <small>{lane}{read.labels.length ? ` · ${read.labels.join(" / ")}` : ""}</small>
-                          </div>
-                          <p>{read.detail}</p>
+                          <WrestlerPortrait className="championship-mini-portrait" wrestler={wrestler} />
+                          <strong>{wrestler.name}</strong>
                         </article>
                       ))
                     ) : (
-                      <p className="muted-copy">No eligible contender pressure is visible yet.</p>
+                      <p className="muted-copy">No contenders set.</p>
                     )}
                   </div>
-                </section>
+                </article>
 
-                <p className="championship-contender-note">
-                  <strong>GM Read:</strong> {selectedTitleRead.pressureSnapshot.producerRead} {selectedTitleRead.gmRead}
-                </p>
-              </div>
-            ) : null}
-
-            {selectedTitleTab === "history" ? (
-              <div className="championship-focus-body">
-                <div className="history-list title-history-focus" aria-label={`${selectedTitleRead.championship.name} recent history`}>
-                <span className="history-label">Recent History</span>
-                  {selectedTitleRead.recentHistory.length ? (
-                    selectedTitleRead.recentHistory.map((event) => (
-                    <article className="history-event" key={event.id}>
-                      <span>{formatChampionshipEventType(event.eventType)} · {formatHistoryStamp(event)}</span>
-                      {getChampionshipEventPairLine(event) ? <strong>{getChampionshipEventPairLine(event)}</strong> : null}
-                      <p>{event.note}</p>
-                    </article>
-                  ))
-                ) : (
-                  <p className="muted-copy">No title changes or defenses recorded yet.</p>
-                )}
-              </div>
-              </div>
-            ) : null}
-          </section>
-        ) : null}
-      </section>
-
-      <section className={`title-office-panel tone-${officeRead.tone} ${isTitleOfficeExpanded ? "is-expanded" : "is-collapsed"}`} aria-label="Championship office readout">
-        <button
-          className="title-office-toggle"
-          aria-expanded={isTitleOfficeExpanded}
-          onClick={() => setIsTitleOfficeExpanded((current) => !current)}
-          type="button"
-        >
-          <div>
-            <p className="eyebrow">Championship Committee</p>
-            <h3>{officeRead.headline}</h3>
-          </div>
-          <strong>Prestige Desk</strong>
-          <span>{isTitleOfficeExpanded ? "Collapse" : "Expand"}</span>
-        </button>
-        {isTitleOfficeExpanded ? (
-          <div className="title-office-grid">
-            <article>
-              <span>Brand Anchor</span>
-              <strong>{officeRead.anchorTitle}</strong>
-              <p>{officeRead.anchorDetail}</p>
-            </article>
-            <article>
-              <span>Needs Attention</span>
-              <strong>{officeRead.attentionTitle}</strong>
-              <p>{officeRead.attentionDetail}</p>
-            </article>
-            <article>
-              <span>Prestige Center</span>
-              <strong>{officeRead.prestigeTitle}</strong>
-              <p>{officeRead.prestigeDetail}</p>
-            </article>
-          </div>
-        ) : null}
-      </section>
-    </DynastyManagementShell>
-  );
-}
-
-function RivalriesScreen({
-  game,
-  latestResult,
-  onBookRivalry,
-  onCreateRivalry,
-  onEndRivalry,
-  onNavigate,
-}: {
-  game: GameState;
-  latestResult?: ShowResult;
-  onBookRivalry: (rivalryId: string) => void;
-  onCreateRivalry: (input: RivalryCreateInput) => void;
-  onEndRivalry: (rivalryId: string) => void;
-  onNavigate: (screen: GameScreen) => void;
-}) {
-  const [selectedRivalryId, setSelectedRivalryId] = useState(game.rivalries[0]?.id ?? "");
-  const [structure, setStructure] = useState<RivalryStructure>("singles");
-  const [participantIds, setParticipantIds] = useState<string[]>(() => getDefaultRivalryComposerParticipantIds(game.wrestlers));
-  const [stakes, setStakes] = useState<RivalryStakes>("personal");
-  const [storylineId, setStorylineId] = useState(getDefaultStorylineIdForStakes("personal"));
-  const [isCreativeDeskExpanded, setIsCreativeDeskExpanded] = useState(false);
-  const range = getRivalryStructureParticipantRange(structure);
-  const composerParticipantIds = participantIds.slice(0, range.max).filter(Boolean);
-  const isDuplicate = composerParticipantIds.length >= range.min && hasDuplicateRivalry(game.rivalries, structure, composerParticipantIds);
-  const rivalryBlockReason = getRivalryCreationBlockReason(structure, composerParticipantIds, game.wrestlers);
-  const canCreate = composerParticipantIds.length >= range.min && composerParticipantIds.length <= range.max && !isDuplicate && !rivalryBlockReason;
-  const selectedStoryline = getRivalryStoryline({ stakes, storylineId });
-  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
-  const creativeDesk = getRivalryCreativeDeskRead(game);
-  const selectedRivalry = game.rivalries.find((rivalry) => rivalry.id === selectedRivalryId) ?? game.rivalries[0];
-  const currentWeek = getCurrentCalendarWeek(game);
-  const rivalrySnapshots = getRivalryTimingSnapshots(game);
-  const selectedSnapshot = selectedRivalry ? getRivalryTimingSnapshot(selectedRivalry, game) : undefined;
-  const selectedHistory = selectedRivalry ? getRivalryHistory(game, selectedRivalry.id) : [];
-  const selectedParticipantReads = selectedRivalry ? getRivalryParticipantReads(selectedRivalry, game) : [];
-  const selectedStoryRoomRead =
-    selectedRivalry && selectedSnapshot ? getRivalryStoryRoomRead(selectedRivalry, selectedSnapshot, selectedParticipantReads, selectedHistory[0]) : undefined;
-  const selectedStorylineRead = selectedRivalry ? getRivalryStoryline(selectedRivalry) : undefined;
-  const selectedStage = selectedRivalry ? getRivalryStageContext(game, selectedRivalry) : undefined;
-  const selectedTitleRelevance = selectedRivalry ? getRivalryTitleRelevance(selectedRivalry, game.championships, game.wrestlers) : undefined;
-  const selectedGmRead =
-    selectedRivalry && selectedStage
-      ? getRivalryGMRead(selectedRivalry, {
-          hasPlePayoff: hasPlePayoff(game, selectedRivalry.id),
-          isGoHome: currentWeek.isGoHome,
-          isPle: currentWeek.showType === "ple",
-          titleRelevant: Boolean(selectedTitleRelevance && selectedTitleRelevance.label !== "Title-Friendly Story"),
-        })
-      : "";
-  useEffect(() => {
-    if (!game.rivalries.length) {
-      setSelectedRivalryId("");
-      return;
-    }
-
-    if (!game.rivalries.some((rivalry) => rivalry.id === selectedRivalryId)) {
-      setSelectedRivalryId(game.rivalries[0].id);
-    }
-  }, [game.rivalries, selectedRivalryId]);
-
-  function updateParticipantSlot(index: number, wrestlerId: string) {
-    setParticipantIds((current) => {
-      const next = [...current];
-      next[index] = wrestlerId;
-
-      if (structure === "tag_team" && wrestlerId) {
-        const sideStart = index < 2 ? 0 : 2;
-        const partnerIndex = index === sideStart ? sideStart + 1 : sideStart;
-
-        if (!next[partnerIndex]) {
-          const partnerId = getPreferredTagPartnerId(wrestlerId, game.wrestlers, next);
-
-          if (partnerId) {
-            next[partnerIndex] = partnerId;
-          }
-        }
-      }
-
-      return next;
-    });
-  }
-
-  function handleCreateRivalry() {
-    if (!canCreate) {
-      return;
-    }
-
-    onCreateRivalry({ participantIds: composerParticipantIds, structure, stakes, storylineId });
-  }
-  const rivalriesCta: DynastyManagementCta = selectedRivalry
-    ? {
-        eyebrow: "Selected Story",
-        label: "Book This Story",
-        onClick: () => onBookRivalry(selectedRivalry.id),
-        tone: "brand",
-      }
-    : canCreate
-      ? {
-          eyebrow: "Composer Ready",
-          label: "Start Rivalry",
-          onClick: handleCreateRivalry,
-          tone: "positive",
-        }
-      : {
-          eyebrow: "Rivalry Desk",
-          label: "No Story Selected",
-          tone: "neutral",
-        };
-
-  return (
-    <DynastyManagementShell className="rivalries-command-shell" currentScreen="rivalries" cta={rivalriesCta} game={game} latestResult={latestResult} onNavigate={onNavigate}>
-      <section className="rivalry-command-desk" aria-label="Rivalry command desk">
-        <aside className="rivalry-active-rail" aria-label="Active rivalries">
-          <div className="section-heading">
-            <p className="eyebrow">Active Rivalries</p>
-            <h3>{game.rivalries.length} Stories</h3>
-          </div>
-          <div className="rivalry-active-list">
-            {game.rivalries.length ? (
-              game.rivalries.map((rivalry, index) => {
-                const timingSnapshot = getRivalryTimingSnapshot(rivalry, game);
-                const isSelected = selectedRivalry?.id === rivalry.id;
-                const rivalryBlocked = isRivalryIntergenderBlocked(rivalry, game.wrestlers);
-                return (
-                  <button className={`rivalry-active-row status-${rivalry.status} ${isSelected ? "is-selected" : ""}`} key={rivalry.id} onClick={() => setSelectedRivalryId(rivalry.id)}>
-                    <span className="rivalry-row-index">{index + 1}</span>
-                    <span className="rivalry-row-main">
-                      <strong>{rivalry.name}</strong>
-                    </span>
-                    <span className="rivalry-row-tags">
-                      <span>{formatRivalryStructure(getRivalryStructure(rivalry))}</span>
-                      <span>{formatRivalryStakes(rivalry.stakes)}</span>
-                      <span>{rivalryBlocked ? "Blocked" : timingSnapshot.primary.label}</span>
-                    </span>
-                    <span className="rivalry-row-meters" aria-label={`${rivalry.name} heat and freshness`}>
-                      <span>Heat <strong>{rivalry.heat}</strong></span>
-                      <span>Fresh <strong>{rivalry.freshness}</strong></span>
-                    </span>
-                  </button>
-                );
-              })
-            ) : (
-              <div className="empty-state">No rivalries are active. Start a story to give the next broadcast more context.</div>
-            )}
-          </div>
-        </aside>
-
-        <section className="rivalry-spotlight-stage" aria-label="Selected rivalry spotlight">
-          {selectedRivalry && selectedSnapshot && selectedStorylineRead && selectedStage && selectedStoryRoomRead ? (
-            <>
-              <div className="rivalry-spotlight-head">
-                <div>
-                  <p className="eyebrow">{formatRivalryStructure(getRivalryStructure(selectedRivalry))} · {formatRivalryStakes(selectedRivalry.stakes)} Stakes</p>
-                  <h3>{selectedRivalry.name}</h3>
-                  <div className="rivalry-spotlight-status">
-                    <strong>{isRivalryIntergenderBlocked(selectedRivalry, game.wrestlers) ? "Blocked Context" : selectedSnapshot.primary.label}</strong>
-                    <span>{selectedSnapshot.timingRead}</span>
-                  </div>
-                </div>
-                <div className="rivalry-spotlight-actions">
-                  <button className="primary-action" onClick={() => onBookRivalry(selectedRivalry.id)}>
-                    Book This Story
-                  </button>
-                  <button className="danger-action" onClick={() => onEndRivalry(selectedRivalry.id)}>
-                    End Rivalry
-                  </button>
-                </div>
-              </div>
-
-              <div className={`rivalry-matchup-stage structure-${getRivalryStructure(selectedRivalry)}`}>
-                {getRivalryStructure(selectedRivalry) === "tag_team" && selectedRivalry.participantIds.length === 4 ? (
-                  <>
-                    <div className="rivalry-side-card">
-                      <span>Team A</span>
-                      <span className="rivalry-side-portraits">
-                        {selectedRivalry.participantIds
-                          .slice(0, 2)
-                          .map((id) => game.wrestlers.find((wrestler) => wrestler.id === id))
-                          .filter((wrestler): wrestler is Wrestler => Boolean(wrestler))
-                          .map((wrestler) => (
-                            <WrestlerPortrait className="rivalry-side-portrait" key={wrestler.id} wrestler={wrestler} />
-                          ))}
-                      </span>
-                      <strong>{getWrestlerNames(selectedRivalry.participantIds.slice(0, 2), game.wrestlers)}</strong>
+                <article className={`championship-panel championship-committee-collapsible ${committeeExpanded ? "is-expanded" : ""}`}>
+                  <button className="championship-manage-toggle" onClick={() => setCommitteeExpanded((open) => !open)} type="button">
+                    <div>
+                      <p className="eyebrow">Committee Read</p>
+                      <strong>{selectedTitleRead.recentHistory[0]?.note ?? "No resolved title history yet"}</strong>
                     </div>
-                    <div className="rivalry-versus">VS</div>
-                    <div className="rivalry-side-card">
-                      <span>Team B</span>
-                      <span className="rivalry-side-portraits">
-                        {selectedRivalry.participantIds
-                          .slice(2, 4)
-                          .map((id) => game.wrestlers.find((wrestler) => wrestler.id === id))
-                          .filter((wrestler): wrestler is Wrestler => Boolean(wrestler))
-                          .map((wrestler) => (
-                            <WrestlerPortrait className="rivalry-side-portrait" key={wrestler.id} wrestler={wrestler} />
-                          ))}
-                      </span>
-                      <strong>{getWrestlerNames(selectedRivalry.participantIds.slice(2, 4), game.wrestlers)}</strong>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {getRivalryParticipants(selectedRivalry, game.wrestlers).slice(0, 4).map((wrestler, index) => (
-                      <div className="rivalry-side-card" key={wrestler.id}>
-                        <span>{getRivalryStructure(selectedRivalry) === "multi_person" ? `Position ${index + 1}` : index === 0 ? "Side A" : "Side B"}</span>
-                        <WrestlerPortrait className="rivalry-side-portrait" wrestler={wrestler} />
-                        <strong>{wrestler.name}</strong>
-                        <small>Momentum {wrestler.momentum} · Morale {wrestler.morale}</small>
+                    <span>{committeeExpanded ? "▴" : "▾"}</span>
+                  </button>
+                  {committeeExpanded ? (
+                    <>
+                      <div className="history-list title-history-focus">
+                        {selectedTitleRead.recentHistory.length ? (
+                          selectedTitleRead.recentHistory.map((event) => (
+                            <article className="history-event" key={event.id}>
+                              <span>{formatChampionshipEventType(event.eventType)} · {formatHistoryStamp(event)}</span>
+                              <p>{event.note}</p>
+                            </article>
+                          ))
+                        ) : (
+                          <p className="muted-copy">No title history yet.</p>
+                        )}
                       </div>
-                    ))}
-                  </>
-                )}
-              </div>
-
-              <div className="rivalry-spotlight-metrics">
-                <article>
-                  <span>Heat</span>
-                  <strong>{selectedRivalry.heat}</strong>
-                  <i style={{ inlineSize: `${selectedRivalry.heat}%` }} />
+                      <p className="championship-contender-note">
+                        <strong>GM Read:</strong> {selectedTitleRead.pressureSnapshot.producerRead} {selectedTitleRead.gmRead}
+                      </p>
+                    </>
+                  ) : null}
                 </article>
-                <article>
-                  <span>Freshness</span>
-                  <strong>{selectedRivalry.freshness}</strong>
-                  <i style={{ inlineSize: `${selectedRivalry.freshness}%` }} />
-                </article>
-                <article>
-                  <span>Weeks Active</span>
-                  <strong>{selectedRivalry.weeksActive}</strong>
-                  <small>{selectedRivalry.lastAdvancedWeek ? `Last beat Week ${selectedRivalry.lastAdvancedWeek}` : "No TV beat yet"}</small>
-                </article>
-                <article>
-                  <span>Current Card</span>
-                  <strong>{selectedSnapshot.currentCardBeats} Beat{selectedSnapshot.currentCardBeats === 1 ? "" : "s"}</strong>
-                  <small>{selectedSnapshot.currentCardParticipants} participant{selectedSnapshot.currentCardParticipants === 1 ? "" : "s"} visible</small>
-                </article>
-              </div>
-
-              <div className="rivalry-story-map">
-                <article>
-                  <span>Storyline</span>
-                  <strong>{selectedStorylineRead.name}</strong>
-                  <p>{selectedStorylineRead.description}</p>
-                </article>
-                <article>
-                  <span>Lifecycle Stage</span>
-                  <strong>{selectedStage.name}</strong>
-                  <p>{selectedStage.description}</p>
-                </article>
-                <article>
-                  <span>GM Read</span>
-                  <strong>{isRivalryIntergenderBlocked(selectedRivalry, game.wrestlers) ? "Invalid Pairing" : selectedTitleRelevance?.label ?? "Creative Direction"}</strong>
-                  <p>
-                    {isRivalryIntergenderBlocked(selectedRivalry, game.wrestlers)
-                      ? "Legacy rivalry kept for save safety, but it cannot be attached to booking under the current no-intergender rule."
-                      : selectedTitleRelevance?.detail ?? selectedGmRead}
-                  </p>
-                </article>
-              </div>
-
-              {selectedHistory.length ? (
-                <div className="history-list rivalry-history-scroll" aria-label={`${selectedRivalry.name} recent history`}>
-                  <span className="history-label">Recent History</span>
-                  {selectedHistory.map((event) => (
-                    <article className="history-event" key={event.id}>
-                      <span>{formatRivalryEventType(event.eventType)} · {formatHistoryStamp(event)}</span>
-                      <p>{event.note}</p>
-                    </article>
-                  ))}
-                </div>
-              ) : null}
-
-            </>
-          ) : (
-            <div className="empty-state">No selected rivalry. Create a singles, tag, or multi-person story to open the desk.</div>
-          )}
+              </>
+            ) : (
+              <article className="championship-panel">
+                <p className="muted-copy">Select a belt to manage champion control and contender order.</p>
+              </article>
+            )}
+          </aside>
         </section>
-
-        <aside className="rivalry-composer-panel" aria-label="Rivalry composer">
-          <div className="section-heading">
-            <p className="eyebrow">Rivalry Composer</p>
-            <h3>Start The Spark</h3>
-          </div>
-          <div className="rivalry-mode-toggle" aria-label="Rivalry structure">
-            {(["singles", "tag_team", "multi_person"] as RivalryStructure[]).map((option) => (
-              <button className={structure === option ? "active-filter" : ""} key={option} onClick={() => setStructure(option)}>
-                {formatRivalryStructure(option)}
-              </button>
-            ))}
-          </div>
-          <div className="rivalry-composer-selects">
-            {Array.from({ length: range.max }).map((_, index) => (
-              <label key={`${structure}-${index}`}>
-                {structure === "tag_team" ? `${index < 2 ? "Team A" : "Team B"} Wrestler ${index % 2 + 1}` : structure === "multi_person" ? `Participant ${index + 1}` : `Wrestler ${index + 1}`}
-                <select value={participantIds[index] ?? ""} onChange={(event) => updateParticipantSlot(index, event.target.value)}>
-                  <option value="">Choose wrestler</option>
-                  {game.wrestlers.map((wrestler) => (
-                    <option key={wrestler.id} value={wrestler.id}>
-                      {wrestler.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ))}
-          </div>
-          <label>
-            Stakes
-            <select value={stakes} onChange={(event) => setStakes(event.target.value as RivalryStakes)}>
-              {(["personal", "title", "respect", "revenge"] as RivalryStakes[]).map((option) => (
-                <option key={option} value={option}>
-                  {formatRivalryStakes(option)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Storyline
-            <select value={storylineId} onChange={(event) => setStorylineId(event.target.value)}>
-              {safeRivalryStorylineOptions.map((storyline) => (
-                <option key={storyline.id} value={storyline.id}>
-                  {storyline.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="rivalry-form-read">
-            <span>{selectedStoryline.titleFit}</span>
-            <strong>{selectedStoryline.description}</strong>
-            <p>{selectedStoryline.commonBeats}</p>
-          </div>
-          <button className="primary-action" disabled={!canCreate} onClick={handleCreateRivalry}>
-            Start Rivalry
-          </button>
-          {isDuplicate ? <p className="form-warning">Duplicate active rivalry already exists.</p> : null}
-          {rivalryBlockReason ? <p className="form-warning">{rivalryBlockReason}</p> : null}
-        </aside>
-      </section>
-
-      <section className="rivalry-ecosystem-band" aria-label="Rivalry ecosystem">
-        <article className={`rivalry-creative-desk creative-${creativeDesk.tone} ${isCreativeDeskExpanded ? "is-expanded" : "is-collapsed"}`}>
-          <button
-            className="rivalry-creative-toggle"
-            aria-expanded={isCreativeDeskExpanded}
-            onClick={() => setIsCreativeDeskExpanded((current) => !current)}
-          >
-            <div>
-              <p className="eyebrow">Creative Desk</p>
-              <h3>{creativeDesk.headline}</h3>
-            </div>
-            <strong>{creativeDesk.focusLabel}</strong>
-            <span>{isCreativeDeskExpanded ? "Collapse" : "Expand"}</span>
-          </button>
-          {isCreativeDeskExpanded ? (
-            <>
-              <p className="rivalry-creative-detail">{creativeDesk.detail}</p>
-              <div className="rivalry-creative-grid">
-                {creativeDesk.items.map((item) => (
-                  <article className={`creative-${item.tone}`} key={item.label}>
-                    <span>{item.label}</span>
-                    <strong>{item.value}</strong>
-                    <p>{item.detail}</p>
-                  </article>
-                ))}
-              </div>
-            </>
-          ) : null}
-        </article>
-      </section>
+      </div>
     </DynastyManagementShell>
   );
 }
+
 
 function CalendarScreen({
   game,
@@ -8578,114 +7912,6 @@ function CalendarScreen({
             </article>
           );
         })}
-      </section>
-      </section>
-    </DynastyManagementShell>
-  );
-}
-
-function SocialScreen({
-  game,
-  latestResult,
-  onNavigate,
-}: {
-  game: GameState;
-  latestResult?: ShowResult;
-  onNavigate: (screen: GameScreen) => void;
-}) {
-  const [filter, setFilter] = useState<SocialFilter>("All");
-  const categories = getSocialFilterCategory(filter);
-  const visiblePosts = [...game.socialPosts]
-    .reverse()
-    .filter((post) => !categories || categories.includes(post.category));
-  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
-  const moodSummary = getIwcMoodSummary(game);
-  const ratingsBattle = getRatingsBattleSnapshot(game, latestResult);
-  const cpuResultsFeed = getCpuResultsFeedSnapshot(game, latestResult);
-  const socialCta: DynastyManagementCta = {
-    eyebrow: "Next Action",
-    label: "Book Show",
-    onClick: () => onNavigate("booking"),
-    tone: "brand",
-  };
-
-  return (
-    <DynastyManagementShell currentScreen="social" cta={socialCta} game={game} latestResult={latestResult} onNavigate={onNavigate}>
-      <section className="dynasty-management-scroll">
-      <section className="dashboard-hero">
-        <div>
-          <p className="eyebrow">Post-Show Pulse</p>
-          <h2>Social / IWC</h2>
-          <p className="lede">The feed only reacts to shows that actually happened: scores, title fallout, rivalry movement, fatigue, and major-event moments.</p>
-        </div>
-        <button className="primary-action" onClick={() => onNavigate("booking")}>
-          Book Show
-        </button>
-      </section>
-
-      {moodSummary ? (
-        <section className={`iwc-mood-panel tone-${moodSummary.tone}`} aria-label="IWC mood summary">
-          <div className="iwc-mood-head">
-            <div>
-              <p className="eyebrow">IWC Mood Summary</p>
-              <h3>{moodSummary.headline}</h3>
-            </div>
-            <strong>{moodSummary.weekLabel}</strong>
-          </div>
-          <p>{moodSummary.detail}</p>
-          <div className="iwc-mood-grid">
-            {moodSummary.items.map((item) => (
-              <article key={item.id}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <p>{item.detail}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {ratingsBattle ? <RatingsBattlePanel compact snapshot={ratingsBattle} /> : null}
-      {cpuResultsFeed ? <CpuResultsFeedPanel compact snapshot={cpuResultsFeed} /> : null}
-
-      <section className="roster-controls" aria-label="Social filters">
-        <div>
-          <span>Filter</span>
-          {(["All", "Fan Reaction", "Dirt Sheets", "Analyst Takes", "Title Scene", "Rivalries"] as SocialFilter[]).map((option) => (
-            <button className={filter === option ? "active-filter" : ""} key={option} onClick={() => setFilter(option)}>
-              {option}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="social-feed" aria-label="Social posts">
-        {visiblePosts.length ? (
-          visiblePosts.map((post) => (
-            <article className={`social-post tone-${post.tone}`} key={post.id}>
-              <div className="social-post-head">
-                <div>
-                  <p className="eyebrow">
-                    Season {post.seasonNumber} · Week {post.weekNumber} · {post.showName}
-                  </p>
-                  <h3>{post.author}</h3>
-                </div>
-                <div className="show-strip">
-                  <span>{formatSocialCategory(post.category)}</span>
-                  <span>{formatSocialTone(post.tone)}</span>
-                </div>
-              </div>
-              <p>{post.text}</p>
-              {post.relatedWrestlerIds.length ? (
-                <small>Related: {getRelatedWrestlerNames(post, game.wrestlers)}</small>
-              ) : null}
-            </article>
-          ))
-        ) : (
-          <div className="empty-state">
-            {game.socialPosts.length ? "No posts match this filter." : "The internet has nothing to react to yet. Run a show and the buzz will arrive after the results."}
-          </div>
-        )}
       </section>
       </section>
     </DynastyManagementShell>

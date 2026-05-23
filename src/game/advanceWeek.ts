@@ -1,8 +1,9 @@
 import type { GameState, InjuryRecoveryNote, RivalryHistoryEvent, SeasonArchiveSummary, Wrestler } from "./types";
 import { getRivalryStatus } from "./scoring";
+import { resolvePendingRivalryEndsOnAdvance } from "./rivalryEnd";
 import { createSeasonCalendar, draftPool } from "./seed";
 import { advanceCpuRivalWeek } from "./cpuRivalLoop";
-import { advanceCpuMarket, advancePlayerContracts, evaluateOfficeMandate } from "./market";
+import { advanceCpuMarket, advancePlayerContracts, ensureWeeklyMarketBoard, evaluateOfficeMandate, retainContractedPlayerRoster } from "./market";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
@@ -22,6 +23,8 @@ export function advanceGameWeek(game: GameState): GameState {
   const recoveryNotes: InjuryRecoveryNote[] = [];
   const recoveredWrestlers = game.wrestlers.map((wrestler) => recoverWrestlerInjury(wrestler, nextWeek, recoveryNotes));
   const rivalryHistoryEvents: RivalryHistoryEvent[] = [];
+  const pendingEndResolution = resolvePendingRivalryEndsOnAdvance(game);
+  rivalryHistoryEvents.push(...pendingEndResolution.historyEvents);
 
   const nextGame = {
     ...game,
@@ -33,7 +36,7 @@ export function advanceGameWeek(game: GameState): GameState {
       ...wrestler,
       fatigue: clamp(wrestler.fatigue - 6),
     })),
-    rivalries: game.rivalries.map((rivalry) => {
+    rivalries: pendingEndResolution.rivalries.map((rivalry) => {
       const wasAdvancedThisWeek = rivalry.lastAdvancedWeek >= game.currentWeek;
       const stalePenalty = rivalry.status === "stale" ? 4 : 0;
       const heat = wasAdvancedThisWeek ? rivalry.heat : clamp(rivalry.heat - 4 - stalePenalty);
@@ -75,7 +78,7 @@ export function advanceGameWeek(game: GameState): GameState {
     ...nextGame,
     rivalBrands: advanceCpuRivalWeek(nextGame),
   };
-  const withMarket = advanceCpuMarket(advancePlayerContracts(withCpu), draftPool);
+  const withMarket = ensureWeeklyMarketBoard(advanceCpuMarket(advancePlayerContracts(withCpu), draftPool), draftPool);
 
   return evaluateOfficeMandate(withMarket);
 }
@@ -118,23 +121,24 @@ function recoverWrestlerInjury(wrestler: Wrestler, nextWeek: number, recoveryNot
 
 export function startNextSeason(game: GameState, completedSeasonArchive?: SeasonArchiveSummary): GameState {
   const seasonArchives = completedSeasonArchive ? [...(game.seasonArchives ?? []), completedSeasonArchive] : game.seasonArchives ?? [];
+  const retainedGame = retainContractedPlayerRoster(game);
 
-  return {
-    ...game,
+  const nextSeasonGame: GameState = {
+    ...retainedGame,
     seasonArchives,
-    seasonNumber: game.seasonNumber + 1,
-    seasonStartingMoney: game.money,
+    seasonNumber: retainedGame.seasonNumber + 1,
+    seasonStartingMoney: retainedGame.money,
     currentWeek: 1,
     calendar: createSeasonCalendar(),
     currentShow: [],
-    injuryRecoveryNotes: game.injuryRecoveryNotes ?? [],
-    wrestlers: game.wrestlers.map((wrestler) => ({
+    injuryRecoveryNotes: retainedGame.injuryRecoveryNotes ?? [],
+    wrestlers: retainedGame.wrestlers.map((wrestler) => ({
       ...wrestler,
       appearancesThisSeason: 0,
       lastBookedWeek: 0,
       consecutiveWeeksBooked: 0,
     })),
-    rivalBrands: game.rivalBrands.map((brand) => ({
+    rivalBrands: retainedGame.rivalBrands.map((brand) => ({
       ...brand,
       seasonAverageScore: 0,
       seasonRank: 0,
@@ -147,8 +151,7 @@ export function startNextSeason(game: GameState, completedSeasonArchive?: Season
       })),
       contracts: brand.contracts.map((contract) => ({
         ...contract,
-        contractWeeksRemaining: Math.max(contract.contractWeeksRemaining, 4),
-        contractStatus: contract.contractWeeksRemaining <= 3 ? "expiring" : contract.contractStatus,
+        contractStatus: contract.contractWeeksRemaining <= 2 ? "expiring" : contract.contractStatus,
       })),
       seasonObjectives: brand.seasonObjectives.map((objective) => ({
         ...objective,
@@ -159,18 +162,20 @@ export function startNextSeason(game: GameState, completedSeasonArchive?: Season
       weeklyResults: brand.weeklyResults,
     })),
     marketState: {
-      ...game.marketState,
-      playerContracts: game.marketState.playerContracts.map((contract) => ({
+      ...retainedGame.marketState,
+      weeklyBoard: undefined,
+      playerContracts: retainedGame.marketState.playerContracts.map((contract) => ({
         ...contract,
-        contractWeeksRemaining: Math.max(contract.contractWeeksRemaining, 4),
-        contractStatus: contract.contractWeeksRemaining <= 3 ? "expiring" : contract.contractStatus,
+        contractStatus: contract.contractWeeksRemaining <= 2 ? "expiring" : contract.contractStatus,
       })),
       officeMandate: {
-        ownerTrust: game.marketState.officeMandate.ownerTrust,
-        brandReputation: game.marketState.officeMandate.brandReputation,
+        ownerTrust: retainedGame.marketState.officeMandate.ownerTrust,
+        brandReputation: retainedGame.marketState.officeMandate.brandReputation,
         mandateStatus: "stable",
-        mandateHistory: game.marketState.officeMandate.mandateHistory,
+        mandateHistory: retainedGame.marketState.officeMandate.mandateHistory,
       },
     },
   };
+
+  return ensureWeeklyMarketBoard(nextSeasonGame, draftPool);
 }

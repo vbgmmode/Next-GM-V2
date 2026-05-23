@@ -74,6 +74,10 @@ export type MarketTransactionType = "signing" | "release" | "trade" | "renewal" 
 
 export type OfficeMandateStatus = "stable" | "watch" | "critical" | "surging";
 
+export type MarketPaymentModel = "weekly" | "prepaid";
+
+export type WeeklyMarketBoardEntryStatus = "available" | "rival_signed" | "player_signed";
+
 export type MarketContract = {
   id: string;
   wrestlerId: string;
@@ -85,6 +89,8 @@ export type MarketContract = {
   acquisitionSource: MarketAcquisitionSource;
   contractStatus: MarketContractStatus;
   renewalRisk: number;
+  paymentModel?: MarketPaymentModel;
+  upfrontCostPaid?: number;
 };
 
 export type MarketTransaction = {
@@ -127,11 +133,27 @@ export type OfficeMandateState = {
   mandateHistory: OfficeMandateEvent[];
 };
 
+export type WeeklyMarketBoardEntry = {
+  wrestlerId: string;
+  status: WeeklyMarketBoardEntryStatus;
+  weeklyAsk: number;
+  rivalBrandId?: string;
+  rivalBrandName?: string;
+  transactionId?: string;
+};
+
+export type WeeklyMarketBoard = {
+  seasonNumber: number;
+  weekNumber: number;
+  entries: WeeklyMarketBoardEntry[];
+};
+
 export type MarketState = {
   playerContracts: MarketContract[];
   transactions: MarketTransaction[];
   cooldowns: MarketCooldown[];
   officeMandate: OfficeMandateState;
+  weeklyBoard?: WeeklyMarketBoard;
 };
 
 export type CpuRosterMemberState = {
@@ -292,6 +314,8 @@ export type RivalryHistoryEventType =
   | "heated_up"
   | "cooled"
   | "became_stale"
+  | "end_scheduled"
+  | "end_cancelled"
   | "ended"
   | "ple_payoff";
 
@@ -410,6 +434,8 @@ export type Rivalry = {
   lastAdvancedWeek: number;
   status: RivalryStatus;
   stakes: RivalryStakes;
+  pendingEndWeek?: number;
+  pendingEndReason?: string;
 };
 
 export type RivalryHistoryEvent = {

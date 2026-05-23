@@ -19,7 +19,7 @@ import { top200DraftPool } from "./top200DraftPool";
 import { enrichWrestlerIdentityContext } from "./wrestlerIdentityContext";
 import { getRosterFinanceValueForWrestler } from "./financeCatalog";
 import { allocateCpuDraftRosters } from "./cpuRivalLoop";
-import { createDefaultMarketState, getCpuBudgetDefault } from "./market";
+import { createDefaultMarketState, ensureWeeklyMarketBoard, getCpuBudgetDefault } from "./market";
 
 type SeedWrestler = Omit<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek"> &
   Partial<Pick<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek">>;
@@ -402,7 +402,7 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
 
   const rivalBrands = allocateCpuDraftRosters(createRivalBrandUniverse(career.rivalGMAssignments), startingRoster, draftPool);
 
-  return {
+  const newGame: GameState = {
     seasonNumber: 1,
     seasonStartingMoney: startingMoney,
     currentWeek: 1,
@@ -430,4 +430,6 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
     currentShow: [],
     showHistory: [],
   };
+
+  return ensureWeeklyMarketBoard(newGame, draftPool);
 }
