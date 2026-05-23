@@ -152,7 +152,7 @@ type ProfilePanelId = "stats" | "gmRead" | "contractValue" | "affiliations" | "s
 type FinancePanelId = "talentValue" | "latestReport" | "seasonReads" | "financeHistory";
 type SocialFilter = "All" | "Fan Reaction" | "Dirt Sheets" | "Analyst Takes" | "Title Scene" | "Rivalries";
 type IwcMoodTone = SocialPost["tone"];
-type SetupStep = "contract" | "gm" | "brand" | "rules" | "preview" | "draft" | "review";
+type SetupStep = "contract" | "gm" | "brand" | "rules" | "draft";
 type DraftSort = "rank" | "starPower" | "popularity" | "momentum" | "ringSkill" | "promoSkill" | "fatigue";
 type DraftReservePressure = "Healthy" | "Tight" | "Over Budget";
 type RivalryCreateInput = {
@@ -1672,14 +1672,6 @@ function getDraftTag(value: string | undefined, fallback = "Unlisted") {
   return value?.trim() || fallback;
 }
 
-function getAverageDraftScore(wrestlers: Wrestler[], score: (wrestler: Wrestler) => number) {
-  if (!wrestlers.length) {
-    return 0;
-  }
-
-  return Math.round(wrestlers.reduce((sum, wrestler) => sum + score(wrestler), 0) / wrestlers.length);
-}
-
 function getDraftValueCounts(wrestlers: Wrestler[], getValue: (wrestler: Wrestler) => string | undefined) {
   return wrestlers.reduce<Record<string, number>>((counts, wrestler) => {
     const value = getDraftTag(getValue(wrestler));
@@ -1688,109 +1680,8 @@ function getDraftValueCounts(wrestlers: Wrestler[], getValue: (wrestler: Wrestle
   }, {});
 }
 
-function getDraftCountSummary(counts: Record<string, number>, limit = 3) {
-  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-
-  if (!entries.length) {
-    return "No data";
-  }
-
-  return entries
-    .slice(0, limit)
-    .map(([label, count]) => `${label} ${count}`)
-    .join(" / ");
-}
-
 function getMostCommonDraftValue(counts: Record<string, number>, fallback = "Balanced") {
   return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? fallback;
-}
-
-function getDraftReviewPressure(wrestlers: Wrestler[]) {
-  const sourceStatusWatch = wrestlers.filter((wrestler) => wrestler.sourceAvailability && wrestler.sourceAvailability !== "Active");
-  const highFatigue = wrestlers.filter((wrestler) => wrestler.fatigue >= 40);
-  const lowMorale = wrestlers.filter((wrestler) => wrestler.morale <= 64);
-  const strongTalkers = wrestlers.filter((wrestler) => wrestler.promoSkill >= 85);
-  const strongWorkers = wrestlers.filter((wrestler) => wrestler.ringSkill >= 85);
-  const divisionCounts = getDraftValueCounts(wrestlers, (wrestler) => wrestler.division);
-  const thinDivision = Object.entries(divisionCounts).find(([, count]) => count <= 2);
-
-  if (sourceStatusWatch.length) {
-    return {
-      label: "Source Status Watch",
-      value: `${sourceStatusWatch.length} Flagged`,
-      detail: `${sourceStatusWatch.slice(0, 2).map((wrestler) => wrestler.name).join(" / ")} require a closer Week 1 read.`,
-    };
-  }
-
-  if (highFatigue.length) {
-    return {
-      label: "Condition Watch",
-      value: `${highFatigue.length} High Fatigue`,
-      detail: `${highFatigue[0].name} is the first name to monitor before stacking TV time.`,
-    };
-  }
-
-  if (lowMorale.length) {
-    return {
-      label: "Locker Room Watch",
-      value: `${lowMorale.length} Low Morale`,
-      detail: `${lowMorale[0].name} may need careful early usage to keep the room steady.`,
-    };
-  }
-
-  if (strongTalkers.length < 4) {
-    return {
-      label: "Promo Depth",
-      value: `${strongTalkers.length} Elite Talkers`,
-      detail: "The room may need simple early mic assignments until voices separate.",
-    };
-  }
-
-  if (strongWorkers.length < 4) {
-    return {
-      label: "Ring Depth",
-      value: `${strongWorkers.length} Elite Workers`,
-      detail: "The first cards may need protected matchups while the bell-to-bell core forms.",
-    };
-  }
-
-  if (thinDivision) {
-    return {
-      label: "Division Shape",
-      value: `${thinDivision[0]} ${thinDivision[1]}`,
-      detail: "One side of the room is thinner, so early booking should balance exposure.",
-    };
-  }
-
-  return {
-    label: "Opening Pressure",
-    value: "Balanced Room",
-    detail: "No single pressure point dominates the first Week 1 board.",
-  };
-}
-
-function getDraftReviewRead(wrestlers: Wrestler[]) {
-  const averageRing = getAverageDraftScore(wrestlers, (wrestler) => wrestler.ringSkill);
-  const averagePromo = getAverageDraftScore(wrestlers, (wrestler) => wrestler.promoSkill);
-  const tierCounts = getDraftValueCounts(wrestlers, (wrestler) => wrestler.roleTier);
-  const archetypeCounts = getDraftValueCounts(wrestlers, (wrestler) => wrestler.archetype);
-  const brandCounts = getDraftValueCounts(wrestlers, (wrestler) => wrestler.sourceBrand);
-  const topTier = getMostCommonDraftValue(tierCounts, "Mixed Tier");
-  const topArchetype = getMostCommonDraftValue(archetypeCounts, "Mixed Style");
-  const sourceMix = Object.keys(brandCounts).length;
-  const identity =
-    averagePromo >= averageRing + 4
-      ? "a mic-forward locker room"
-      : averageRing >= averagePromo + 4
-        ? "a bell-to-bell locker room"
-        : "a balanced TV locker room";
-  const classTone = averageRing >= 82 && averagePromo >= 82 ? "title-ready" : averageRing >= averagePromo ? "methodical" : "high-strike";
-
-  return `This reads like ${identity} leaning ${topArchetype}, with ${topTier} depth setting the tone. You built a ${classTone} class from ${sourceMix} source brand${sourceMix === 1 ? "" : "s"}, so Week 1 is an open-board launch rather than a brand-restricted roster.`;
-}
-
-function getRosterLeader(wrestlers: Wrestler[], score: (wrestler: Wrestler) => number) {
-  return [...wrestlers].sort((a, b) => score(b) - score(a))[0];
 }
 
 function getWrestlerNames(ids: string[], wrestlers: Wrestler[]) {
@@ -6281,6 +6172,7 @@ function NewGameSetupScreen({
   const [draftRoleTierFilter, setDraftRoleTierFilter] = useState(draftRoleTierFilters[0]);
   const [draftAvailabilityFilter, setDraftAvailabilityFilter] = useState(draftAvailabilityFilters[0]);
   const [draftArchetypeFilter, setDraftArchetypeFilter] = useState(draftArchetypeFilters[0]);
+  const [draftFocusId, setDraftFocusId] = useState<string>();
   const selectedGmStyle = gmStyleOptions.find((option) => option.label === gmStyle) ?? gmStyleOptions[0];
   const selectedBrandStyle = brandStyleOptions.find((option) => option.label === brandStyle) ?? brandStyleOptions[0];
   const selectedDifficulty = difficultyOptions.find((option) => option.label === difficulty) ?? difficultyOptions[1];
@@ -6311,21 +6203,10 @@ function NewGameSetupScreen({
     draftArchetypeFilter !== "All Styles" ? draftArchetypeFilter : null,
   ].filter(Boolean);
   const boardLeader = availableWrestlers[0];
-  const boardSpotlightStack = availableWrestlers.slice(1, 4);
-  const topStar = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.popularity + wrestler.momentum);
-  const bestTalker = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.promoSkill);
-  const bestInRing = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.ringSkill);
-  const highestMomentum = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.momentum);
-  const weekOneAnchor = getRosterLeader(draftedWrestlers, (wrestler) => wrestler.morale + wrestler.momentum + (100 - wrestler.fatigue));
-  const draftReviewSpine = [...draftedWrestlers]
-    .sort((a, b) => b.popularity + b.momentum + b.ringSkill + b.promoSkill - (a.popularity + a.momentum + a.ringSkill + a.promoSkill))
-    .slice(0, 3);
-  const draftReviewPressure = getDraftReviewPressure(draftedWrestlers);
-  const draftReviewRead = getDraftReviewRead(draftedWrestlers);
+  const focusedDraftWrestler = availableWrestlers.find((wrestler) => wrestler.id === draftFocusId) ?? boardLeader;
   const draftTierCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.roleTier);
   const draftArchetypeCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.archetype);
   const draftDivisionCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.division);
-  const draftSourceBrandCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.sourceBrand);
   const picksRemaining = Math.max(0, draftPickCount - draftedWrestlers.length);
   const draftClockRead =
     draftedWrestlers.length === 0
@@ -6346,9 +6227,34 @@ function NewGameSetupScreen({
     const topDraftDivision = getMostCommonDraftValue(draftDivisionCounts, "Mixed Division");
     return `Class profile is shaping as a ${topDraftDivision} roster with ${topDraftArchetype} emphasis and ${topDraftTier} depth.`;
   })();
-  const bestAvailableRead = boardLeader
-    ? `Best visible file: ${boardLeader.name} · ${getDraftTag(boardLeader.sourceBrand, "Open Pool")} · ${getDraftTag(boardLeader.roleTier)} · ${getDraftTag(boardLeader.archetype)}`
-    : "No open-board lead in current filters. Clear filters to reopen the board.";
+  const focusedDraftIdentity = focusedDraftWrestler ? getWrestlerIdentityContext(focusedDraftWrestler) : undefined;
+  const focusedDraftFinance = focusedDraftWrestler ? getRosterFinanceValueForWrestler(focusedDraftWrestler) : undefined;
+  const focusedDraftOverall = focusedDraftWrestler ? getWrestlerOverall(focusedDraftWrestler) : 0;
+  const focusedDraftCost = focusedDraftFinance?.draftValueUsd ?? 0;
+  const draftedRosterNeedRows = [
+    { label: "Main Event", count: draftedWrestlers.filter((wrestler) => getDraftTag(wrestler.roleTier).includes("Main")).length, target: 2 },
+    { label: "Talkers", count: draftedWrestlers.filter((wrestler) => wrestler.promoSkill >= 82).length, target: 4 },
+    { label: "Workers", count: draftedWrestlers.filter((wrestler) => wrestler.ringSkill >= 82).length, target: 4 },
+    { label: "Women", count: draftedWrestlers.filter((wrestler) => getWrestlerDivisionGroup(wrestler) === "womens").length, target: 4 },
+  ];
+  const recentRivalClaims = (rivalDraftActivity?.claimedWrestlerIds ?? [])
+    .slice(-5)
+    .map((id) => draftPool.find((wrestler) => wrestler.id === id))
+    .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
+  const upNextRivals = previewRivalBrands.slice(0, 4);
+
+  useEffect(() => {
+    if (!availableWrestlers.length) {
+      if (draftFocusId) {
+        setDraftFocusId(undefined);
+      }
+      return;
+    }
+
+    if (!draftFocusId || !availableWrestlers.some((wrestler) => wrestler.id === draftFocusId)) {
+      setDraftFocusId(availableWrestlers[0].id);
+    }
+  }, [availableWrestlers, draftFocusId]);
 
   function startCareer() {
     if (!canPreview || draftedWrestlers.length !== draftPickCount) {
@@ -6375,6 +6281,14 @@ function NewGameSetupScreen({
     setDraftedWrestlers((current) => [...current, wrestler]);
   }
 
+  function draftFocusedWrestler() {
+    if (!focusedDraftWrestler) {
+      return;
+    }
+
+    draftWrestler(focusedDraftWrestler);
+  }
+
   function undoLastPick() {
     setDraftedWrestlers((current) => current.slice(0, -1));
   }
@@ -6386,6 +6300,7 @@ function NewGameSetupScreen({
     setDraftRoleTierFilter(draftRoleTierFilters[0]);
     setDraftAvailabilityFilter(draftAvailabilityFilters[0]);
     setDraftArchetypeFilter(draftArchetypeFilters[0]);
+    setDraftFocusId(undefined);
   }
 
   function selectBrandStyle(choice: string) {
@@ -6401,19 +6316,60 @@ function NewGameSetupScreen({
     }
   }
 
+  const setupSteps: Array<{ id: SetupStep; label: string; detail: string }> = [
+    { id: "contract", label: "Contract", detail: "Accept the job" },
+    { id: "rules", label: "Rules", detail: "Set pressure" },
+    { id: "gm", label: "GM", detail: "Choose identity" },
+    { id: "brand", label: "Brand", detail: "Take a chair" },
+    { id: "draft", label: "Draft", detail: "Build roster" },
+  ];
+  const activeSetupIndex = setupSteps.findIndex((item) => item.id === step);
+  const currentStepLabel = setupSteps[activeSetupIndex]?.label ?? "Career";
+  const nextActionLabel =
+    step === "contract"
+      ? "Set Rules"
+      : step === "rules"
+        ? "Choose GM"
+        : step === "gm"
+          ? "Choose Brand"
+          : step === "brand"
+            ? "Draft Night"
+            : step === "draft"
+              ? "Week 1"
+              : "Career";
+  const signedBrandName = brandName.trim() || defaultCareer.brandName;
+  const signedGmName = gmName.trim() || defaultCareer.gmName;
+  const rivalSummary = previewRivalBrands.map((brand) => `${brand.brandName}: ${brand.assignedGMName}`).join(" / ");
+
   return (
-    <main className="setup-screen">
+    <main className={`setup-screen setup-step-${step}`}>
       <section className="setup-shell">
-        <div className="setup-progress" aria-label="Setup progress">
-          {["contract", "rules", "gm", "brand", "preview", "draft", "review"].map((item, index) => (
-            <span className={step === item ? "active-step" : ""} key={item}>
-              {index + 1}
-            </span>
-          ))}
-        </div>
+        <div className={`setup-layout${step === "draft" ? " draft-war-room-layout" : ""}`}>
+          {step === "draft" ? null : (
+            <nav className="setup-step-rail" aria-label="Career start steps">
+              <p className="eyebrow">Career Start</p>
+              {setupSteps.map((item, index) => (
+                <span className={step === item.id ? "active-step" : index < activeSetupIndex ? "complete-step" : ""} key={item.id}>
+                  <strong>{item.label}</strong>
+                  <small>{item.detail}</small>
+                </span>
+              ))}
+            </nav>
+          )}
+
+          <div className={`setup-workspace${step === "draft" ? " draft-war-room-workspace" : ""}`}>
+            {step === "draft" ? null : (
+              <div className="setup-workspace-head">
+              <div>
+                <p className="eyebrow">{currentStepLabel} Desk</p>
+                <h1>{signedBrandName}</h1>
+              </div>
+              <strong>{nextActionLabel}</strong>
+            </div>
+            )}
 
         {step === "contract" ? (
-          <div className="setup-panel">
+          <div className="setup-panel setup-command-panel">
             <p className="eyebrow">Sign The Contract</p>
             <h1>You're Hired</h1>
             <p className="lede">
@@ -6431,7 +6387,7 @@ function NewGameSetupScreen({
         ) : null}
 
         {step === "gm" ? (
-          <div className="setup-panel">
+          <div className="setup-panel setup-command-panel">
             <p className="eyebrow">Choose GM Identity</p>
             <h2>Who Runs The Room?</h2>
             <label className="setup-field">
@@ -6461,7 +6417,7 @@ function NewGameSetupScreen({
         ) : null}
 
         {step === "brand" ? (
-          <div className="setup-panel">
+          <div className="setup-panel setup-command-panel">
             <p className="eyebrow">Choose Your Seat</p>
             <h2>Which Brand Chair Is Yours?</h2>
             <label className="setup-field">
@@ -6483,15 +6439,15 @@ function NewGameSetupScreen({
               <button className="secondary-action" onClick={() => setStep("gm")}>
                 Back
               </button>
-              <button className="primary-action" disabled={!canPreview} onClick={() => setStep("preview")}>
-                Preview Career
+              <button className="primary-action" disabled={!canPreview} onClick={() => setStep("draft")}>
+                Enter Draft Night
               </button>
             </div>
           </div>
         ) : null}
 
         {step === "rules" ? (
-          <div className="setup-panel">
+          <div className="setup-panel setup-command-panel">
             <p className="eyebrow">Game Rules</p>
             <h2>Set The Pressure Level</h2>
             <p className="lede">Lock the ownership mandate before Draft Night. Difficulty frames the pressure of the job for now; budget sets your opening war chest.</p>
@@ -6533,119 +6489,45 @@ function NewGameSetupScreen({
           </div>
         ) : null}
 
-        {step === "preview" ? (
-          <div className="setup-panel">
-            <p className="eyebrow">Career Preview</p>
-            <h2>{brandName.trim() || defaultCareer.brandName}</h2>
-            <div className="status-grid setup-summary">
-              <Metric label="GM" value={gmName.trim() || defaultCareer.gmName} detail={gmStyle} />
-              <Metric label="Brand Chair" value={brandStyle} detail={selectedBrandStyle.description} />
-              <Metric label="Difficulty" value={difficulty} detail="Challenge framing; no hidden tuning yet" />
-              <Metric
-                label="Starting Budget"
-                value={formatStartingBudgetReadout(startingBudgetTier, startingBudgetAmount)}
-                detail={formatStartingBudgetDetail(startingBudgetTier, startingBudgetAmount, selectedBudgetDescription)}
-              />
-              <Metric label="Opening Season" value="12 Weeks" detail="PLEs in Weeks 4, 8, and 12" />
-              <Metric label="Next Step" value="Draft Night" detail="Build the first locker room" />
-            </div>
-            <RivalBrandUniversePanel rivalBrands={previewRivalBrands} title="The Other Chairs Are Filled" />
-            {rivalDraftActivity ? <RivalDraftActivityPanel snapshot={rivalDraftActivity} /> : null}
-            <p className="lede">
-              Your chair is set, the other desks are assigned, and Week 1 opens on TV. This first campaign starts with Collision Course in Week 4 while the rival-brand room enters the ratings race after your shows resolve.
-            </p>
-            <div className="title-actions">
-              <button className="secondary-action" onClick={() => setStep("brand")}>
-                Back
-              </button>
-              <button className="primary-action" onClick={() => setStep("draft")}>
-                Enter Draft Night
-              </button>
-            </div>
-          </div>
-        ) : null}
-
         {step === "draft" ? (
-          <div className="setup-panel draft-panel">
-            <section className="draft-event-stage" aria-label="Draft night command stage">
-              <div>
-                <p className="eyebrow">Draft Night</p>
-                <h2>Draft War Room</h2>
-                <p className="lede">
-                  Build the first 12-person locker room for {brandName.trim() || defaultCareer.brandName} while CPU desks claim from the same Top 200 pool. Your picks stay manual; rival claims are deterministic and commit when the career starts.
-                </p>
+          <div className="draft-war-room" aria-label="Draft Night war room">
+            <header className="draft-war-room-hud">
+              <div className="draft-night-title">
+                <h1>Draft Night</h1>
+                <span>Season 1 / Week 0</span>
+                <small>Live from the {signedBrandName} war room</small>
               </div>
-              <div className="draft-clock-tower" aria-label="Draft clock">
+              <div className="draft-feed-banner">
+                <span>GM War Room Feed</span>
+                <strong>{draftClockRead}</strong>
+              </div>
+              <div className="draft-hud-metric">
+                <span>Budget Remaining</span>
+                <strong>{formatProjectedReserve(draftFinanceReadout)}</strong>
+              </div>
+              <div className="draft-hud-metric timer">
                 <span>On The Clock</span>
-                <strong>Pick {Math.min(draftedWrestlers.length + 1, draftPickCount)}</strong>
-                <small>{picksRemaining} pick{picksRemaining === 1 ? "" : "s"} left</small>
+                <strong>{picksRemaining ? `${picksRemaining} Picks` : "Locked"}</strong>
               </div>
-            </section>
-            <div className="draft-war-room-strip" aria-label="Draft board status">
-              <span>{draftPickCount}-Pick Command Board</span>
-              <span>{availableWrestlers.length} Showing</span>
-              <span>{picksRemaining} Picks Left</span>
-              <span>{draftedWrestlers.length}/{draftPickCount} Signed</span>
-              <span>{activeDraftFilters.length ? activeDraftFilters.join(" / ") : "Open Board"}</span>
-            </div>
-            {rivalDraftActivity ? <RivalDraftActivityPanel snapshot={rivalDraftActivity} /> : null}
-            <DraftFinanceSummary readout={draftFinanceReadout} />
-            <section className="draft-spotlight" aria-label="Best available spotlight">
-              {boardLeader ? <WrestlerPortrait className="draft-spotlight-portrait" wrestler={boardLeader} /> : null}
-              <div className="draft-spotlight-main">
-                <p className="eyebrow">Best Available Spotlight</p>
-                <h3>{boardLeader?.name ?? "No Matching Talent"}</h3>
-                <p>
-                  {boardLeader
-                    ? `${getDraftTag(boardLeader.sourceBrand, "Open Pool")} · ${getDraftTag(boardLeader.roleTier)} · ${getDraftTag(boardLeader.archetype)} · ${getDraftTag(boardLeader.division)}`
-                    : "Clear a filter to bring the board back online."}
-                </p>
+              <div className="draft-brand-badge">
+                <span>Your Pick</span>
+                <strong>{signedBrandName}</strong>
+                <small>{draftedWrestlers.length + 1 > draftPickCount ? draftPickCount : draftedWrestlers.length + 1} / {draftPickCount}</small>
               </div>
-              {boardLeader ? (
-                <div className="draft-spotlight-metrics">
-                  <Metric label="Top 200" value={boardLeader.draftRank ? `#${boardLeader.draftRank}` : "File"} />
-                  <Metric label="Star Power" value={`${boardLeader.popularity + boardLeader.momentum}`} />
-                  <Metric label="Ring / Promo" value={`${boardLeader.ringSkill}/${boardLeader.promoSkill}`} />
-                  <Metric label="Condition" value={`Fat ${boardLeader.fatigue}`} detail={`Morale ${boardLeader.morale}`} />
-                </div>
-              ) : null}
-              <div className="draft-spotlight-stack">
-                <span>Next On Board</span>
-                {boardSpotlightStack.length ? (
-                  boardSpotlightStack.map((wrestler) => (
-                    <strong key={wrestler.id}>
-                      {wrestler.name} <small>{wrestler.draftRank ? `#${wrestler.draftRank}` : "Draft File"}</small>
-                    </strong>
-                  ))
-                ) : (
-                  <strong>Board stack empty</strong>
-                )}
-              </div>
-            </section>
-            <section>
-              <div className="draft-board-note">
-                <strong>Draft Clock Read</strong>
-                <span>{draftClockRead}</span>
-              </div>
-              <div className="draft-board-note">
-                <strong>Best Available Spotlight</strong>
-                <span>{bestAvailableRead}</span>
-              </div>
-              <div className="draft-board-note">
-                <strong>Roster Identity Signal</strong>
-                <span>{rosterClassRead}</span>
-              </div>
-            </section>
-            <div className="draft-board">
-              <section className="draft-column">
-                <div className="draft-head">
+            </header>
+
+            <section className="draft-war-room-grid">
+              <aside className="draft-board-panel" aria-label="Available talent">
+                <div className="draft-panel-head">
                   <div>
                     <p className="eyebrow">Available Talent</p>
-                    <h3>Pick {Math.min(draftedWrestlers.length + 1, draftPickCount)} of {draftPickCount}</h3>
+                    <h2>{availableWrestlers.length} Showing</h2>
                   </div>
-                  <strong>{draftSearchTerm ? `${availableWrestlers.length} Showing` : `${availableDraftCount} Available`}</strong>
+                  <button className="secondary-action" onClick={resetDraftBoard} type="button">
+                    Reset
+                  </button>
                 </div>
-                <div className="draft-tools" aria-label="Draft board controls">
+                <div className="draft-tools draft-war-toolbar" aria-label="Draft board controls">
                   <label>
                     Search
                     <input value={draftSearch} onChange={(event) => setDraftSearch(event.target.value)} placeholder="Find a performer" />
@@ -6661,7 +6543,7 @@ function NewGameSetupScreen({
                     </select>
                   </label>
                   <label>
-                    Source Brand
+                    Brand
                     <select value={draftBrandFilter} onChange={(event) => setDraftBrandFilter(event.target.value)}>
                       {draftBrandFilters.map((option) => (
                         <option key={option} value={option}>
@@ -6681,7 +6563,7 @@ function NewGameSetupScreen({
                     </select>
                   </label>
                   <label>
-                    Source Status
+                    Status
                     <select value={draftAvailabilityFilter} onChange={(event) => setDraftAvailabilityFilter(event.target.value)}>
                       {draftAvailabilityFilters.map((option) => (
                         <option key={option} value={option}>
@@ -6700,156 +6582,246 @@ function NewGameSetupScreen({
                       ))}
                     </select>
                   </label>
-                  <button className="secondary-action" onClick={resetDraftBoard} type="button">
-                    Reset Board
-                  </button>
                 </div>
-                <div className="draft-board-note">
-                  <strong>{boardLeader?.name ?? "No matching talent"}</strong>
-                  <span>
-                    {boardLeader
-                      ? `Best visible file · ${getDraftTag(boardLeader.sourceBrand, "Open Pool")} · ${getDraftTag(boardLeader.roleTier)} · ${getDraftTag(boardLeader.archetype)}`
-                      : "Clear a filter to reopen the board."}
-                  </span>
-                </div>
-                <div className="draft-list">
+                <div className="draft-prospect-list">
                   {availableWrestlers.length ? (
                     availableWrestlers.map((wrestler) => (
-                      <DraftTalentCard
-                        actionLabel="Draft"
-                        disabled={draftedWrestlers.length >= draftPickCount}
+                      <button
+                        className={`draft-prospect-row${focusedDraftWrestler?.id === wrestler.id ? " is-focused" : ""}`}
                         key={wrestler.id}
-                        onAction={() => draftWrestler(wrestler)}
-                        wrestler={wrestler}
-                      />
+                        onClick={() => setDraftFocusId(wrestler.id)}
+                        type="button"
+                      >
+                        <WrestlerPortrait className="draft-prospect-portrait" wrestler={wrestler} />
+                        <span>
+                          <strong>{wrestler.name}</strong>
+                          <small>{getDraftTag(wrestler.archetype)} / {getDraftTag(wrestler.roleTier)}</small>
+                        </span>
+                        <em>Pop {wrestler.popularity}</em>
+                        <b>{getWrestlerOverall(wrestler)}</b>
+                      </button>
                     ))
                   ) : (
                     <div className="empty-state compact">No draft files match that search.</div>
                   )}
                 </div>
+              </aside>
+
+              <section className="draft-clock-stage" aria-label="Selected prospect">
+                <div className="draft-clock-strip">On The Clock</div>
+                {focusedDraftWrestler ? (
+                  <div className="draft-focus-card">
+                    <WrestlerPortrait className="draft-focus-portrait" wrestler={focusedDraftWrestler} />
+                    <div className="draft-focus-copy">
+                      <p className="eyebrow">{getDraftTag(focusedDraftWrestler.roleTier)} / {getDraftTag(focusedDraftWrestler.archetype)}</p>
+                      <h2>{focusedDraftWrestler.name}</h2>
+                      <div className="draft-focus-tags">
+                        <span>{getDraftTag(focusedDraftWrestler.sourceBrand, "Open Pool")}</span>
+                        <span>{getDraftTag(focusedDraftWrestler.division)}</span>
+                        <span>{getDraftTag(focusedDraftIdentity?.careerStageLabel, "Career Stage")}</span>
+                      </div>
+                      <div className="draft-focus-meta">
+                        <span>Class <strong>{getDraftTag(focusedDraftIdentity?.role, "Performer")}</strong></span>
+                        <span>Style <strong>{getDraftTag(focusedDraftIdentity?.wrestlingStyle, "Mixed")}</strong></span>
+                        <span>Mic <strong>{getDraftTag(focusedDraftIdentity?.promoStyle, "Open")}</strong></span>
+                      </div>
+                      <div className="draft-focus-stat-grid">
+                        <Metric label="Popularity" value={`${focusedDraftWrestler.popularity}`} />
+                        <Metric label="Momentum" value={`${focusedDraftWrestler.momentum}`} />
+                        <Metric label="Ring Work" value={`${focusedDraftWrestler.ringSkill}`} />
+                        <Metric label="Mic Skill" value={`${focusedDraftWrestler.promoSkill}`} />
+                      </div>
+                      <div className="draft-focus-contract">
+                        <span>Draft Value <strong>{focusedDraftCost ? formatMoney(focusedDraftCost) : "Catalog Pending"}</strong></span>
+                        <span>Condition <strong>Fat {focusedDraftWrestler.fatigue} / Morale {focusedDraftWrestler.morale}</strong></span>
+                      </div>
+                    </div>
+                    <div className="draft-focus-overall">
+                      <span>Overall</span>
+                      <strong>{focusedDraftOverall}</strong>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="empty-state compact">No focused draft file. Clear filters to reopen the board.</div>
+                )}
+                <div className="draft-main-actions">
+                  <button className="secondary-action" onClick={() => setStep("brand")}>
+                    Back
+                  </button>
+                  <button className="primary-action" disabled={!focusedDraftWrestler || draftedWrestlers.length >= draftPickCount} onClick={draftFocusedWrestler}>
+                    Draft Selected
+                  </button>
+                  <button className={draftedWrestlers.length === draftPickCount ? "primary-action" : "secondary-action"} disabled={draftedWrestlers.length !== draftPickCount} onClick={startCareer}>
+                    Enter Week 1
+                  </button>
+                </div>
               </section>
 
-              <section className="draft-column drafted-column">
-                <div className="draft-head">
+              <aside className="draft-rival-panel" aria-label="Rival brands and draft status">
+                <div className="draft-panel-head">
                   <div>
-                    <p className="eyebrow">Drafted Roster</p>
-                    <h3>{draftedWrestlers.length}/{draftPickCount} Signed</h3>
+                    <p className="eyebrow">Rival Brands</p>
+                    <h2>Draft Status</h2>
                   </div>
+                  <strong>{availableDraftCount} Open</strong>
+                </div>
+                <div className="draft-rival-list">
+                  {previewRivalBrands.map((brand, index) => (
+                    <article key={brand.id}>
+                      <strong>{brand.brandName}</strong>
+                      <span>{brand.assignedGMName}</span>
+                      <small>Round 1 / Pick {draftedWrestlers.length + index + 2}</small>
+                      <em>{formatMoney(brand.budget)}</em>
+                    </article>
+                  ))}
+                </div>
+                <div className="draft-recent-panel">
+                  <p className="eyebrow">Recent Rival Claims</p>
+                  {recentRivalClaims.length ? (
+                    recentRivalClaims.map((wrestler) => (
+                      <span key={wrestler.id}>
+                        <strong>{wrestler.name}</strong>
+                        <small>{getDraftTag(wrestler.sourceBrand, "Open Pool")} / {getWrestlerOverall(wrestler)}</small>
+                      </span>
+                    ))
+                  ) : (
+                    <span>
+                      <strong>No rival claims yet</strong>
+                      <small>CPU boards move once your room starts taking shape.</small>
+                    </span>
+                  )}
+                </div>
+                <div className="draft-update-panel">
+                  <p className="eyebrow">War Room Updates</p>
+                  {rivalDraftActivity?.notes.length ? (
+                    rivalDraftActivity.notes.slice(0, 3).map((note) => (
+                      <span key={note.id}>
+                        <strong>{note.brandName}</strong>
+                        <small>{note.detail}</small>
+                      </span>
+                    ))
+                  ) : (
+                    <span>
+                      <strong>Boards are quiet</strong>
+                      <small>Rival desks are waiting for your first move.</small>
+                    </span>
+                  )}
+                </div>
+              </aside>
+            </section>
+
+            <section className="draft-war-bottom" aria-label="Draft support panels">
+              <article className="draft-bottom-panel scouting">
+                <p className="eyebrow">Scouting Report</p>
+                {focusedDraftWrestler ? (
+                  <>
+                    <strong>{focusedDraftWrestler.name}</strong>
+                    <span>{getDraftTag(focusedDraftIdentity?.wrestlingStyle, "Ring style")} / {getDraftTag(focusedDraftIdentity?.promoStyle, "Promo style")}</span>
+                    <small>{getDraftTag(focusedDraftWrestler.division)} roster fit with {focusedDraftWrestler.popularity} popularity and {focusedDraftWrestler.momentum} momentum.</small>
+                  </>
+                ) : (
+                  <small>No scouting file selected.</small>
+                )}
+              </article>
+              <article className="draft-bottom-panel needs">
+                <p className="eyebrow">Roster Needs</p>
+                {draftedRosterNeedRows.map((row) => (
+                  <span key={row.label}>
+                    <strong>{row.label}</strong>
+                    <em>{row.count}/{row.target}</em>
+                    <i style={{ width: `${Math.min(100, Math.round((row.count / row.target) * 100))}%` }} />
+                  </span>
+                ))}
+              </article>
+              <article className="draft-bottom-panel budget">
+                <p className="eyebrow">Budget Overview</p>
+                <span>Starting <strong>{draftFinanceReadout.isUnlimitedBudget ? "Unlimited" : formatMoney(draftFinanceReadout.startingBudgetAmount)}</strong></span>
+                <span>Roster Value <strong>{formatMoney(draftFinanceReadout.rosterValue)}</strong></span>
+                <span>Remaining <strong>{formatProjectedReserve(draftFinanceReadout)}</strong></span>
+              </article>
+              <article className="draft-bottom-panel info">
+                <p className="eyebrow">Draft Information</p>
+                <strong>{draftedWrestlers.length + 1 > draftPickCount ? draftPickCount : draftedWrestlers.length + 1} / {draftPickCount}</strong>
+                <small>{activeDraftFilters.length ? activeDraftFilters.join(" / ") : "Open Board"}</small>
+                <div className="draft-pick-dots">
+                  {Array.from({ length: draftPickCount }).map((_, index) => (
+                    <span className={index < draftedWrestlers.length ? "filled" : ""} key={index} />
+                  ))}
+                </div>
+              </article>
+              <article className="draft-bottom-panel up-next">
+                <p className="eyebrow">Up Next</p>
+                <div>
+                  {upNextRivals.map((brand) => (
+                    <span key={brand.id}>{brand.brandName}</span>
+                  ))}
+                </div>
+              </article>
+              <article className="draft-bottom-panel drafted-mini">
+                <div>
+                  <p className="eyebrow">Drafted Roster</p>
                   <button className="secondary-action" disabled={!draftedWrestlers.length} onClick={undoLastPick}>
                     Undo Pick
                   </button>
                 </div>
-                <div className="drafted-list">
+                <section>
                   {draftedWrestlers.length ? (
                     draftedWrestlers.map((wrestler, index) => (
-                      <div className="drafted-pick" key={wrestler.id}>
-                        <span>Pick {index + 1}</span>
-                        <strong>{wrestler.name}</strong>
-                        <em>
-                          {getDraftTag(wrestler.sourceBrand, "Open Pool")} · {getDraftTag(wrestler.roleTier)} · {getDraftTag(wrestler.archetype)}
-                        </em>
-                        <small>
-                          Pop {wrestler.popularity} · Mom {wrestler.momentum} · Ring {wrestler.ringSkill} · Promo {wrestler.promoSkill} · Fat {wrestler.fatigue} · Morale {wrestler.morale}
-                        </small>
-                      </div>
+                      <span key={wrestler.id}>
+                        <strong>{index + 1}. {wrestler.name}</strong>
+                        <small>{getDraftTag(wrestler.roleTier)} / {getWrestlerOverall(wrestler)}</small>
+                      </span>
                     ))
                   ) : (
-                    <div className="empty-state compact">No picks made yet. The board is waiting.</div>
+                    <small>No picks made yet.</small>
                   )}
-                </div>
-              </section>
-            </div>
-            <div className="title-actions draft-actions">
-              <button className="secondary-action" onClick={() => setStep("preview")}>
-                Back
-              </button>
-              <button className="primary-action" disabled={draftedWrestlers.length !== draftPickCount} onClick={() => setStep("review")}>
-                Complete Draft
-              </button>
-            </div>
+                </section>
+              </article>
+            </section>
           </div>
         ) : null}
 
-        {step === "review" ? (
-          <div className="setup-panel draft-review-panel">
-            <p className="eyebrow">Draft Review</p>
-            <h2>{brandName.trim() || defaultCareer.brandName} Draft Debrief</h2>
-            <p className="lede">The board is locked. Review how this class fits {gmName.trim() || defaultCareer.gmName}'s room and the brand chair before Week 1 hits the tape.</p>
-            <section className="draft-review-hero" aria-label="Draft review broadcast recap">
-              <div className="draft-review-lead">
-                {topStar ? <WrestlerPortrait className="draft-review-portrait" wrestler={topStar} /> : null}
-                <div>
-                <p className="eyebrow">Opening Night Graphic</p>
-                <h3>{topStar?.name ?? "Locker Room TBD"}</h3>
-                <p>{topStar ? `Franchise player read with ${topStar.popularity} popularity and ${topStar.momentum} momentum.` : "Complete the draft to generate a roster lead."}</p>
-                </div>
-              </div>
-              <div className="draft-review-spine">
-                <span className="draft-review-spine-label">Locker Room Spine</span>
-                {draftReviewSpine.map((wrestler, index) => (
-                  <strong key={wrestler.id}>
-                    <WrestlerPortrait className="draft-spine-portrait" wrestler={wrestler} />
-                    <span className="draft-spine-copy">
-                      {index + 1}. {wrestler.name}
-                      <small>
-                        {getDraftTag(wrestler.roleTier)} · Pop {wrestler.popularity} · Mom {wrestler.momentum}
-                      </small>
-                    </span>
-                  </strong>
-                ))}
-              </div>
-            </section>
-            <div className="status-grid setup-summary draft-review-summary">
-              <Metric label="Franchise Player" value={topStar?.name ?? "None"} detail={topStar ? `Pop ${topStar.popularity} · Mom ${topStar.momentum}` : undefined} />
-              <Metric label="Best Talker" value={bestTalker?.name ?? "None"} detail={bestTalker ? `Promo ${bestTalker.promoSkill}` : undefined} />
-              <Metric label="Best In-Ring" value={bestInRing?.name ?? "None"} detail={bestInRing ? `Ring ${bestInRing.ringSkill}` : undefined} />
-              <Metric label="Momentum Leader" value={highestMomentum?.name ?? "None"} detail={highestMomentum ? `Momentum ${highestMomentum.momentum}` : undefined} />
-              <Metric label="Week 1 Anchor" value={weekOneAnchor?.name ?? "None"} detail={weekOneAnchor ? `Morale ${weekOneAnchor.morale} · Fat ${weekOneAnchor.fatigue}` : undefined} />
-              <Metric label={draftReviewPressure.label} value={draftReviewPressure.value} detail={draftReviewPressure.detail} />
-            </div>
-            <DraftFinanceSummary readout={draftFinanceReadout} />
-            <section className="war-room-read" aria-label="Draft review war room read">
-              <div>
-                <p className="eyebrow">War Room Read</p>
-                <h3>Brand Class Identity</h3>
-              </div>
-              <p>{draftReviewRead}</p>
-              <p>{rosterClassRead}</p>
-            </section>
-            {rivalDraftActivity ? <RivalDraftActivityPanel snapshot={rivalDraftActivity} /> : null}
-            <section className="draft-review-breakdown" aria-label="Drafted roster shape">
-              <article>
-                <span>Tier Mix</span>
-                <strong>{getDraftCountSummary(draftTierCounts, 4)}</strong>
-              </article>
-              <article>
-                <span>Style Lean</span>
-                <strong>{getDraftCountSummary(draftArchetypeCounts, 4)}</strong>
-              </article>
-              <article>
-                <span>Division Split</span>
-                <strong>{getDraftCountSummary(draftDivisionCounts, 3)}</strong>
-              </article>
-              <article>
-                <span>Source Mix</span>
-                <strong>{getDraftCountSummary(draftSourceBrandCounts, 4)}</strong>
-              </article>
-            </section>
-            <section className="draft-review-grid">
-              {draftedWrestlers.map((wrestler) => (
-                <DraftTalentCard key={wrestler.id} wrestler={wrestler} />
-              ))}
-            </section>
-            <div className="title-actions">
-              <button className="secondary-action" onClick={() => setStep("draft")}>
-                Back To Draft
-              </button>
-              <button className="primary-action" onClick={startCareer}>
-                Enter Week 1
-              </button>
-            </div>
           </div>
-        ) : null}
+
+          {step === "draft" ? null : (
+          <aside className="setup-summary-rail" aria-label="Career setup summary">
+            <p className="eyebrow">Career Summary</p>
+            <h2>{signedBrandName}</h2>
+            <div className="setup-summary-list">
+              <article>
+                <span>GM</span>
+                <strong>{signedGmName}</strong>
+                <small>{gmStyle}</small>
+              </article>
+              <article>
+                <span>Brand Chair</span>
+                <strong>{brandStyle}</strong>
+                <small>{selectedBrandStyle.description}</small>
+              </article>
+              <article>
+                <span>Rules</span>
+                <strong>{difficulty}</strong>
+                <small>{formatStartingBudgetReadout(startingBudgetTier, startingBudgetAmount)} opening budget</small>
+              </article>
+              <article>
+                <span>Draft</span>
+                <strong>{draftedWrestlers.length}/{draftPickCount}</strong>
+                <small>{picksRemaining ? `${picksRemaining} picks left` : "Ready for Week 1"}</small>
+              </article>
+              <article>
+                <span>Season</span>
+                <strong>12 Weeks</strong>
+                <small>PLEs in Weeks 4, 8, and 12</small>
+              </article>
+            </div>
+            <div className="setup-rival-summary">
+              <span>Rival Chairs</span>
+              <strong>{previewRivalBrands.length ? `${previewRivalBrands.length} assigned` : "Pending"}</strong>
+              <small>{rivalSummary || "Choose a brand to fill the other desks."}</small>
+            </div>
+          </aside>
+          )}
+        </div>
       </section>
     </main>
   );
@@ -7250,59 +7222,6 @@ function RivalDraftActivityPanel({ snapshot }: { snapshot: CpuDraftPreviewSnapsh
         </div>
       ) : null}
     </section>
-  );
-}
-
-function DraftTalentCard({
-  actionLabel,
-  disabled,
-  onAction,
-  wrestler,
-}: {
-  actionLabel?: string;
-  disabled?: boolean;
-  onAction?: () => void;
-  wrestler: Wrestler;
-}) {
-  const identity = getWrestlerIdentityContext(wrestler);
-
-  return (
-    <article className="draft-talent-card">
-      <div className="draft-talent-head">
-        <div className="draft-talent-title">
-          <WrestlerPortrait className="draft-talent-portrait" wrestler={wrestler} />
-          <div>
-            <p className="eyebrow">{wrestler.draftRank ? `Top 200 #${wrestler.draftRank}` : "Draft File"}</p>
-            <h3>{wrestler.name}</h3>
-          </div>
-        </div>
-        {onAction ? (
-          <button disabled={disabled} onClick={onAction}>
-            {actionLabel}
-          </button>
-        ) : null}
-      </div>
-      <div className="draft-card-tags" aria-label={`${wrestler.name} draft context`}>
-        <span>{getDraftTag(wrestler.sourceBrand, "Open Pool")}</span>
-        <span>{getDraftTag(wrestler.roleTier)}</span>
-        <span>{getDraftTag(wrestler.archetype)}</span>
-        <span>{getDraftTag(wrestler.sourceAvailability, "Source Status")}</span>
-      </div>
-      <p className="draft-card-read">
-        {getDraftTag(wrestler.division)} · {getDraftTag(identity.role)} · {getDraftTag(identity.careerStageLabel)} · open draft availability
-      </p>
-      <p className="draft-card-read">
-        {getDraftTag(identity.wrestlingStyle)} · {getDraftTag(identity.promoStyle)}
-      </p>
-      <div className="draft-stat-grid">
-        <Metric label="Popularity" value={`${wrestler.popularity}`} />
-        <Metric label="Momentum" value={`${wrestler.momentum}`} />
-        <Metric label="Ring" value={`${wrestler.ringSkill}`} />
-        <Metric label="Promo" value={`${wrestler.promoSkill}`} />
-        <Metric label="Fatigue" value={`${wrestler.fatigue}`} />
-        <Metric label="Morale" value={`${wrestler.morale}`} />
-      </div>
-    </article>
   );
 }
 
@@ -10649,226 +10568,237 @@ function WeekReviewScreen({
   const isPleResult = result.showType === "ple";
 
   return (
-    <main className="app-shell gameplay-command-shell">
+    <main className="app-shell gameplay-command-shell week-review-command-shell">
       <Header game={game} />
       <GameNav currentScreen="weekReview" hasResults hasWeekReview={true} onNavigate={onNavigate} />
-      <section className="story-fallout week-review-aftermath-panel" aria-label={isPleResult ? "PLE week aftermath" : "Week aftermath"}>
-        <div className="week-review-aftermath-head">
-          <div className="section-heading">
+      <section className="week-review-command-board" aria-label="Week review command board">
+        <section className="week-review-aftermath-hero" aria-label={isPleResult ? "PLE week aftermath" : "Week aftermath"}>
+          <div className="week-review-scoreboard">
+            <p className="eyebrow">
+              Season {result.seasonNumber} · Week {result.week} · {getShowTypeLabel(result.showType)}
+            </p>
+            <div className="week-review-score-line">
+              <h2>{result.totalScore}</h2>
+              <strong>{getShowGrade(result.totalScore)}</strong>
+            </div>
+            <p>{result.showName}</p>
+          </div>
+          <div className="week-review-aftermath-copy">
             <p className="eyebrow">{isPleResult ? "PLE Aftermath" : "Week Aftermath"}</p>
             <h3>{isPleResult ? "Major-Event Consequences" : "After-Action Consequences"}</h3>
+            <p>
+              {financeReport
+                ? `${result.showName} closed through ${financeReport.attendance.toLocaleString()} paid doors and ${formatMoney(financeReport.profitLoss)} net movement in the office books.`
+                : "The office loaded this review without a finance snapshot."}
+            </p>
+            <p>
+              {titleChanges.length
+                ? `${titleChanges.length} title change${titleChanges.length === 1 ? "" : "s"} were logged, alongside ${result.rivalryHistoryEvents?.length ?? 0} rivalry event${(result.rivalryHistoryEvents?.length ?? 0) === 1 ? "" : "s"}.`
+                : "No title transitions were logged on this show."}
+            </p>
+          </div>
+          <div className="week-review-hero-metrics">
+            <Metric label="Best Segment" value={`${bestSegment.score}`} detail={getSegmentResultParticipantsLabel(bestSegment, game.wrestlers)} />
+            <Metric
+              label="Runtime"
+              value={result.actualRuntimeMinutes !== undefined ? `${result.actualRuntimeMinutes} min` : "Legacy"}
+              detail={result.plannedRuntimeMinutes !== undefined ? `Planned ${result.plannedRuntimeMinutes} min` : "No runtime record"}
+            />
           </div>
           <button className="primary-action" onClick={onAdvanceWeek}>
             {result.week >= 12 ? "Season Review" : "Advance Week"}
           </button>
-        </div>
-        <p>
-          {financeReport
-            ? `${result.showName} closed through ${financeReport.attendance.toLocaleString()} paid doors and ${formatMoney(financeReport.profitLoss)} net movement in the office books.`
-            : "The office loaded this review without a finance snapshot."}
-        </p>
-        <p>
-          {titleChanges.length
-            ? `${titleChanges.length} title change${titleChanges.length === 1 ? "" : "s"} were logged, alongside ${result.rivalryHistoryEvents?.length ?? 0} rivalry event${(result.rivalryHistoryEvents?.length ?? 0) === 1 ? "" : "s"}`
-            : "No title transitions were logged on this show."}
-          .
-        </p>
-      </section>
-
-      <section className="status-grid" aria-label="Week review show outcome">
-        <Metric label="Show Score" value={`${result.totalScore}`} detail={`Grade ${getShowGrade(result.totalScore)}`} />
-        <Metric label="Best Segment" value={`${bestSegment.score}`} detail={getSegmentResultParticipantsLabel(bestSegment, game.wrestlers)} />
-        <Metric
-          label="Runtime"
-          value={result.actualRuntimeMinutes !== undefined ? `${result.actualRuntimeMinutes} min` : "Legacy"}
-          detail={result.plannedRuntimeMinutes !== undefined ? `Planned ${result.plannedRuntimeMinutes} min` : "No runtime record"}
-        />
-        <Metric label="Show" value={result.showName} detail={getShowTypeLabel(result.showType)} />
-      </section>
-
-      <WeekReviewOfficePanel snapshot={weekReviewOffice} />
-
-      <WeekReviewHandoffPanel snapshot={weekReviewHandoff} />
-
-      <RivalIntelligencePanel game={game} />
-      {ratingsBattle ? <RatingsBattlePanel snapshot={ratingsBattle} /> : null}
-      {cpuResultsFeed ? <CpuResultsFeedPanel snapshot={cpuResultsFeed} /> : null}
-
-      {result.broadcastOverrunNotes?.length ? (
-        <section className="broadcast-overrun-fallout" aria-label="Week review broadcast overrun">
-          <div className="section-heading">
-            <p className="eyebrow">Broadcast Fallout</p>
-            <h3>Closing Block Pressure</h3>
-          </div>
-          {result.broadcastOverrunNotes.map((note, index) => (
-            <p key={`${note}-${index}`}>{note}</p>
-          ))}
         </section>
-      ) : null}
 
-      {result.segmentResults.some((segment) => getResolvedSegmentStipulationLabel(segment)) ? (
-        <section className="title-fallout" aria-label="Week review stipulations">
-          <div className="section-heading">
-            <p className="eyebrow">Presentation Context</p>
-            <h3>Match Stipulations</h3>
-          </div>
-          <div className="history-list">
-            {result.segmentResults
-              .map((segment, index) => ({ segment, index, label: getResolvedSegmentStipulationLabel(segment) }))
-              .filter((entry) => entry.label)
-              .map((entry) => (
-                <article className="history-event" key={`${entry.segment.segmentId}-${entry.index}`}>
-                  <span>Segment {entry.index + 1} · {entry.segment.type}</span>
-                  <p>
-                    {entry.label} for {getSegmentResultParticipantsLabel(entry.segment, game.wrestlers)}
-                  </p>
-                </article>
-              ))}
-          </div>
+        <section className="week-review-main-board" aria-label="GM after-action handoff">
+          <WeekReviewOfficePanel snapshot={weekReviewOffice} />
+          <WeekReviewHandoffPanel snapshot={weekReviewHandoff} />
         </section>
-      ) : null}
 
-      <section className="locker-room-fallout" aria-label="Locker room fallout">
-        <div className="section-heading">
-          <p className="eyebrow">Roster Fallout</p>
-          <h3>Locker Room Pressure</h3>
-        </div>
-        <div className="fallout-grid">
-          {result.lockerRoomFallout?.moraleDrops.length ? (
-            <div>
-              <span>Morale Drops</span>
-              {result.lockerRoomFallout.moraleDrops.map((item) => (
-                <p key={`${item.wrestlerId}-drop`}>
-                  {item.note} {item.moraleChange ? `(${item.moraleChange})` : ""}
-                </p>
-              ))}
+        <aside className="week-review-side-rail" aria-label="Next week and world pressure">
+          <section className="week-review-side-panel" aria-label="Next week teaser">
+            <div className="section-heading">
+              <p className="eyebrow">Next Week</p>
+              <h3>{nextWeek ? nextWeek.showName : "Season Review"}</h3>
             </div>
-          ) : null}
-          {result.lockerRoomFallout?.moraleBoosts.length ? (
-            <div>
-              <span>Morale Boosts</span>
-              {result.lockerRoomFallout.moraleBoosts.map((item) => (
-                <p key={`${item.wrestlerId}-boost`}>
-                  {item.note} {item.moraleChange ? `(+${item.moraleChange})` : ""}
-                </p>
-              ))}
-            </div>
-          ) : null}
-          {result.lockerRoomFallout?.overuseWarnings.length ? (
-            <div>
-              <span>Overuse Warnings</span>
-              {result.lockerRoomFallout.overuseWarnings.map((item) => (
-                <p key={`${item.wrestlerId}-overuse`}>{item.note}</p>
-              ))}
-            </div>
-          ) : null}
-          {result.lockerRoomFallout?.underuseWarnings.length ? (
-            <div>
-              <span>Underuse Warnings</span>
-              {result.lockerRoomFallout.underuseWarnings.map((item) => (
-                <p key={`${item.wrestlerId}-underuse`}>{item.note}</p>
-              ))}
-            </div>
-          ) : null}
-          {result.lockerRoomFallout?.injuryNotes?.length ? (
-            <div>
-              <span>New Injuries</span>
-              {result.lockerRoomFallout.injuryNotes.map((item) => (
-                <p key={`${item.wrestlerId}-injury`}>
-                  {item.note} {item.description}
-                </p>
-              ))}
-            </div>
-          ) : null}
-          {injuryRiskWrestlers.length ? (
-            <div>
-              <span>Injury Risk Warnings</span>
-              {injuryRiskWrestlers.map((wrestler) => (
-                <p key={`${wrestler.id}-injury-risk`}>
-                  {wrestler.name} finished the show at {wrestler.fatigue} fatigue.
-                </p>
-              ))}
-            </div>
-          ) : null}
-          {!result.lockerRoomFallout?.moraleDrops.length &&
-          !result.lockerRoomFallout?.moraleBoosts.length &&
-          !result.lockerRoomFallout?.overuseWarnings.length &&
-          !result.lockerRoomFallout?.underuseWarnings.length &&
-          !result.lockerRoomFallout?.injuryNotes?.length &&
-          !injuryRiskWrestlers.length ? (
-            <div>
-              <span>Locker Room</span>
-              <p>No major roster pressure moved after this show. The room stays level for now.</p>
-            </div>
-          ) : null}
-        </div>
-      </section>
-
-      <section className="story-fallout" aria-label="Rivalry fallout">
-        <div className="section-heading">
-          <p className="eyebrow">Rivalry Fallout</p>
-          <h3>Story Movement</h3>
-        </div>
-        {rivalryHistoryEvents.length ? (
-          <div className="history-list">
-            {rivalryHistoryEvents.map((event) => (
-              <article className="history-event" key={event.id}>
-                <span>{formatRivalryEventType(event.eventType)} · {event.rivalryName}</span>
-                <p>{event.note}</p>
-              </article>
-            ))}
-          </div>
-        ) : result.rivalryNotes.length ? (
-          result.rivalryNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>)
-        ) : (
-          <p>No attached rivalry movement.</p>
-        )}
-        {reviewedRivalries.length ? (
-          <div className="spotlight-grid compact-grid">
-            {reviewedRivalries.map((rivalry) => (
+            <div className="week-review-side-metrics">
+              <Metric label="Next Show" value={nextWeek ? nextWeek.showName : "Season Complete"} detail={nextWeek ? getShowTypeLabel(nextWeek.showType) : "Review the year"} />
               <Metric
-                detail={`Freshness ${rivalry.freshness} · ${formatRivalryStatus(rivalry.status)}`}
-                key={rivalry.id}
-                label={rivalry.name}
-                value={`Heat ${rivalry.heat}`}
+                label="Next PLE"
+                value={nextPle ? nextPle.showName : "None"}
+                detail={nextPle ? `${weeksUntilNextPle} week${weeksUntilNextPle === 1 ? "" : "s"} away` : "No remaining PLE"}
               />
-            ))}
-          </div>
-        ) : null}
-      </section>
+              <Metric label="Action" value={result.week >= 12 ? "Review Season" : "Advance Week"} detail="Calendar moves after this screen" />
+            </div>
+          </section>
 
-      {buzzPreview.length ? (
-        <section className="social-buzz" aria-label="Week review social buzz">
-          <div className="section-heading">
-            <p className="eyebrow">Social Buzz</p>
-            <h3>IWC Readout</h3>
-          </div>
-          <div className="social-preview-grid">
-            {buzzPreview.map((post) => (
-              <article className="social-preview" key={post.id}>
-                <span>{formatSocialCategory(post.category)}</span>
-                <strong>{post.author}</strong>
-                <p>{post.text}</p>
-              </article>
-            ))}
-          </div>
+          {buzzPreview.length ? (
+            <section className="week-review-side-panel week-review-social-panel" aria-label="Week review social buzz">
+              <div className="section-heading">
+                <p className="eyebrow">Social Buzz</p>
+                <h3>IWC Readout</h3>
+              </div>
+              <div className="week-review-social-list">
+                {buzzPreview.map((post) => (
+                  <article className="social-preview" key={post.id}>
+                    <span>{formatSocialCategory(post.category)}</span>
+                    <strong>{post.author}</strong>
+                    <p>{post.text}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          <RivalIntelligencePanel compact game={game} />
+        </aside>
+
+        <section className="week-review-consequence-strip" aria-label="Week review consequence strip">
+          <section className="locker-room-fallout week-review-strip-panel" aria-label="Roster fallout">
+            <div className="section-heading">
+              <p className="eyebrow">Roster Fallout</p>
+              <h3>Locker Room Pressure</h3>
+            </div>
+            <div className="fallout-grid">
+              {result.lockerRoomFallout?.moraleDrops.length ? (
+                <div>
+                  <span>Morale Drops</span>
+                  {result.lockerRoomFallout.moraleDrops.map((item) => (
+                    <p key={`${item.wrestlerId}-drop`}>
+                      {item.note} {item.moraleChange ? `(${item.moraleChange})` : ""}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+              {result.lockerRoomFallout?.moraleBoosts.length ? (
+                <div>
+                  <span>Morale Boosts</span>
+                  {result.lockerRoomFallout.moraleBoosts.map((item) => (
+                    <p key={`${item.wrestlerId}-boost`}>
+                      {item.note} {item.moraleChange ? `(+${item.moraleChange})` : ""}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+              {result.lockerRoomFallout?.overuseWarnings.length ? (
+                <div>
+                  <span>Overuse Warnings</span>
+                  {result.lockerRoomFallout.overuseWarnings.map((item) => (
+                    <p key={`${item.wrestlerId}-overuse`}>{item.note}</p>
+                  ))}
+                </div>
+              ) : null}
+              {result.lockerRoomFallout?.underuseWarnings.length ? (
+                <div>
+                  <span>Underuse Warnings</span>
+                  {result.lockerRoomFallout.underuseWarnings.map((item) => (
+                    <p key={`${item.wrestlerId}-underuse`}>{item.note}</p>
+                  ))}
+                </div>
+              ) : null}
+              {result.lockerRoomFallout?.injuryNotes?.length ? (
+                <div>
+                  <span>New Injuries</span>
+                  {result.lockerRoomFallout.injuryNotes.map((item) => (
+                    <p key={`${item.wrestlerId}-injury`}>
+                      {item.note} {item.description}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+              {injuryRiskWrestlers.length ? (
+                <div>
+                  <span>Injury Risk Warnings</span>
+                  {injuryRiskWrestlers.map((wrestler) => (
+                    <p key={`${wrestler.id}-injury-risk`}>
+                      {wrestler.name} finished the show at {wrestler.fatigue} fatigue.
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+              {!result.lockerRoomFallout?.moraleDrops.length &&
+              !result.lockerRoomFallout?.moraleBoosts.length &&
+              !result.lockerRoomFallout?.overuseWarnings.length &&
+              !result.lockerRoomFallout?.underuseWarnings.length &&
+              !result.lockerRoomFallout?.injuryNotes?.length &&
+              !injuryRiskWrestlers.length ? (
+                <div>
+                  <span>Locker Room</span>
+                  <p>No major roster pressure moved after this show. The room stays level for now.</p>
+                </div>
+              ) : null}
+            </div>
+          </section>
+
+          <section className="story-fallout week-review-strip-panel" aria-label="Rivalry and title fallout">
+            <div className="section-heading">
+              <p className="eyebrow">Rivalry / Title Fallout</p>
+              <h3>Story Movement</h3>
+            </div>
+            {rivalryHistoryEvents.length ? (
+              <div className="history-list">
+                {rivalryHistoryEvents.map((event) => (
+                  <article className="history-event" key={event.id}>
+                    <span>{formatRivalryEventType(event.eventType)} · {event.rivalryName}</span>
+                    <p>{event.note}</p>
+                  </article>
+                ))}
+              </div>
+            ) : result.rivalryNotes.length ? (
+              <div className="history-list">
+                {result.rivalryNotes.map((note, index) => (
+                  <article className="history-event" key={`${note}-${index}`}>
+                    <span>Rivalry Note</span>
+                    <p>{note}</p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p>No attached rivalry movement.</p>
+            )}
+            {result.segmentResults.some((segment) => getResolvedSegmentStipulationLabel(segment)) ? (
+              <div className="history-list compact-history">
+                {result.segmentResults
+                  .map((segment, index) => ({ segment, index, label: getResolvedSegmentStipulationLabel(segment) }))
+                  .filter((entry) => entry.label)
+                  .map((entry) => (
+                    <article className="history-event" key={`${entry.segment.segmentId}-${entry.index}`}>
+                      <span>Segment {entry.index + 1} · {entry.segment.type}</span>
+                      <p>
+                        {entry.label} for {getSegmentResultParticipantsLabel(entry.segment, game.wrestlers)}
+                      </p>
+                    </article>
+                  ))}
+              </div>
+            ) : null}
+            {reviewedRivalries.length ? (
+              <div className="spotlight-grid compact-grid">
+                {reviewedRivalries.map((rivalry) => (
+                  <Metric
+                    detail={`Freshness ${rivalry.freshness} · ${formatRivalryStatus(rivalry.status)}`}
+                    key={rivalry.id}
+                    label={rivalry.name}
+                    value={`Heat ${rivalry.heat}`}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </section>
+
+          {ratingsBattle ? <RatingsBattlePanel compact snapshot={ratingsBattle} /> : null}
+          {cpuResultsFeed ? <CpuResultsFeedPanel compact snapshot={cpuResultsFeed} /> : null}
+          {result.broadcastOverrunNotes?.length ? (
+            <section className="broadcast-overrun-fallout week-review-overrun-panel" aria-label="Week review broadcast overrun">
+              <div className="section-heading">
+                <p className="eyebrow">Broadcast Fallout</p>
+                <h3>Closing Block Pressure</h3>
+              </div>
+              {result.broadcastOverrunNotes.map((note, index) => (
+                <p key={`${note}-${index}`}>{note}</p>
+              ))}
+            </section>
+          ) : null}
         </section>
-      ) : null}
-
-      <section className="command-panel calendar-spotlight" aria-label="Next week teaser">
-        <div className="section-heading">
-          <p className="eyebrow">Next Week</p>
-          <h3>{nextWeek ? nextWeek.showName : "Season Review"}</h3>
-        </div>
-        <div className="spotlight-grid">
-          <Metric label="Next Show" value={nextWeek ? nextWeek.showName : "Season Complete"} detail={nextWeek ? getShowTypeLabel(nextWeek.showType) : "Review the year"} />
-          <Metric
-            label="Next PLE"
-            value={nextPle ? nextPle.showName : "None"}
-            detail={nextPle ? `${weeksUntilNextPle} week${weeksUntilNextPle === 1 ? "" : "s"} away` : "No remaining PLE"}
-          />
-          <Metric label="Action" value={result.week >= 12 ? "Review Season" : "Advance Week"} detail="Calendar moves after this screen" />
-        </div>
       </section>
     </main>
   );
