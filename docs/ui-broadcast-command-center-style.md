@@ -204,7 +204,7 @@ Avoid:
 - Tiny dense text without hierarchy.
 - Decorative type choices that hurt readability.
 
-Text must fit inside its parent element on laptop and mobile widths. Use wrapping, truncation, line clamp, tooltip, panel scroll, or responsive layout changes instead of letting text overflow.
+Text must fit inside its parent element on laptop and desktop widths. Use wrapping, truncation, line clamp, tooltip, panel scroll, or responsive layout changes instead of letting text overflow.
 
 ## Texture and Atmosphere
 

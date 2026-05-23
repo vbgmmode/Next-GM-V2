@@ -14,3 +14,5 @@ export {
 } from "./broadcast";
 
 export type { BroadcastTheme, BroadcastTone } from "./broadcast";
+
+export { SuperstarPortrait } from "./SuperstarPortrait";

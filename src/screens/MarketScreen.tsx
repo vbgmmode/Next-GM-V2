@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { GameNav, Header, Metric } from "../components/gameShell";
+import { DynastyManagementShell, type DynastyManagementCta } from "../components/DynastyManagementShell";
+import { SuperstarPortrait } from "../components/SuperstarPortrait";
+import { Metric } from "../components/gameShell";
 import { formatMoney } from "../game/formatters";
 import { getRosterFinanceValueForWrestler } from "../game/financeCatalog";
 import type { GameScreen } from "../game/migration";
 import { getContractForWrestler, getMarketSnapshot, getRivalMarketEvents } from "../game/market";
 import { draftPool } from "../game/seed";
 import type { GameState, ShowResult } from "../game/types";
-import { getWrestlerPortraitSrc } from "../game/wrestlerPortraits";
 import "./MarketScreen.css";
 
 export function MarketScreen({
@@ -43,6 +44,26 @@ export function MarketScreen({
     (selectedFreeAgent ? Math.round((selectedFreeAgent.popularity + selectedFreeAgent.ringSkill + selectedFreeAgent.promoSkill + selectedFreeAgent.momentum) / 4) : 0);
   const rosterIsFull = game.wrestlers.length >= snapshot.rosterLimit;
   const releaseGuardActive = game.wrestlers.length <= 8;
+  const marketCta: DynastyManagementCta =
+    selectedFreeAgent && !rosterIsFull
+      ? {
+          eyebrow: "Selected Free Agent",
+          label: "Sign Talent",
+          onClick: () => onSignFreeAgent(selectedFreeAgent.id),
+          tone: "positive",
+        }
+      : selectedOutgoing && selectedTarget
+        ? {
+            eyebrow: "Trade Wire",
+            label: "Propose Trade",
+            onClick: () => onProposeTrade(selectedOutgoing.id, selectedTarget.wrestler.id),
+            tone: "brand",
+          }
+        : {
+            eyebrow: "Market Desk",
+            label: "No Action",
+            tone: "neutral",
+          };
 
   function contractRead(wrestlerId: string) {
     const contract = getContractForWrestler(game, wrestlerId);
@@ -51,10 +72,7 @@ export function MarketScreen({
   }
 
   return (
-    <main className="app-shell gameplay-command-shell market-command-shell">
-      <Header game={game} />
-      <GameNav currentScreen="market" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
-
+    <DynastyManagementShell className="market-command-shell" currentScreen="market" cta={marketCta} game={game} latestResult={latestResult} onNavigate={onNavigate}>
       <section className="market-command-board" aria-label="Market command board">
         <aside className="market-talent-rail market-panel" aria-label="Open market talent board">
           <div className="market-panel-head">
@@ -72,7 +90,7 @@ export function MarketScreen({
 
                 return (
                   <button className={isSelected ? "market-row is-selected" : "market-row"} key={wrestler.id} onClick={() => setSelectedFreeAgentId(wrestler.id)} type="button">
-                    <MarketWrestlerPortrait className="market-row-portrait" wrestlerId={wrestler.id} wrestlerName={wrestler.name} />
+                    <SuperstarPortrait className="market-row-portrait market-wrestler-portrait" wrestler={wrestler} />
                     <span>
                       <strong>{wrestler.name}</strong>
                       <small>{wrestler.roleTier} · Rank #{wrestler.draftRank ?? "n/a"}</small>
@@ -91,7 +109,7 @@ export function MarketScreen({
           {selectedFreeAgent ? (
             <>
               <div className="market-focus-hero">
-                <MarketWrestlerPortrait className="market-focus-portrait" wrestlerId={selectedFreeAgent.id} wrestlerName={selectedFreeAgent.name} />
+                <SuperstarPortrait className="market-focus-portrait market-wrestler-portrait" wrestler={selectedFreeAgent} />
                 <div className="market-focus-copy">
                   <p className="eyebrow">Selected Market File</p>
                   <h1>{selectedFreeAgent.name}</h1>
@@ -146,6 +164,7 @@ export function MarketScreen({
             <div className="market-list market-roster-list">
               {game.wrestlers.map((wrestler) => (
                 <button className={selectedOutgoing?.id === wrestler.id ? "market-row is-selected" : "market-row"} key={wrestler.id} onClick={() => setSelectedOutgoingId(wrestler.id)} type="button">
+                  <SuperstarPortrait className="market-row-portrait market-wrestler-portrait" wrestler={wrestler} />
                   <span>
                     <strong>{wrestler.name}</strong>
                     <small>{contractRead(wrestler.id)}</small>
@@ -239,17 +258,6 @@ export function MarketScreen({
           </div>
         </section>
       </section>
-    </main>
-  );
-}
-
-function MarketWrestlerPortrait({ className, wrestlerId, wrestlerName }: { className: string; wrestlerId: string; wrestlerName: string }) {
-  const [imageFailed, setImageFailed] = useState(false);
-  const portraitSrc = imageFailed ? undefined : getWrestlerPortraitSrc(wrestlerId);
-
-  return (
-    <span className={`${className} market-wrestler-portrait ${portraitSrc ? "has-portrait" : "missing-portrait"}`} aria-hidden="true">
-      {portraitSrc ? <img alt="" src={portraitSrc} onError={() => setImageFailed(true)} /> : wrestlerName.slice(0, 2).toUpperCase()}
-    </span>
+    </DynastyManagementShell>
   );
 }

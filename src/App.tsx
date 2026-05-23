@@ -1,5 +1,18 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { GameNav, Header, Metric } from "./components/gameShell";
+import { DynastyManagementShell, type DynastyManagementCta } from "./components/DynastyManagementShell";
+import { SuperstarPortrait as WrestlerPortrait } from "./components/SuperstarPortrait";
+import {
+  DashboardDynastyAlert,
+  DashboardDynastyIntensityMeter,
+  DashboardDynastyMorale,
+  DashboardDynastyPortrait,
+  DashboardDynastyProgress,
+  DashboardDynastyRole,
+  DashboardDynastyShowScoreChart,
+  DashboardDynastyStamina,
+} from "./components/dashboardDynasty";
+import { buildDashboardViewModel } from "./game/dashboardViewModel";
 import { formatMoney } from "./game/formatters";
 import {
   MAX_SAVE_SLOTS,
@@ -45,7 +58,6 @@ import {
 } from "./game/stipulationCatalog";
 import { migrateSavedGameState } from "./game/migration";
 import { getWrestlerIdentityContext } from "./game/wrestlerIdentityContext";
-import { getWrestlerPortraitSrc } from "./game/wrestlerPortraits";
 import {
   buildBroadcastFalloutSnapshot,
   buildPostShowCauseLedger,
@@ -1399,34 +1411,6 @@ function getWrestlerOverall(wrestler: Wrestler) {
           (100 - wrestler.fatigue) * 0.08,
       ),
     ),
-  );
-}
-
-function getWrestlerInitials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
-}
-
-function WrestlerPortrait({ className, wrestler }: { className: string; wrestler: Pick<Wrestler, "id" | "name"> }) {
-  const [imageFailed, setImageFailed] = useState(false);
-  const portraitSrc = imageFailed ? undefined : getWrestlerPortraitSrc(wrestler.id);
-
-  useEffect(() => {
-    setImageFailed(false);
-  }, [wrestler.id]);
-
-  return (
-    <span className={`${className} wrestler-portrait ${portraitSrc ? "has-portrait" : "missing-portrait"}`} aria-hidden="true">
-      {portraitSrc ? (
-        <img alt="" draggable={false} onError={() => setImageFailed(true)} src={portraitSrc} />
-      ) : (
-        <span>{getWrestlerInitials(wrestler.name)}</span>
-      )}
-    </span>
   );
 }
 
@@ -6680,8 +6664,11 @@ function NewGameSetupScreen({
                   {recentRivalClaims.length ? (
                     recentRivalClaims.map((wrestler) => (
                       <span key={wrestler.id}>
-                        <strong>{wrestler.name}</strong>
-                        <small>{getDraftTag(wrestler.sourceBrand, "Open Pool")} / {getWrestlerOverall(wrestler)}</small>
+                        <WrestlerPortrait className="draft-mini-portrait" wrestler={wrestler} />
+                        <span>
+                          <strong>{wrestler.name}</strong>
+                          <small>{getDraftTag(wrestler.sourceBrand, "Open Pool")} / {getWrestlerOverall(wrestler)}</small>
+                        </span>
                       </span>
                     ))
                   ) : (
@@ -6715,8 +6702,13 @@ function NewGameSetupScreen({
                 <p className="eyebrow">Scouting Report</p>
                 {focusedDraftWrestler ? (
                   <>
-                    <strong>{focusedDraftWrestler.name}</strong>
-                    <span>{getDraftTag(focusedDraftIdentity?.wrestlingStyle, "Ring style")} / {getDraftTag(focusedDraftIdentity?.promoStyle, "Promo style")}</span>
+                    <div className="draft-scouting-talent">
+                      <WrestlerPortrait className="draft-mini-portrait" wrestler={focusedDraftWrestler} />
+                      <div>
+                        <strong>{focusedDraftWrestler.name}</strong>
+                        <span>{getDraftTag(focusedDraftIdentity?.wrestlingStyle, "Ring style")} / {getDraftTag(focusedDraftIdentity?.promoStyle, "Promo style")}</span>
+                      </div>
+                    </div>
                     <small>{getDraftTag(focusedDraftWrestler.division)} roster fit with {focusedDraftWrestler.popularity} popularity and {focusedDraftWrestler.momentum} momentum.</small>
                   </>
                 ) : (
@@ -6768,8 +6760,11 @@ function NewGameSetupScreen({
                   {draftedWrestlers.length ? (
                     draftedWrestlers.map((wrestler, index) => (
                       <span key={wrestler.id}>
-                        <strong>{index + 1}. {wrestler.name}</strong>
-                        <small>{getDraftTag(wrestler.roleTier)} / {getWrestlerOverall(wrestler)}</small>
+                        <WrestlerPortrait className="draft-mini-portrait" wrestler={wrestler} />
+                        <span>
+                          <strong>{index + 1}. {wrestler.name}</strong>
+                          <small>{getDraftTag(wrestler.roleTier)} / {getWrestlerOverall(wrestler)}</small>
+                        </span>
                       </span>
                     ))
                   ) : (
@@ -7261,371 +7256,299 @@ function DashboardScreen({
   latestResult?: ShowResult;
   onNavigate: (screen: GameScreen) => void;
 }) {
-  const lastShow = game.showHistory[game.showHistory.length - 1];
-  const validShowSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers));
-  const validSegments = validShowSegments.length;
-  const invalidSegments = game.currentShow.length - validSegments;
-  const averageFatigue = game.wrestlers.length ? Math.round(game.wrestlers.reduce((sum, wrestler) => sum + wrestler.fatigue, 0) / game.wrestlers.length) : 0;
-  const nextAction =
-    validSegments >= 2 ? "The rundown can go live when you are ready." : "Book at least 2 valid segments before production can roll.";
-  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
-  const championshipPressureSnapshots = getChampionshipPressureSnapshots(game);
-  const tagChampionshipSnapshot = championshipPressureSnapshots.find((item) => isTagChampionship(item.championship));
-  const tagDivisionAttention = tagChampionshipSnapshot?.snapshot.diagnostics.find((diagnostic) => diagnostic.tone !== "steady");
-  const topChampionship = championshipPressureSnapshots[0]?.championship ?? [...game.championships].sort((a, b) => b.prestige - a.prestige)[0];
-  const topTitlePressure = championshipPressureSnapshots.find((item) => item.championship.id === topChampionship?.id)?.snapshot;
-  const topTitleContenders = topChampionship ? getTopContenders(topChampionship, game.wrestlers, 2) : [];
-  const rivalryTimingSnapshots = getRivalryTimingSnapshots(game);
-  const focusRivalryTiming = rivalryTimingSnapshots[0];
-  const currentShow = getCurrentCalendarWeek(game);
-  const nextPle = getNextPle(game.calendar, game.currentWeek);
-  const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
-  const latestFinanceReport = getLatestFinanceReport(game);
-  const pressureLabel = getFinancePressureLabel(game.money, latestFinanceReport?.profitLoss ?? 0);
-  const isPleWeek = currentShow.showType === "ple";
-  const weeklyDecisionPressure = getWeeklyDecisionPressureSnapshot(game, latestResult);
-  const pleBuildPressure = getPleBuildPressureSnapshot(game, validShowSegments);
-  const livingWorldPressure = getLivingWorldPressureSnapshot(game, lastShow);
-  const brandPulseSnapshot = getBrandPulseSnapshot(game, latestResult);
-  const ratingsBattle = getRatingsBattleSnapshot(game, latestResult);
-  const cpuResultsFeed = getCpuResultsFeedSnapshot(game, latestResult);
-  const rivalBrands = game.rivalBrands?.length ? game.rivalBrands : createRivalBrandUniverse(game.rivalGMAssignments);
-  const latestSocialPost = game.socialPosts[game.socialPosts.length - 1];
-  const financePresenceRead = getFinancePresenceRead(game.money, pressureLabel, latestFinanceReport);
-  const rosterPressureTags = game.wrestlers.flatMap((wrestler) => getRosterPressureTags(wrestler, game.currentWeek));
-  const rosterPressureCount = (tag: RosterPressureTag) => rosterPressureTags.filter((item) => item === tag).length;
-  const overusedCount = rosterPressureCount("Overused");
-  const underusedCount = rosterPressureCount("Underused");
-  const protectedStarCount = rosterPressureCount("Protected Star");
-  const moraleRiskCount = rosterPressureCount("Morale Risk");
-  const injuryRiskCount = rosterPressureCount("Injury Risk");
-  const minorInjuryCount = rosterPressureCount("Minor Injury");
-  const unavailableCount = rosterPressureCount("Unavailable");
-  const topOverused = getTopOverusedWrestler(game.wrestlers);
-  const topUnderused = getTopUnderusedWrestler(game.wrestlers, game.currentWeek);
-  const topMomentumTalent = [...game.wrestlers].sort((a, b) => b.momentum + b.popularity - (a.momentum + a.popularity))[0];
-  const hotTalent = [...game.wrestlers].sort((a, b) => b.momentum + b.popularity - (a.momentum + a.popularity)).slice(0, 4);
-  const atRisk = [...game.wrestlers].sort((a, b) => b.fatigue + (100 - b.morale) - (a.fatigue + (100 - a.morale))).slice(0, 4);
-  const currentShowLabel = isPleWeek ? "Major Event" : getShowTypeLabel(currentShow.showType);
-  const nextPleLabel = nextPle ? (weeksUntilPle === 0 ? "PLE Week" : `${weeksUntilPle} Week${weeksUntilPle === 1 ? "" : "s"} To ${nextPle.showName}`) : "Season End";
-  const dashboardTheme = getBroadcastThemeForBrandStyle(game.brandStyle);
-  const brandInitials = game.brandName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "HQ";
-  const urgentStatus = hasCurrentWeekReview
-    ? "Week Review Waiting"
-    : validSegments >= 2
-      ? "Card Runnable"
-      : invalidSegments > 0
-        ? "Card Needs Fixes"
-        : "Booking Desk Open";
-  const primaryActionScreen: GameScreen = hasCurrentWeekReview ? "weekReview" : "booking";
-  const primaryActionLabel = hasCurrentWeekReview ? "Review Fallout" : validSegments >= 2 ? "Review Card" : "Book Show";
-  const actionContext = hasCurrentWeekReview
-    ? "Week Review is waiting before the office advances the calendar."
-    : nextAction;
-  const dashboardUrgentItems = weeklyDecisionPressure.items.slice(0, 3);
-  const rosterHealthRead =
-    unavailableCount > 0
-      ? `${unavailableCount} unavailable`
-      : injuryRiskCount + moraleRiskCount > 0
-        ? `${injuryRiskCount + moraleRiskCount} watch`
-        : "Room stable";
-  const rosterHealthHudRead = unavailableCount > 0 ? `${unavailableCount} out` : injuryRiskCount + moraleRiskCount > 0 ? `${injuryRiskCount + moraleRiskCount} watch` : "Stable";
-  const titleSceneRead = topTitlePressure?.primary.label ?? tagDivisionAttention?.label ?? "Scene steady";
-  const rivalrySceneRead = focusRivalryTiming ? `${focusRivalryTiming.snapshot.primary.label} · Heat ${focusRivalryTiming.rivalry.heat}` : "No active rivalry";
-  const financeStatusRead = latestFinanceReport ? `Latest P/L ${formatMoney(latestFinanceReport.profitLoss)}` : `${formatMoney(game.money)} available`;
-  const compactDashboardRead = (read: string, limit = 76) => (read.length > limit ? `${read.slice(0, limit - 3)}...` : read);
+  const model = buildDashboardViewModel(game, latestResult);
+  const chartRangeLabel =
+    model.metrics.chartPoints.length > 1
+      ? model.metrics.chartPoints[0]?.label + "-" + model.metrics.chartPoints[model.metrics.chartPoints.length - 1]?.label
+      : model.metrics.chartPoints[0]?.label ?? "No history";
+
+  const findWrestler = (id: string) => game.wrestlers.find((wrestler) => wrestler.id === id);
+  const wrestlerOrPlaceholder = (id: string, fallbackName: string): Pick<Wrestler, "id" | "name"> =>
+    findWrestler(id) ?? { id: id || fallbackName, name: fallbackName };
+  const dashboardCta: DynastyManagementCta = {
+    eyebrow: model.hasWeekReview ? "Office Waiting" : "Next Action",
+    label: model.primaryAction.label,
+    onClick: () => onNavigate(model.primaryAction.screen),
+    tone: model.hasWeekReview ? "warning" : "brand",
+  };
 
   return (
-    <main className={`app-shell gameplay-command-shell dashboard-command-shell broadcast-theme-${dashboardTheme}`} data-broadcast-theme={dashboardTheme}>
-      <Header game={game} />
-      <GameNav currentScreen="dashboard" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
-      <section className="dashboard-command-room" aria-label="Brand HQ command center">
-        <section className="dashboard-top-hud" aria-label="Brand HQ scoreboard">
-          <div className="dashboard-brand-lockup">
-            <div className="dashboard-brand-plate" aria-label={`${game.brandName} identity slot`}>
-              <span>{brandInitials}</span>
+    <DynastyManagementShell currentScreen="dashboard" cta={dashboardCta} game={game} latestResult={latestResult} onNavigate={onNavigate}>
+      <section className="dashboard-dynasty-grid" aria-label="Brand HQ dashboard">
+        <aside className="dashboard-dynasty-column dashboard-dynasty-left-column">
+          <article className="dashboard-dynasty-panel dashboard-dynasty-brand-status">
+            <div className="dashboard-dynasty-kicker">Brand Status</div>
+            <div className="dashboard-dynasty-brand-plate" aria-hidden="true">
+              {model.brandInitials}
             </div>
-            <div>
-              <span>Monday Night Brand</span>
-              <strong>{game.brandName}</strong>
-              <small>
-                GM {game.gmName} · {game.gmStyle}
-              </small>
+            <div className="dashboard-dynasty-brand-rating">
+              <span>Show Rating</span>
+              <strong>{model.brandStatus.ratingLabel}</strong>
             </div>
-          </div>
-          <div className="dashboard-hud-metrics" aria-label="Current brand readout">
-            <Metric label="Money" value={formatMoney(game.money)} />
-            <Metric label="Last Show" value={lastShow ? `${lastShow.totalScore} (${getShowGrade(lastShow.totalScore)})` : "No Result"} />
-            <Metric label="Roster Health" value={rosterHealthHudRead} />
-            <Metric label="Title Scene" value={titleSceneRead} />
-          </div>
-          <div className="dashboard-marquee" aria-label="Next show marquee">
-            <span>Next Show</span>
-            <strong>{currentShow.showName}</strong>
-            <small>
-              {currentShowLabel} · {nextPleLabel}
-            </small>
-          </div>
-          <div className="dashboard-urgent-chip" data-state={hasCurrentWeekReview || invalidSegments > 0 ? "warning" : "ready"}>
-            <span>Urgent Status</span>
-            <strong>{urgentStatus}</strong>
-          </div>
-        </section>
-
-        <section className="dashboard-main-console" aria-label="Brand HQ live desk">
-          <aside className="dashboard-side-stack dashboard-left-rail" aria-label="Brand status rail">
-            <article className="command-panel dashboard-rail-panel dashboard-status-panel">
-              <div className="section-heading">
-                <p className="eyebrow">Brand Status</p>
-                <h3>Week {game.currentWeek} Readout</h3>
-              </div>
-              <div className="dashboard-stat-grid">
-                <div>
-                  <span>Show Phase</span>
-                  <strong>{currentShowLabel}</strong>
-                  <small>{currentShow.isGoHome ? "Go-home pressure" : nextPleLabel}</small>
-                </div>
-                <div>
-                  <span>Finance</span>
-                  <strong>{formatPressureLabel(pressureLabel)}</strong>
-                  <small>{financeStatusRead}</small>
-                </div>
-                <div>
-                  <span>Roster Health</span>
-                  <strong>{rosterHealthRead}</strong>
-                  <small>{averageFatigue >= 45 ? "Training room is busy" : "Load is controlled"}</small>
-                </div>
-                <div>
-                  <span>Rivalry Heat</span>
-                  <strong>{focusRivalryTiming ? focusRivalryTiming.rivalry.name : "Quiet Desk"}</strong>
-                  <small>{rivalrySceneRead}</small>
-                </div>
-              </div>
-              <p className="dashboard-panel-read">{weeklyDecisionPressure.detail}</p>
-            </article>
-
-            <article className="command-panel dashboard-rail-panel dashboard-title-panel">
-              <div className="section-heading">
-                <p className="eyebrow">Champions / Goals</p>
-                <h3>{topChampionship?.name ?? "Title Office"}</h3>
-              </div>
-              <div className="dashboard-title-plate">
-                <div className="dashboard-badge-slot">T</div>
-                <div>
-                  <span>Current Holder</span>
-                  <strong>{topChampionship ? getWrestlerNames(topChampionship.championIds, game.wrestlers) : "No Champion"}</strong>
-                  <small>{topTitlePressure?.primary.detail ?? topTitlePressure?.divisionHealth ?? "No active title pressure is demanding a booking promise."}</small>
-                </div>
-              </div>
-              <div className="dashboard-mini-rows">
-                <div>
-                  <span>Contender Lane</span>
-                  <strong>{topTitleContenders.map((wrestler) => wrestler.name).join(" / ") || "No Clear Lane"}</strong>
-                </div>
-                <div>
-                  <span>Tag Division</span>
-                  <strong>{tagDivisionAttention?.label ?? "Steady"}</strong>
-                </div>
-              </div>
-            </article>
-          </aside>
-
-          <article className={`command-panel dashboard-primary-stage ${isPleWeek ? "ple-panel" : ""}`} aria-label="Current show focus">
-            <div className="dashboard-stage-head">
+            <div className="dashboard-dynasty-mini-stat-grid">
               <div>
-                <p className="eyebrow">Current Show Focus</p>
-                <h2>{currentShow.showName}</h2>
-                <p className="dashboard-focus-read">
-              {isPleWeek
-                ? `${currentShow.showName} is the season's major-event pulse. This desk is for card structure, visible pressure, and what the office needs to know before booking.`
-                : `${currentShow.showName} is a ${currentShowLabel} stop${currentShow.isGoHome ? " and the last live wire before the next PLE." : " on the road to the next major event."}`}
-                </p>
-              </div>
-              <div className="dashboard-show-art-slot" aria-label={`${currentShow.showName} show art slot`}>
-                <span>{currentShowLabel}</span>
-              </div>
-            </div>
-            <div className="dashboard-stage-metrics">
-              <div>
-                <span>Card Status</span>
-                <strong>{validSegments >= 2 ? "Runnable" : "Needs Segments"}</strong>
-                <small>{validSegments} ready / {invalidSegments} flagged</small>
+                <span>Fans</span>
+                <strong>{model.brandStatus.fansLabel}</strong>
               </div>
               <div>
-                <span>PLE Timing</span>
-                <strong>{nextPleLabel}</strong>
-                <small>{pleBuildPressure.phaseLabel}</small>
+                <span>Budget</span>
+                <strong>{model.brandStatus.budgetLabel}</strong>
               </div>
               <div>
-                <span>Locker Room</span>
-                <strong>{topMomentumTalent?.name ?? "No Roster"}</strong>
-                <small>Top momentum {topMomentumTalent?.momentum ?? "n/a"}</small>
+                <span>Weekly Profit</span>
+                <strong className={model.brandStatus.profitPositive ? "dashboard-dynasty-positive" : "dashboard-dynasty-negative"}>{model.brandStatus.profitLabel}</strong>
               </div>
-              <div>
-                <span>Office Pulse</span>
-                <strong>{formatPressureLabel(pressureLabel)}</strong>
-                <small>{latestFinanceReport ? `Latest P/L ${formatMoney(latestFinanceReport.profitLoss)}` : "No show books closed"}</small>
-              </div>
-            </div>
-            <div className="dashboard-stage-rundown">
-              <div className="section-heading">
-                <p className="eyebrow">Production Rundown</p>
-                <h3>{validSegments >= 2 ? "Broadcast-Ready Board" : "Open Booking Desk"}</h3>
-              </div>
-              <div className="dashboard-panel-scroll">
-                {game.currentShow.length ? (
-                  <div className="mini-card-list">
-                    {game.currentShow.map((segment, index) => (
-                      <div className="mini-card" key={segment.id}>
-                        <span>
-                          {String(index + 1).padStart(2, "0")} · {segment.type}
-                        </span>
-                        <strong>{getSegmentParticipantsLabel(segment, game.wrestlers)}</strong>
-                        <small>{isValidSegment(segment, game.wrestlers) ? "Ready for TV" : getSegmentValidationWarning(segment, game.wrestlers)}</small>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="dashboard-empty-slot">
-                    <strong>Card spine is empty</strong>
-                    <span>Book at least 2 valid segments. Open Challenge opponents stay hidden until show-run time.</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="dashboard-action-bar">
-              <div>
-                <span>Next Player Action</span>
-                <strong>{actionContext}</strong>
-              </div>
-              <button className="primary-action" onClick={() => onNavigate(primaryActionScreen)}>
-                {primaryActionLabel}
-              </button>
-              <button className="secondary-action" onClick={() => onNavigate("calendar")}>
-                Calendar
-              </button>
             </div>
           </article>
 
-          <aside className="dashboard-side-stack dashboard-right-rail" aria-label="Urgent decisions and world pulse">
-            <article className="command-panel dashboard-rail-panel dashboard-urgent-panel">
-              <div className="section-heading">
-                <p className="eyebrow">Urgent Decisions</p>
-                <h3>{dashboardUrgentItems.length}</h3>
-              </div>
-              <div className="dashboard-decision-list">
-                {dashboardUrgentItems.map((item, index) => (
-                  <div className={`dashboard-decision-row tone-${item.tone}`} key={item.id}>
-                    <span>{index + 1}</span>
-                    <div>
-                      <strong>{item.label}</strong>
-                      <small>{compactDashboardRead(item.detail)}</small>
-                    </div>
-                  </div>
-                ))}
-                {!dashboardUrgentItems.length ? (
-                  <div className="dashboard-empty-slot">
-                    <strong>No urgent reads</strong>
-                    <span>Current state is quiet. Book the next show to create fresh fallout.</span>
-                  </div>
-                ) : null}
-              </div>
-            </article>
-
-            <article className="command-panel dashboard-rail-panel dashboard-iwc-panel">
-              <div className="section-heading">
-                <p className="eyebrow">IWC / World Pulse</p>
-                <h3>{brandPulseSnapshot?.headline ?? livingWorldPressure.headline}</h3>
-              </div>
-              <p className="dashboard-panel-read">{brandPulseSnapshot?.detail ?? livingWorldPressure.weekRead}</p>
-              <div className="dashboard-mini-rows">
-                <div>
-                  <span>Living World</span>
-                  <strong>{livingWorldPressure.whoIsWatching}</strong>
-                </div>
-                <div>
-                  <span>Next Move</span>
-                  <strong>{livingWorldPressure.nextAction}</strong>
-                </div>
-                <div>
-                  <span>Rival Chairs</span>
-                  <strong>{rivalBrands.length}</strong>
-                </div>
-                {latestSocialPost ? (
-                  <div>
-                    <span>IWC Buzz</span>
-                    <strong>{formatSocialCategory(latestSocialPost.category)}</strong>
-                  </div>
-                ) : null}
-              </div>
-            </article>
-            <RivalIntelligencePanel compact game={game} />
-            {ratingsBattle ? <RatingsBattlePanel compact snapshot={ratingsBattle} /> : null}
-            {cpuResultsFeed ? <CpuResultsFeedPanel compact snapshot={cpuResultsFeed} /> : null}
-          </aside>
-        </section>
-
-        <section className="dashboard-bottom-telemetry" aria-label="Brand HQ telemetry boards">
-          <article className="command-panel dashboard-telemetry-panel dashboard-roster-panel">
-            <div className="section-heading">
-              <p className="eyebrow">Roster Overview</p>
-              <h3>{game.wrestlers.length} Signed</h3>
+          <article className="dashboard-dynasty-panel dashboard-dynasty-champions">
+            <div className="dashboard-dynasty-section-heading">
+              <span>Champions</span>
+              <b>Gold Ledger</b>
             </div>
-            <div className="dashboard-pressure-tags">
-              <span>Overused {overusedCount}</span>
-              <span>Underused {underusedCount}</span>
-              <span>Protected {protectedStarCount}</span>
-              <span>Morale {moraleRiskCount}</span>
-              <span>Injury {injuryRiskCount}</span>
-              <span>Out {unavailableCount}</span>
+            <div className="dashboard-dynasty-champion-list">
+              {model.champions.map((champion, index) => {
+                const holder = champion.holderId ? findWrestler(champion.holderId) : undefined;
+
+                return (
+                  <div className="dashboard-dynasty-champion-row" key={champion.id}>
+                    <span className="dashboard-dynasty-slot">{String(index + 1).padStart(2, "0")}</span>
+                    {holder ? (
+                      <DashboardDynastyPortrait wrestler={holder} size="md" />
+                    ) : (
+                      <span className="dashboard-dynasty-portrait-vacant dashboard-dynasty-portrait--md" aria-hidden="true">-</span>
+                    )}
+                    <span className="dashboard-dynasty-champion-copy">
+                      <strong title={champion.title}>{champion.title}</strong>
+                      <em title={champion.name}>{champion.name}</em>
+                    </span>
+                    <span className="dashboard-dynasty-belt" aria-hidden="true">T</span>
+                  </div>
+                );
+              })}
             </div>
           </article>
 
-          <article className="command-panel dashboard-telemetry-panel dashboard-locker-table">
-            <div className="section-heading">
-              <p className="eyebrow">Locker Room Table</p>
-              <h3>Talent Watch</h3>
+          <article className="dashboard-dynasty-panel dashboard-dynasty-goals">
+            <div className="dashboard-dynasty-section-heading">
+              <span>GM Goals</span>
+              <b>{model.goals.length} Active</b>
             </div>
-            <div className="dashboard-table-list">
-              {hotTalent.slice(0, 2).map((wrestler, index) => (
-                <div className="dashboard-table-row" key={wrestler.id}>
-                  <span>{index + 1}</span>
-                  <strong>{wrestler.name}</strong>
-                  <small>Mom {wrestler.momentum} · Pop {wrestler.popularity}</small>
+            <div className="dashboard-dynasty-goal-list">
+              {model.goals.map((goal) => (
+                <div className={goal.complete ? "dashboard-dynasty-goal-row is-complete" : "dashboard-dynasty-goal-row"} key={goal.id}>
+                  <div className="dashboard-dynasty-goal-top">
+                    <span>{goal.complete ? "OK" : "ON"}</span>
+                    <strong title={goal.label}>{goal.label}</strong>
+                    <em title={goal.detail}>{goal.complete ? "Done" : goal.detail}</em>
+                  </div>
+                  <DashboardDynastyProgress complete={goal.complete} progress={goal.progress} />
                 </div>
               ))}
             </div>
           </article>
+        </aside>
 
-          <article className="command-panel dashboard-telemetry-panel dashboard-rivalry-panel">
-            <div className="section-heading">
-              <p className="eyebrow">Rivalry / Title Heat</p>
-              <h3>{focusRivalryTiming ? focusRivalryTiming.rivalry.name : "Story Desk"}</h3>
+        <section className="dashboard-dynasty-column dashboard-dynasty-center-column">
+          <article className="dashboard-dynasty-panel dashboard-dynasty-roster-panel">
+            <div className="dashboard-dynasty-roster-topline">
+              <div className="dashboard-dynasty-section-heading">
+                <span>Roster Overview</span>
+                <b>Top Stars</b>
+              </div>
             </div>
-            <div className="dashboard-mini-rows">
-              <div>
-                <span>Rivalry Timing</span>
-                <strong>{rivalrySceneRead}</strong>
+            <div className="dashboard-dynasty-roster-table" role="table" aria-label="Roster overview">
+              <div className="dashboard-dynasty-roster-row dashboard-dynasty-roster-head" role="row">
+                <span>#</span>
+                <span>Superstar</span>
+                <span>Role</span>
+                <span>Style</span>
+                <span>Pop</span>
+                <span>Sta</span>
+                <span>Mor</span>
+                <span>OVR</span>
+                <span>Contract</span>
+                <span>Cost</span>
               </div>
-              <div>
-                <span>Championship Desk</span>
-                <strong>{titleSceneRead}</strong>
+              <div className="dashboard-dynasty-roster-scroll">
+                {model.roster.map((member) => {
+                  const wrestler = findWrestler(member.id);
+
+                  return (
+                    <div className={member.selected ? "dashboard-dynasty-roster-row is-selected" : "dashboard-dynasty-roster-row"} role="row" key={member.id}>
+                      <span>{member.rank}</span>
+                      <div className="dashboard-dynasty-superstar-cell">
+                        {wrestler ? <DashboardDynastyPortrait wrestler={wrestler} size="sm" /> : null}
+                        <strong title={member.name}>{member.name}</strong>
+                      </div>
+                      <DashboardDynastyRole role={member.role} />
+                      <span title={member.style}>{member.style}</span>
+                      <span>{member.pop}</span>
+                      <span>
+                        <DashboardDynastyStamina value={member.stamina} />
+                      </span>
+                      <span>
+                        <DashboardDynastyMorale morale={member.morale} />
+                      </span>
+                      <span className="dashboard-dynasty-overall">{member.overall}</span>
+                      <span>{member.contract}</span>
+                      <span>{member.cost}</span>
+                    </div>
+                  );
+                })}
               </div>
-              <div>
-                <span>PLE Build</span>
-                <strong>{pleBuildPressure.phaseLabel}</strong>
-              </div>
+            </div>
+            <div className="dashboard-dynasty-roster-footer">
+              <span>{model.rosterSizeLabel}</span>
             </div>
           </article>
+
+          <section className="dashboard-dynasty-center-bottom-grid">
+            <article className="dashboard-dynasty-panel dashboard-dynasty-promo-panel">
+              <div className="dashboard-dynasty-promo-backdrop">
+                <span className="dashboard-dynasty-lower-third">Next Show: {model.promo.showName}</span>
+                <div className="dashboard-dynasty-promo-matchup">
+                  <DashboardDynastyPortrait wrestler={wrestlerOrPlaceholder(model.promo.leftId, model.promo.leftName)} size="lg" />
+                  <span>VS</span>
+                  <DashboardDynastyPortrait wrestler={wrestlerOrPlaceholder(model.promo.rightId, model.promo.rightName)} size="lg" />
+                </div>
+                <div className="dashboard-dynasty-main-event-copy">
+                  <span>{model.promo.stipulation}</span>
+                  <strong title={model.promo.headline}>{model.promo.headline}</strong>
+                  <em title={model.promo.leftName + " vs " + model.promo.rightName}>
+                    {model.promo.leftName} vs {model.promo.rightName}
+                  </em>
+                </div>
+              </div>
+            </article>
+
+            <article className="dashboard-dynasty-panel dashboard-dynasty-show-card">
+              <div className="dashboard-dynasty-section-heading">
+                <span>Current Show Card</span>
+                <b>{model.showCard.length} Segments</b>
+              </div>
+              <div className="dashboard-dynasty-show-card-list">
+                {model.showCard.length ? (
+                  model.showCard.map((entry) => (
+                    <div className={entry.valid ? "dashboard-dynasty-show-card-row" : "dashboard-dynasty-show-card-row is-invalid"} key={entry.id}>
+                      <span>{entry.index}</span>
+                      <strong title={entry.match}>{entry.match}</strong>
+                      <em title={entry.stipulation}>{entry.stipulation}</em>
+                    </div>
+                  ))
+                ) : (
+                  <p className="dashboard-dynasty-empty">No segments booked yet.</p>
+                )}
+              </div>
+              <div className="dashboard-dynasty-action-row">
+                {model.secondaryActions.map((action) => (
+                  <button key={action.label} type="button" onClick={() => onNavigate(action.screen)}>
+                    {action.label}
+                  </button>
+                ))}
+                <button className="dashboard-dynasty-primary-action" type="button" onClick={() => onNavigate(model.primaryAction.screen)}>
+                  {model.primaryAction.label}
+                </button>
+              </div>
+            </article>
+          </section>
         </section>
 
+        <aside className="dashboard-dynasty-column dashboard-dynasty-right-column">
+          <article className="dashboard-dynasty-panel dashboard-dynasty-rivalries">
+            <div className="dashboard-dynasty-section-heading">
+              <span>Rivalries</span>
+              <b>Intensity Feed</b>
+            </div>
+            <div className="dashboard-dynasty-rivalry-list">
+              {model.rivalries.length ? (
+                model.rivalries.map((rivalry) => (
+                  <div className="dashboard-dynasty-rivalry-row" key={rivalry.id}>
+                    <div className="dashboard-dynasty-rivalry-matchup">
+                      <DashboardDynastyPortrait wrestler={wrestlerOrPlaceholder(rivalry.leftId, rivalry.leftName)} size="sm" />
+                      <strong title={rivalry.leftName + " vs " + rivalry.rightName}>
+                        {rivalry.leftName} vs {rivalry.rightName}
+                      </strong>
+                      <DashboardDynastyPortrait wrestler={wrestlerOrPlaceholder(rivalry.rightId, rivalry.rightName)} size="sm" />
+                    </div>
+                    <div className="dashboard-dynasty-rivalry-meter-line">
+                      <em>Heat</em>
+                      <DashboardDynastyIntensityMeter value={rivalry.intensity} />
+                      <b>{rivalry.intensity}</b>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="dashboard-dynasty-empty">No active rivalries. Create a program when the story room needs heat.</p>
+              )}
+            </div>
+          </article>
+
+          <article className="dashboard-dynasty-panel dashboard-dynasty-metrics">
+            <div className="dashboard-dynasty-section-heading">
+              <span>Show Metrics ({game.brandName})</span>
+              <b>{chartRangeLabel}</b>
+            </div>
+            <div className="dashboard-dynasty-metric-grid">
+              <div>
+                <span>Viewership</span>
+                <strong>
+                  {model.metrics.viewershipLabel}
+                  {model.metrics.viewershipDelta ? <em>{model.metrics.viewershipDelta}</em> : null}
+                </strong>
+              </div>
+              <div>
+                <span>Show Quality</span>
+                <strong>{model.metrics.showQualityLabel}</strong>
+              </div>
+              <div>
+                <span>Match Quality</span>
+                <strong>{model.metrics.matchQualityLabel}</strong>
+              </div>
+              <div>
+                <span>Fan Satisfaction</span>
+                <strong>{model.metrics.fanSatisfactionLabel}</strong>
+              </div>
+            </div>
+            <DashboardDynastyShowScoreChart points={model.metrics.chartPoints} />
+          </article>
+
+          <article className="dashboard-dynasty-panel dashboard-dynasty-alerts">
+            <div className="dashboard-dynasty-section-heading">
+              <span>GM Alerts</span>
+              <b>Live Desk</b>
+            </div>
+            <div className="dashboard-dynasty-alert-list">
+              {model.alerts.map((alert) => (
+                <DashboardDynastyAlert alert={alert} key={alert.id} />
+              ))}
+            </div>
+          </article>
+
+          <article className="dashboard-dynasty-panel dashboard-dynasty-draft">
+            <div className="dashboard-dynasty-section-heading">
+              <span>Free Agent Pool</span>
+              <b>Top 5</b>
+            </div>
+            <div className="dashboard-dynasty-draft-list">
+              {model.draftPool.length ? (
+                model.draftPool.map((entry) => (
+                  <div className="dashboard-dynasty-draft-row" key={entry.name}>
+                    <strong title={entry.name}>{entry.name}</strong>
+                    <span title={entry.style}>{entry.style}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="dashboard-dynasty-empty">No immediate free-agent targets.</p>
+              )}
+            </div>
+            <button className="dashboard-dynasty-gold-action" type="button" onClick={() => onNavigate("market")}>
+              View Market Desk
+            </button>
+          </article>
+        </aside>
       </section>
-    </main>
+    </DynastyManagementShell>
   );
 }
 
@@ -7671,6 +7594,7 @@ function BookingScreen({
   const [productionDetailsOpen, setProductionDetailsOpen] = useState(false);
   const [smartRundownError, setSmartRundownError] = useState("");
   const [pendingClearCard, setPendingClearCard] = useState(false);
+  const [selectedBoardSegmentId, setSelectedBoardSegmentId] = useState<string | undefined>();
   const validShowSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers));
   const validSegments = validShowSegments.length;
   const invalidSegments = game.currentShow.length - validSegments;
@@ -7718,10 +7642,33 @@ function BookingScreen({
     segmentCount: game.currentShow.length,
     titleContextCount,
   });
+  const selectedBoardSegment = game.currentShow.find((segment) => segment.id === selectedBoardSegmentId) ?? game.currentShow[0];
+  const selectedSegment = composerSegment ?? selectedBoardSegment;
+  const selectedSegmentSlot = selectedSegment ? Math.max(1, game.currentShow.findIndex((segment) => segment.id === selectedSegment.id) + 1) : undefined;
+  const selectedSegmentValid = selectedSegment ? isValidSegment(selectedSegment, game.wrestlers) : false;
+  const selectedSegmentParticipants = selectedSegment ? getSegmentParticipants(selectedSegment, game.wrestlers) : [];
+  const selectedSegmentFlags = selectedSegment ? getBookingSegmentBoardFlags(selectedSegment, game) : [];
+  const selectedChampionship = selectedSegment?.championshipId
+    ? game.championships.find((championship) => championship.id === selectedSegment.championshipId)
+    : undefined;
+  const selectedRivalry = selectedSegment?.rivalryId ? game.rivalries.find((rivalry) => rivalry.id === selectedSegment.rivalryId) : undefined;
+  const lowerThirdDetail = selectedSegment
+    ? getSegmentParticipantsLabel(selectedSegment, game.wrestlers)
+    : "Choose a production format, then assign talent and context.";
+  const bookingCtaTone: DynastyManagementCta["tone"] =
+    readiness.tone === "ready" ? "positive" : readiness.tone === "warning" ? "warning" : "danger";
+  const bookingCta: DynastyManagementCta = {
+    disabled: !canRunShow,
+    eyebrow: readiness.status,
+    label: "Run Show",
+    onClick: onRunShow,
+    tone: bookingCtaTone,
+  };
 
   function beginAddSegment(type: SegmentType) {
     const segmentId = `segment-${Date.now()}-${game.currentShow.length}`;
     onAddSegment(type, segmentId);
+    setSelectedBoardSegmentId(segmentId);
     setComposerSegmentId(segmentId);
     setSetupDraftSegmentId(segmentId);
     setSetupEmptySlotNumber(undefined);
@@ -7731,6 +7678,9 @@ function BookingScreen({
 
   function removeAndClose(segmentId: string) {
     onRemoveSegment(segmentId);
+    if (selectedBoardSegmentId === segmentId) {
+      setSelectedBoardSegmentId(undefined);
+    }
     if (composerSegmentId === segmentId) {
       setComposerSegmentId(undefined);
       setBookingMode("board");
@@ -7740,6 +7690,7 @@ function BookingScreen({
   }
 
   function openEmptySlot(slotNumber: number) {
+    setSelectedBoardSegmentId(undefined);
     setComposerSegmentId(undefined);
     setSetupDraftSegmentId(undefined);
     setSetupEmptySlotNumber(slotNumber);
@@ -7748,6 +7699,7 @@ function BookingScreen({
   }
 
   function openExistingSegment(segmentId: string) {
+    setSelectedBoardSegmentId(segmentId);
     setComposerSegmentId(segmentId);
     setSetupDraftSegmentId(undefined);
     setSetupEmptySlotNumber(undefined);
@@ -7765,6 +7717,9 @@ function BookingScreen({
   }, [focusSegmentId, game.currentShow, onConsumeFocusSegment]);
 
   function returnToCardBoard() {
+    if (composerSegmentId) {
+      setSelectedBoardSegmentId(composerSegmentId);
+    }
     setBookingMode("board");
     setComposerSegmentId(undefined);
     setSetupDraftSegmentId(undefined);
@@ -7774,6 +7729,9 @@ function BookingScreen({
   function cancelSegmentSetup() {
     if (setupDraftSegmentId) {
       onRemoveSegment(setupDraftSegmentId);
+      if (selectedBoardSegmentId === setupDraftSegmentId) {
+        setSelectedBoardSegmentId(undefined);
+      }
     }
 
     returnToCardBoard();
@@ -7824,6 +7782,7 @@ function BookingScreen({
     }
 
     onReplaceCurrentShow(result.segments);
+    setSelectedBoardSegmentId(result.segments[0]?.id);
     setComposerSegmentId(undefined);
     setSetupDraftSegmentId(undefined);
     setSetupEmptySlotNumber(undefined);
@@ -7835,6 +7794,7 @@ function BookingScreen({
 
   function confirmClearCard() {
     onReplaceCurrentShow([]);
+    setSelectedBoardSegmentId(undefined);
     setComposerSegmentId(undefined);
     setSetupDraftSegmentId(undefined);
     setSetupEmptySlotNumber(undefined);
@@ -7844,9 +7804,14 @@ function BookingScreen({
   }
 
   return (
-    <main className={`app-shell gameplay-command-shell booking-app-shell ${productionDetailsOpen ? "producer-note-expanded" : ""}`}>
-      <Header game={game} />
-      <GameNav currentScreen="booking" hasResults={Boolean(game.showHistory.length)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
+    <DynastyManagementShell
+      className={`booking-command-shell ${productionDetailsOpen ? "producer-note-expanded" : ""}`}
+      currentScreen="booking"
+      cta={bookingCta}
+      game={game}
+      latestResult={game.showHistory[game.showHistory.length - 1]}
+      onNavigate={onNavigate}
+    >
       {isQaHarness ? (
         <section className="qa-harness-banner" aria-label="QA harness notice">
           <strong>QA Runtime Harness</strong>
@@ -7855,18 +7820,25 @@ function BookingScreen({
       ) : null}
 
       {bookingMode === "board" ? (
-        <>
-          <section className="booking-controls" aria-label="Booking controls">
-            <button className="secondary-action" onClick={generateSmartRundown}>
-              Generate Smart Rundown
-            </button>
-            <button className="danger-action" disabled={!game.currentShow.length} onClick={() => setPendingClearCard(true)}>
-              Remove All
-            </button>
-          </section>
+        <section className="dashboard-dynasty-grid booking-command-grid" aria-label="Booking Desk production console">
+          <aside className="dashboard-dynasty-column booking-command-rail booking-command-left-rail" aria-label="Production commands">
+            <section className="dashboard-dynasty-panel booking-command-panel booking-production-panel">
+              <div className="dashboard-dynasty-section-heading booking-command-section-heading">
+                <span>Production Commands</span>
+                <b>{game.currentShow.length}/{maxBookingSegments} Slots</b>
+              </div>
+              <div className="booking-command-button-stack">
+                <button className="secondary-action" onClick={generateSmartRundown}>
+                  Generate Smart Rundown
+                </button>
+                <button className="danger-action" disabled={!game.currentShow.length} onClick={() => setPendingClearCard(true)}>
+                  Remove All
+                </button>
+              </div>
+            </section>
 
           {pendingClearCard ? (
-            <section className="clear-card-warning" aria-label="Confirm remove all card segments">
+            <section className="dashboard-dynasty-panel booking-command-panel clear-card-warning" aria-label="Confirm remove all card segments">
               <div>
                 <span>Clear Card?</span>
                 <strong>Remove every booked slot from tonight's card.</strong>
@@ -7883,20 +7855,36 @@ function BookingScreen({
             </section>
           ) : null}
 
-          <section className={`booking-card-board-panel status-${cardStatus.tone}`} aria-label="Booking card board">
+            <section className={`dashboard-dynasty-panel booking-command-panel production-details-panel ${productionDetailsOpen ? "open" : ""}`} aria-label="Producer note">
+              <button className="production-details-toggle" onClick={() => setProductionDetailsOpen((open) => !open)} type="button">
+                <span>Producer Note</span>
+                <strong>{productionDetailsOpen ? "Hide" : "Show"}</strong>
+              </button>
+
+              {productionDetailsOpen ? (
+                <div className="production-details-grid">
+                  <div className="producer-note" aria-label="Producer note">
+                    <span>{smartRundownError ? "Rundown Blocked" : "Desk Read"}</span>
+                    <p>{smartRundownError || producerNote}</p>
+                    {smartRundownError ? null : topUnusedWrestler ? <small>{rosterDeskRead}</small> : null}
+                  </div>
+                </div>
+              ) : null}
+            </section>
+          </aside>
+
+          <section className={`dashboard-dynasty-panel booking-card-board-panel booking-board-stage status-${cardStatus.tone}`} aria-label="Booking card board">
             <div className="booking-card-board-head">
               <div>
-                <p className="eyebrow">Card Board</p>
-                <h3>{calendarWeek.showName} Slots</h3>
+                <p className="eyebrow">Current Rundown</p>
+                <h2>{calendarWeek.showName}</h2>
+                <span>{readiness.note}</span>
               </div>
-              <button className="run-show-action board-run-show-action" disabled={!canRunShow} onClick={onRunShow}>
-                Run Show
-              </button>
+              <strong>{cardStatus.label}</strong>
             </div>
-
             <section className={`runtime-board readiness-${readiness.tone}`} aria-label="Runtime plan">
               <div>
-                <p className="eyebrow">Runtime Board</p>
+                <p className="eyebrow">Runtime Target</p>
                 <h3>{readiness.status}</h3>
                 <p>{readiness.note}</p>
               </div>
@@ -7923,28 +7911,38 @@ function BookingScreen({
               </div>
             </section>
 
-            <div className="booking-slot-grid" aria-label="Numbered card slots">
+            <div className="booking-rundown-list" aria-label="Numbered card slots">
                 {cardBoardSlots.map((slot) => {
                   const segment = slot.segment;
                   const valid = segment ? isValidSegment(segment, game.wrestlers) : false;
+                  const isSelected = Boolean(segment && selectedSegment?.id === segment.id);
+                  const isMainEvent = Boolean(segment && slot.slotNumber === game.currentShow.length && game.currentShow.length > 1);
+                  const flags = segment ? getBookingSegmentBoardFlags(segment, game) : [];
 
                   return (
                   <article
-                    className={`booking-slot ${segment ? "filled" : "empty"} ${valid ? "valid" : ""} ${segment && !valid ? "invalid" : ""} ${slot.isBuildable ? "buildable" : ""}`}
+                    className={`booking-rundown-slot booking-slot ${segment ? "filled" : "empty"} ${valid ? "valid" : ""} ${segment && !valid ? "invalid" : ""} ${slot.isBuildable ? "buildable" : ""} ${isSelected ? "selected-slot" : ""} ${isMainEvent ? "main-event-slot" : ""} ${segment?.championshipId ? "title-slot" : ""} ${segment?.rivalryId ? "rivalry-slot" : ""}`}
                     key={slot.id}
+                    onClick={() => {
+                      if (segment) {
+                        setSelectedBoardSegmentId(segment.id);
+                      }
+                    }}
                   >
-                    <div className="booking-slot-topline">
-                      <span>Slot {String(slot.slotNumber).padStart(2, "0")}</span>
-                      <strong>{segment ? (valid ? "Ready" : "Needs Fix") : slot.isBuildable ? "Open" : "Queued"}</strong>
+                    <div className="booking-rundown-index">
+                      <span>{String(slot.slotNumber).padStart(2, "0")}</span>
+                      <b>{segment ? (isMainEvent ? "Main" : valid ? "Ready" : "Fix") : slot.isBuildable ? "Open" : "Standby"}</b>
                     </div>
                     {segment ? (
                       <>
-                        <h3>{segment.segmentDisplayName ?? segment.type}</h3>
-                        <p>{getSegmentParticipantsLabel(segment, game.wrestlers) || getSegmentValidationWarning(segment, game.wrestlers)}</p>
-                        <div className="booking-slot-flags">
-                          {getBookingSegmentBoardFlags(segment, game).map((flag) => (
-                            <span key={flag}>{flag}</span>
-                          ))}
+                        <div className="booking-rundown-copy">
+                          <h3>{segment.segmentDisplayName ?? segment.type}</h3>
+                          <p>{getSegmentParticipantsLabel(segment, game.wrestlers) || getSegmentValidationWarning(segment, game.wrestlers)}</p>
+                          <div className="booking-slot-flags">
+                            {flags.map((flag) => (
+                              <span key={flag}>{flag}</span>
+                            ))}
+                          </div>
                         </div>
                         <div className="booking-slot-actions">
                           <button className="secondary-action" onClick={() => openExistingSegment(segment.id)}>
@@ -7957,8 +7955,10 @@ function BookingScreen({
                       </>
                     ) : (
                       <>
-                        <h3>{slot.isBuildable ? "Open Card Position" : "Standby Position"}</h3>
-                        <p>{slot.isBuildable ? "Choose this slot to set up the next segment." : "This position opens after the previous slot is booked."}</p>
+                        <div className="booking-rundown-copy">
+                          <h3>{slot.isBuildable ? "Open Card Position" : "Standby Position"}</h3>
+                          <p>{slot.isBuildable ? "Choose this slot to set up the next segment." : "This position opens after the previous slot is booked."}</p>
+                        </div>
                         <button className="primary-action" disabled={!slot.isBuildable} onClick={() => openEmptySlot(slot.slotNumber)}>
                           Build Slot {slot.slotNumber}
                         </button>
@@ -7970,81 +7970,203 @@ function BookingScreen({
             </div>
           </section>
 
-          <section className={`production-details-panel ${productionDetailsOpen ? "open" : ""}`} aria-label="Producer note">
-            <button className="production-details-toggle" onClick={() => setProductionDetailsOpen((open) => !open)} type="button">
-              <span>Producer Note</span>
-              <strong>{productionDetailsOpen ? "Hide" : "Show"}</strong>
-            </button>
+          <aside className="dashboard-dynasty-column booking-command-rail booking-command-right-rail" aria-label="Selected slot and readiness context">
+            <section className="dashboard-dynasty-panel booking-command-panel booking-selected-slot-panel">
+              <div className="dashboard-dynasty-section-heading booking-command-section-heading">
+                <span>Selected Slot</span>
+                <b>{selectedSegment ? `Slot ${String(selectedSegmentSlot ?? 1).padStart(2, "0")}` : "None"}</b>
+              </div>
+              {selectedSegment ? (
+                <>
+                  <div className="booking-selected-title">
+                    <strong>{selectedSegment.segmentDisplayName ?? selectedSegment.type}</strong>
+                    <em>{selectedSegmentValid ? "Structurally ready" : getSegmentValidationWarning(selectedSegment, game.wrestlers)}</em>
+                  </div>
+                  <div className="booking-selected-portraits">
+                    {selectedSegmentParticipants.slice(0, 4).map((wrestler) => (
+                      <DashboardDynastyPortrait key={wrestler.id} size="sm" wrestler={wrestler} />
+                    ))}
+                    {!selectedSegmentParticipants.length ? <span className="booking-empty-portrait-slot">TBD</span> : null}
+                  </div>
+                  <div className="booking-selected-context">
+                    <div>
+                      <span>Title Context</span>
+                      <strong>{selectedChampionship?.name ?? "No title attached"}</strong>
+                    </div>
+                    <div>
+                      <span>Story Context</span>
+                      <strong>{selectedRivalry?.name ?? "No rivalry attached"}</strong>
+                    </div>
+                  </div>
+                  <div className="booking-slot-flags">
+                    {selectedSegmentFlags.map((flag) => (
+                      <span key={flag}>{flag}</span>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="booking-command-muted">Choose an open card position or inspect a booked slot.</p>
+              )}
+            </section>
 
-            {productionDetailsOpen ? (
-              <div className="production-details-grid">
-                <div className="producer-note" aria-label="Producer note">
-                  <span>Producer Note</span>
-                  <p>{smartRundownError || producerNote}</p>
-                  {smartRundownError ? null : topUnusedWrestler ? <small>{rosterDeskRead}</small> : null}
+            <section className="dashboard-dynasty-panel booking-command-panel booking-readiness-panel">
+              <div className="dashboard-dynasty-section-heading booking-command-section-heading">
+                <span>Readiness</span>
+                <b>{readiness.status}</b>
+              </div>
+              <div className="booking-readiness-list">
+                <div>
+                  <span>Valid Segments</span>
+                  <strong>{validSegments}/{game.currentShow.length || 0}</strong>
+                </div>
+                <div>
+                  <span>Roster Used</span>
+                  <strong>{bookedRosterCount}/{game.wrestlers.length}</strong>
+                </div>
+                <div>
+                  <span>Title Beats</span>
+                  <strong>{titleContextCount}</strong>
+                </div>
+                <div>
+                  <span>Story Beats</span>
+                  <strong>{rivalrySegmentCount}</strong>
                 </div>
               </div>
-            ) : null}
-          </section>
-        </>
-      ) : (
-        <section className="focused-setup-shell" aria-label="Focused segment setup">
-          <div className="focused-setup-head">
-            <button className="secondary-action" onClick={cancelSegmentSetup}>
-              Back To Card Board
-            </button>
-            <div>
-              <p className="eyebrow">Focused Segment Setup</p>
-              <h3>{composerSegment ? `Slot ${Math.max(1, game.currentShow.findIndex((segment) => segment.id === composerSegment.id) + 1)}` : `Slot ${setupEmptySlotNumber ?? game.currentShow.length + 1}`}</h3>
-              <p>
-                {composerSegment
-                  ? "Set format, time, talent, title context, and story context before sending this slot back to the board."
-                  : "Choose the segment type for this card position."}
-              </p>
-            </div>
-            <strong>{readiness.status}</strong>
-          </div>
+            </section>
 
-          {composerSegment ? (
-            <SegmentComposer
-              championships={game.championships}
-              game={game}
-              onApplyCatalogOption={(option) => applyCatalogOption(composerSegment, option)}
-              onBuildTitleMatch={onBuildTitleMatch}
-              onSetSegmentStipulation={(segmentId, stipulationId) => onSetSegmentStipulation(segmentId, stipulationId)}
-              onCancel={cancelSegmentSetup}
-              onClose={returnToCardBoard}
-              onOpenProfile={onOpenProfile}
-              onRemoveSegment={() => removeAndClose(composerSegment.id)}
-              onSetDuration={(durationMinutes) => onUpdateSegment(composerSegment.id, { durationMinutes })}
-              onSetSegmentChampionship={onSetSegmentChampionship}
-              onSetSegmentRivalry={(rivalryId) => setComposerRivalry(composerSegment, rivalryId)}
-              onToggleParticipant={onToggleParticipant}
-              rivalries={game.rivalries}
-              saveLabel="Save To Card Board"
-              segment={composerSegment}
-              wrestlers={game.wrestlers}
-            />
-          ) : (
-            <section className="segment-type-stage" aria-label="Choose segment type">
-              <div>
-                <p className="eyebrow">Segment Type</p>
-                <h3>Build Slot {setupEmptySlotNumber ?? game.currentShow.length + 1}</h3>
-                <p>Pick the production format. The existing setup controls open next and still own validation.</p>
+            <section className="dashboard-dynasty-panel booking-command-panel booking-risk-panel">
+              <div className="dashboard-dynasty-section-heading booking-command-section-heading">
+                <span>Risk Board</span>
+                <b>{riskRows.length ? `${riskRows.length} Flagged` : "Clear"}</b>
               </div>
-              <div className="segment-type-grid">
-                {bookingSegmentTypes.map((type) => (
-                  <button disabled={game.currentShow.length >= maxBookingSegments} key={type} onClick={() => beginAddSegment(type)}>
-                    <span>{type}</span>
-                    <small>{getSegmentDescription(type)}</small>
-                  </button>
-                ))}
+              <div className="booking-risk-list">
+                {riskRows.length ? (
+                  riskRows.slice(0, 4).map((item) => (
+                    <article key={item.wrestler.id}>
+                      <strong>{item.wrestler.name}</strong>
+                      <span>{item.reads[0]}</span>
+                    </article>
+                  ))
+                ) : (
+                  <p className="booking-command-muted">No booked talent is leading a fatigue, morale, or injury warning.</p>
+                )}
               </div>
             </section>
-          )}
+          </aside>
+        </section>
+      ) : (
+        <section className="dashboard-dynasty-grid booking-setup-command-grid" aria-label="Focused segment setup console">
+          <aside className="dashboard-dynasty-column booking-command-rail booking-setup-rundown-rail" aria-label="Rundown orientation">
+            <section className="dashboard-dynasty-panel booking-command-panel">
+              <div className="dashboard-dynasty-section-heading booking-command-section-heading">
+                <span>Rundown</span>
+                <b>{game.currentShow.length} Booked</b>
+              </div>
+              <div className="booking-mini-rundown">
+                {game.currentShow.length ? (
+                  game.currentShow.map((segment, index) => (
+                    <button
+                      className={composerSegment?.id === segment.id ? "active-filter" : ""}
+                      key={segment.id}
+                      onClick={() => openExistingSegment(segment.id)}
+                      type="button"
+                    >
+                      <span>{String(index + 1).padStart(2, "0")}</span>
+                      <strong>{segment.segmentDisplayName ?? segment.type}</strong>
+                    </button>
+                  ))
+                ) : (
+                  <p className="booking-command-muted">No slots booked yet.</p>
+                )}
+              </div>
+            </section>
+          </aside>
+
+          <section className="dashboard-dynasty-panel focused-setup-shell booking-setup-stage" aria-label="Focused segment setup">
+            <div className="focused-setup-head">
+              <button className="secondary-action" onClick={cancelSegmentSetup}>
+                Back To Card Board
+              </button>
+              <div>
+                <p className="eyebrow">Selected Segment Workspace</p>
+                <h2>{composerSegment ? `Slot ${Math.max(1, game.currentShow.findIndex((segment) => segment.id === composerSegment.id) + 1)}` : `Slot ${setupEmptySlotNumber ?? game.currentShow.length + 1}`}</h2>
+                <p>
+                  {composerSegment
+                    ? "Set format, time, talent, title context, and story context before sending this slot back to the board."
+                    : "Choose the segment type for this card position."}
+                </p>
+              </div>
+              <strong>{readiness.status}</strong>
+            </div>
+
+            {composerSegment ? (
+              <SegmentComposer
+                championships={game.championships}
+                game={game}
+                onApplyCatalogOption={(option) => applyCatalogOption(composerSegment, option)}
+                onBuildTitleMatch={onBuildTitleMatch}
+                onSetSegmentStipulation={(segmentId, stipulationId) => onSetSegmentStipulation(segmentId, stipulationId)}
+                onCancel={cancelSegmentSetup}
+                onClose={returnToCardBoard}
+                onOpenProfile={onOpenProfile}
+                onRemoveSegment={() => removeAndClose(composerSegment.id)}
+                onSetDuration={(durationMinutes) => onUpdateSegment(composerSegment.id, { durationMinutes })}
+                onSetSegmentChampionship={onSetSegmentChampionship}
+                onSetSegmentRivalry={(rivalryId) => setComposerRivalry(composerSegment, rivalryId)}
+                onToggleParticipant={onToggleParticipant}
+                rivalries={game.rivalries}
+                saveLabel="Save To Card Board"
+                segment={composerSegment}
+                wrestlers={game.wrestlers}
+              />
+            ) : (
+              <section className="segment-type-stage" aria-label="Choose segment type">
+                <div>
+                  <p className="eyebrow">Segment Type</p>
+                  <h3>Build Slot {setupEmptySlotNumber ?? game.currentShow.length + 1}</h3>
+                  <p>Pick the production format. The existing setup controls open next and still own validation.</p>
+                </div>
+                <div className="segment-type-grid">
+                  {bookingSegmentTypes.map((type) => (
+                    <button disabled={game.currentShow.length >= maxBookingSegments} key={type} onClick={() => beginAddSegment(type)}>
+                      <span>{type}</span>
+                      <small>{getSegmentDescription(type)}</small>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+          </section>
+
+          <aside className="dashboard-dynasty-column booking-command-rail booking-command-right-rail" aria-label="Setup readiness context">
+            <section className="dashboard-dynasty-panel booking-command-panel booking-readiness-panel">
+              <div className="dashboard-dynasty-section-heading booking-command-section-heading">
+                <span>Card Readiness</span>
+                <b>{readiness.status}</b>
+              </div>
+              <p className="booking-command-muted">{readiness.note}</p>
+              <div className="booking-readiness-list">
+                <div>
+                  <span>Ready Time</span>
+                  <strong>{validRuntimeMinutes} min</strong>
+                </div>
+                <div>
+                  <span>Segments</span>
+                  <strong>{validSegments}/{game.currentShow.length || 0}</strong>
+                </div>
+              </div>
+            </section>
+            <section className="dashboard-dynasty-panel booking-command-panel">
+              <div className="dashboard-dynasty-section-heading booking-command-section-heading">
+                <span>Context</span>
+                <b>{selectedSegment ? "Active" : "Open"}</b>
+              </div>
+              <p className="booking-command-muted">{selectedSegment ? lowerThirdDetail : rosterDeskRead}</p>
+            </section>
+          </aside>
         </section>
       )}
-    </main>
+    </DynastyManagementShell>
   );
 }
 
@@ -8276,6 +8398,7 @@ function SegmentComposer({
                   onChange={() => onToggleParticipant(segment.id, wrestler.id)}
                   type="checkbox"
                 />
+                <WrestlerPortrait className="participant-pick-portrait" wrestler={wrestler} />
                 <span>
                   <strong>{wrestler.name}</strong>
                   <small>
@@ -8368,12 +8491,22 @@ function RosterScreen({
     }),
     {} as Record<RosterFilter, number>,
   );
+  const rosterCta: DynastyManagementCta = selectedWrestler
+    ? {
+        eyebrow: "Selected Superstar",
+        label: "View Profile",
+        onClick: () => onOpenProfile(selectedWrestler.id),
+        tone: "brand",
+      }
+    : {
+        eyebrow: "Next Action",
+        label: "Book Show",
+        onClick: () => onNavigate("booking"),
+        tone: "brand",
+      };
 
   return (
-    <main className="app-shell gameplay-command-shell roster-command-shell">
-      <Header game={game} />
-      <GameNav currentScreen="roster" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
-
+    <DynastyManagementShell className="roster-command-shell" currentScreen="roster" cta={rosterCta} game={game} latestResult={latestResult} onNavigate={onNavigate}>
       <section className="roster-command-board" aria-label="Locker Room command board">
         <aside className="roster-filter-rail" aria-label="Roster filters">
           <div className="roster-rail-title">
@@ -8554,7 +8687,7 @@ function RosterScreen({
           )}
         </section>
       </section>
-    </main>
+    </DynastyManagementShell>
   );
 }
 
@@ -9070,12 +9203,21 @@ function ChampionshipsScreen({
     setEditContendersOpen(false);
     setAssignChampionOpen(false);
   }
+  const championshipsCta: DynastyManagementCta = selectedTitleRead
+    ? {
+        eyebrow: "Selected Title",
+        label: "Book Title",
+        onClick: () => onBookChampionship(selectedTitleRead.championship.id),
+        tone: "brand",
+      }
+    : {
+        eyebrow: "Title Office",
+        label: "No Title Selected",
+        tone: "neutral",
+      };
 
   return (
-    <main className="app-shell gameplay-command-shell championships-command-shell">
-      <Header game={game} />
-      <GameNav currentScreen="championships" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
-
+    <DynastyManagementShell className="championships-command-shell" currentScreen="championships" cta={championshipsCta} game={game} latestResult={latestResult} onNavigate={onNavigate}>
       <section className="championship-command-board" aria-label="Championship title office">
         <section className="championship-title-wall" aria-label="Championship spotlight wall">
           <div className="championship-wall-head">
@@ -9100,7 +9242,12 @@ function ChampionshipsScreen({
                   <span className="championship-card-copy">
                     <span>{getChampionshipOfficeLine(championship)}</span>
                     <strong>{championship.name}</strong>
-                    <small>{getWrestlerNames(championship.championIds, game.wrestlers) || "Vacant"}</small>
+                    <span className="championship-card-champions">
+                      {scene.champions.slice(0, 2).map((wrestler) => (
+                        <WrestlerPortrait className="championship-mini-portrait" key={wrestler.id} wrestler={wrestler} />
+                      ))}
+                      <small>{getWrestlerNames(championship.championIds, game.wrestlers) || "Vacant"}</small>
+                    </span>
                   </span>
                   <span className="championship-card-stats" aria-label={`${championship.name} quick read`}>
                     <span>
@@ -9146,6 +9293,13 @@ function ChampionshipsScreen({
             <div className="championship-focus-metrics">
               <div className="metric championship-champion-metric">
                 <span>Champion</span>
+                {selectedTitleRead.scene.champions.length ? (
+                  <span className="championship-champion-portraits">
+                    {selectedTitleRead.scene.champions.slice(0, 2).map((wrestler) => (
+                      <WrestlerPortrait className="championship-mini-portrait" key={wrestler.id} wrestler={wrestler} />
+                    ))}
+                  </span>
+                ) : null}
                 <strong>{getWrestlerNames(selectedTitleRead.championship.championIds, game.wrestlers) || "Vacant"}</strong>
                 {selectedTitleRead.championship.championIds.length ? (
                   <button className="danger-action" onClick={() => onRevokeChampionship(selectedTitleRead.championship.id)} type="button">
@@ -9180,7 +9334,13 @@ function ChampionshipsScreen({
                           }}
                           type="button"
                         >
-                          <span>{first.name} / {second.name}</span>
+                          <span className="championship-talent-option">
+                            <span className="championship-option-portraits">
+                              <WrestlerPortrait className="championship-mini-portrait" wrestler={first} />
+                              <WrestlerPortrait className="championship-mini-portrait" wrestler={second} />
+                            </span>
+                            <span>{first.name} / {second.name}</span>
+                          </span>
                           <small>
                             Pair assignment
                             {[...getOtherChampionshipHolderLabels(first, game.championships, selectedTitleRead.championship.id), ...getOtherChampionshipHolderLabels(second, game.championships, selectedTitleRead.championship.id)].length
@@ -9202,7 +9362,10 @@ function ChampionshipsScreen({
                         }}
                         type="button"
                       >
-                        <span>{wrestler.name}</span>
+                        <span className="championship-talent-option">
+                          <WrestlerPortrait className="championship-mini-portrait" wrestler={wrestler} />
+                          <span>{wrestler.name}</span>
+                        </span>
                         <small>
                           Momentum {wrestler.momentum} · Popularity {wrestler.popularity}
                           {getOtherChampionshipHolderLabels(wrestler, game.championships, selectedTitleRead.championship.id).length
@@ -9324,6 +9487,7 @@ function ChampionshipsScreen({
                         <div className="championship-edit-contender-list">
                           {selectedContenderRows.map(({ index, wrestler }) => (
                             <article key={wrestler.id}>
+                              <WrestlerPortrait className="championship-mini-portrait" wrestler={wrestler} />
                               <strong>{String(index + 1).padStart(2, "0")} · {wrestler.name}</strong>
                               <div>
                                 <button
@@ -9371,7 +9535,10 @@ function ChampionshipsScreen({
                             }}
                             type="button"
                           >
-                            <span>{wrestler.name}</span>
+                            <span className="championship-talent-option">
+                              <WrestlerPortrait className="championship-mini-portrait" wrestler={wrestler} />
+                              <span>{wrestler.name}</span>
+                            </span>
                             <small>
                               Momentum {wrestler.momentum} · Popularity {wrestler.popularity}
                               {getOtherChampionshipHolderLabels(wrestler, game.championships, selectedTitleRead.championship.id).length
@@ -9390,6 +9557,7 @@ function ChampionshipsScreen({
                       selectedContenderRows.map(({ index, lane, read, wrestler }) => (
                         <article className="championship-contender-row" key={wrestler.id}>
                           <span>{String(index + 1).padStart(2, "0")}</span>
+                          <WrestlerPortrait className="championship-contender-portrait" wrestler={wrestler} />
                           <div>
                             <strong>{wrestler.name}</strong>
                             <small>{lane}{read.labels.length ? ` · ${read.labels.join(" / ")}` : ""}</small>
@@ -9465,7 +9633,7 @@ function ChampionshipsScreen({
           </div>
         ) : null}
       </section>
-    </main>
+    </DynastyManagementShell>
   );
 }
 
@@ -9558,12 +9726,28 @@ function RivalriesScreen({
 
     onCreateRivalry({ participantIds: composerParticipantIds, structure, stakes, storylineId });
   }
+  const rivalriesCta: DynastyManagementCta = selectedRivalry
+    ? {
+        eyebrow: "Selected Story",
+        label: "Book This Story",
+        onClick: () => onBookRivalry(selectedRivalry.id),
+        tone: "brand",
+      }
+    : canCreate
+      ? {
+          eyebrow: "Composer Ready",
+          label: "Start Rivalry",
+          onClick: handleCreateRivalry,
+          tone: "positive",
+        }
+      : {
+          eyebrow: "Rivalry Desk",
+          label: "No Story Selected",
+          tone: "neutral",
+        };
 
   return (
-    <main className="app-shell gameplay-command-shell rivalries-command-shell">
-      <Header game={game} />
-      <GameNav currentScreen="rivalries" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
-
+    <DynastyManagementShell className="rivalries-command-shell" currentScreen="rivalries" cta={rivalriesCta} game={game} latestResult={latestResult} onNavigate={onNavigate}>
       <section className="rivalry-command-desk" aria-label="Rivalry command desk">
         <aside className="rivalry-active-rail" aria-label="Active rivalries">
           <div className="section-heading">
@@ -9627,11 +9811,29 @@ function RivalriesScreen({
                   <>
                     <div className="rivalry-side-card">
                       <span>Team A</span>
+                      <span className="rivalry-side-portraits">
+                        {selectedRivalry.participantIds
+                          .slice(0, 2)
+                          .map((id) => game.wrestlers.find((wrestler) => wrestler.id === id))
+                          .filter((wrestler): wrestler is Wrestler => Boolean(wrestler))
+                          .map((wrestler) => (
+                            <WrestlerPortrait className="rivalry-side-portrait" key={wrestler.id} wrestler={wrestler} />
+                          ))}
+                      </span>
                       <strong>{getWrestlerNames(selectedRivalry.participantIds.slice(0, 2), game.wrestlers)}</strong>
                     </div>
                     <div className="rivalry-versus">VS</div>
                     <div className="rivalry-side-card">
                       <span>Team B</span>
+                      <span className="rivalry-side-portraits">
+                        {selectedRivalry.participantIds
+                          .slice(2, 4)
+                          .map((id) => game.wrestlers.find((wrestler) => wrestler.id === id))
+                          .filter((wrestler): wrestler is Wrestler => Boolean(wrestler))
+                          .map((wrestler) => (
+                            <WrestlerPortrait className="rivalry-side-portrait" key={wrestler.id} wrestler={wrestler} />
+                          ))}
+                      </span>
                       <strong>{getWrestlerNames(selectedRivalry.participantIds.slice(2, 4), game.wrestlers)}</strong>
                     </div>
                   </>
@@ -9640,6 +9842,7 @@ function RivalriesScreen({
                     {getRivalryParticipants(selectedRivalry, game.wrestlers).slice(0, 4).map((wrestler, index) => (
                       <div className="rivalry-side-card" key={wrestler.id}>
                         <span>{getRivalryStructure(selectedRivalry) === "multi_person" ? `Position ${index + 1}` : index === 0 ? "Side A" : "Side B"}</span>
+                        <WrestlerPortrait className="rivalry-side-portrait" wrestler={wrestler} />
                         <strong>{wrestler.name}</strong>
                         <small>Momentum {wrestler.momentum} · Morale {wrestler.morale}</small>
                       </div>
@@ -9801,7 +10004,7 @@ function RivalriesScreen({
           ) : null}
         </article>
       </section>
-    </main>
+    </DynastyManagementShell>
   );
 }
 
@@ -9829,11 +10032,16 @@ function CalendarScreen({
         (result.seasonNumber === game.seasonNumber && result.week === week.weekNumber && result.showName === week.showName),
     );
   }
+  const calendarCta: DynastyManagementCta = {
+    eyebrow: "Current Week",
+    label: "Book Show",
+    onClick: () => onNavigate("booking"),
+    tone: "brand",
+  };
 
   return (
-    <main className="app-shell gameplay-command-shell">
-      <Header game={game} />
-      <GameNav currentScreen="calendar" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
+    <DynastyManagementShell currentScreen="calendar" cta={calendarCta} game={game} latestResult={latestResult} onNavigate={onNavigate}>
+      <section className="dynasty-management-scroll">
       <section className="dashboard-hero">
         <div>
           <p className="eyebrow">Season {game.seasonNumber} Calendar</p>
@@ -9894,7 +10102,8 @@ function CalendarScreen({
           );
         })}
       </section>
-    </main>
+      </section>
+    </DynastyManagementShell>
   );
 }
 
@@ -9916,11 +10125,16 @@ function SocialScreen({
   const moodSummary = getIwcMoodSummary(game);
   const ratingsBattle = getRatingsBattleSnapshot(game, latestResult);
   const cpuResultsFeed = getCpuResultsFeedSnapshot(game, latestResult);
+  const socialCta: DynastyManagementCta = {
+    eyebrow: "Next Action",
+    label: "Book Show",
+    onClick: () => onNavigate("booking"),
+    tone: "brand",
+  };
 
   return (
-    <main className="app-shell gameplay-command-shell">
-      <Header game={game} />
-      <GameNav currentScreen="social" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
+    <DynastyManagementShell currentScreen="social" cta={socialCta} game={game} latestResult={latestResult} onNavigate={onNavigate}>
+      <section className="dynasty-management-scroll">
       <section className="dashboard-hero">
         <div>
           <p className="eyebrow">Post-Show Pulse</p>
@@ -9996,7 +10210,8 @@ function SocialScreen({
           </div>
         )}
       </section>
-    </main>
+      </section>
+    </DynastyManagementShell>
   );
 }
 
@@ -10032,12 +10247,23 @@ function FinanceScreen({
       return nextPanels;
     });
   }
+  const financeCta: DynastyManagementCta = hasCurrentWeekReview
+    ? {
+        eyebrow: "Office Waiting",
+        label: "Week Review",
+        onClick: () => onNavigate("weekReview"),
+        tone: "warning",
+      }
+    : {
+        eyebrow: "Next Action",
+        label: "Book Show",
+        onClick: () => onNavigate("booking"),
+        tone: "brand",
+      };
 
   return (
-    <main className="app-shell gameplay-command-shell">
-      <Header game={game} />
-      <GameNav currentScreen="finance" hasResults={Boolean(latestResult)} hasWeekReview={hasCurrentWeekReview} onNavigate={onNavigate} />
-
+    <DynastyManagementShell currentScreen="finance" cta={financeCta} game={game} latestResult={latestResult} onNavigate={onNavigate}>
+      <section className="dynasty-management-scroll">
       <section className="status-grid finance-summary-strip" aria-label="Finance summary">
         <Metric label="Current Money" value={formatMoney(game.money)} />
         <Metric label="Pressure" value={pressureLabel} />
@@ -10182,7 +10408,8 @@ function FinanceScreen({
           </section>
         </FinanceExpandablePanel>
       ) : null}
-    </main>
+      </section>
+    </DynastyManagementShell>
   );
 }
 
@@ -10380,11 +10607,23 @@ function ResultsScreen({
   const ratingsBattle = getRatingsBattleSnapshot(game, result);
   const cpuResultsFeed = getCpuResultsFeedSnapshot(game, result);
   const [isSegmentBreakdownOpen, setIsSegmentBreakdownOpen] = useState(false);
+  const resultsCta: DynastyManagementCta = {
+    disabled: !canContinueWeekReview,
+    eyebrow: canContinueWeekReview ? "Fallout Ready" : "Reviewed",
+    label: canContinueWeekReview ? "Continue to Week Review" : "Week Review Complete",
+    onClick: onContinueWeekReview,
+    tone: canContinueWeekReview ? "warning" : "neutral",
+  };
 
   return (
-    <main className="app-shell gameplay-command-shell results-command-shell">
-      <Header game={game} />
-      <GameNav currentScreen="results" hasResults hasWeekReview={canContinueWeekReview} onNavigate={onNavigate} />
+    <DynastyManagementShell
+      className="gameplay-command-shell results-command-shell"
+      currentScreen="results"
+      cta={resultsCta}
+      game={game}
+      latestResult={result}
+      onNavigate={onNavigate}
+    >
       <section className={`results-recap-package ${isPleResult ? "ple-panel" : ""}`} aria-label="Broadcast recap package">
         <section className="results-hero">
           <div className="results-scoreboard">
@@ -10405,9 +10644,6 @@ function ResultsScreen({
               {recapPackage.verdict}
             </p>
           </div>
-          <button className="primary-action" onClick={onContinueWeekReview} disabled={!canContinueWeekReview}>
-            {canContinueWeekReview ? "Continue to Week Review" : "Week Review Complete"}
-          </button>
         </section>
 
         <section className="results-headline-grid" aria-label="Headline fallout">
@@ -10448,88 +10684,90 @@ function ResultsScreen({
         </section>
       </section>
 
-      <PostShowCauseLedger sections={causeLedger} collapsible />
+      <section className="results-support-scroll" aria-label="Resolved support panels">
+        <PostShowCauseLedger sections={causeLedger} collapsible />
 
-      <BroadcastFalloutPanel snapshot={broadcastFallout} />
+        <BroadcastFalloutPanel snapshot={broadcastFallout} />
 
-      <RivalIntelligencePanel game={game} />
-      {ratingsBattle ? <RatingsBattlePanel snapshot={ratingsBattle} /> : null}
-      {cpuResultsFeed ? <CpuResultsFeedPanel snapshot={cpuResultsFeed} /> : null}
+        <RivalIntelligencePanel game={game} />
+        {ratingsBattle ? <RatingsBattlePanel snapshot={ratingsBattle} /> : null}
+        {cpuResultsFeed ? <CpuResultsFeedPanel snapshot={cpuResultsFeed} /> : null}
 
-      {result.broadcastOverrunNotes?.length ? (
-        <section className="broadcast-overrun-fallout" aria-label="Broadcast overrun fallout">
-          <div className="section-heading">
-            <p className="eyebrow">Broadcast Timing</p>
-            <h3>{result.broadcastOverrunLevel === "major" ? "Major Overrun" : result.broadcastOverrunLevel === "moderate" ? "Overrun Pressure" : "Minor Overrun"}</h3>
-          </div>
-          {result.broadcastOverrunNotes.map((note, index) => (
-            <p key={`${note}-${index}`}>{note}</p>
-          ))}
-        </section>
-      ) : null}
-
-      {result.lockerRoomFallout?.injuryNotes?.length ? (
-        <section className="locker-room-fallout" aria-label="Injury fallout">
-          <div className="section-heading">
-            <p className="eyebrow">Injury Fallout</p>
-            <h3>Medical Update</h3>
-          </div>
-          <div className="fallout-grid">
-            {result.lockerRoomFallout.injuryNotes.map((item) => (
-              <div key={`${item.wrestlerId}-${item.status}`}>
-                <span>{getInjuryStatusLabel(item.status)}</span>
-                <p>{item.note}</p>
-              </div>
+        {result.broadcastOverrunNotes?.length ? (
+          <section className="broadcast-overrun-fallout" aria-label="Broadcast overrun fallout">
+            <div className="section-heading">
+              <p className="eyebrow">Broadcast Timing</p>
+              <h3>{result.broadcastOverrunLevel === "major" ? "Major Overrun" : result.broadcastOverrunLevel === "moderate" ? "Overrun Pressure" : "Minor Overrun"}</h3>
+            </div>
+            {result.broadcastOverrunNotes.map((note, index) => (
+              <p key={`${note}-${index}`}>{note}</p>
             ))}
-          </div>
-        </section>
-      ) : null}
-
-      <section className={`results-list ${isSegmentBreakdownOpen ? "is-expanded" : "is-collapsed"}`} aria-label="Segment results">
-        <button
-          className="results-breakdown-toggle"
-          aria-expanded={isSegmentBreakdownOpen}
-          aria-controls="results-segment-breakdown"
-          onClick={() => setIsSegmentBreakdownOpen((open) => !open)}
-          type="button"
-        >
-          <div>
-            <span>Broadcast Breakdown</span>
-            <strong>Segment By Segment</strong>
-          </div>
-          <em>{result.segmentResults.length} resolved segment{result.segmentResults.length === 1 ? "" : "s"}</em>
-          <b>{isSegmentBreakdownOpen ? "Collapse" : "Expand"}</b>
-        </button>
-        {isSegmentBreakdownOpen ? (
-          <div className="results-breakdown-body" id="results-segment-breakdown">
-            {result.segmentResults.map((segment, index) => (
-              <article className="result-row" key={segment.segmentId}>
-                <div>
-                  <p className="eyebrow">
-                    Segment {index + 1} · {segment.type}
-                  </p>
-                  <h3>{getSegmentResultParticipantsLabel(segment, game.wrestlers)}</h3>
-                  <p>
-                    Momentum +{getResultChange(segment.momentumChanges)} · Fatigue +{getResultChange(segment.fatigueChanges)}
-                  </p>
-                  <p>
-                    {segment.actualDurationMinutes !== undefined
-                      ? `Runtime ${segment.plannedDurationMinutes ?? 0} planned / ${segment.actualDurationMinutes} actual · ${formatRuntimeVariance(segment.durationVarianceMinutes)}`
-                      : "Runtime not recorded for this legacy segment"}
-                    {segment.overrunAffected ? " · closing block compressed" : ""}
-                  </p>
-                  {segment.recapNote ? <p>{segment.recapNote}</p> : null}
-                  {getResolvedSegmentStipulationLabel(segment) ? <p className="title-note">Match stipulation: {getResolvedSegmentStipulationLabel(segment)}</p> : null}
-                  {segment.titleNote ? <p className="title-note">{segment.titleNote}</p> : null}
-                  {segment.rivalryNote ? <p className="rivalry-note">{segment.rivalryNote}</p> : null}
-                </div>
-                <strong>{segment.score}</strong>
-              </article>
-            ))}
-          </div>
+          </section>
         ) : null}
+
+        {result.lockerRoomFallout?.injuryNotes?.length ? (
+          <section className="locker-room-fallout" aria-label="Injury fallout">
+            <div className="section-heading">
+              <p className="eyebrow">Injury Fallout</p>
+              <h3>Medical Update</h3>
+            </div>
+            <div className="fallout-grid">
+              {result.lockerRoomFallout.injuryNotes.map((item) => (
+                <div key={`${item.wrestlerId}-${item.status}`}>
+                  <span>{getInjuryStatusLabel(item.status)}</span>
+                  <p>{item.note}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <section className={`results-list ${isSegmentBreakdownOpen ? "is-expanded" : "is-collapsed"}`} aria-label="Segment results">
+          <button
+            className="results-breakdown-toggle"
+            aria-expanded={isSegmentBreakdownOpen}
+            aria-controls="results-segment-breakdown"
+            onClick={() => setIsSegmentBreakdownOpen((open) => !open)}
+            type="button"
+          >
+            <div>
+              <span>Broadcast Breakdown</span>
+              <strong>Segment By Segment</strong>
+            </div>
+            <em>{result.segmentResults.length} resolved segment{result.segmentResults.length === 1 ? "" : "s"}</em>
+            <b>{isSegmentBreakdownOpen ? "Collapse" : "Expand"}</b>
+          </button>
+          {isSegmentBreakdownOpen ? (
+            <div className="results-breakdown-body" id="results-segment-breakdown">
+              {result.segmentResults.map((segment, index) => (
+                <article className="result-row" key={segment.segmentId}>
+                  <div>
+                    <p className="eyebrow">
+                      Segment {index + 1} · {segment.type}
+                    </p>
+                    <h3>{getSegmentResultParticipantsLabel(segment, game.wrestlers)}</h3>
+                    <p>
+                      Momentum +{getResultChange(segment.momentumChanges)} · Fatigue +{getResultChange(segment.fatigueChanges)}
+                    </p>
+                    <p>
+                      {segment.actualDurationMinutes !== undefined
+                        ? `Runtime ${segment.plannedDurationMinutes ?? 0} planned / ${segment.actualDurationMinutes} actual · ${formatRuntimeVariance(segment.durationVarianceMinutes)}`
+                        : "Runtime not recorded for this legacy segment"}
+                      {segment.overrunAffected ? " · closing block compressed" : ""}
+                    </p>
+                    {segment.recapNote ? <p>{segment.recapNote}</p> : null}
+                    {getResolvedSegmentStipulationLabel(segment) ? <p className="title-note">Match stipulation: {getResolvedSegmentStipulationLabel(segment)}</p> : null}
+                    {segment.titleNote ? <p className="title-note">{segment.titleNote}</p> : null}
+                    {segment.rivalryNote ? <p className="rivalry-note">{segment.rivalryNote}</p> : null}
+                  </div>
+                  <strong>{segment.score}</strong>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </section>
       </section>
-    </main>
+    </DynastyManagementShell>
   );
 }
 
@@ -10566,11 +10804,22 @@ function WeekReviewScreen({
   const ratingsBattle = getRatingsBattleSnapshot(game, result);
   const cpuResultsFeed = getCpuResultsFeedSnapshot(game, result);
   const isPleResult = result.showType === "ple";
+  const weekReviewCta: DynastyManagementCta = {
+    eyebrow: "Calendar Action",
+    label: result.week >= 12 ? "Season Review" : "Advance Week",
+    onClick: onAdvanceWeek,
+    tone: result.week >= 12 ? "brand" : "positive",
+  };
 
   return (
-    <main className="app-shell gameplay-command-shell week-review-command-shell">
-      <Header game={game} />
-      <GameNav currentScreen="weekReview" hasResults hasWeekReview={true} onNavigate={onNavigate} />
+    <DynastyManagementShell
+      className="gameplay-command-shell week-review-command-shell"
+      currentScreen="weekReview"
+      cta={weekReviewCta}
+      game={game}
+      latestResult={result}
+      onNavigate={onNavigate}
+    >
       <section className="week-review-command-board" aria-label="Week review command board">
         <section className="week-review-aftermath-hero" aria-label={isPleResult ? "PLE week aftermath" : "Week aftermath"}>
           <div className="week-review-scoreboard">
@@ -10605,9 +10854,6 @@ function WeekReviewScreen({
               detail={result.plannedRuntimeMinutes !== undefined ? `Planned ${result.plannedRuntimeMinutes} min` : "No runtime record"}
             />
           </div>
-          <button className="primary-action" onClick={onAdvanceWeek}>
-            {result.week >= 12 ? "Season Review" : "Advance Week"}
-          </button>
         </section>
 
         <section className="week-review-main-board" aria-label="GM after-action handoff">
@@ -10800,7 +11046,7 @@ function WeekReviewScreen({
           ) : null}
         </section>
       </section>
-    </main>
+    </DynastyManagementShell>
   );
 }
 

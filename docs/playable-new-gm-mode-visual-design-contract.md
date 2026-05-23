@@ -93,7 +93,7 @@ Avoid full-page scrolling for:
 - Finance.
 - Any screen where the main decision should remain visible while details change.
 
-If a small screen or mobile/narrow viewport requires scrolling, critical actions and selected context must remain easy to find and must not be clipped, hidden, or pushed below unrelated content.
+If a constrained laptop viewport requires scrolling, critical actions and selected context must remain easy to find and must not be clipped, hidden, or pushed below unrelated content.
 
 ## Interaction Contract
 
@@ -281,7 +281,6 @@ For UI work using this contract, verify the touched screen against:
 When practical, check at least:
 
 - Desktop/laptop width.
-- Narrow/mobile width.
 - A dense state.
 - An empty or early-career state.
 - A blocked or warning state.

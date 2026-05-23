@@ -479,10 +479,12 @@
   padding: 10px 12px;
 }
 
+.superstar-portrait,
 .roster-selected-portrait,
 .wrestler-card-portrait,
 .draft-spotlight-portrait,
 .profile-hero-portrait {
+  aspect-ratio: 1 / 1;
   align-items: center;
   background:
     linear-gradient(145deg, rgba(var(--bc-brand-primary-rgb), 0.24), transparent 58%),
@@ -491,6 +493,7 @@
   border: 1px solid rgba(var(--bc-brand-primary-rgb), 0.46);
   color: var(--bc-text-primary);
   display: inline-flex;
+  flex: 0 0 auto;
   font-family: var(--font-display);
   font-weight: 900;
   justify-content: center;
@@ -523,7 +526,6 @@
 }
 
 .roster-selected-portrait {
-  aspect-ratio: 1;
   font-size: 1.35rem;
   width: 68px;
 }
@@ -730,7 +732,6 @@
 }
 
 .wrestler-card-portrait {
-  aspect-ratio: 1;
   font-size: 1.1rem;
   width: 58px;
 }
@@ -2564,10 +2565,10 @@ button:disabled {
 }
 
 .draft-spotlight-portrait {
-  align-self: stretch;
-  aspect-ratio: 3 / 4;
+  align-self: center;
+  aspect-ratio: 1 / 1;
   font-size: 1.2rem;
-  min-height: 124px;
+  min-height: 94px;
   width: 94px;
 }
 
@@ -3900,7 +3901,7 @@ h3 {
 .dashboard-stage-metrics span,
 .dashboard-mini-rows span,
 .dashboard-title-plate span,
-.dashboard-table-row span,
+.dashboard-table-index,
 .dashboard-action-bar span {
   color: var(--bc-text-muted);
   font-size: 0.66rem;
@@ -4267,14 +4268,20 @@ h3 {
 
 .dashboard-table-row {
   align-items: center;
-  grid-template-columns: 24px minmax(0, 1fr) minmax(84px, 0.5fr);
+  grid-template-columns: 24px 36px minmax(0, 1fr);
   padding-block: 5px;
 }
 
-.dashboard-table-row span {
+.dashboard-table-index {
   color: var(--bc-prestige);
   font-family: var(--bc-font-display);
   font-size: 1rem;
+}
+
+.dashboard-table-portrait {
+  border-color: rgba(var(--bc-brand-primary-rgb), 0.4);
+  font-size: 0.7rem;
+  width: 36px;
 }
 
 .dashboard-command-room h2,
@@ -4714,10 +4721,10 @@ h3 {
 }
 
 .profile-hero-portrait {
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 1 / 1;
   flex: 0 0 118px;
   font-size: 1.34rem;
-  min-height: 152px;
+  min-height: 118px;
   width: 118px;
 }
 
@@ -5239,6 +5246,10 @@ h3 {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.rivalry-spotlight-head > div:first-child {
+  min-width: 0;
+}
+
 .rivalry-spotlight-head h3 {
   color: #f6c156;
   font-family: var(--font-display);
@@ -5247,8 +5258,10 @@ h3 {
   letter-spacing: 0;
   line-height: 0.95;
   margin: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .rivalry-spotlight-head p {
@@ -5322,7 +5335,7 @@ h3 {
   padding: 8px 10px;
 }
 
-.rivalry-side-card span,
+.rivalry-side-card > span:not(.rivalry-side-portraits),
 .rivalry-spotlight-metrics span,
 .rivalry-composer-panel label,
 .rivalry-mode-toggle button {
@@ -5330,6 +5343,13 @@ h3 {
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.rivalry-side-portrait {
+  border-color: rgba(216, 35, 50, 0.48);
+  color: #f4f7fb;
+  font-size: 0.72rem;
+  width: 46px;
 }
 
 .rivalry-versus {
@@ -5739,6 +5759,20 @@ h3 {
   min-width: 0;
 }
 
+.championship-card-champions,
+.championship-champion-portraits,
+.championship-option-portraits,
+.rivalry-side-portraits {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+}
+
+.championship-card-champions {
+  gap: 6px;
+}
+
 .championship-card-copy > span,
 .championship-card-stats b,
 .championship-card-read small,
@@ -5766,7 +5800,22 @@ h3 {
   font-size: 0.82rem;
   font-weight: 800;
   line-height: 1.25;
-  overflow-wrap: anywhere;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.championship-mini-portrait,
+.championship-contender-portrait {
+  border-color: rgba(246, 193, 86, 0.42);
+  color: #f4f7fb;
+  font-size: 0.64rem;
+  width: 32px;
+}
+
+.championship-contender-portrait {
+  width: 42px;
 }
 
 .championship-card-stats {
@@ -5942,8 +5991,21 @@ h3 {
   text-align: left;
 }
 
-.championship-assign-options button span,
+.championship-assign-options button > span,
 .championship-assign-options button small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.championship-talent-option {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.championship-talent-option > span:last-child {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -6118,7 +6180,7 @@ h3 {
 
 .championship-division-switcher span,
 .championship-contender-head span,
-.championship-contender-row > span,
+.championship-contender-row > span:not(.wrestler-portrait),
 .championship-contender-row small {
   color: #f6c156;
   font-size: 0.74rem;
@@ -6200,9 +6262,9 @@ h3 {
   align-items: center;
   background: rgba(14, 17, 24, 0.74);
   border-left: 3px solid rgba(246, 193, 86, 0.7);
-  display: flex;
+  display: grid;
   gap: 10px;
-  justify-content: space-between;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
   min-width: 0;
   padding: 8px 10px;
 }
@@ -6245,14 +6307,14 @@ h3 {
   text-align: left;
 }
 
-.championship-add-contender-panel button span,
+.championship-add-contender-panel button > span,
 .championship-add-contender-panel button small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.championship-add-contender-panel button span {
+.championship-add-contender-panel button > span {
   color: #f4f7fb;
   font-weight: 900;
 }
@@ -6271,12 +6333,12 @@ h3 {
   border-left: 3px solid rgba(246, 193, 86, 0.7);
   display: grid;
   gap: 10px;
-  grid-template-columns: 36px minmax(150px, 0.45fr) minmax(0, 1fr);
+  grid-template-columns: 36px 42px minmax(150px, 0.45fr) minmax(0, 1fr);
   min-width: 0;
   padding: 10px;
 }
 
-.championship-contender-row > span {
+.championship-contender-row > span:not(.wrestler-portrait) {
   align-items: center;
   background: rgba(246, 193, 86, 0.1);
   border: 1px solid rgba(246, 193, 86, 0.22);
@@ -8881,7 +8943,7 @@ h3 {
   flex: 0 0 auto;
 }
 
-.participant-pick span {
+.participant-pick label > span {
   display: grid;
   gap: 4px;
   min-width: 0;
@@ -8889,6 +8951,12 @@ h3 {
 
 .participant-pick small {
   color: #9ea8ba;
+}
+
+.participant-pick-portrait {
+  border-color: rgba(246, 193, 86, 0.36);
+  font-size: 0.72rem;
+  width: 40px;
 }
 
 .inline-action {
@@ -8924,16 +8992,35 @@ h3 {
   text-transform: uppercase;
 }
 
+.results-command-shell .results-recap-package,
+.results-command-shell .results-support-scroll,
+.week-review-command-shell .week-review-command-board {
+  position: relative;
+  z-index: 1;
+}
+
 .results-command-shell .results-recap-package {
+  flex: 0 0 auto;
   gap: 9px;
   margin-bottom: 10px;
+  margin-top: 0;
   padding: 12px;
 }
 
 .results-command-shell .results-recap-package .results-hero {
   gap: 12px;
-  grid-template-columns: minmax(150px, 0.3fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(150px, 0.3fr) minmax(0, 1fr);
   padding-bottom: 9px;
+}
+
+.results-command-shell .results-support-scroll {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 8px;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .results-command-shell .results-scoreboard {
@@ -9383,8 +9470,6 @@ h3 {
 }
 
 .week-review-command-shell {
-  display: flex;
-  flex-direction: column;
   height: 100dvh;
   max-width: 1660px;
   overflow: hidden;
@@ -9430,7 +9515,7 @@ h3 {
   display: grid;
   gap: 12px;
   grid-column: 1 / -1;
-  grid-template-columns: minmax(160px, 0.26fr) minmax(0, 1fr) minmax(220px, 0.36fr) auto;
+  grid-template-columns: minmax(160px, 0.26fr) minmax(0, 1fr) minmax(220px, 0.36fr);
   min-height: 0;
   padding: 12px;
 }
@@ -9451,6 +9536,13 @@ h3 {
   display: grid;
   gap: 10px;
   grid-template-columns: auto minmax(0, 1fr);
+}
+
+.week-review-scoreboard .eyebrow {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .week-review-score-line h2 {
@@ -9680,16 +9772,29 @@ h3 {
 @media (max-width: 1100px), (max-height: 760px) {
   .week-review-command-board {
     grid-template-columns: minmax(0, 1fr) minmax(260px, 0.34fr);
-    grid-template-rows: minmax(96px, 0.2fr) minmax(0, 1fr) minmax(148px, 0.3fr);
+    grid-template-rows: minmax(116px, 0.24fr) minmax(0, 1fr) minmax(138px, 0.27fr);
   }
 
   .week-review-aftermath-hero {
-    grid-template-columns: minmax(136px, 0.24fr) minmax(0, 1fr) minmax(180px, 0.3fr) auto;
+    grid-template-columns: minmax(136px, 0.24fr) minmax(0, 1fr) minmax(180px, 0.3fr);
     padding: 10px;
   }
 
   .week-review-score-line h2 {
-    font-size: clamp(2.4rem, 4vw, 4rem);
+    font-size: clamp(1.9rem, 3.2vw, 3.3rem);
+  }
+
+  .week-review-score-line strong {
+    font-size: clamp(1.1rem, 2vw, 1.9rem);
+  }
+
+  .week-review-aftermath-copy h3 {
+    font-size: clamp(1.16rem, 1.9vw, 1.68rem);
+  }
+
+  .week-review-scoreboard > p:last-child,
+  .week-review-hero-metrics .metric small {
+    display: none;
   }
 
   .week-review-aftermath-copy p:not(.eyebrow) {
@@ -11122,7 +11227,7 @@ h3 {
 
 .wrestler-card-portrait {
   font-size: 0.8rem;
-  height: 28px;
+  height: 48px;
   width: 48px;
 }
 
@@ -11534,7 +11639,7 @@ h3 {
 }
 
 .draft-spotlight-portrait {
-  min-height: 82px;
+  min-height: 70px;
   width: 70px;
 }
 
@@ -11609,7 +11714,7 @@ h3 {
   }
 
   .draft-spotlight-portrait {
-    min-height: 70px;
+    min-height: 58px;
     width: 58px;
   }
 
@@ -11925,10 +12030,17 @@ h3 {
 }
 
 .draft-focus-portrait {
-  align-self: stretch;
+  align-self: center;
   font-size: 2rem;
   min-height: 0;
   width: 100%;
+}
+
+.draft-mini-portrait {
+  border-color: rgba(255, 83, 97, 0.42);
+  color: #f4f7fb;
+  font-size: 0.66rem;
+  width: 34px;
 }
 
 .draft-focus-copy {
@@ -12020,13 +12132,34 @@ h3 {
 }
 
 .draft-rival-list article,
-.draft-recent-panel span,
-.draft-update-panel span {
+.draft-recent-panel > span,
+.draft-update-panel > span {
   background: rgba(14, 17, 24, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.1);
   display: grid;
   gap: 3px;
   padding: 8px;
+}
+
+.draft-recent-panel > span {
+  align-items: center;
+  grid-template-columns: 34px minmax(0, 1fr);
+}
+
+.draft-recent-panel > span > span,
+.draft-scouting-talent > div,
+.drafted-mini section > span > span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.draft-scouting-talent {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 34px minmax(0, 1fr);
+  min-width: 0;
 }
 
 .draft-rival-list strong,
@@ -12127,10 +12260,16 @@ h3 {
 }
 
 .draft-bottom-panel.up-next span,
-.drafted-mini section span {
+.drafted-mini section > span {
   background: rgba(14, 17, 24, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 5px 6px;
+}
+
+.drafted-mini section > span {
+  align-items: center;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
 }
 
 .drafted-mini > div {

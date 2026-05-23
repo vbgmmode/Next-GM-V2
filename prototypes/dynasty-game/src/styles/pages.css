@@ -1,0 +1,404 @@
+.dynasty-game-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dynasty-game-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.dynasty-page-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dynasty-page-grid {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dynasty-playthrough-bar {
+  flex-wrap: wrap;
+}
+
+.dynasty-playthrough-next {
+  background: linear-gradient(180deg, rgba(var(--dynasty-accent-rgb), 0.5), rgba(var(--dynasty-accent-rgb), 0.15));
+  border: 1px solid rgba(var(--dynasty-accent-rgb), 0.55);
+  border-radius: 2px;
+  color: white;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  padding: 6px 12px;
+  text-transform: uppercase;
+}
+
+.dynasty-playthrough-next:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.dynasty-free-fixture-bar {
+  background: rgba(8, 10, 14, 0.92);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 6px 14px;
+}
+
+.dynasty-free-fixture-bar label {
+  align-items: center;
+  color: var(--text-soft);
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 800;
+  gap: 8px;
+  text-transform: uppercase;
+}
+
+.dynasty-free-fixture-bar select {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-main);
+  font: inherit;
+  padding: 4px 8px;
+}
+
+/* Title + setup full-bleed screens */
+.dynasty-title-screen,
+.dynasty-setup-screen {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 14px;
+}
+
+.dynasty-title-grid,
+.dynasty-setup-grid {
+  display: grid;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+}
+
+.dynasty-title-grid {
+  grid-template-columns: 1.4fr 0.9fr;
+}
+
+.dynasty-title-copy h1 {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.dynasty-title-copy p,
+.dynasty-copy {
+  color: var(--text-soft);
+  font-size: 0.88rem;
+  line-height: 1.35;
+  margin: 0 0 10px;
+}
+
+.dynasty-title-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.dynasty-title-strip span,
+.dynasty-title-actions {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.dynasty-save-list,
+.dynasty-scroll-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
+.dynasty-save-row,
+.dynasty-draft-row,
+.dynasty-ledger-row,
+.dynasty-social-row,
+.dynasty-roster-pick,
+.dynasty-calendar-week {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.dynasty-save-row {
+  grid-template-columns: 1fr;
+}
+
+.dynasty-save-row strong,
+.dynasty-draft-row strong,
+.dynasty-roster-pick strong,
+.dynasty-social-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dynasty-setup-grid {
+  grid-template-columns: 180px minmax(0, 1fr) 280px;
+}
+
+.dynasty-setup-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dynasty-setup-step {
+  align-items: center;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-soft);
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 8px;
+  grid-template-columns: 28px 1fr;
+  padding: 8px;
+  text-align: left;
+}
+
+.dynasty-setup-step.is-active {
+  background: rgba(var(--dynasty-accent-rgb), 0.18);
+  border-color: rgba(var(--dynasty-accent-rgb), 0.45);
+  color: white;
+}
+
+.dynasty-field {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.72rem;
+  font-weight: 800;
+  gap: 6px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.dynasty-field input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-main);
+  font: inherit;
+  padding: 8px 10px;
+}
+
+.dynasty-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.dynasty-focus-name {
+  display: block;
+  font-size: 1.1rem;
+  margin-top: 8px;
+}
+
+.dynasty-draft-board {
+  max-height: 280px;
+}
+
+.dynasty-draft-row {
+  grid-template-columns: 24px auto 1fr auto;
+}
+
+/* Page-specific grids */
+.dynasty-booking-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1.2fr 0.9fr;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 0.85fr);
+}
+
+.dynasty-results-grid,
+.dynasty-week-review-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.dynasty-results-hero {
+  grid-column: 1 / -1;
+}
+
+.dynasty-score-line {
+  align-items: baseline;
+  display: flex;
+  gap: 12px;
+}
+
+.dynasty-score-line h2 {
+  color: var(--accent-gold-bright);
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  margin: 0;
+}
+
+.dynasty-eyebrow {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  margin: 0 0 6px;
+  text-transform: uppercase;
+}
+
+.dynasty-roster-grid,
+.dynasty-market-grid,
+.dynasty-profile-grid,
+.dynasty-finance-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.dynasty-profile-grid {
+  grid-template-columns: 0.9fr 1fr 0.8fr;
+}
+
+.dynasty-profile-hero h2 {
+  font-family: var(--font-display);
+  margin: 8px 0 4px;
+  text-transform: uppercase;
+}
+
+.dynasty-championships-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  overflow: auto;
+}
+
+.dynasty-rivalries-grid,
+.dynasty-social-grid,
+.dynasty-season-grid,
+.dynasty-calendar-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  overflow: auto;
+}
+
+.dynasty-calendar-board {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  overflow: auto;
+}
+
+.dynasty-calendar-week.is-current {
+  border-color: rgba(var(--dynasty-accent-rgb), 0.55);
+  box-shadow: inset 0 0 0 1px rgba(var(--dynasty-accent-rgb), 0.25);
+}
+
+.dynasty-calendar-week {
+  grid-template-columns: 1fr;
+}
+
+.dynasty-calendar-week span,
+.dynasty-calendar-week em {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.dynasty-roster-pick {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: inherit;
+  cursor: pointer;
+  grid-template-columns: auto 1fr;
+  text-align: left;
+  width: 100%;
+}
+
+.dynasty-roster-pick em,
+.dynasty-roster-pick span em {
+  color: var(--text-muted);
+  display: block;
+  font-size: 0.68rem;
+  font-style: normal;
+}
+
+.dynasty-roster-select {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.dynasty-metric-grid em {
+  color: var(--delta-green);
+  font-size: 0.72rem;
+  font-style: normal;
+  margin-left: 4px;
+}
+
+.dynasty-segment-ledger,
+.dynasty-office-items {
+  max-height: 220px;
+}
+
+.dynasty-ledger-row {
+  grid-template-columns: 28px 1fr auto;
+}
+
+.dynasty-social-row {
+  grid-template-columns: 1fr;
+}
+
+.dynasty-social-row p {
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  margin: 4px 0 0;
+}
+
+.dynasty-finance-hero h2 {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  margin: 0;
+}
+
+@media (max-width: 1100px) {
+  .dynasty-title-grid,
+  .dynasty-setup-grid,
+  .dynasty-booking-grid,
+  .dynasty-results-grid,
+  .dynasty-week-review-grid,
+  .dynasty-roster-grid,
+  .dynasty-market-grid,
+  .dynasty-profile-grid {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+}

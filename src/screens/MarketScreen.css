@@ -69,6 +69,15 @@
   grid-template-rows: auto minmax(0, 1fr) auto auto;
 }
 
+.dynasty-management-shell .market-action-rail {
+  grid-template-rows: minmax(0, 0.95fr) minmax(0, 1fr);
+}
+
+.dynasty-management-shell .market-action-rail .market-compact-panel {
+  grid-template-rows: auto auto auto auto;
+  overflow: auto;
+}
+
 .market-office-mandate {
   border-left: 4px solid #f6c156;
   display: grid;
@@ -149,16 +158,12 @@
   cursor: pointer;
   display: grid;
   gap: 9px;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
   min-width: 0;
   padding: 8px 9px;
   text-align: left;
   text-transform: none;
   width: 100%;
-}
-
-.market-talent-list .market-row {
-  grid-template-columns: 42px minmax(0, 1fr) auto;
 }
 
 .market-row.is-selected {
@@ -169,14 +174,14 @@
   border-left-color: #f6c156;
 }
 
-.market-row span,
+.market-row > span:not(.market-wrestler-portrait),
 .market-row strong,
 .market-row small,
 .market-row b {
   min-width: 0;
 }
 
-.market-row span {
+.market-row > span:not(.market-wrestler-portrait) {
   display: grid;
   gap: 3px;
 }
@@ -228,8 +233,8 @@
 
 .market-wrestler-portrait img {
   height: 100%;
-  object-fit: cover;
-  object-position: top center;
+  object-fit: contain;
+  object-position: center bottom;
   width: 100%;
 }
 
@@ -248,7 +253,8 @@
 }
 
 .market-focus-portrait {
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 1 / 1;
+  align-self: center;
   font-size: 1.6rem;
   min-height: 0;
   width: 100%;
@@ -378,10 +384,12 @@
   min-height: 36px;
   min-width: 0;
   padding: 8px;
+  width: 100%;
 }
 
 .market-action-note {
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .market-transaction-list article {
@@ -424,6 +432,15 @@
 
   .market-focus-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dynasty-management-shell .market-action-rail .market-row {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .dynasty-management-shell .market-action-rail .market-row b {
+    grid-column: 2;
+    justify-self: start;
   }
 }
 

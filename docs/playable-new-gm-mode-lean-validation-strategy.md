@@ -35,7 +35,7 @@ Required validation:
 - `npm exec tsc -- --noEmit`
 - `npm run build`
 - Render or browser-check touched screens when feasible.
-- Check desktop and mobile/narrow widths for clipping, overflow, hidden actions, unwanted primary-page scroll, and loss of the main decision/action.
+- Check desktop/laptop widths for clipping, overflow, hidden actions, unwanted primary-page scroll, and loss of the main decision/action.
 
 ### Read-Only Context Slice
 
