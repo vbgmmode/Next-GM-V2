@@ -156,9 +156,11 @@ import type {
 } from "./game/types";
 import type { GameScreen, ProfileReturnScreen, SavedGameState } from "./game/migration";
 import type { StoredSaveRecord } from "./gameStorage";
+import { CalendarScreen } from "./screens/CalendarScreen";
 import { MarketScreen } from "./screens/MarketScreen";
 import { RivalriesScreen, type RivalryCreateInput } from "./screens/RivalriesScreen";
 import { scheduleRivalryEndInGame } from "./game/rivalryEnd";
+import "./screens/CalendarScreen.css";
 import "./screens/ChampionshipsScreen.css";
 import "./screens/RivalriesScreen.css";
 import { BookingScreen } from "./booking";
@@ -7818,105 +7820,6 @@ function ChampionshipsScreen({
   );
 }
 
-
-function CalendarScreen({
-  game,
-  latestResult,
-  onNavigate,
-}: {
-  game: GameState;
-  latestResult?: ShowResult;
-  onNavigate: (screen: GameScreen) => void;
-}) {
-  const currentShow = getCurrentCalendarWeek(game);
-  const nextPle = getNextPle(game.calendar, game.currentWeek);
-  const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
-  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
-  const pleBuildPressure = getPleBuildPressureSnapshot(game);
-  const ratingsBattle = getRatingsBattleSnapshot(game, latestResult);
-  const cpuResultsFeed = getCpuResultsFeedSnapshot(game, latestResult);
-
-  function getWeekResult(week: CalendarWeek) {
-    return game.showHistory.find(
-      (result) =>
-        result.id === week.resultId ||
-        (result.seasonNumber === game.seasonNumber && result.week === week.weekNumber && result.showName === week.showName),
-    );
-  }
-  const calendarCta: DynastyManagementCta = {
-    eyebrow: "Current Week",
-    label: "Book Show",
-    onClick: () => onNavigate("booking"),
-    tone: "brand",
-  };
-
-  return (
-    <DynastyManagementShell currentScreen="calendar" cta={calendarCta} game={game} latestResult={latestResult} onNavigate={onNavigate}>
-      <section className="dynasty-management-scroll">
-      <section className="dashboard-hero">
-        <div>
-          <p className="eyebrow">Season {game.seasonNumber} Calendar</p>
-          <h2>Road To PLE</h2>
-          <p className="lede">
-            Week {game.currentWeek} is {currentShow.showName}.{" "}
-            {nextPle
-              ? `${nextPle.showName} is ${weeksUntilPle === 0 ? "tonight" : `${weeksUntilPle} week${weeksUntilPle === 1 ? "" : "s"} away`}.`
-              : "The season calendar is complete."}
-          </p>
-        </div>
-        <button className="primary-action" onClick={() => onNavigate("booking")}>
-          Book Show
-        </button>
-      </section>
-
-      <PleBuildPressurePanel snapshot={pleBuildPressure} />
-
-      {ratingsBattle ? <RatingsBattlePanel compact snapshot={ratingsBattle} /> : null}
-      {cpuResultsFeed ? <CpuResultsFeedPanel compact snapshot={cpuResultsFeed} /> : null}
-
-      <section className="calendar-list" aria-label="Season calendar">
-        {game.calendar.map((week) => {
-          const result = getWeekResult(week);
-          const isCurrent = week.weekNumber === game.currentWeek && !week.completed;
-          const status = week.completed ? "Completed" : isCurrent ? "Current" : "Upcoming";
-
-          return (
-            <article className={`calendar-week ${week.showType} ${isCurrent ? "current" : ""} ${week.completed ? "completed" : ""}`} key={week.weekNumber}>
-              <div>
-                <p className="eyebrow">
-                  Week {week.weekNumber} · {status}
-                </p>
-                <h3>{week.showName}</h3>
-                <div className="show-strip">
-                  <span>{getShowTypeLabel(week.showType)}</span>
-                  {week.isGoHome ? <span>Go-Home</span> : null}
-                  {week.weekNumber === 12 ? <span>Season Finale</span> : null}
-                </div>
-              </div>
-              <div className="calendar-result">
-                {result ? (
-                  <>
-                    <strong>{result.totalScore}</strong>
-                    <span>Grade {getShowGrade(result.totalScore)}</span>
-                    {game.rivalBrands.some((brand) => brand.weeklyResults.some((cpuResult) => cpuResult.seasonNumber === result.seasonNumber && cpuResult.weekNumber === result.week)) ? (
-                      <small>CPU race logged</small>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
-                    <strong>{week.completed ? "No Result" : "On Deck"}</strong>
-                    <span>{week.showType === "ple" ? "Major event" : "Weekly TV"}</span>
-                  </>
-                )}
-              </div>
-            </article>
-          );
-        })}
-      </section>
-      </section>
-    </DynastyManagementShell>
-  );
-}
 
 function FinanceScreen({
   game,
