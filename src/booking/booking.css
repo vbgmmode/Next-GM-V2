@@ -403,22 +403,23 @@
   display: grid;
   flex: 0 0 auto;
   gap: 6px;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  grid-template-columns: 1fr;
   margin-top: 8px;
 }
 
 .booking-rail-actions > .booking-btn {
-  font-size: 1rem;
-  height: 32px;
-  letter-spacing: 0;
-  line-height: 1;
+  font-size: 0.82rem;
+  height: auto;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
   min-height: 32px;
-  padding: 0 8px;
+  padding: 6px 10px;
   white-space: nowrap;
+  width: 100%;
 }
 
 .booking-rail-actions > .booking-rail-clear {
-  grid-column: 1 / -1;
+  grid-column: auto;
 }
 
 .booking-clear-confirm {
@@ -625,10 +626,16 @@
 
 .booking-stage-matchup.is-singles,
 .booking-stage-matchup.is-open-challenge {
-  container-type: inline-size;
-  display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 20px;
+  justify-content: center;
+}
+
+.booking-stage-matchup.is-singles .booking-stage-slot,
+.booking-stage-matchup.is-open-challenge .booking-stage-slot {
+  flex: 0 0 auto;
+  width: auto;
 }
 
 .booking-stage-matchup.is-tag .booking-stage-side {
@@ -652,9 +659,11 @@
 .booking-stage-matchup.is-tag .booking-stage-slot.is-filled .dashboard-dynasty-portrait--lg,
 .booking-stage-matchup.is-tag .booking-stage-slot-empty {
   aspect-ratio: 1;
-  font-size: clamp(0.68rem, 3.6cqw, 0.94rem);
-  height: auto;
-  width: 100%;
+  flex: 0 0 auto;
+  font-size: 0.82rem;
+  height: 108px;
+  max-width: 108px;
+  width: 108px;
 }
 
 .booking-stage-matchup.is-singles .booking-stage-slot.is-filled .dashboard-dynasty-portrait--lg,
@@ -662,10 +671,10 @@
 .booking-stage-matchup.is-singles .booking-stage-slot-empty,
 .booking-stage-matchup.is-open-challenge .booking-stage-slot-empty {
   aspect-ratio: 1;
-  font-size: 0.86rem;
-  height: auto;
-  justify-self: center;
-  width: min(100%, calc((100cqw - 48px) / 2));
+  flex: 0 0 auto;
+  font-size: 0.82rem;
+  height: 108px;
+  width: 108px;
 }
 
 .booking-stage-lineup {
@@ -716,7 +725,7 @@
   min-height: 0;
   min-width: 0;
   padding: 4px;
-  width: auto;
+  width: fit-content;
 }
 
 .booking-stage-slot.is-filled .booking-stage-slot-team {
@@ -1094,44 +1103,53 @@
   gap: 6px;
 }
 
-.booking-type-option {
+.booking-dynasty-shell .booking-type-option {
   align-items: start;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
   display: grid;
   gap: 4px;
-  justify-items: start;
+  justify-content: stretch;
+  justify-items: stretch;
+  max-width: none;
   min-height: 58px;
   padding: 8px 10px;
+  text-align: left;
+  text-transform: none;
+  width: 100%;
+}
+
+.booking-dynasty-shell .booking-type-option:hover:not(:disabled) {
+  border-color: rgba(var(--dynasty-accent-rgb), 0.48);
+}
+
+.booking-dynasty-shell .booking-type-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.booking-dynasty-shell .booking-type-option-label {
+  color: white;
+  display: block;
+  font-size: 0.94rem;
+  font-weight: 1000;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
   text-align: left;
   text-transform: uppercase;
   width: 100%;
 }
 
-.booking-type-option:hover:not(:disabled) {
-  border-color: rgba(var(--dynasty-accent-rgb), 0.48);
-}
-
-.booking-type-option:disabled {
-  cursor: not-allowed;
-  opacity: 0.42;
-}
-
-.booking-type-option-label {
-  color: white;
-  font-size: 0.94rem;
-  font-weight: 1000;
-  letter-spacing: 0.04em;
-  line-height: 1.1;
-}
-
-.booking-type-option-copy {
+.booking-dynasty-shell .booking-type-option-copy {
   color: var(--text-soft);
+  display: block;
   font-size: 0.8rem;
   font-weight: 700;
   line-height: 1.35;
+  text-align: left;
   text-transform: none;
+  width: 100%;
 }
 
 .booking-type-picker-footer {
@@ -1152,7 +1170,7 @@
   font-size: 0.8rem;
   line-height: 1.35;
   margin: 0;
-  text-align: center;
+  text-align: left;
 }
 
 .booking-type-picker-error {

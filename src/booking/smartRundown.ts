@@ -6,6 +6,7 @@ import {
   canWrestlersShareMatch,
   getSegmentDurationMinutes,
   getShowReadiness,
+  maxBookingSegments,
   showRuntimeMinMinutes,
   showRuntimeOvertimeMinutes,
 } from "./bookingUtils";
@@ -299,5 +300,167 @@ export function buildSmartRundown(game: GameState): SmartRundownResult {
   return {
     notes: [...notes],
     segments,
+  };
+}
+
+export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] = game.currentShow): SmartRundownResult {
+  const available = game.wrestlers.filter(isSmartRundownAvailable);
+  const usage: Record<string, number> = {};
+  const usedPairs = new Set<string>();
+
+  currentShow.forEach((segment) => {
+    segment.participantIds.forEach((id) => {
+      usage[id] = (usage[id] ?? 0) + 1;
+    });
+
+    if (segment.participantIds.length === 2) {
+      usedPairs.add(getSmartPairKey(segment.participantIds));
+    }
+  });
+
+  if (currentShow.length >= maxBookingSegments) {
+    return {
+      error: "The rundown is full. Remove a segment before autogenerating another.",
+      notes: [],
+      segments: [],
+    };
+  }
+
+  if (available.length < 2) {
+    return {
+      error: "Production needs at least 2 available wrestlers to draft a segment.",
+      notes: [],
+      segments: [],
+    };
+  }
+
+  const cardHasRivalry = (rivalryId: string) => currentShow.some((segment) => segment.rivalryId === rivalryId);
+  const rivalry = getSmartRivalry(
+    game,
+    available.filter((wrestler) => (usage[wrestler.id] ?? 0) < 2),
+  );
+
+  if (rivalry && !cardHasRivalry(rivalry.id)) {
+    const [firstId, secondId] = rivalry.participantIds;
+    const first = available.find((wrestler) => wrestler.id === firstId);
+    const second = available.find((wrestler) => wrestler.id === secondId);
+
+    if (first && second && (usage[first.id] ?? 0) < 2 && (usage[second.id] ?? 0) < 2) {
+      if (canWrestlersShareMatch([first, second]) && !usedPairs.has(getSmartPairKey([first.id, second.id]))) {
+        const segment = buildSmartSegment(
+          game,
+          rivalry.heat >= 65 ? "M019" : "M001",
+          [first.id, second.id],
+          28,
+          currentShow.length,
+          rivalry.id,
+        );
+
+        if (isValidSegment(segment, game.wrestlers)) {
+          return {
+            notes: [`Featured active rivalry: ${rivalry.name}.`],
+            segments: [segment],
+          };
+        }
+      }
+
+      const promoSegment = buildSmartSegment(game, "P003", [first.id], 14, currentShow.length, rivalry.id);
+
+      if (isValidSegment(promoSegment, game.wrestlers)) {
+        return {
+          notes: [`Featured ${rivalry.name} in a talk segment.`],
+          segments: [promoSegment],
+        };
+      }
+    }
+  }
+
+  if (!currentShow.some((segment) => segment.type === "Match")) {
+    const pair = chooseSmartPair(game, available, usage, usedPairs);
+
+    if (pair.length === 2) {
+      const segment = buildSmartSegment(game, "M001", pair.map((wrestler) => wrestler.id), 28, currentShow.length);
+
+      if (isValidSegment(segment, game.wrestlers)) {
+        return {
+          notes: ["Built a match around popularity, momentum, and manageable fatigue."],
+          segments: [segment],
+        };
+      }
+    }
+  }
+
+  if (!currentShow.some((segment) => segment.type === "Promo")) {
+    const promoTalent = chooseSmartTalent(game, available, usage, "promo");
+
+    if (promoTalent) {
+      const segment = buildSmartSegment(game, "P001", [promoTalent.id], 16, currentShow.length);
+
+      if (isValidSegment(segment, game.wrestlers)) {
+        return {
+          notes: ["Showcased a strong talker with visible popularity or momentum."],
+          segments: [segment],
+        };
+      }
+    }
+  }
+
+  if (!currentShow.some((segment) => segment.type === "Backstage Angle" || segment.type === "Contract Signing" || segment.type === "Open Challenge")) {
+    const storyTalent = chooseSmartTalent(game, available, usage, "story");
+    const rivalryParticipants = rivalry?.participantIds.filter((id) => (usage[id] ?? 0) < 2) ?? [];
+
+    if (rivalry && rivalryParticipants.length === 2) {
+      const segment = buildSmartSegment(game, "A046", rivalryParticipants, 14, currentShow.length, rivalry.id);
+
+      if (isValidSegment(segment, game.wrestlers)) {
+        return {
+          notes: ["Added backstage texture for the active rivalry."],
+          segments: [segment],
+        };
+      }
+    }
+
+    if (storyTalent) {
+      const segment = buildSmartSegment(game, "A001", [storyTalent.id], 14, currentShow.length);
+
+      if (isValidSegment(segment, game.wrestlers)) {
+        return {
+          notes: ["Added backstage texture to break up the card."],
+          segments: [segment],
+        };
+      }
+    }
+  }
+
+  const pair = chooseSmartPair(game, available, usage, usedPairs);
+
+  if (pair.length === 2) {
+    const segment = buildSmartSegment(game, "M001", pair.map((wrestler) => wrestler.id), 24, currentShow.length);
+
+    if (isValidSegment(segment, game.wrestlers)) {
+      return {
+        notes: ["Added another match beat to the rundown."],
+        segments: [segment],
+      };
+    }
+  }
+
+  const talker = chooseSmartTalent(game, available, usage, "promo");
+
+  if (talker) {
+    const segment = buildSmartSegment(game, "P002", [talker.id], 12, currentShow.length);
+
+    if (isValidSegment(segment, game.wrestlers)) {
+      return {
+        notes: ["Used short hype time to add one more TV beat."],
+        segments: [segment],
+      };
+    }
+  }
+
+  return {
+    error: "Production could not safely draft a ready segment from the current roster.",
+    notes: [],
+    segments: [],
   };
 }

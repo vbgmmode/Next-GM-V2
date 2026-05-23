@@ -21,7 +21,7 @@ import {
   isRivalryIntergenderBlocked,
   maxBookingSegments,
 } from "./bookingUtils";
-import { buildSmartRundown } from "./smartRundown";
+import { buildSmartRundown, buildSmartSingleSegment } from "./smartRundown";
 
 export function BookingScreen({
   focusSegmentId,
@@ -151,6 +151,28 @@ export function BookingScreen({
     setTypePickerOpen(false);
   }
 
+  function generateSmartSegment() {
+    const result = buildSmartSingleSegment(game, game.currentShow);
+
+    if (result.error) {
+      setSmartRundownError(result.error);
+      return;
+    }
+
+    const segment = result.segments[0];
+
+    if (!segment) {
+      setSmartRundownError("Production could not safely draft a ready segment from the current roster.");
+      return;
+    }
+
+    onReplaceCurrentShow([...game.currentShow, segment]);
+    setSelectedSegmentId(segment.id);
+    setSmartRundownError("");
+    setPendingClearCard(false);
+    setTypePickerOpen(false);
+  }
+
   function confirmClearCard() {
     onReplaceCurrentShow([]);
     setSelectedSegmentId(undefined);
@@ -232,7 +254,7 @@ export function BookingScreen({
             smartRundownError={smartRundownError}
             onBeginAddSegment={beginAddSegment}
             onClose={() => setTypePickerOpen(false)}
-            onGenerateSmartRundown={generateSmartRundown}
+            onGenerateSmartSegment={generateSmartSegment}
           />
         ) : null}
       </section>

@@ -160,8 +160,8 @@ export function BookingSegmentRail({
         </div>
       ) : (
         <div className="booking-rail-actions">
-          <button className="booking-btn booking-btn-secondary" onClick={onGenerateSmartRundown} type="button">
-            Generate Smart Rundown
+          <button className="booking-btn booking-btn-secondary" onClick={onGenerateSmartRundown} title="Generate Smart Rundown" type="button">
+            Smart Rundown
           </button>
           <button className="booking-btn booking-btn-primary" disabled={!canRunShow} onClick={onRunShow} type="button">
             Run Show

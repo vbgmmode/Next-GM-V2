@@ -1,138 +1,22 @@
+import { useEffect, useMemo, useState } from "react";
 import { DynastyManagementShell, type DynastyManagementCta } from "../components/DynastyManagementShell";
 import { Metric } from "../components/gameShell";
-import {
-  getCpuResultsFeedSnapshot,
-  getRatingsBattleSnapshot,
-  type CpuResultsFeedSnapshot,
-  type RatingsBattleSnapshot,
-} from "../game/cpuRivalLoop";
-import { getPleBuildPressureSnapshot, type PleBuildPressureSnapshot } from "../game/gameContextReads";
 import type { GameScreen } from "../game/migration";
 import { getCurrentCalendarWeek } from "../game/scoring";
-import type { GameState, RivalBrandTrend, ShowResult } from "../game/types";
+import type { GameState, ShowResult } from "../game/types";
 import "./CalendarScreen.css";
 import {
   buildCalendarRecapStrip,
+  buildCalendarWeekSpotlight,
+  getCalendarTileColumnLabel,
+  getCalendarTileShowName,
   getCalendarWeekStatus,
   getCalendarWeekStatusLabel,
-  getShowTypeLabel,
+  getSeasonCalendarBlocks,
   getWeekResult,
   getWeekResultRead,
   hasCpuRaceForWeek,
 } from "./calendarScreenReads";
-
-function formatRivalTrend(trend: RivalBrandTrend) {
-  switch (trend) {
-    case "surging":
-      return "Surging";
-    case "slipping":
-      return "Slipping";
-    case "steady":
-      return "Steady";
-    default:
-      return "Unranked";
-  }
-}
-
-function PleBuildPressurePanel({ snapshot }: { snapshot: PleBuildPressureSnapshot }) {
-  return (
-    <section className="ple-build-panel compact" aria-label="PLE build pressure">
-      <div className="ple-build-head">
-        <div>
-          <p className="eyebrow">PLE Build Pressure</p>
-          <h3>{snapshot.headline}</h3>
-        </div>
-        <strong>{snapshot.phaseLabel}</strong>
-      </div>
-      <p className="ple-build-copy">{snapshot.detail}</p>
-      <div className="ple-build-grid">
-        {snapshot.items.map((item) => (
-          <article className={`ple-build-item item-${item.tone}`} key={item.id}>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-            <p>{item.detail}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function RatingsBattlePanel({ snapshot }: { snapshot: RatingsBattleSnapshot }) {
-  const playerEntry = snapshot.entries.find((entry) => entry.isPlayer);
-  const visibleEntries = snapshot.entries.slice(0, 4);
-
-  return (
-    <section className="ratings-battle-panel compact" aria-label="Ratings battle standings">
-      <div className="ratings-battle-head">
-        <div>
-          <p className="eyebrow">Ratings Battle</p>
-          <h3>{snapshot.headline}</h3>
-        </div>
-        <strong>{snapshot.latestWeekLabel}</strong>
-      </div>
-      <p className="ratings-battle-copy">{snapshot.detail}</p>
-      <div className="ratings-battle-summary">
-        <Metric label="Your Rank" value={`#${snapshot.playerRank}`} detail={playerEntry ? `Average ${playerEntry.seasonAverage}` : "No player average"} />
-        <Metric label="Leader" value={snapshot.leaderName} detail="Season average race" />
-        <Metric label="Vs Nearest CPU" value={`${snapshot.playerDelta >= 0 ? "+" : ""}${snapshot.playerDelta}`} detail="Average score margin" />
-      </div>
-      <div className="ratings-battle-table">
-        {visibleEntries.map((entry) => (
-          <article className={`ratings-battle-row ${entry.isPlayer ? "is-player" : ""} trend-${entry.trend}`} key={entry.id}>
-            <span>#{entry.rank}</span>
-            <div>
-              <strong>{entry.brandName}</strong>
-              <small>{entry.isPlayer ? `GM ${entry.gmName}` : `${entry.gmName} · ${formatRivalTrend(entry.trend)}`}</small>
-            </div>
-            <div>
-              <strong>{entry.latestScore ?? "No Show"}</strong>
-              <small>Avg {entry.seasonAverage || "n/a"}</small>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function CpuResultsFeedPanel({ snapshot }: { snapshot: CpuResultsFeedSnapshot }) {
-  const visibleItems = snapshot.items.slice(0, 3);
-
-  return (
-    <section className="cpu-results-feed compact" aria-label="CPU results feed">
-      <div className="cpu-results-head">
-        <div>
-          <p className="eyebrow">CPU Results Feed</p>
-          <h3>{snapshot.headline}</h3>
-        </div>
-        <strong>{visibleItems.filter((item) => item.score !== undefined).length} Live Desks</strong>
-      </div>
-      <p className="cpu-results-copy">{snapshot.detail}</p>
-      <div className="cpu-results-list">
-        {visibleItems.map((item) => (
-          <article className={`cpu-results-card tone-${item.tone}`} key={item.id}>
-            <div className="cpu-results-card-head">
-              <div>
-                <span>{item.brandName}</span>
-                <strong>{item.headline}</strong>
-              </div>
-              <b>{item.score ?? "Hidden"}</b>
-            </div>
-            <p>{item.detail}</p>
-            {item.notes.length ? (
-              <div className="cpu-results-notes">
-                {item.notes.slice(0, 2).map((note, index) => (
-                  <small key={`${item.id}-note-${index}`}>{note}</small>
-                ))}
-              </div>
-            ) : null}
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 export function CalendarScreen({
   game,
@@ -145,10 +29,18 @@ export function CalendarScreen({
 }) {
   const currentShow = getCurrentCalendarWeek(game);
   const recap = buildCalendarRecapStrip(game, currentShow);
-  const pleBuildPressure = getPleBuildPressureSnapshot(game);
-  const ratingsBattle = getRatingsBattleSnapshot(game, latestResult);
-  const cpuResultsFeed = getCpuResultsFeedSnapshot(game, latestResult);
   const completedCount = game.calendar.filter((week) => week.completed).length;
+  const calendarBlocks = useMemo(() => getSeasonCalendarBlocks(game.calendar), [game.calendar]);
+  const [selectedWeekNumber, setSelectedWeekNumber] = useState(game.currentWeek);
+
+  useEffect(() => {
+    if (!game.calendar.some((week) => week.weekNumber === selectedWeekNumber)) {
+      setSelectedWeekNumber(game.currentWeek);
+    }
+  }, [game.calendar, game.currentWeek, selectedWeekNumber]);
+
+  const selectedWeek = game.calendar.find((week) => week.weekNumber === selectedWeekNumber) ?? currentShow;
+  const spotlight = useMemo(() => buildCalendarWeekSpotlight(game, selectedWeek), [game, selectedWeek]);
 
   const calendarCta: DynastyManagementCta = {
     eyebrow: "Current Week",
@@ -167,65 +59,151 @@ export function CalendarScreen({
         </section>
 
         <section className="calendar-command-board" aria-label="Season calendar desk">
-          <article className="calendar-timeline-panel calendar-panel" aria-label="Season timeline">
+          <article className="calendar-timeline-panel calendar-panel" aria-label="Season calendar">
             <div className="calendar-panel-head">
               <div>
-                <p className="eyebrow">Season Timeline</p>
+                <p className="eyebrow">Season Calendar</p>
                 <h2>12-Week Broadcast Grid</h2>
               </div>
               <strong>{completedCount}/12 Logged</strong>
             </div>
 
-            <div className="calendar-timeline-scroll">
-              {game.calendar.map((week) => {
-                const result = getWeekResult(game, week);
-                const status = getCalendarWeekStatus(week, game.currentWeek);
-                const resultRead = getWeekResultRead(result, week);
+            <div className="calendar-grid-board">
+              {calendarBlocks.map((block) => (
+                <section className="calendar-cycle-block" aria-label={`${block.pleShowName} cycle`} key={block.id}>
+                  <header className="calendar-cycle-head">
+                    <p className="eyebrow">Build {block.cycleNumber}</p>
+                    <h3>{block.pleShowName}</h3>
+                  </header>
 
-                return (
-                  <article
-                    className={`calendar-week-row is-${status} ${week.showType === "ple" ? "is-ple" : ""} ${week.isGoHome ? "is-go-home" : ""}`.trim()}
-                    key={week.weekNumber}
-                  >
-                    <div className="calendar-week-index">
-                      <strong>W{week.weekNumber}</strong>
-                      <span>{getCalendarWeekStatusLabel(status)}</span>
-                    </div>
+                  <div className="calendar-cycle-columns" aria-hidden="true">
+                    <span>TV</span>
+                    <span>TV</span>
+                    <span>Go-Home</span>
+                    <span>PLE</span>
+                  </div>
 
-                    <div className="calendar-week-copy">
-                      <h3>{week.showName}</h3>
-                      <div className="calendar-week-tags">
-                        <span className={week.showType === "ple" ? "is-ple-tag" : ""}>{getShowTypeLabel(week.showType)}</span>
-                        {week.isGoHome ? <span className="is-go-home-tag">Go-Home</span> : null}
-                        {week.weekNumber === 12 ? <span className="is-finale-tag">Season Finale</span> : null}
-                      </div>
-                    </div>
+                  <div className="calendar-cycle-grid">
+                    {block.weeks.map((week) => {
+                      const result = getWeekResult(game, week);
+                      const status = getCalendarWeekStatus(week, game.currentWeek);
+                      const resultRead = getWeekResultRead(result, week);
+                      const isSelected = week.weekNumber === selectedWeekNumber;
 
-                    <div className="calendar-week-result">
-                      <strong>{resultRead.primary}</strong>
-                      <span>{resultRead.secondary}</span>
-                      {result && hasCpuRaceForWeek(game, result) ? <small>CPU Race Logged</small> : null}
-                    </div>
-                  </article>
-                );
-              })}
+                      return (
+                        <button
+                          className={`calendar-day-tile is-${status} ${week.showType === "ple" ? "is-ple" : ""} ${week.isGoHome ? "is-go-home" : ""} ${isSelected ? "is-selected" : ""}`.trim()}
+                          key={week.weekNumber}
+                          onClick={() => setSelectedWeekNumber(week.weekNumber)}
+                          type="button"
+                        >
+                          <div className="calendar-day-tile-head">
+                            <strong>W{week.weekNumber}</strong>
+                            <span>{getCalendarTileColumnLabel(week)}</span>
+                          </div>
+                          <h3>{getCalendarTileShowName(week.showName)}</h3>
+                          <p className="calendar-day-tile-status">{getCalendarWeekStatusLabel(status)}</p>
+                          <div className="calendar-day-tile-foot">
+                            <b>{resultRead.primary}</b>
+                            <small>{resultRead.secondary}</small>
+                          </div>
+                          {result && hasCpuRaceForWeek(game, result) ? <em>CPU Race</em> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
             </div>
           </article>
 
-          <aside className="calendar-intel-rail calendar-panel" aria-label="Calendar intel">
-            <div className="calendar-panel-head">
+          <aside className="calendar-week-spotlight" aria-label="Selected week show stats">
+            <div className="calendar-spotlight-head">
               <div>
-                <p className="eyebrow">Broadcast Intel</p>
-                <h2>PLE + Rival Desk</h2>
+                <p className="eyebrow">Week {spotlight.weekNumber} Show File</p>
+                <h2>{spotlight.showName}</h2>
               </div>
-              <strong>{recap.lede}</strong>
+              <span className={`calendar-spotlight-status status-${spotlight.status}`}>{spotlight.statusLabel}</span>
             </div>
 
-            <div className="calendar-intel-scroll">
-              <PleBuildPressurePanel snapshot={pleBuildPressure} />
-              {ratingsBattle ? <RatingsBattlePanel snapshot={ratingsBattle} /> : null}
-              {cpuResultsFeed ? <CpuResultsFeedPanel snapshot={cpuResultsFeed} /> : null}
+            <div className="calendar-spotlight-tags">
+              {spotlight.tags.map((tag) => (
+                <span key={tag}>{tag}</span>
+              ))}
             </div>
+
+            <div className={`calendar-spotlight-hero ${spotlight.score !== undefined ? "has-score" : ""}`.trim()}>
+              {spotlight.score !== undefined ? (
+                <>
+                  <strong>{spotlight.score}</strong>
+                  <span>{spotlight.grade}</span>
+                </>
+              ) : (
+                <>
+                  <strong>{spotlight.headline}</strong>
+                  <span>{spotlight.status === "current" ? "Awaiting Run Show" : "No Stats Yet"}</span>
+                </>
+              )}
+              <p>{spotlight.detail}</p>
+            </div>
+
+            <div className="calendar-spotlight-metrics">
+              {spotlight.metrics.map((metric) => (
+                <Metric detail={metric.detail} key={metric.label} label={metric.label} value={metric.value} />
+              ))}
+            </div>
+
+            {spotlight.segmentRows.length ? (
+              <section className="calendar-spotlight-section" aria-label="Segment log">
+                <div className="calendar-spotlight-section-head">
+                  <p className="eyebrow">{spotlight.score !== undefined ? "Segment Log" : "Current Card"}</p>
+                  <strong>{spotlight.segmentRows.length} Listed</strong>
+                </div>
+                <div className="calendar-segment-table">
+                  {spotlight.segmentRows.map((segment) => (
+                    <article className="calendar-segment-row" key={segment.id}>
+                      <div>
+                        <span>{segment.label}</span>
+                        <strong>{segment.participants}</strong>
+                      </div>
+                      <b>{spotlight.score !== undefined ? segment.score : "—"}</b>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {spotlight.cpuRace.length ? (
+              <section className="calendar-spotlight-section" aria-label="Ratings race for week">
+                <div className="calendar-spotlight-section-head">
+                  <p className="eyebrow">Week Ratings Race</p>
+                  <strong>{spotlight.cpuRace.length} Desks</strong>
+                </div>
+                <div className="calendar-cpu-race-table">
+                  {spotlight.cpuRace.map((entry) => (
+                    <article className={`calendar-cpu-race-row ${entry.isPlayer ? "is-player" : ""}`} key={`${entry.brandName}-${entry.score}`}>
+                      <strong>{entry.brandName}</strong>
+                      <span>{entry.grade}</span>
+                      <b>{entry.score}</b>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {spotlight.notes.length ? (
+              <section className="calendar-spotlight-section" aria-label="Title and rivalry notes">
+                <div className="calendar-spotlight-section-head">
+                  <p className="eyebrow">Show Notes</p>
+                  <strong>{spotlight.notes.length} Logged</strong>
+                </div>
+                <div className="calendar-note-stack">
+                  {spotlight.notes.map((note, index) => (
+                    <p key={`${spotlight.weekNumber}-note-${index}`}>{note}</p>
+                  ))}
+                </div>
+              </section>
+            ) : null}
           </aside>
         </section>
       </div>

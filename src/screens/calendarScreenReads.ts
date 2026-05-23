@@ -1,7 +1,85 @@
-import { getShowGrade } from "../game/scoring";
+import { getBestSegment, getShowGrade, isValidSegment } from "../game/scoring";
+import { formatMoney } from "../game/formatters";
 import type { CalendarWeek, GameState, ShowResult, ShowType } from "../game/types";
 
 export type CalendarWeekStatus = "completed" | "current" | "upcoming";
+
+export type CalendarWeekMetric = {
+  label: string;
+  value: string;
+  detail?: string;
+};
+
+export type CalendarWeekSegmentRow = {
+  id: string;
+  label: string;
+  score: number;
+  participants: string;
+};
+
+export type CalendarWeekCpuRow = {
+  brandName: string;
+  score: number;
+  grade: string;
+  isPlayer?: boolean;
+};
+
+export type CalendarWeekSpotlight = {
+  weekNumber: number;
+  showName: string;
+  status: CalendarWeekStatus;
+  statusLabel: string;
+  tags: string[];
+  headline: string;
+  detail: string;
+  score?: number;
+  grade?: string;
+  metrics: CalendarWeekMetric[];
+  segmentRows: CalendarWeekSegmentRow[];
+  notes: string[];
+  cpuRace: CalendarWeekCpuRow[];
+};
+
+export type CalendarCycleBlock = {
+  id: string;
+  cycleNumber: number;
+  pleShowName: string;
+  weeks: CalendarWeek[];
+};
+
+export function getSeasonCalendarBlocks(calendar: CalendarWeek[]): CalendarCycleBlock[] {
+  const blocks: CalendarCycleBlock[] = [];
+
+  for (let index = 0; index < calendar.length; index += 4) {
+    const weeks = calendar.slice(index, index + 4);
+    const pleWeek = weeks.find((week) => week.showType === "ple");
+
+    blocks.push({
+      id: `cycle-${blocks.length + 1}`,
+      cycleNumber: blocks.length + 1,
+      pleShowName: pleWeek?.showName ?? `Cycle ${blocks.length + 1}`,
+      weeks,
+    });
+  }
+
+  return blocks;
+}
+
+export function getCalendarTileColumnLabel(week: CalendarWeek) {
+  if (week.showType === "ple") {
+    return "PLE";
+  }
+
+  if (week.isGoHome) {
+    return "Go-Home";
+  }
+
+  return "TV";
+}
+
+export function getCalendarTileShowName(showName: string) {
+  return showName.replace(" Go-Home", "").trim();
+}
 
 export function getShowTypeLabel(showType: ShowType) {
   return showType === "ple" ? "PLE" : "TV";
@@ -83,6 +161,212 @@ export function buildCalendarRecapStrip(game: GameState, currentShow: CalendarWe
     lede: nextPle
       ? `${nextPle.showName} is ${weeksUntilPle === 0 ? "tonight" : `${weeksUntilPle} week${weeksUntilPle === 1 ? "" : "s"} away`}.`
       : "The season calendar is complete.",
+  };
+}
+
+export function getFinanceReportForWeekResult(game: GameState, result: ShowResult) {
+  return game.financeReports.find((report) => report.id === `${result.id}-finance`);
+}
+
+export function getCpuRaceForWeek(game: GameState, seasonNumber: number, weekNumber: number, playerResult?: ShowResult) {
+  const rows: CalendarWeekCpuRow[] = game.rivalBrands
+    .map((brand) => {
+      const cpuResult = brand.weeklyResults.find((result) => result.seasonNumber === seasonNumber && result.weekNumber === weekNumber);
+
+      if (!cpuResult) {
+        return undefined;
+      }
+
+      return {
+        brandName: brand.brandName,
+        score: cpuResult.score,
+        grade: cpuResult.grade,
+      };
+    })
+    .filter((row): row is CalendarWeekCpuRow => Boolean(row));
+
+  if (playerResult) {
+    rows.push({
+      brandName: playerResult.brandName,
+      score: playerResult.totalScore,
+      grade: getShowGrade(playerResult.totalScore),
+      isPlayer: true,
+    });
+  }
+
+  return rows.sort((left, right) => right.score - left.score);
+}
+
+function getSegmentTypeLabel(type: string) {
+  switch (type) {
+    case "match":
+      return "Match";
+    case "promo":
+      return "Promo";
+    case "backstage":
+      return "Backstage";
+    case "contract_signing":
+      return "Contract";
+    case "open_challenge":
+      return "Open Challenge";
+    default:
+      return type;
+  }
+}
+
+export function buildCalendarWeekSpotlight(game: GameState, week: CalendarWeek): CalendarWeekSpotlight {
+  const status = getCalendarWeekStatus(week, game.currentWeek);
+  const statusLabel = getCalendarWeekStatusLabel(status);
+  const result = getWeekResult(game, week);
+  const financeReport = result ? getFinanceReportForWeekResult(game, result) : undefined;
+  const tags = [getShowTypeLabel(week.showType)];
+
+  if (week.isGoHome) {
+    tags.push("Go-Home");
+  }
+
+  if (week.weekNumber === 12) {
+    tags.push("Season Finale");
+  }
+
+  if (result) {
+    const bestSegment = result.segmentResults.length ? getBestSegment(result) : undefined;
+    const metrics: CalendarWeekMetric[] = [
+      {
+        label: "Segments",
+        value: `${result.segmentResults.length}`,
+        detail: bestSegment ? `Best ${bestSegment.score}` : "No segment log",
+      },
+      {
+        label: "Attendance",
+        value: financeReport ? financeReport.attendance.toLocaleString() : "No report",
+        detail: financeReport ? formatMoney(financeReport.ticketRevenue) + " tickets" : "Finance pending",
+      },
+      {
+        label: "Business",
+        value: financeReport ? formatMoney(financeReport.profitLoss) : "No report",
+        detail: financeReport ? `Closed ${formatMoney(financeReport.endingMoney)}` : "Finance pending",
+      },
+      {
+        label: "Fallout",
+        value: result.biggestMomentumGain.name,
+        detail: `+${result.biggestMomentumGain.amount} momentum · ${result.biggestFatigueIncrease.name} +${result.biggestFatigueIncrease.amount} fatigue`,
+      },
+    ];
+
+    const segmentRows = [...result.segmentResults]
+      .sort((left, right) => right.score - left.score)
+      .slice(0, 4)
+      .map((segment) => ({
+        id: segment.segmentId,
+        label: getSegmentTypeLabel(segment.type),
+        score: segment.score,
+        participants: segment.participantNames.join(" / ") || "No participants",
+      }));
+
+    const notes = [...result.titleNotes, ...result.rivalryNotes].slice(0, 4);
+
+    return {
+      weekNumber: week.weekNumber,
+      showName: week.showName,
+      status,
+      statusLabel,
+      tags,
+      headline: `${result.totalScore} · Grade ${getShowGrade(result.totalScore)}`,
+      detail: `${week.showName} resolved with ${result.segmentResults.length} segment${result.segmentResults.length === 1 ? "" : "s"}.`,
+      score: result.totalScore,
+      grade: getShowGrade(result.totalScore),
+      metrics,
+      segmentRows,
+      notes,
+      cpuRace: getCpuRaceForWeek(game, game.seasonNumber, week.weekNumber, result),
+    };
+  }
+
+  if (status === "current") {
+    const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers));
+
+    return {
+      weekNumber: week.weekNumber,
+      showName: week.showName,
+      status,
+      statusLabel,
+      tags,
+      headline: validSegments.length ? `${validSegments.length} Valid Segment${validSegments.length === 1 ? "" : "s"} On Card` : "Card Not Ready",
+      detail:
+        validSegments.length
+          ? "Current-week stats stay empty until Run Show. This reads only what is already booked on the valid card."
+          : "Book at least two valid segments before this week can run.",
+      metrics: [
+        {
+          label: "Card Shape",
+          value: `${validSegments.length}`,
+          detail: validSegments.length ? "Valid segments booked" : "Needs booking",
+        },
+        {
+          label: "Show Type",
+          value: getShowTypeLabel(week.showType),
+          detail: week.isGoHome ? "Final TV stop before PLE" : week.showType === "ple" ? "Major event week" : "Weekly TV",
+        },
+        {
+          label: "Season Log",
+          value: `${game.showHistory.filter((entry) => entry.seasonNumber === game.seasonNumber).length}`,
+          detail: "Completed shows this season",
+        },
+        {
+          label: "Status",
+          value: "On The Clock",
+          detail: "Run Show to lock score, grade, and business stats",
+        },
+      ],
+      segmentRows: validSegments.slice(0, 4).map((segment, index) => ({
+        id: segment.id || `current-segment-${index}`,
+        label: getSegmentTypeLabel(segment.type),
+        score: 0,
+        participants:
+          segment.participantIds
+            .map((id) => game.wrestlers.find((wrestler) => wrestler.id === id)?.name)
+            .filter((name): name is string => Boolean(name))
+            .join(" / ") || "TBD",
+      })),
+      notes: [],
+      cpuRace: [],
+    };
+  }
+
+  return {
+    weekNumber: week.weekNumber,
+    showName: week.showName,
+    status,
+    statusLabel,
+    tags,
+    headline: "On Deck",
+    detail: `${week.showName} is still ahead on the season grid. No show stats exist until the week resolves.`,
+    metrics: [
+      {
+        label: "Show Type",
+        value: getShowTypeLabel(week.showType),
+        detail: week.showType === "ple" ? "Major event checkpoint" : "Weekly broadcast",
+      },
+      {
+        label: "Position",
+        value: `Week ${week.weekNumber}`,
+        detail: `${Math.max(0, week.weekNumber - game.currentWeek)} week${week.weekNumber - game.currentWeek === 1 ? "" : "s"} out`,
+      },
+      {
+        label: "Tags",
+        value: tags.join(" · "),
+        detail: week.isGoHome ? "Go-home build week" : "Standard calendar slot",
+      },
+      {
+        label: "Stats",
+        value: "Locked",
+        detail: "Resolved score, grade, and business reads appear after the show runs",
+      },
+    ],
+    segmentRows: [],
+    notes: [],
+    cpuRace: [],
   };
 }
 

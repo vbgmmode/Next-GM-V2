@@ -9,7 +9,7 @@ type Props = {
   smartRundownError?: string;
   onBeginAddSegment: (type: SegmentType) => void;
   onClose: () => void;
-  onGenerateSmartRundown: () => void;
+  onGenerateSmartSegment: () => void;
 };
 
 export function BookingTypePickerOverlay({
@@ -17,12 +17,12 @@ export function BookingTypePickerOverlay({
   smartRundownError,
   onBeginAddSegment,
   onClose,
-  onGenerateSmartRundown,
+  onGenerateSmartSegment,
 }: Props) {
-  function handleSmartRundown(event: MouseEvent<HTMLButtonElement>) {
+  function handleSmartSegment(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
     event.stopPropagation();
-    onGenerateSmartRundown();
+    onGenerateSmartSegment();
   }
 
   return (
@@ -32,14 +32,14 @@ export function BookingTypePickerOverlay({
         <div className="booking-type-picker-footer">
           {smartRundownError ? (
             <p className="booking-rundown-error booking-type-picker-error" role="status">
-              <strong>Rundown Blocked</strong>
+              <strong>Segment Blocked</strong>
               <span>{smartRundownError}</span>
             </p>
           ) : null}
-          <button className="booking-btn booking-btn-secondary booking-type-autogen" onClick={handleSmartRundown} type="button">
-            Smart Rundown
+          <button className="booking-btn booking-btn-secondary booking-type-autogen" disabled={!canAddSegment} onClick={handleSmartSegment} type="button">
+            Smart Segment
           </button>
-          <p className="booking-type-picker-note">Autogenerate a full card from current roster, titles, and rivalries.</p>
+          <p className="booking-type-picker-note">Autogenerate one segment from current roster, titles, and rivalries.</p>
         </div>
       }
       onClose={onClose}
