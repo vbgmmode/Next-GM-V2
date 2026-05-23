@@ -8,6 +8,7 @@ import {
   updateSaveRecord,
 } from "./gameStorage";
 import { advanceGameWeek, startNextSeason } from "./game/advanceWeek";
+import { generateExternalAiSocialCommentary } from "./game/aiCommentary";
 import { getRosterAffiliations, getWrestlerAffiliations } from "./game/affiliationCatalog";
 import { getFinancePressureLabel } from "./game/finance";
 import { financeModelSummaryByRole, getRosterFinanceValueForWrestler } from "./game/financeCatalog";
@@ -5820,6 +5821,32 @@ function App() {
     persistGameSnapshot(resolvedShow.game, "results");
     setGame(resolvedShow.game);
     setScreen("results");
+    void generateExternalAiSocialCommentary(resolvedShow.result, resolvedShow.game).then((posts) => {
+      if (!posts.length) {
+        return;
+      }
+
+      setGame((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const existingIds = new Set(current.socialPosts.map((post) => post.id));
+        const newPosts = posts.filter((post) => !existingIds.has(post.id));
+
+        if (!newPosts.length) {
+          return current;
+        }
+
+        const updatedGame = {
+          ...current,
+          socialPosts: [...current.socialPosts, ...newPosts],
+        };
+
+        persistGameSnapshot(updatedGame, "results");
+        return updatedGame;
+      });
+    });
   }
 
   function advanceWeek() {
