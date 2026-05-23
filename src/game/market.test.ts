@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { affiliationCatalog } from "./affiliationCatalog";
 import { advanceCpuRivalWeek } from "./cpuRivalLoop";
-import { advancePlayerContracts, ensureWeeklyMarketBoard, getExternalMarketOffer, proposePlayerTrade, releasePlayerWrestler, renewPlayerContract, signPlayerFreeAgent } from "./market";
+import {
+  advancePlayerContracts,
+  ensureWeeklyMarketBoard,
+  getExternalMarketOffer,
+  getMarketBundleOffers,
+  proposePlayerTrade,
+  releasePlayerWrestler,
+  renewPlayerContract,
+  signPlayerFreeAgent,
+  signPlayerFreeAgentBundle,
+} from "./market";
 import { migrateSavedGameState } from "./migration";
 import { createNewGame, draftPool } from "./seed";
 import type { GameState, MarketContract, Segment } from "./types";
@@ -53,6 +64,43 @@ function expectNoPlayerReferences(game: GameState, wrestlerId: string) {
   expect(game.championships.some((championship) => championship.contenderIds?.includes(wrestlerId))).toBe(false);
   expect(game.rivalries.some((rivalry) => rivalry.participantIds.includes(wrestlerId))).toBe(false);
   expect(game.currentShow.some((segment) => segment.participantIds.includes(wrestlerId))).toBe(false);
+}
+
+function createBundleReadyGame(contractWeeks = 4) {
+  const affiliation = affiliationCatalog.find(
+    (item) => item.kind === "tag_team" && item.memberWrestlerIds.length === 2 && item.memberWrestlerIds.every((id) => draftPool.some((wrestler) => wrestler.id === id)),
+  );
+
+  expect(affiliation).toBeDefined();
+
+  const baseGame = createNewGame();
+  const memberIds = affiliation!.memberWrestlerIds;
+  const bundleWrestlers = memberIds.map((id) => draftPool.find((wrestler) => wrestler.id === id)!);
+  const game: GameState = {
+    ...baseGame,
+    money: 5000000,
+    wrestlers: baseGame.wrestlers.filter((wrestler) => !memberIds.includes(wrestler.id)),
+    rivalBrands: baseGame.rivalBrands.map((brand) => ({
+      ...brand,
+      rosterWrestlerIds: brand.rosterWrestlerIds.filter((id) => !memberIds.includes(id)),
+      rosterState: brand.rosterState.filter((member) => !memberIds.includes(member.wrestlerId)),
+      contracts: brand.contracts.filter((contract) => !memberIds.includes(contract.wrestlerId)),
+    })),
+    marketState: {
+      ...baseGame.marketState,
+      weeklyBoard: {
+        seasonNumber: baseGame.seasonNumber,
+        weekNumber: baseGame.currentWeek,
+        entries: bundleWrestlers.map((wrestler) => ({
+          wrestlerId: wrestler.id,
+          status: "available" as const,
+          weeklyAsk: getExternalMarketOffer(wrestler, baseGame.seasonNumber, baseGame.currentWeek, contractWeeks).weeklyAsk,
+        })),
+      },
+    },
+  };
+
+  return { affiliation: affiliation!, game, memberIds, wrestlers: bundleWrestlers };
 }
 
 describe("market ownership invariants", () => {
@@ -187,6 +235,46 @@ describe("market ownership invariants", () => {
       paymentModel: "prepaid",
       releasePenalty: 0,
     });
+  });
+
+  it("builds tag and faction bundle offers from available board members with a 20% package discount", () => {
+    const contractWeeks = 4;
+    const { affiliation, game, wrestlers } = createBundleReadyGame(contractWeeks);
+    const offer = getMarketBundleOffers(game, draftPool, contractWeeks).find((item) => item.affiliationId === affiliation.id);
+    const fullDueNow = wrestlers.reduce((sum, wrestler) => sum + getExternalMarketOffer(wrestler, game.seasonNumber, game.currentWeek, contractWeeks).dueNow, 0);
+    const discountedDueNow = wrestlers.reduce((sum, wrestler) => sum + Math.round(getExternalMarketOffer(wrestler, game.seasonNumber, game.currentWeek, contractWeeks).dueNow * 0.8), 0);
+
+    expect(offer).toBeDefined();
+    expect(offer?.wrestlerIds).toEqual(wrestlers.map((wrestler) => wrestler.id));
+    expect(offer?.fullDueNow).toBe(fullDueNow);
+    expect(offer?.discountedDueNow).toBe(discountedDueNow);
+    expect(offer?.discountAmount).toBe(fullDueNow - discountedDueNow);
+  });
+
+  it("signs every member in a market bundle as one discounted package transaction", () => {
+    const contractWeeks = 4;
+    const { affiliation, game, memberIds, wrestlers } = createBundleReadyGame(contractWeeks);
+    const expectedDueNow = wrestlers.reduce((sum, wrestler) => sum + Math.round(getExternalMarketOffer(wrestler, game.seasonNumber, game.currentWeek, contractWeeks).dueNow * 0.8), 0);
+
+    const updatedGame = signPlayerFreeAgentBundle(game, affiliation.id, draftPool, contractWeeks);
+    const transaction = updatedGame.marketState.transactions.at(-1);
+
+    expect(updatedGame.money).toBe(game.money - expectedDueNow);
+    memberIds.forEach((wrestlerId) => {
+      expect(updatedGame.wrestlers.some((wrestler) => wrestler.id === wrestlerId)).toBe(true);
+      expect(updatedGame.marketState.weeklyBoard?.entries.find((entry) => entry.wrestlerId === wrestlerId)?.status).toBe("player_signed");
+      expect(updatedGame.marketState.playerContracts.find((contract) => contract.wrestlerId === wrestlerId)).toMatchObject({
+        contractWeeksRemaining: contractWeeks,
+        paymentModel: "prepaid",
+        releasePenalty: 0,
+      });
+    });
+    expect(transaction).toMatchObject({
+      type: "signing",
+      wrestlerIds: memberIds,
+      amount: expectedDueNow,
+    });
+    expect(transaction?.note).toContain("20% bundle discount");
   });
 
   it("extends active contracts with prepaid renewal cash", () => {

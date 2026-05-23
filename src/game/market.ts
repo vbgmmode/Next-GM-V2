@@ -1,4 +1,6 @@
 import { getRosterFinanceValueForWrestler } from "./financeCatalog";
+import { getDifficultyRules, scaleNegativePressure } from "./difficultyRules";
+import { affiliationCatalog } from "./affiliationCatalog";
 import type {
   GameState,
   MarketContract,
@@ -19,6 +21,20 @@ const defaultContractWeeks = 12;
 const defaultCpuBudget = 1800000;
 const marketExpiryWarningWeeks = 2;
 const weeklyBoardMaxEntries = 6;
+const bundleDiscountMultiplier = 0.8;
+
+export type MarketBundleOffer = {
+  affiliationId: string;
+  affiliationName: string;
+  kind: "tag_team" | "faction";
+  wrestlerIds: string[];
+  wrestlers: Wrestler[];
+  contractWeeks: number;
+  totalWeeklyAsk: number;
+  fullDueNow: number;
+  discountedDueNow: number;
+  discountAmount: number;
+};
 
 function hashString(value: string) {
   let hash = 0;
@@ -190,6 +206,7 @@ function getWeeklyBoardCount(game: Pick<GameState, "seasonNumber" | "currentWeek
 
 function getWeeklyBoardCandidates(game: GameState, draftPool: Wrestler[]) {
   const ownedIds = getOwnedIds(game);
+  const rules = getDifficultyRules(game.difficulty);
 
   return draftPool
     .filter((wrestler) => !ownedIds.has(wrestler.id) && !isCoolingDown(game, wrestler.id))
@@ -200,7 +217,7 @@ function getWeeklyBoardCandidates(game: GameState, draftPool: Wrestler[]) {
 
       return {
         wrestler,
-        score: (marketRoll % 1000) + roleWeight + rankWeight,
+        score: (marketRoll % 1000) + roleWeight + rankWeight + rules.cpuMarket.boardCandidateScoreModifier,
       };
     })
     .sort((a, b) => b.score - a.score)
@@ -208,6 +225,7 @@ function getWeeklyBoardCandidates(game: GameState, draftPool: Wrestler[]) {
 }
 
 function pickCpuClaimBrand(game: GameState, wrestler: Wrestler, claimedIds: Set<string>) {
+  const rules = getDifficultyRules(game.difficulty);
   const eligibleBrands = game.rivalBrands
     .filter((brand) => brand.rosterWrestlerIds.length < cpuRosterLimit && !brand.rosterWrestlerIds.includes(wrestler.id))
     .map((brand) => {
@@ -224,7 +242,7 @@ function pickCpuClaimBrand(game: GameState, wrestler: Wrestler, claimedIds: Set<
       return {
         brand,
         offer,
-        score: (roll % 100) + divisionNeed + styleFit + Math.round((wrestler.popularity + wrestler.momentum) / 12),
+        score: (roll % 100) + divisionNeed + styleFit + Math.round((wrestler.popularity + wrestler.momentum) / 12) + rules.cpuMarket.claimScoreModifier,
       };
     })
     .filter((entry) => entry.offer.dueNow <= entry.brand.budget);
@@ -234,7 +252,7 @@ function pickCpuClaimBrand(game: GameState, wrestler: Wrestler, claimedIds: Set<
   }
 
   const best = eligibleBrands.sort((a, b) => b.score - a.score)[0];
-  return best.score >= 78 ? best : undefined;
+  return best.score >= rules.cpuMarket.claimThreshold ? best : undefined;
 }
 
 function addCpuBoardSigning(game: GameState, brand: RivalBrandState, wrestler: Wrestler) {
@@ -459,6 +477,122 @@ export function signPlayerFreeAgent(game: GameState, wrestlerId: string, draftPo
           }
         : boardReadyGame.marketState.weeklyBoard,
       playerContracts: [...boardReadyGame.marketState.playerContracts.filter((item) => item.wrestlerId !== wrestler.id), contract],
+      transactions: [...boardReadyGame.marketState.transactions, transaction],
+    },
+  };
+}
+
+function getContractWeeksForMarket(game: GameState, requestedWeeks?: number) {
+  return Math.max(1, Math.min(12, requestedWeeks ?? Math.min(12, Math.max(1, 13 - game.currentWeek))));
+}
+
+export function getMarketBundleOffers(game: GameState, draftPool: Wrestler[], requestedWeeks?: number): MarketBundleOffer[] {
+  const boardReadyGame = ensureWeeklyMarketBoard(game, draftPool);
+  const contractWeeks = getContractWeeksForMarket(boardReadyGame, requestedWeeks);
+  const ownedIds = getOwnedIds(boardReadyGame);
+  const availableBoardIds = new Set(
+    boardReadyGame.marketState.weeklyBoard?.entries.filter((entry) => entry.status === "available" && !ownedIds.has(entry.wrestlerId)).map((entry) => entry.wrestlerId) ?? [],
+  );
+
+  if (availableBoardIds.size < 2) {
+    return [];
+  }
+
+  return affiliationCatalog
+    .filter((affiliation) => affiliation.kind === "tag_team" || affiliation.kind === "faction")
+    .flatMap((affiliation) => {
+      const memberIds = affiliation.memberWrestlerIds.filter((id) => availableBoardIds.has(id));
+
+      if (memberIds.length < 2) {
+        return [];
+      }
+
+      const wrestlers = memberIds
+        .map((id) => draftPool.find((wrestler) => wrestler.id === id))
+        .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
+
+      if (wrestlers.length !== memberIds.length) {
+        return [];
+      }
+
+      const memberOffers = wrestlers.map((wrestler) => getExternalMarketOffer(wrestler, boardReadyGame.seasonNumber, boardReadyGame.currentWeek, contractWeeks));
+      const fullDueNow = memberOffers.reduce((sum, offer) => sum + offer.dueNow, 0);
+      const discountedDueNow = memberOffers.reduce((sum, offer) => sum + Math.round(offer.dueNow * bundleDiscountMultiplier), 0);
+      const kind: MarketBundleOffer["kind"] = affiliation.kind === "tag_team" ? "tag_team" : "faction";
+
+      return [
+        {
+          affiliationId: affiliation.id,
+          affiliationName: affiliation.name,
+          kind,
+          wrestlerIds: wrestlers.map((wrestler) => wrestler.id),
+          wrestlers,
+          contractWeeks,
+          totalWeeklyAsk: memberOffers.reduce((sum, offer) => sum + offer.weeklyAsk, 0),
+          fullDueNow,
+          discountedDueNow,
+          discountAmount: fullDueNow - discountedDueNow,
+        },
+      ];
+    })
+    .sort((a, b) => b.discountAmount - a.discountAmount || a.affiliationName.localeCompare(b.affiliationName));
+}
+
+export function signPlayerFreeAgentBundle(game: GameState, affiliationId: string, draftPool: Wrestler[], requestedWeeks?: number): GameState {
+  const boardReadyGame = ensureWeeklyMarketBoard(game, draftPool);
+  const bundleOffer = getMarketBundleOffers(boardReadyGame, draftPool, requestedWeeks).find((offer) => offer.affiliationId === affiliationId);
+
+  if (!bundleOffer || boardReadyGame.wrestlers.length + bundleOffer.wrestlers.length > playerRosterLimit || boardReadyGame.money < bundleOffer.discountedDueNow) {
+    return game;
+  }
+
+  const memberContracts = bundleOffer.wrestlers.map((wrestler) => {
+    const offer = getExternalMarketOffer(wrestler, boardReadyGame.seasonNumber, boardReadyGame.currentWeek, bundleOffer.contractWeeks);
+    const discountedDueNow = Math.round(offer.dueNow * bundleDiscountMultiplier);
+    return createMarketContract(wrestler, "player", "player", "free_agent", bundleOffer.contractWeeks, "prepaid", offer.weeklyAsk, discountedDueNow);
+  });
+  const transaction = createTransaction(
+    boardReadyGame,
+    "signing",
+    bundleOffer.wrestlerIds,
+    bundleOffer.wrestlers.map((wrestler) => wrestler.name),
+    bundleOffer.discountedDueNow,
+    `${boardReadyGame.brandName} signed ${bundleOffer.affiliationName} as a package for ${bundleOffer.contractWeeks} weeks with a 20% bundle discount.`,
+    {
+      toBrandId: "player",
+      toBrandName: boardReadyGame.brandName,
+    },
+  );
+  const signedIds = new Set(bundleOffer.wrestlerIds);
+
+  return {
+    ...boardReadyGame,
+    money: boardReadyGame.money - bundleOffer.discountedDueNow,
+    wrestlers: [
+      ...boardReadyGame.wrestlers,
+      ...bundleOffer.wrestlers.map((wrestler) => ({
+        ...wrestler,
+        appearancesThisSeason: 0,
+        lastBookedWeek: 0,
+        consecutiveWeeksBooked: 0,
+        injuryStatus: wrestler.injuryStatus ?? "healthy",
+        injuryWeeksRemaining: wrestler.injuryWeeksRemaining ?? 0,
+      })),
+    ],
+    marketState: {
+      ...boardReadyGame.marketState,
+      weeklyBoard: boardReadyGame.marketState.weeklyBoard
+        ? {
+            ...boardReadyGame.marketState.weeklyBoard,
+            entries: boardReadyGame.marketState.weeklyBoard.entries.map((entry) =>
+              signedIds.has(entry.wrestlerId) ? { ...entry, status: "player_signed", transactionId: transaction.id } : entry,
+            ),
+          }
+        : boardReadyGame.marketState.weeklyBoard,
+      playerContracts: [
+        ...boardReadyGame.marketState.playerContracts.filter((item) => !signedIds.has(item.wrestlerId)),
+        ...memberContracts,
+      ],
       transactions: [...boardReadyGame.marketState.transactions, transaction],
     },
   };
@@ -764,7 +898,7 @@ export function advanceCpuMarket(game: GameState, draftPool: Wrestler[]): GameSt
       if (
         releaseCandidate?.contract &&
         releaseCandidate.contract.releasePenalty <= nextBrand.budget &&
-        hashString(`${brand.id}-release-${game.seasonNumber}-${game.currentWeek}`) % 100 > 76
+        hashString(`${brand.id}-release-${game.seasonNumber}-${game.currentWeek}`) % 100 > getDifficultyRules(game.difficulty).cpuMarket.releaseRollThreshold
       ) {
         const wrestlerName = getWrestlerName(releaseCandidate.member.wrestlerId, draftPool, "CPU talent");
         const transaction = createTransaction(game, "release", [releaseCandidate.member.wrestlerId], [wrestlerName], releaseCandidate.contract.releasePenalty, `${brand.brandName} released ${wrestlerName} to clear payroll pressure.`, {
@@ -828,7 +962,9 @@ function getCpuTradeCandidate(brand: RivalBrandState, targetBrand: RivalBrandSta
 }
 
 function maybeRunCpuTrade(game: GameState, brands: RivalBrandState[], draftPool: Wrestler[]) {
-  if (brands.length < 2 || hashString(`cpu-trade-${game.seasonNumber}-${game.currentWeek}`) % 100 <= 58) {
+  const rules = getDifficultyRules(game.difficulty);
+
+  if (brands.length < 2 || hashString(`cpu-trade-${game.seasonNumber}-${game.currentWeek}`) % 100 <= rules.cpuMarket.tradeRollThreshold) {
     return brands;
   }
 
@@ -854,7 +990,7 @@ function maybeRunCpuTrade(game: GameState, brands: RivalBrandState[], draftPool:
     countBrandDivision(toBrand, draftPool, fromCandidate.wrestler.division) < 4 ||
     countBrandDivision(fromBrand, draftPool, toCandidate.wrestler.division) < 4;
 
-  if (valueGap > (needFit ? 22 : 14)) {
+  if (valueGap > (needFit ? 22 : 14) + rules.cpuMarket.tradeValueToleranceBonus) {
     return brands;
   }
 
@@ -939,6 +1075,7 @@ function maybeRunCpuTrade(game: GameState, brands: RivalBrandState[], draftPool:
 }
 
 export function evaluateOfficeMandate(game: GameState): GameState {
+  const rules = getDifficultyRules(game.difficulty);
   const latestResult = game.showHistory.filter((result) => result.seasonNumber === game.seasonNumber).at(-1);
   const playerRank = (() => {
     const playerAverage = game.showHistory.filter((result) => result.seasonNumber === game.seasonNumber).reduce((sum, result, _, results) => sum + result.totalScore / Math.max(1, results.length), 0);
@@ -949,8 +1086,15 @@ export function evaluateOfficeMandate(game: GameState): GameState {
   const moneyPenalty = game.money < 0 ? -4 : game.money < 150000 ? -2 : 2;
   const rosterPenalty = game.wrestlers.length < 10 ? -3 : game.wrestlers.length > 18 ? -1 : 1;
   const pleBonus = latestResult?.showType === "ple" && latestResult.totalScore >= 85 ? 3 : 0;
-  const ownerTrustDelta = rankPenalty + moneyPenalty + rosterPenalty + pleBonus;
-  const brandReputationDelta = (latestResult ? Math.round((latestResult.totalScore - 75) / 6) : 0) + (playerRank === 1 ? 2 : playerRank >= 4 ? -3 : 0);
+  const marketTransactionsThisWeek = game.marketState.transactions.filter((transaction) => transaction.seasonNumber === game.seasonNumber && transaction.weekNumber === game.currentWeek);
+  const marketSpend = marketTransactionsThisWeek
+    .filter((transaction) => transaction.type === "signing" || transaction.type === "renewal" || transaction.type === "trade")
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const releaseCount = marketTransactionsThisWeek.filter((transaction) => transaction.type === "release").length;
+  const marketPenaltyBase = marketSpend > 300000 ? -3 : marketSpend > 150000 ? -2 : releaseCount >= 2 ? -2 : releaseCount ? -1 : 0;
+  const marketPenalty = scaleNegativePressure(marketPenaltyBase, rules.playerPressure.marketOfficePenaltyMultiplier);
+  const ownerTrustDelta = scaleNegativePressure(rankPenalty + moneyPenalty + rosterPenalty + marketPenalty, rules.playerPressure.officeNegativeDeltaMultiplier) + pleBonus;
+  const brandReputationDelta = scaleNegativePressure((latestResult ? Math.round((latestResult.totalScore - 75) / 6) : 0) + (playerRank === 1 ? 2 : playerRank >= 4 ? -3 : 0), rules.playerPressure.officeNegativeDeltaMultiplier);
   const office = game.marketState.officeMandate;
   const ownerTrust = clamp(office.ownerTrust + ownerTrustDelta);
   const brandReputation = clamp(office.brandReputation + brandReputationDelta);

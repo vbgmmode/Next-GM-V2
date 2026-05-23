@@ -37,6 +37,7 @@ import {
   releasePlayerWrestler,
   renewPlayerContract,
   signPlayerFreeAgent,
+  signPlayerFreeAgentBundle,
 } from "./game/market";
 import {
   getCpuDraftPreviewSnapshot,
@@ -47,6 +48,7 @@ import {
   type RatingsBattleSnapshot,
 } from "./game/cpuRivalLoop";
 import { simulateOpeningDraft } from "./game/openingDraft";
+import { getDifficultyRules } from "./game/difficultyRules";
 import {
   bookingSegmentTypes,
   getCatalogOptionById,
@@ -439,7 +441,7 @@ type BrandPulseSnapshot = {
 
 type QaHarnessMode = "runtime" | "legacy-runtime" | "title-defense-runtime" | "title-change-runtime";
 
-const draftPickCount = 12;
+const minimumDraftRosterSize = 12;
 
 const draftSortOptions: { label: string; value: DraftSort }[] = [
   { label: "Top 200 Rank", value: "rank" },
@@ -654,7 +656,7 @@ function getDraftFinanceNote(readout: DraftFinanceReadout) {
     ? ` ${readout.missingFinanceRows.length} roster value${readout.missingFinanceRows.length === 1 ? "" : "s"} pending and excluded from this total.`
     : "";
 
-  return `Opening reserve after roster value is carried into Week 1. Draft picks still do not restrict availability in this build.${missingValueNote}`;
+  return `Opening reserve after roster value is carried into Week 1. Money-based drafts can keep picking until the budget cannot cover the selected draft value.${missingValueNote}`;
 }
 
 function getRivalUniverseRead(rivalBrands: RivalBrandState[]) {
@@ -4109,7 +4111,7 @@ function buildQaTitlePayoffHarnessState(mode: "title-defense-runtime" | "title-c
 }
 
 function buildQaRuntimeHarnessState(mode: QaHarnessMode): SavedGameState {
-  const draftedWrestlers = draftPool.slice(0, draftPickCount);
+  const draftedWrestlers = draftPool.slice(0, minimumDraftRosterSize);
   const game = createNewGame({
     ...defaultCareer,
     draftedWrestlers,
@@ -5046,6 +5048,23 @@ function App() {
     });
   }
 
+  function signFreeAgentBundle(affiliationId: string, contractWeeks: number) {
+    setGame((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const latestCurrentResult = current.showHistory[current.showHistory.length - 1];
+      if (latestCurrentResult?.week === current.currentWeek) {
+        return current;
+      }
+
+      const updatedGame = signPlayerFreeAgentBundle(current, affiliationId, draftPool, contractWeeks);
+      persistGameSnapshot(updatedGame, "market");
+      return updatedGame;
+    });
+  }
+
   function renewContract(wrestlerId: string, contractWeeks: number) {
     setGame((current) => {
       if (!current) {
@@ -5266,6 +5285,7 @@ function App() {
         onProposeTrade={proposeTrade}
         onReleaseWrestler={releaseWrestler}
         onRenewContract={renewContract}
+        onSignBundle={signFreeAgentBundle}
         onSignFreeAgent={signFreeAgent}
       />
     );
@@ -5516,6 +5536,7 @@ function NewGameSetupScreen({
   const selectedGmPersona = getGmPersonaByStyle(gmStyle);
   const selectedBrandChair = getBrandChairByStyle(brandStyle);
   const selectedDifficulty = difficultyOptions.find((option) => option.label === difficulty) ?? difficultyOptions[1];
+  const selectedDifficultyRules = getDifficultyRules(difficulty);
   const startingBudgetAmount = getStartingBudgetAmount(startingBudgetTier);
   const draftFinanceReadout = getDraftFinanceReadout(draftedWrestlers, startingBudgetTier, startingBudgetAmount);
   const canPreview = gmName.trim().length > 0 && brandName.trim().length > 0;
@@ -5527,15 +5548,32 @@ function NewGameSetupScreen({
   const previewRivalBrands = createRivalBrandUniverse(rivalGMAssignments);
   const openingDraftState = simulateOpeningDraft({
     draftMode,
+    difficulty,
     draftSeed,
     draftPool,
     playerBrandName: signedBrandName,
     rivalBrands: previewRivalBrands,
     playerDraftedWrestlers: draftedWrestlers,
+    playerPickTarget: Math.max(minimumDraftRosterSize, draftedWrestlers.length + 1),
   });
-  const rivalDraftActivity = getCpuDraftPreviewSnapshot(previewRivalBrands, draftedWrestlers, draftPool, draftMode, draftSeed);
   const cpuClaimedDraftIds = new Set(openingDraftState.cpuClaimedWrestlerIds);
   const availableDraftCount = openingDraftState.availableCount;
+  const rivalLatestPicks = previewRivalBrands.map((brand) => {
+    const roster = openingDraftState.rostersByChairId[brand.id] ?? [];
+    return {
+      brand,
+      latestPick: roster[roster.length - 1],
+      pickCount: roster.length,
+    };
+  });
+  const rivalLatestPickIds = new Set(
+    rivalLatestPicks.map((entry) => entry.latestPick?.id).filter((id): id is string => Boolean(id)),
+  );
+  const rivalPickHistory = openingDraftState.cpuPicks
+    .slice()
+    .reverse()
+    .filter((event) => !rivalLatestPickIds.has(event.wrestler.id));
+  const upNextPicks = openingDraftState.upcomingPicks.slice(1, 5);
   const availableWrestlers = draftPool
     .filter((wrestler) => !draftedIds.has(wrestler.id))
     .filter((wrestler) => !cpuClaimedDraftIds.has(wrestler.id))
@@ -5545,57 +5583,35 @@ function NewGameSetupScreen({
     .filter((wrestler) => draftAvailabilityFilter === "All Status" || wrestler.sourceAvailability === draftAvailabilityFilter)
     .filter((wrestler) => draftArchetypeFilter === "All Styles" || wrestler.archetype === draftArchetypeFilter)
     .sort((a, b) => getDraftSortValue(b, draftSort) - getDraftSortValue(a, draftSort));
-  const activeDraftFilters = [
-    draftBrandFilter !== "All Brands" ? draftBrandFilter : null,
-    draftRoleTierFilter !== "All Tiers" ? draftRoleTierFilter : null,
-    draftAvailabilityFilter !== "All Status" ? draftAvailabilityFilter : null,
-    draftArchetypeFilter !== "All Styles" ? draftArchetypeFilter : null,
-  ].filter(Boolean);
   const boardLeader = availableWrestlers[0];
   const focusedDraftWrestler = availableWrestlers.find((wrestler) => wrestler.id === draftFocusId) ?? boardLeader;
-  const draftTierCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.roleTier);
-  const draftArchetypeCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.archetype);
-  const draftDivisionCounts = getDraftValueCounts(draftedWrestlers, (wrestler) => wrestler.division);
-  const picksRemaining = Math.max(0, draftPickCount - draftedWrestlers.length);
+  const readinessRemaining = Math.max(0, minimumDraftRosterSize - draftedWrestlers.length);
   const currentDraftPick = openingDraftState.currentPick;
-  const currentPlayerPickLabel = `${Math.min(draftedWrestlers.length + 1, draftPickCount)} / ${draftPickCount}`;
+  const currentPlayerPickLabel = `${draftedWrestlers.length} drafted`;
   const currentOverallPickLabel = currentDraftPick ? `Pick ${currentDraftPick.overallPick}` : "Locked";
-  const draftClockRead =
-    draftedWrestlers.length === 0
-      ? `${signedBrandName} owns the first chair. Your opening pick starts the live four-brand board.`
-      : draftPickCount - draftedWrestlers.length <= 2
-        ? "Final stretch. CPU rival boards have taken their swings; this closing lane cements Week 1 identity."
-        : currentDraftPick
-          ? `Overall pick ${currentDraftPick.overallPick} is back in your room. ${Math.max(
-              0,
-              draftPickCount - draftedWrestlers.length,
-            )} player picks remain to define the roster.`
-          : "The opening draft board is locked.";
-  const rosterClassRead = (() => {
-    if (!draftedWrestlers.length) {
-      return "No class read yet. The board is still open, and every pick sets the early identity of this campaign.";
-    }
-
-    const topDraftTier = getMostCommonDraftValue(draftTierCounts, "Balanced Tier");
-    const topDraftArchetype = getMostCommonDraftValue(draftArchetypeCounts, "Mixed Style");
-    const topDraftDivision = getMostCommonDraftValue(draftDivisionCounts, "Mixed Division");
-    return `Class profile is shaping as a ${topDraftDivision} roster with ${topDraftArchetype} emphasis and ${topDraftTier} depth.`;
-  })();
-  const focusedDraftIdentity = focusedDraftWrestler ? getWrestlerIdentityContext(focusedDraftWrestler) : undefined;
   const focusedDraftFinance = focusedDraftWrestler ? getRosterFinanceValueForWrestler(focusedDraftWrestler) : undefined;
   const focusedDraftOverall = focusedDraftWrestler ? getWrestlerOverall(focusedDraftWrestler) : 0;
   const focusedDraftCost = focusedDraftFinance?.draftValueUsd ?? 0;
+  const focusedDraftExceedsBudget =
+    Boolean(focusedDraftWrestler && focusedDraftFinance) &&
+    !draftFinanceReadout.isUnlimitedBudget &&
+    focusedDraftCost > draftFinanceReadout.projectedReserve;
+  const canDraftFocusedWrestler = Boolean(focusedDraftWrestler && !focusedDraftExceedsBudget);
+  const canEnterWeekOne = canPreview && draftedWrestlers.length >= minimumDraftRosterSize;
+  const draftClockRead =
+    draftedWrestlers.length === 0
+      ? `${signedBrandName} has the first pick.`
+      : readinessRemaining > 0
+        ? `${readinessRemaining} more for TV-ready minimum.`
+        : currentDraftPick
+          ? `Overall pick ${currentDraftPick.overallPick} is live.`
+          : "Opening board locked.";
   const draftedRosterNeedRows = [
     { label: "Main Event", count: draftedWrestlers.filter((wrestler) => getDraftTag(wrestler.roleTier).includes("Main")).length, target: 2 },
     { label: "Talkers", count: draftedWrestlers.filter((wrestler) => wrestler.promoSkill >= 82).length, target: 4 },
     { label: "Workers", count: draftedWrestlers.filter((wrestler) => wrestler.ringSkill >= 82).length, target: 4 },
     { label: "Women", count: draftedWrestlers.filter((wrestler) => getWrestlerDivisionGroup(wrestler) === "womens").length, target: 4 },
   ];
-  const recentRivalClaims = (rivalDraftActivity?.claimedWrestlerIds ?? [])
-    .slice(-5)
-    .map((id) => draftPool.find((wrestler) => wrestler.id === id))
-    .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
-  const upNextPicks = openingDraftState.upcomingPicks.slice(1, 5);
 
   useEffect(() => {
     if (!availableWrestlers.length) {
@@ -5611,7 +5627,7 @@ function NewGameSetupScreen({
   }, [availableWrestlers, draftFocusId]);
 
   function startCareer() {
-    if (!canPreview || draftedWrestlers.length !== draftPickCount) {
+    if (!canEnterWeekOne) {
       return;
     }
 
@@ -5629,7 +5645,13 @@ function NewGameSetupScreen({
   }
 
   function draftWrestler(wrestler: Wrestler) {
-    if (draftedWrestlers.length >= draftPickCount || draftedWrestlers.some((drafted) => drafted.id === wrestler.id)) {
+    const financeRow = getRosterFinanceValueForWrestler(wrestler);
+    const draftCost = financeRow?.draftValueUsd ?? 0;
+
+    if (
+      draftedWrestlers.some((drafted) => drafted.id === wrestler.id) ||
+      (financeRow && !draftFinanceReadout.isUnlimitedBudget && draftCost > draftFinanceReadout.projectedReserve)
+    ) {
       return;
     }
 
@@ -5642,10 +5664,6 @@ function NewGameSetupScreen({
     }
 
     draftWrestler(focusedDraftWrestler);
-  }
-
-  function undoLastPick() {
-    setDraftedWrestlers((current) => current.slice(0, -1));
   }
 
   function resetDraftBoard() {
@@ -5779,7 +5797,7 @@ function NewGameSetupScreen({
               metrics={
                 <>
                   <MetricTile detail="PLEs in Weeks 4, 8, and 12" label="Season" tone="prestige" value="12 Weeks" />
-                  <MetricTile detail={`${draftPickCount} picks to open the room`} label="Draft Night" tone="brand" value={`0 / ${draftPickCount}`} />
+                  <MetricTile detail="Draft until the budget stops the room" label="Draft Night" tone="brand" value={`${minimumDraftRosterSize}+ min`} />
                   <MetricTile detail="Four major brands in the GM universe" label="Universe" tone="info" value="4 Brands" />
                 </>
               }
@@ -5887,7 +5905,7 @@ function NewGameSetupScreen({
                   {difficulty} / {formatSetupBudgetRulesReadout(startingBudgetTier, startingBudgetAmount)} / {getSetupDraftModeLabel(draftMode)}
                 </strong>
                 <p>
-                  {selectedDifficulty.description} {getSetupBudgetRulesDetail(startingBudgetTier, startingBudgetAmount)} {getSetupDraftRulesDetail(draftMode)}
+                  {selectedDifficulty.description} {selectedDifficultyRules.setupSummary} {getSetupBudgetRulesDetail(startingBudgetTier, startingBudgetAmount)} {getSetupDraftRulesDetail(draftMode)}
                 </p>
               </div>
               <div className="title-actions setup-rules-actions">
@@ -5907,25 +5925,25 @@ function NewGameSetupScreen({
             <header className="draft-war-room-hud">
               <div className="draft-night-title">
                 <h1>Draft Night</h1>
-                <span>Season 1 / Week 0</span>
-                <small>Live from the {signedBrandName} war room</small>
               </div>
               <div className="draft-feed-banner">
-                <span>GM War Room Feed</span>
+                <span>Feed</span>
                 <strong>{draftClockRead}</strong>
               </div>
               <div className="draft-hud-metric">
-                <span>Budget Remaining</span>
+                <span>Budget</span>
                 <strong>{formatProjectedReserve(draftFinanceReadout)}</strong>
               </div>
               <div className="draft-hud-metric timer">
-                <span>On The Clock</span>
+                <span>Clock</span>
                 <strong>{currentOverallPickLabel}</strong>
               </div>
               <div className="draft-brand-badge">
-                <span>Your Pick</span>
-                <strong>{signedBrandName}</strong>
-                <small>{currentPlayerPickLabel}</small>
+                <span>Room</span>
+                <strong>
+                  {signedBrandName}
+                  <em>{currentPlayerPickLabel}</em>
+                </strong>
               </div>
             </header>
 
@@ -6008,7 +6026,7 @@ function NewGameSetupScreen({
                         <WrestlerPortrait className="draft-prospect-portrait" wrestler={wrestler} />
                         <span>
                           <strong>{wrestler.name}</strong>
-                          <small>{getDraftTag(wrestler.archetype)} / {getDraftTag(wrestler.roleTier)}</small>
+                          <small>{getWrestlerOverall(wrestler)} OVR</small>
                         </span>
                         <em>Pop {wrestler.popularity}</em>
                         <b>{getWrestlerOverall(wrestler)}</b>
@@ -6024,40 +6042,43 @@ function NewGameSetupScreen({
                 <div className="draft-clock-strip">On The Clock</div>
                 {focusedDraftWrestler ? (
                   <div className="draft-focus-card">
-                    <WrestlerPortrait className="draft-focus-portrait" wrestler={focusedDraftWrestler} />
-                    <div className="draft-focus-copy">
-                      <p className="eyebrow">{getDraftTag(focusedDraftWrestler.roleTier)} / {getDraftTag(focusedDraftWrestler.archetype)}</p>
-                      <h2>{focusedDraftWrestler.name}</h2>
-                      <div className="draft-focus-tags">
-                        <span>{getDraftTag(focusedDraftWrestler.sourceBrand, "Open Pool")}</span>
-                        <span>{getDraftTag(focusedDraftWrestler.division)}</span>
-                        <span>{getDraftTag(focusedDraftIdentity?.careerStageLabel, "Career Stage")}</span>
+                    <div className="draft-focus-hero">
+                      <div className="draft-focus-spotlight">
+                        <p className="eyebrow">
+                          {getDraftTag(focusedDraftWrestler.roleTier)} · {getDraftTag(focusedDraftWrestler.archetype)}
+                        </p>
+                        <WrestlerPortrait className="draft-focus-portrait" wrestler={focusedDraftWrestler} />
+                        <h2>{focusedDraftWrestler.name}</h2>
                       </div>
-                      <div className="draft-focus-meta">
-                        <span>Class <strong>{getDraftTag(focusedDraftIdentity?.role, "Performer")}</strong></span>
-                        <span>Style <strong>{getDraftTag(focusedDraftIdentity?.wrestlingStyle, "Mixed")}</strong></span>
-                        <span>Mic <strong>{getDraftTag(focusedDraftIdentity?.promoStyle, "Open")}</strong></span>
-                      </div>
-                      <div className="draft-focus-stat-grid">
-                        <Metric label="Popularity" value={`${focusedDraftWrestler.popularity}`} />
-                        <Metric label="Momentum" value={`${focusedDraftWrestler.momentum}`} />
-                        <Metric label="Ring Work" value={`${focusedDraftWrestler.ringSkill}`} />
-                        <Metric label="Mic Skill" value={`${focusedDraftWrestler.promoSkill}`} />
-                      </div>
-                      <div className="draft-focus-contract">
-                        <span>Condition <strong>Fat {focusedDraftWrestler.fatigue} / Morale {focusedDraftWrestler.morale}</strong></span>
-                      </div>
-                    </div>
-                    <div className="draft-focus-readouts">
                       <div className="draft-focus-overall">
                         <span>Overall</span>
                         <strong>{focusedDraftOverall}</strong>
                       </div>
+                    </div>
+                    <div className="draft-focus-footer">
+                      <div aria-label="Core ratings" className="draft-focus-stat-strip">
+                        <div className="draft-focus-stat">
+                          <span>Pop</span>
+                          <strong>{focusedDraftWrestler.popularity}</strong>
+                        </div>
+                        <div className="draft-focus-stat">
+                          <span>Mom</span>
+                          <strong>{focusedDraftWrestler.momentum}</strong>
+                        </div>
+                        <div className="draft-focus-stat">
+                          <span>Ring</span>
+                          <strong>{focusedDraftWrestler.ringSkill}</strong>
+                        </div>
+                        <div className="draft-focus-stat">
+                          <span>Mic</span>
+                          <strong>{focusedDraftWrestler.promoSkill}</strong>
+                        </div>
+                      </div>
                       <div className="draft-focus-cost">
-                        <span>Draft Value</span>
-                        <strong>{focusedDraftCost ? formatMoney(focusedDraftCost) : "Catalog Pending"}</strong>
+                        <span>Value</span>
+                        <strong>{focusedDraftCost ? formatMoney(focusedDraftCost) : "—"}</strong>
                         {focusedDraftFinance?.weeklyHireRateUsd ? (
-                          <small>{formatMoney(focusedDraftFinance.weeklyHireRateUsd)} / week</small>
+                          <small>{formatMoney(focusedDraftFinance.weeklyHireRateUsd)}/wk</small>
                         ) : null}
                       </div>
                     </div>
@@ -6069,89 +6090,101 @@ function NewGameSetupScreen({
                   <button className="secondary-action" onClick={() => setStep("brand")}>
                     Back
                   </button>
-                  <button className="primary-action" disabled={!focusedDraftWrestler || draftedWrestlers.length >= draftPickCount} onClick={draftFocusedWrestler}>
-                    Draft Selected
+                  <button className="primary-action" disabled={!canDraftFocusedWrestler} onClick={draftFocusedWrestler}>
+                    {focusedDraftExceedsBudget ? "Over Budget" : "Draft Selected"}
                   </button>
-                  <button className={draftedWrestlers.length === draftPickCount ? "primary-action" : "secondary-action"} disabled={draftedWrestlers.length !== draftPickCount} onClick={startCareer}>
+                  <button className={canEnterWeekOne ? "primary-action" : "secondary-action"} disabled={!canEnterWeekOne} onClick={startCareer}>
                     Enter Week 1
                   </button>
                 </div>
               </section>
 
               <aside className="draft-rival-panel" aria-label="Rival brands and draft status">
-                <div className="draft-panel-head">
-                  <div>
-                    <p className="eyebrow">Rival Brands</p>
-                    <h2>Draft Status</h2>
+                <section className="draft-rival-status">
+                  <div className="draft-panel-head">
+                    <div>
+                      <p className="eyebrow">Rival Brands</p>
+                      <h2>Draft Status</h2>
+                    </div>
+                    <strong>{availableDraftCount} Open</strong>
                   </div>
-                  <strong>{availableDraftCount} Open</strong>
-                </div>
-                <div className="draft-rival-list">
-                  {previewRivalBrands.map((brand) => (
-                    <article key={brand.id}>
-                      <strong>{brand.brandName}</strong>
-                      <span>{brand.assignedGMName}</span>
-                      <small>{openingDraftState.rostersByChairId[brand.id]?.length ?? 0} / {draftPickCount} claimed</small>
-                      <em>{formatMoney(brand.budget)}</em>
-                    </article>
-                  ))}
-                </div>
-                <div className="draft-recent-panel">
-                  <p className="eyebrow">Recent Rival Claims</p>
-                  {recentRivalClaims.length ? (
-                    recentRivalClaims.map((wrestler) => (
-                      <span key={wrestler.id}>
-                        <WrestlerPortrait className="draft-mini-portrait" wrestler={wrestler} />
-                        <span>
-                          <strong>{wrestler.name}</strong>
-                          <small>{getDraftTag(wrestler.sourceBrand, "Open Pool")} / {getWrestlerOverall(wrestler)}</small>
-                        </span>
-                      </span>
-                    ))
-                  ) : (
-                    <span>
-                      <strong>No rival claims yet</strong>
-                      <small>CPU boards move once your room starts taking shape.</small>
-                    </span>
-                  )}
-                </div>
+                  <div className="draft-rival-list">
+                    {previewRivalBrands.map((brand) => {
+                      const roster = openingDraftState.rostersByChairId[brand.id] ?? [];
+                      const latestPick = roster[roster.length - 1];
+                      const brandPortraitSrc = getBrandChairByStyle(brand.brandKey).portraitSrc;
+
+                      return (
+                        <article key={brand.id}>
+                          <span aria-hidden="true" className="draft-brand-mini-portrait">
+                            <img alt="" draggable={false} src={brandPortraitSrc} />
+                          </span>
+                          <div className="draft-rival-card-copy">
+                            <strong>{brand.brandName}</strong>
+                            <span>{brand.assignedGMName}</span>
+                            <small>
+                              {latestPick
+                                ? `Latest · ${latestPick.name} · ${roster.length} claimed`
+                                : `${roster.length} claimed`}
+                            </small>
+                            <em>{formatMoney(openingDraftState.remainingBudgetByChairId[brand.id] ?? brand.budget)} left</em>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
                 <div className="draft-update-panel">
                   <p className="eyebrow">War Room Updates</p>
-                  {rivalDraftActivity?.notes.length ? (
-                    rivalDraftActivity.notes.slice(0, 3).map((note) => (
-                      <span key={note.id}>
-                        <strong>{note.brandName}</strong>
-                        <small>{note.detail}</small>
+                  <div className="draft-update-latest">
+                    {rivalLatestPicks.map(({ brand, latestPick, pickCount }) => {
+                      const brandPortraitSrc = getBrandChairByStyle(brand.brandKey).portraitSrc;
+
+                      return (
+                      <div className="draft-update-brand-row" key={brand.id}>
+                        {latestPick ? (
+                          <WrestlerPortrait className="draft-mini-portrait" wrestler={latestPick} />
+                        ) : (
+                          <span aria-hidden="true" className="draft-brand-mini-portrait">
+                            <img alt="" draggable={false} src={brandPortraitSrc} />
+                          </span>
+                        )}
+                        <span className="draft-update-copy">
+                          <strong>{brand.brandName}</strong>
+                          <small>
+                            {latestPick
+                              ? `Latest · ${latestPick.name} · ${pickCount} claimed`
+                              : "Waiting on your first pick"}
+                          </small>
+                        </span>
+                      </div>
+                      );
+                    })}
+                  </div>
+                  <div className="draft-update-history" aria-label="Previous rival picks">
+                    {rivalPickHistory.length ? (
+                      rivalPickHistory.map((event) => (
+                        <span className="draft-update-history-row" key={`${event.overallPick}-${event.wrestler.id}`}>
+                          <WrestlerPortrait className="draft-mini-portrait" wrestler={event.wrestler} />
+                          <span className="draft-update-copy">
+                            <strong>{event.chair.brandName}</strong>
+                            <small>
+                              Pick {event.overallPick} · {event.wrestler.name}
+                            </small>
+                          </span>
+                        </span>
+                      ))
+                    ) : (
+                      <span className="draft-update-history-empty">
+                        <small>No earlier rival picks yet.</small>
                       </span>
-                    ))
-                  ) : (
-                    <span>
-                      <strong>Boards are quiet</strong>
-                      <small>Rival desks are waiting for your first move.</small>
-                    </span>
-                  )}
+                    )}
+                  </div>
                 </div>
               </aside>
             </section>
 
             <section className="draft-war-bottom" aria-label="Draft support panels">
-              <article className="draft-bottom-panel scouting">
-                <p className="eyebrow">Scouting Report</p>
-                {focusedDraftWrestler ? (
-                  <>
-                    <div className="draft-scouting-talent">
-                      <WrestlerPortrait className="draft-mini-portrait" wrestler={focusedDraftWrestler} />
-                      <div>
-                        <strong>{focusedDraftWrestler.name}</strong>
-                        <span>{getDraftTag(focusedDraftIdentity?.wrestlingStyle, "Ring style")} / {getDraftTag(focusedDraftIdentity?.promoStyle, "Promo style")}</span>
-                      </div>
-                    </div>
-                    <small>{getDraftTag(focusedDraftWrestler.division)} roster fit with {focusedDraftWrestler.popularity} popularity and {focusedDraftWrestler.momentum} momentum.</small>
-                  </>
-                ) : (
-                  <small>No scouting file selected.</small>
-                )}
-              </article>
               <article className="draft-bottom-panel needs">
                 <p className="eyebrow">Roster Needs</p>
                 {draftedRosterNeedRows.map((row) => (
@@ -6163,36 +6196,25 @@ function NewGameSetupScreen({
                 ))}
               </article>
               <article className="draft-bottom-panel budget">
-                <p className="eyebrow">Budget Overview</p>
-                <span>Starting <strong>{draftFinanceReadout.isUnlimitedBudget ? "Unlimited" : formatMoney(draftFinanceReadout.startingBudgetAmount)}</strong></span>
-                <span>Roster Value <strong>{formatMoney(draftFinanceReadout.rosterValue)}</strong></span>
-                <span>Remaining <strong>{formatProjectedReserve(draftFinanceReadout)}</strong></span>
-              </article>
-              <article className="draft-bottom-panel info">
-                <p className="eyebrow">Draft Information</p>
-                <strong>{currentPlayerPickLabel}</strong>
-                <small>{activeDraftFilters.length ? activeDraftFilters.join(" / ") : "Open Board"}</small>
-                <div className="draft-pick-dots">
-                  {Array.from({ length: draftPickCount }).map((_, index) => (
-                    <span className={index < draftedWrestlers.length ? "filled" : ""} key={index} />
-                  ))}
-                </div>
+                <p className="eyebrow">Budget</p>
+                <span>Start <strong>{draftFinanceReadout.isUnlimitedBudget ? "Unlimited" : formatMoney(draftFinanceReadout.startingBudgetAmount)}</strong></span>
+                <span>Roster <strong>{formatMoney(draftFinanceReadout.rosterValue)}</strong></span>
+                <span>Left <strong>{formatProjectedReserve(draftFinanceReadout)}</strong></span>
               </article>
               <article className="draft-bottom-panel up-next">
                 <p className="eyebrow">Up Next</p>
                 <div>
-                  {upNextPicks.map((pick) => (
-                    <span key={`${pick.roundIndex}-${pick.pickInRound}-${pick.chair.id}`}>{pick.chair.brandName}</span>
-                  ))}
+                  {upNextPicks.length ? (
+                    upNextPicks.map((pick) => (
+                      <span key={`${pick.roundIndex}-${pick.pickInRound}-${pick.chair.id}`}>{pick.chair.brandName}</span>
+                    ))
+                  ) : (
+                    <small>Board opens on pick one.</small>
+                  )}
                 </div>
               </article>
               <article className="draft-bottom-panel drafted-mini">
-                <div>
-                  <p className="eyebrow">Drafted Roster</p>
-                  <button className="secondary-action" disabled={!draftedWrestlers.length} onClick={undoLastPick}>
-                    Undo Pick
-                  </button>
-                </div>
+                <p className="eyebrow">Drafted · {draftedWrestlers.length}</p>
                 <section>
                   {draftedWrestlers.length ? (
                     draftedWrestlers.map((wrestler, index) => (

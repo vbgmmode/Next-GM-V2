@@ -6,6 +6,7 @@ import type {
   CpuSegmentResult,
   CpuSeasonObjective,
   DraftMode,
+  GameDifficulty,
   GameState,
   InjuryStatus,
   RivalBrandState,
@@ -18,13 +19,16 @@ import type {
   ShowType,
   Wrestler,
 } from "./types";
+import { formatMoney } from "./formatters";
 import { createMarketContract, getCpuBudgetDefault } from "./market";
 import { simulateOpeningDraft } from "./openingDraft";
+import { getDifficultyRules } from "./difficultyRules";
 
 const cpuDraftPicksPerBrand = 12;
 const cpuStartingMoney = 1800000;
 
 export type CpuDraftPreviewNote = {
+  classLeadWrestlerId?: string;
   id: string;
   brandName: string;
   gmName: string;
@@ -290,7 +294,7 @@ function createCpuObjectives(brand: RivalBrandState): CpuSeasonObjective[] {
 function ensureCpuBrandDepth(brand: RivalBrandState, draftPool: Wrestler[], seasonNumber: number): RivalBrandState {
   const withRosterState: RivalBrandState = {
     ...brand,
-    budget: brand.budget || getCpuBudgetDefault(),
+    budget: brand.budget ?? getCpuBudgetDefault(),
     contracts: syncCpuContracts(brand, draftPool),
     marketTransactions: brand.marketTransactions ?? [],
     rosterState: syncCpuRosterState(brand, draftPool, seasonNumber),
@@ -316,18 +320,22 @@ export function allocateCpuDraftRosters(
   rivalBrands: RivalBrandState[],
   playerDraftedWrestlers: Pick<Wrestler, "id">[],
   draftPool: Wrestler[],
-  cpuPickCount = cpuDraftPicksPerBrand,
+  cpuPickCount?: number,
   draftMode: DraftMode = "snake",
   draftSeed = "next-gm-draft",
   playerBrandName = "Player Brand",
+  difficulty: GameDifficulty = "Medium",
 ): RivalBrandState[] {
   const draftState = simulateOpeningDraft({
     draftMode,
+    difficulty,
     draftSeed,
     draftPool,
     playerBrandName,
     rivalBrands,
     playerDraftedWrestlers,
+    finalizeCpuDraft: true,
+    playerPickTarget: Math.max(playerDraftedWrestlers.length, cpuPickCount ?? draftPool.length),
     cpuPickTarget: cpuPickCount,
   });
 
@@ -338,6 +346,7 @@ export function allocateCpuDraftRosters(
 
     return {
       ...brand,
+      budget: draftState.remainingBudgetByChairId[brand.id] ?? brand.budget,
       rosterWrestlerIds: draftedRoster.map((wrestler) => wrestler.id),
       rosterState,
     };
@@ -352,20 +361,23 @@ export function getCpuDraftPreviewSnapshot(
   draftPool: Wrestler[],
   draftMode: DraftMode = "snake",
   draftSeed = "next-gm-draft",
+  difficulty: GameDifficulty = "Medium",
 ): CpuDraftPreviewSnapshot | undefined {
   if (!rivalBrands.length) {
     return undefined;
   }
 
-  const projectedBrands = allocateCpuDraftRosters(
-    rivalBrands.map((brand) => ({ ...brand, rosterWrestlerIds: [], rosterState: [], activityHistory: [...brand.activityHistory] })),
-    playerDraftedWrestlers,
-    draftPool,
-    cpuDraftPicksPerBrand,
+  const draftState = simulateOpeningDraft({
     draftMode,
+    difficulty,
     draftSeed,
-  );
-  const claimedWrestlerIds = projectedBrands.flatMap((brand) => brand.rosterWrestlerIds);
+    draftPool,
+    playerBrandName: "Player Brand",
+    rivalBrands: rivalBrands.map((brand) => ({ ...brand, rosterWrestlerIds: [], rosterState: [], activityHistory: [...brand.activityHistory] })),
+    playerDraftedWrestlers,
+    playerPickTarget: Math.max(cpuDraftPicksPerBrand, playerDraftedWrestlers.length + 1),
+  });
+  const claimedWrestlerIds = draftState.cpuClaimedWrestlerIds;
   const claimedCount = claimedWrestlerIds.length;
   const playerPickCount = playerDraftedWrestlers.length;
   const tone: CpuDraftPreviewSnapshot["tone"] =
@@ -388,10 +400,11 @@ export function getCpuDraftPreviewSnapshot(
     playerPickCount === 0
       ? "Your first pick starts the parallel rival draft. No CPU claims are committed until the career begins."
       : `${claimedCount} rival claim${claimedCount === 1 ? "" : "s"} are projected from the same Top 200 pool. Undoing your last pick recalculates this board before anything is saved.`;
-  const notes = projectedBrands.slice(0, 3).map<CpuDraftPreviewNote>((brand) => {
-    const roster = getCpuRosterWrestlers(brand, draftPool);
+  const notes = rivalBrands.slice(0, 3).map<CpuDraftPreviewNote>((brand) => {
+    const roster = draftState.rostersByChairId[brand.id] ?? [];
     const topPick = roster[roster.length - 1] ?? roster[0];
     const rosterLead = roster[0];
+    const remainingBudget = draftState.remainingBudgetByChairId[brand.id] ?? brand.budget;
 
     return {
       id: `${brand.id}-cpu-draft-${playerPickCount}`,
@@ -399,9 +412,10 @@ export function getCpuDraftPreviewSnapshot(
       gmName: brand.assignedGMName,
       label: topPick ? `${topPick.name} Claimed` : "Board Held",
       detail: topPick
-        ? `${brand.assignedGMStyle} desk has ${roster.length}/${cpuDraftPicksPerBrand}; class lead is ${rosterLead?.name ?? topPick.name}.`
-        : `${brand.assignedGMName}'s desk waits for your first move before making a rival claim.`,
+        ? `${roster.length} claimed · ${rosterLead?.name ?? topPick.name} · ${formatMoney(remainingBudget)}`
+        : "Waiting on your first pick.",
       tone: roster.length >= 10 ? "burst" : roster.length >= 6 ? "aggressive" : roster.length >= 2 ? "watch" : "quiet",
+      classLeadWrestlerId: rosterLead?.id ?? topPick?.id,
     };
   });
 
@@ -636,12 +650,13 @@ function updateCpuObjectives(brand: RivalBrandState, latestResult: RivalBrandWee
   });
 }
 
-function getCpuShowScore(segments: CpuSegmentResult[], playerResult: ShowResult, brand: RivalBrandState) {
+function getCpuShowScore(segments: CpuSegmentResult[], playerResult: ShowResult, brand: RivalBrandState, difficulty: GameDifficulty) {
+  const rules = getDifficultyRules(difficulty);
   const base = segments.length ? Math.round(segments.reduce((sum, segment) => sum + segment.score, 0) / segments.length) : 0;
   const rivalryBonus = brand.rivalries.some((rivalry) => rivalry.heat >= 75) ? 2 : 0;
   const titleBonus = brand.championships.some((championship) => championship.defenses >= 2) ? 1 : 0;
 
-  return clamp(base + rivalryBonus + titleBonus + (playerResult.showType === "ple" ? 2 : 0));
+  return clamp(base + rivalryBonus + titleBonus + (playerResult.showType === "ple" ? 2 : 0) + rules.cpuWeeklyScoreModifier);
 }
 
 export function generateCpuWeeklyResults(game: GameState, playerResult: ShowResult, draftPool: Wrestler[]): RivalBrandState[] {
@@ -654,7 +669,7 @@ export function generateCpuWeeklyResults(game: GameState, playerResult: ShowResu
     }
 
     const segments = buildCpuCard(brand, draftPool, playerResult);
-    const score = getCpuShowScore(segments, playerResult, brand);
+    const score = getCpuShowScore(segments, playerResult, brand, game.difficulty);
     const previousScore = brand.weeklyResults.at(-1)?.score;
     const trend = getTrendFromScores(score, previousScore);
     const mainEventSegment = segments[segments.length - 1];

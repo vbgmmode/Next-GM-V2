@@ -38,7 +38,7 @@ The game currently supports:
 - Multi-step new game setup
 - Contract / You’re Hired setup
 - Game Rules setup with difficulty and starting budget
-- Difficulty stored and displayed as career framing; no broad gameplay difficulty tuning yet
+- Difficulty stored as a central campaign pressure profile with conservative tuning for CPU draft quality, CPU weekly result pressure, CPU market behavior, office pressure, morale fallout, and overuse/injury tolerance
 - Starting budget applied to initial career money
 - GM name and expanded GM style identity selection with descriptions
 - Brand selection using Raw, SmackDown, NXT, and AEW as equal major prototype brands
@@ -62,17 +62,17 @@ The game currently supports:
 - Brand Pulse v1 with read-only, non-simulated post-show brand pressure diagnostics derived from player results and static rival brand flavor
 - Non-Blocking Rival Draft Activity v1 with read-only draft-week flavor diagnostics for rival-brand setup context
 - Full CPU Rival System v1 with deterministic parallel rival draft claims, persisted rival rosters, hidden CPU card simulation, CPU titles/rivalries/injuries/finance/free-agent claims, ratings-battle standings, and summarized post-show Results Feed pressure
-- Full Market + Rival Pressure v1 with player free-agent signings, releases, deterministic trade proposals, contract/payroll pressure, CPU market churn, limited Rival Intelligence, and office mandates that affect money/trust/reputation without firing or progression locks
+- Full Market + Rival Pressure v1 with player free-agent signings, tag/faction bundle signings at a 20% package discount, releases, deterministic trade proposals, contract/payroll pressure, CPU market churn, limited Rival Intelligence, and office mandates that affect money/trust/reputation without firing or progression locks
 - Top 200 open draft pool staged from data/rosters and activated through src/game/top200DraftPool.ts
 - 120 source-balanced game-eligible performers available by default in Draft Night from the staged Top 200 roster data, with Madden-like in-game stat distribution applied at export
 - Open Draft Night availability across source brands; player brand selection does not restrict draft availability
 - NXT treated as an equal major brand, not developmental by default
-- Draft night with a 12-wrestler starting roster
+- Draft night with a 12-wrestler TV-ready minimum and money-based drafting limit
 - Draft Night search and sort controls for the larger pool
 - Repo-owned finance-planning catalogs under data/finance
 - Typed finance catalog parsing, lookup helpers, ID normalization, and Top 200 finance mapping validation through src/game/financeCatalog.ts
 - Setup/Draft finance readout showing starting budget, drafted roster finance value, projected reserve, and reserve pressure
-- Draft finance readout is informational only; draft picks do not spend money and affordability is not enforced
+- Draft finance readout is active; Money Based starts enforce affordability from draft value, CPU rivals draft until no affordable candidate remains, and Unlimited remains sandbox
 - localStorage career-save persistence
 - Save loading with fallbacks for added career fields
 - Save Migration Hardening v1 with centralized defaults for older localStorage saves
@@ -311,14 +311,15 @@ Open Draft Rules:
 Finance Readiness Rules:
 - Finance catalogs are repo-owned static data under data/finance.
 - src/game/financeCatalog.ts owns finance catalog parsing, typed lookups, ID normalization, and Top 200 finance mapping validation.
-- Setup/Draft finance readout is active but non-enforcing.
+- Setup/Draft finance readout is active.
 - Draft Night and Draft Review may show starting budget, drafted roster finance value, projected reserve, and reserve pressure.
-- Draft picks still do not spend money.
-- Affordability is not enforced.
+- Money Based Draft Night prevents picks the current reserve cannot cover.
+- CPU rival opening draft allocation spends rival draft budgets until no affordable candidate remains.
+- Unlimited budget bypasses draft affordability.
 - FinanceReport supports optional legacy-compatible v2 fields: modelVersion, grossRevenue, totalExpenses, revenueBreakdown, and expenseBreakdown.
 - Existing saves and legacy finance reports must remain compatible.
 - Current weekly finance formulas include active payroll and same-week market transaction costs; larger formula rewrites still require an explicit ticket.
-- Draft affordability enforcement, sponsorships, segment booking costs, finance projections, complex accounting, and weekly formula v2 remain out of scope unless explicitly requested.
+- Sponsorships, segment booking costs, finance projections, complex accounting, and weekly formula v2 remain out of scope unless explicitly requested.
 
 ## Permanent Scope Rules
 These should only be added when the user explicitly asks for them in the active ticket:

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createNewGame, createRivalBrandUniverse, createRivalGMAssignments, draftPool } from "./seed";
+import { getRosterFinanceValueForWrestler } from "./financeCatalog";
 import { getOpeningDraftRoundOrder, simulateOpeningDraft } from "./openingDraft";
 import type { DraftMode } from "./types";
 
@@ -67,10 +68,10 @@ describe("openingDraft", () => {
 
   it("recomputes CPU claims when a player pick is undone", () => {
     const onePick = getState(1);
-    const twoPicks = getState(2);
+    const threePicks = getState(3);
     const undoneBackToOnePick = getState(1);
 
-    expect(twoPicks.cpuClaimedWrestlerIds.length).toBeGreaterThan(onePick.cpuClaimedWrestlerIds.length);
+    expect(threePicks.cpuClaimedWrestlerIds.length).toBeGreaterThan(onePick.cpuClaimedWrestlerIds.length);
     expect(undoneBackToOnePick.cpuClaimedWrestlerIds).toEqual(onePick.cpuClaimedWrestlerIds);
   });
 
@@ -89,5 +90,81 @@ describe("openingDraft", () => {
 
     expect(playerIds).toHaveLength(12);
     expect(new Set(allOwnedIds)).toHaveLength(allOwnedIds.length);
+  });
+
+  it("lets CPU rivals draft until no affordable candidate remains", () => {
+    const game = createNewGame({
+      brandName: "Raw",
+      brandStyle: "Raw",
+      gmName: "Test GM",
+      rivalGMAssignments: createRivalGMAssignments("Raw"),
+      draftMode: "snake",
+      draftedWrestlers: draftPool.slice(0, 12),
+    });
+    const ownedIds = new Set([...game.wrestlers.map((wrestler) => wrestler.id), ...game.rivalBrands.flatMap((brand) => brand.rosterWrestlerIds)]);
+    const unownedCosts = draftPool
+      .filter((wrestler) => !ownedIds.has(wrestler.id))
+      .map((wrestler) => getRosterFinanceValueForWrestler(wrestler)?.draftValueUsd ?? 0)
+      .filter((cost) => cost > 0);
+    const cheapestUnownedCost = Math.min(...unownedCosts);
+
+    game.rivalBrands.forEach((brand) => {
+      expect(brand.budget).toBeGreaterThanOrEqual(0);
+      expect(brand.budget).toBeLessThan(cheapestUnownedCost);
+    });
+  });
+
+  it("supports player draft classes beyond the TV-ready minimum without duplicate CPU ownership", () => {
+    const game = createNewGame({
+      brandName: "Raw",
+      brandStyle: "Raw",
+      gmName: "Test GM",
+      rivalGMAssignments: createRivalGMAssignments("Raw"),
+      draftMode: "snake",
+      draftedWrestlers: draftPool.slice(0, 14),
+    });
+    const playerIds = game.wrestlers.map((wrestler) => wrestler.id);
+    const cpuIds = game.rivalBrands.flatMap((brand) => brand.rosterWrestlerIds);
+    const allOwnedIds = [...playerIds, ...cpuIds];
+
+    expect(playerIds).toHaveLength(14);
+    expect(new Set(allOwnedIds)).toHaveLength(allOwnedIds.length);
+  });
+
+  it("keeps harder CPU draft construction deterministic and different from easy construction", () => {
+    const easy = simulateOpeningDraft({
+      draftMode: "snake",
+      difficulty: "Easy",
+      draftSeed,
+      draftPool,
+      playerBrandName: "Raw",
+      rivalBrands,
+      playerDraftedWrestlers: draftPool.slice(0, 12),
+      finalizeCpuDraft: true,
+    });
+    const legendary = simulateOpeningDraft({
+      draftMode: "snake",
+      difficulty: "Legendary",
+      draftSeed,
+      draftPool,
+      playerBrandName: "Raw",
+      rivalBrands,
+      playerDraftedWrestlers: draftPool.slice(0, 12),
+      finalizeCpuDraft: true,
+    });
+
+    expect(legendary.cpuClaimedWrestlerIds).not.toEqual(easy.cpuClaimedWrestlerIds);
+    expect(
+      simulateOpeningDraft({
+        draftMode: "snake",
+        difficulty: "Legendary",
+        draftSeed,
+        draftPool,
+        playerBrandName: "Raw",
+        rivalBrands,
+        playerDraftedWrestlers: draftPool.slice(0, 12),
+        finalizeCpuDraft: true,
+      }).cpuClaimedWrestlerIds,
+    ).toEqual(legendary.cpuClaimedWrestlerIds);
   });
 });

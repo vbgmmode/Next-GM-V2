@@ -5,7 +5,7 @@ import { Metric } from "../components/gameShell";
 import { formatMoney } from "../game/formatters";
 import { getRosterFinanceValueForWrestler } from "../game/financeCatalog";
 import type { GameScreen } from "../game/migration";
-import { getContractForWrestler, getExternalMarketOffer, getMarketSnapshot, getRenewalOffer, getRivalMarketEvents } from "../game/market";
+import { getContractForWrestler, getExternalMarketOffer, getMarketBundleOffers, getMarketSnapshot, getRenewalOffer, getRivalMarketEvents } from "../game/market";
 import { draftPool } from "../game/seed";
 import type { GameState, ShowResult, Wrestler } from "../game/types";
 import "./MarketScreen.css";
@@ -132,6 +132,7 @@ export function MarketScreen({
   onProposeTrade,
   onReleaseWrestler,
   onRenewContract,
+  onSignBundle,
   onSignFreeAgent,
 }: {
   game: GameState;
@@ -140,6 +141,7 @@ export function MarketScreen({
   onProposeTrade: (outgoingWrestlerId: string, targetWrestlerId: string) => void;
   onReleaseWrestler: (wrestlerId: string) => void;
   onRenewContract: (wrestlerId: string, contractWeeks: number) => void;
+  onSignBundle: (affiliationId: string, contractWeeks: number) => void;
   onSignFreeAgent: (wrestlerId: string, contractWeeks: number) => void;
 }) {
   const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
@@ -197,6 +199,7 @@ export function MarketScreen({
   const releaseGuardActive = game.wrestlers.length <= 8;
   const selectedContract = selectedOutgoing ? getContractForWrestler(game, selectedOutgoing.id) : undefined;
   const selectedRenewalOffer = selectedOutgoing ? getRenewalOffer(selectedOutgoing, selectedRenewalWeeks) : undefined;
+  const bundleOffers = getMarketBundleOffers(game, draftPool, selectedContractWeeks).slice(0, 3);
   const selectedBoardStatus = selectedBoardEntry?.status ?? "available";
   const signDisabledReason = marketClosed
     ? "Market desk closes after the show runs."
@@ -551,6 +554,51 @@ export function MarketScreen({
                 })}
               </div>
               <p className="market-action-note">Tap roster talent for renewals and releases.</p>
+            </article>
+
+            <article className="market-panel market-compact-panel market-bundle-panel">
+              <div className="market-panel-head">
+                <div>
+                  <p className="eyebrow">Package Desk</p>
+                  <h2>Team Deals</h2>
+                </div>
+                <strong>{bundleOffers.length} Live</strong>
+              </div>
+              <div className="market-list market-bundle-list">
+                {bundleOffers.length ? (
+                  bundleOffers.map((offer) => {
+                    const openSlots = snapshot.rosterLimit - game.wrestlers.length;
+                    const disabledReason = marketClosed
+                      ? "Desk locked"
+                      : offer.wrestlers.length > openSlots
+                        ? "No slots"
+                        : game.money < offer.discountedDueNow
+                          ? "Cash short"
+                          : "";
+
+                    return (
+                      <article className="market-bundle-row" key={offer.affiliationId}>
+                        <div>
+                          <strong>{offer.affiliationName}</strong>
+                          <small>
+                            {offer.kind === "tag_team" ? "Tag Team" : "Faction"} · {offer.wrestlers.map((wrestler) => wrestler.name).join(" / ")}
+                          </small>
+                        </div>
+                        <div className="market-bundle-price">
+                          <span>{formatMoney(offer.discountedDueNow)}</span>
+                          <small>Save {formatMoney(offer.discountAmount)}</small>
+                        </div>
+                        <button className="primary-action" disabled={Boolean(disabledReason)} onClick={() => onSignBundle(offer.affiliationId, selectedContractWeeks)} type="button">
+                          {disabledReason || "Sign Bundle"}
+                        </button>
+                      </article>
+                    );
+                  })
+                ) : (
+                  <p className="market-empty-state">No tag or faction package is fully live on this week&apos;s board.</p>
+                )}
+              </div>
+              <p className="market-action-note">Bundles sign every live member together at 20% off the combined due-now file.</p>
             </article>
 
             <article className="market-panel market-compact-panel market-trade-panel">

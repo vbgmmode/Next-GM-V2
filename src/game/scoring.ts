@@ -15,6 +15,7 @@ import type {
   Wrestler,
 } from "./types";
 import { generateFinanceReport } from "./finance";
+import { getDifficultyRules, type DifficultyRules } from "./difficultyRules";
 import { generateSocialPosts } from "./social";
 import { generateCpuWeeklyResults } from "./cpuRivalLoop";
 import { draftPool } from "./seed";
@@ -398,7 +399,7 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
   };
 
   const updatedWrestlers = game.wrestlers.map((wrestler) =>
-    updateWrestlerPressure(wrestler, game.currentWeek, momentumTotals, fatigueTotals, lockerRoomFallout),
+    updateWrestlerPressure(wrestler, game.currentWeek, momentumTotals, fatigueTotals, lockerRoomFallout, getDifficultyRules(game.difficulty)),
   );
   const injuryNotes = evaluateInjuries(result, updatedWrestlers, game);
   lockerRoomFallout.injuryNotes = injuryNotes;
@@ -555,6 +556,7 @@ function updateWrestlerPressure(
   momentumTotals: Record<string, number>,
   fatigueTotals: Record<string, number>,
   fallout: LockerRoomFallout,
+  rules: DifficultyRules,
 ) {
   const isBooked = Object.prototype.hasOwnProperty.call(momentumTotals, wrestler.id) || Object.prototype.hasOwnProperty.call(fatigueTotals, wrestler.id);
   const previousLastBookedWeek = wrestler.lastBookedWeek ?? 0;
@@ -575,9 +577,14 @@ function updateWrestlerPressure(
   }
 
   if (isBooked && (wasHighlyFatigued || wasOverused)) {
-    const pressurePenalty =
-      (wasSeverelyFatigued ? FALLOUT_BALANCE.severePressureMoralePenalty : FALLOUT_BALANCE.pressureBookingMoralePenalty) +
-      (wrestler.injuryStatus === "minor" ? INJURY_BALANCE.minorMoralePenalty : 0);
+    const pressurePenalty = Math.max(
+      1,
+      Math.round(
+        ((wasSeverelyFatigued ? FALLOUT_BALANCE.severePressureMoralePenalty : FALLOUT_BALANCE.pressureBookingMoralePenalty) +
+          (wrestler.injuryStatus === "minor" ? INJURY_BALANCE.minorMoralePenalty : 0)) *
+          rules.playerPressure.moralePenaltyMultiplier,
+      ),
+    );
     moraleChange -= pressurePenalty;
     const pressureSource = wasSeverelyFatigued ? "red-line fatigue" : wasHighlyFatigued ? "heavy fatigue" : "a long TV streak";
     fallout.overuseWarnings.push({
@@ -589,11 +596,12 @@ function updateWrestlerPressure(
   }
 
   if (!isBooked && wasUnderused) {
-    moraleChange -= FALLOUT_BALANCE.underuseMoralePenalty;
+    const underusePenalty = Math.max(1, Math.round(FALLOUT_BALANCE.underuseMoralePenalty * rules.playerPressure.moralePenaltyMultiplier));
+    moraleChange -= underusePenalty;
     fallout.underuseWarnings.push({
       wrestlerId: wrestler.id,
       wrestlerName: wrestler.name,
-      moraleChange: -FALLOUT_BALANCE.underuseMoralePenalty,
+      moraleChange: -underusePenalty,
       note: `${wrestler.name} has been off TV for ${weeksSinceLastBooked} weeks. The silence is starting to read like a creative verdict.`,
     });
   }
@@ -686,7 +694,7 @@ function getInjuryRiskScore(wrestler: Wrestler, segmentTypes: SegmentType[], res
   const fatigueLoad = highestFatigue * 0.55 + (highestFatigue >= INJURY_BALANCE.severeFatigue ? 8 : highestFatigue >= INJURY_BALANCE.highFatigue ? 4 : 0);
   const stageLoad = result.showType === "ple" ? INJURY_BALANCE.pleStageLoad : 0;
 
-  return fatigueLoad + repeatLoad + physicalLoad + minorInjuryLoad + stageLoad;
+  return fatigueLoad + repeatLoad + physicalLoad + minorInjuryLoad + stageLoad + getDifficultyRules(game.difficulty).playerPressure.injuryRiskModifier;
 }
 
 function getInjuryDescription(wrestler: Wrestler, status: "minor" | "major", segmentTypes: SegmentType[], riskScore: number) {
