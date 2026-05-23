@@ -3,6 +3,7 @@ import { CommandPanel, HeroDecisionPanel, MetricTile, getBroadcastTheme } from "
 import { GameNav, Header, Metric } from "./components/gameShell";
 import { DynastyManagementShell, type DynastyManagementCta } from "./components/DynastyManagementShell";
 import { SuperstarPortrait as WrestlerPortrait } from "./components/SuperstarPortrait";
+import { SetupBrandPortraitGrid } from "./components/SetupBrandPortraitGrid";
 import { SetupGmPortraitGrid } from "./components/SetupGmPortraitGrid";
 import {
   DashboardDynastyAlert,
@@ -105,6 +106,7 @@ import {
   getDraftedRosterValue,
   getStartingBudgetAmount,
 } from "./game/seed";
+import { brandChairs, getBrandChairByStyle } from "./game/brandChairs";
 import { getGmPersonaByStyle, gmPersonas } from "./game/gmPersonas";
 import {
   getBestSegment,
@@ -458,24 +460,10 @@ type ChoiceOption<T extends string = string> = {
   label: T;
 };
 
-const brandStyleOptions: ChoiceOption<BrandStyle>[] = [
-  {
-    label: "Raw",
-    description: "Flagship spectacle with big personalities, weekly pressure, and mainstream sports-entertainment energy.",
-  },
-  {
-    label: "SmackDown",
-    description: "Sharp blue-brand identity with star power, athletic confidence, and prime-time polish.",
-  },
-  {
-    label: "NXT",
-    description: "Hungry prospects, breakout performances, developmental pressure, and future-stars atmosphere.",
-  },
-  {
-    label: "AEW",
-    description: "Alternative wrestling identity with workrate credibility, fan-driven buzz, and unpredictable edge.",
-  },
-];
+const brandStyleOptions: ChoiceOption<BrandStyle>[] = brandChairs.map((chair) => ({
+  label: chair.style,
+  description: chair.description,
+}));
 
 function getBroadcastThemeForBrandStyle(brandStyle: BrandStyle) {
   if (brandStyle === "SmackDown") {
@@ -5525,7 +5513,7 @@ function NewGameSetupScreen({
   const [draftArchetypeFilter, setDraftArchetypeFilter] = useState(draftArchetypeFilters[0]);
   const [draftFocusId, setDraftFocusId] = useState<string>();
   const selectedGmPersona = getGmPersonaByStyle(gmStyle);
-  const selectedBrandStyle = brandStyleOptions.find((option) => option.label === brandStyle) ?? brandStyleOptions[0];
+  const selectedBrandChair = getBrandChairByStyle(brandStyle);
   const selectedDifficulty = difficultyOptions.find((option) => option.label === difficulty) ?? difficultyOptions[1];
   const startingBudgetAmount = getStartingBudgetAmount(startingBudgetTier);
   const draftFinanceReadout = getDraftFinanceReadout(draftedWrestlers, startingBudgetTier, startingBudgetAmount);
@@ -5819,29 +5807,26 @@ function NewGameSetupScreen({
 
         {step === "brand" ? (
           <div className="setup-panel setup-command-panel">
-            <CommandPanel eyebrow="Choose Your Seat" title="Which Brand Chair Is Yours?" tone="brand">
-              <label className="setup-field">
-                Brand Name
-                <input value={brandName} onChange={(event) => setBrandName(event.target.value)} />
-              </label>
-              <ChoiceGrid
-                choices={brandStyleOptions}
-                selected={brandStyle}
-                onSelect={selectBrandStyle}
-                variant="identity"
+            <CommandPanel className="setup-brand-desk" eyebrow="Choose Your Seat" title="Which Brand Chair Is Yours?" tone="brand">
+              <SetupBrandPortraitGrid
+                chairs={brandChairs}
+                onSelect={(chair) => selectBrandStyle(chair.style)}
+                selectedStyle={brandStyle}
               />
-              <div className="identity-note">
-                <p className="eyebrow">Selected Brand Chair</p>
-                <strong>{selectedBrandStyle.label}</strong>
-                <p>{selectedBrandStyle.description} This frames the show you are taking into the GM universe; it does not add hidden gameplay modifiers.</p>
-              </div>
-              <div className="title-actions">
-                <button className="secondary-action" onClick={() => setStep("gm")}>
-                  Back
-                </button>
-                <button className="primary-action" disabled={!canPreview} onClick={() => setStep("draft")}>
-                  Enter Draft Night
-                </button>
+              <div className="setup-brand-footer">
+                <div className="identity-note setup-brand-identity-note">
+                  <p>
+                    <strong>{selectedBrandChair.style}</strong> — {selectedBrandChair.description}
+                  </p>
+                </div>
+                <div className="title-actions setup-brand-actions">
+                  <button className="secondary-action" onClick={() => setStep("gm")}>
+                    Back
+                  </button>
+                  <button className="primary-action" disabled={!canPreview} onClick={() => setStep("draft")}>
+                    Enter Draft Night
+                  </button>
+                </div>
               </div>
             </CommandPanel>
           </div>
