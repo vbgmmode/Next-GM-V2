@@ -67,7 +67,7 @@ The game currently supports:
 - 120 source-balanced game-eligible performers available by default in Draft Night from the staged Top 200 roster data, with Madden-like in-game stat distribution applied at export
 - Open Draft Night availability across source brands; player brand selection does not restrict draft availability
 - NXT treated as an equal major brand, not developmental by default
-- Draft night with a 12-wrestler TV-ready minimum and money-based drafting limit
+- Draft night with a 12-wrestler TV-ready minimum, money-based drafting limit, and tag/faction bundle picks at a 20% package discount
 - Draft Night search and sort controls for the larger pool
 - Repo-owned finance-planning catalogs under data/finance
 - Typed finance catalog parsing, lookup helpers, ID normalization, and Top 200 finance mapping validation through src/game/financeCatalog.ts

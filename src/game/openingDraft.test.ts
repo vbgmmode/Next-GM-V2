@@ -75,6 +75,27 @@ describe("openingDraft", () => {
     expect(undoneBackToOnePick.cpuClaimedWrestlerIds).toEqual(onePick.cpuClaimedWrestlerIds);
   });
 
+  it("supports a player bundle as one opening draft clock turn", () => {
+    const bundleMembers = draftPool.slice(0, 2);
+    const nextPick = draftPool[2];
+    const state = simulateOpeningDraft({
+      draftMode: "snake",
+      draftSeed,
+      draftPool,
+      playerBrandName: "Raw",
+      rivalBrands,
+      playerDraftedWrestlers: [...bundleMembers, nextPick],
+      playerDraftGroups: [bundleMembers.map((wrestler) => wrestler.id), [nextPick.id]],
+    });
+    const playerPicks = state.playerPicks;
+
+    expect(playerPicks.slice(0, 2).map((event) => event.wrestler.id)).toEqual(bundleMembers.map((wrestler) => wrestler.id));
+    expect(playerPicks[0].overallPick).toBe(1);
+    expect(playerPicks[1].overallPick).toBe(1);
+    expect(playerPicks[2].wrestler.id).toBe(nextPick.id);
+    expect(playerPicks[2].overallPick).toBeGreaterThan(1);
+  });
+
   it("creates no duplicate ownership across player and CPU opening rosters", () => {
     const game = createNewGame({
       brandName: "Raw",
@@ -129,6 +150,26 @@ describe("openingDraft", () => {
 
     expect(playerIds).toHaveLength(14);
     expect(new Set(allOwnedIds)).toHaveLength(allOwnedIds.length);
+  });
+
+  it("carries opening draft bundle discounts into starting money", () => {
+    const draftedWrestlers = draftPool.slice(0, 2);
+    const grossValue = draftedWrestlers.reduce((sum, wrestler) => sum + (getRosterFinanceValueForWrestler(wrestler)?.draftValueUsd ?? 0), 0);
+    const discount = grossValue - Math.round(grossValue * 0.8);
+    const game = createNewGame({
+      brandName: "Raw",
+      brandStyle: "Raw",
+      gmName: "Test GM",
+      rivalGMAssignments: createRivalGMAssignments("Raw"),
+      draftMode: "snake",
+      draftedWrestlers,
+      draftPickGroups: [draftedWrestlers.map((wrestler) => wrestler.id)],
+      draftBundleDiscountUsd: discount,
+      startingBudgetTier: "$2M",
+    });
+
+    expect(game.money).toBe(2000000 - (grossValue - discount));
+    expect(game.wrestlers.map((wrestler) => wrestler.id)).toEqual(draftedWrestlers.map((wrestler) => wrestler.id));
   });
 
   it("keeps harder CPU draft construction deterministic and different from easy construction", () => {

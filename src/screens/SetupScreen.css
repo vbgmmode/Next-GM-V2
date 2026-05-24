@@ -899,8 +899,26 @@
 }
 
 .setup-dynasty-shell.setup-step-draft .draft-prospect-row {
+  gap: 5px;
+  grid-template-columns: 40px minmax(0, 1fr) minmax(44px, auto) 40px;
   min-height: 48px;
   padding: 5px 7px;
+}
+
+.setup-dynasty-shell.setup-step-draft .draft-prospect-portrait {
+  width: 40px;
+}
+
+.setup-dynasty-shell.setup-step-draft .draft-prospect-row strong {
+  font-size: 0.76rem;
+}
+
+.setup-dynasty-shell.setup-step-draft .draft-prospect-row strong.is-long {
+  font-size: 0.68rem;
+}
+
+.setup-dynasty-shell.setup-step-draft .draft-prospect-row strong.is-xlong {
+  font-size: 0.6rem;
 }
 
 .setup-dynasty-shell.setup-step-draft .draft-focus-card {
@@ -974,4 +992,10 @@
 .setup-dynasty-shell.setup-step-draft .draft-bottom-panel small,
 .setup-dynasty-shell.setup-step-draft .draft-bottom-panel em {
   font-size: 0.62rem;
+}
+
+.setup-dynasty-shell.setup-step-draft .draft-bottom-panel.up-next div span {
+  font-size: 0.68rem;
+  min-height: 22px;
+  padding: 5px 9px;
 }

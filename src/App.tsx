@@ -27,7 +27,7 @@ import {
 } from "./gameStorage";
 import { advanceGameWeek, startNextSeason } from "./game/advanceWeek";
 import { generateExternalAiSocialCommentary } from "./game/aiCommentary";
-import { getRosterAffiliations, getWrestlerAffiliations } from "./game/affiliationCatalog";
+import { affiliationCatalog, getRosterAffiliations, getWrestlerAffiliations } from "./game/affiliationCatalog";
 import { getFinancePressureLabel } from "./game/finance";
 import { getRosterFinanceValueForWrestler } from "./game/financeCatalog";
 import {
@@ -221,6 +221,8 @@ type WrestlerAppearance = {
 };
 
 type DraftFinanceReadout = {
+  bundleDiscountUsd: number;
+  grossRosterValue: number;
   isUnlimitedBudget: boolean;
   missingFinanceRows: Wrestler[];
   pressureLabel: DraftReservePressure;
@@ -232,6 +234,17 @@ type DraftFinanceReadout = {
 type FreeAgentWatchEntry = {
   profile: WrestlerValueProfile;
   wrestler: Wrestler;
+};
+
+type DraftBundleOffer = {
+  affiliationId: string;
+  affiliationName: string;
+  kind: "tag_team" | "faction";
+  wrestlers: Wrestler[];
+  wrestlerIds: string[];
+  grossValue: number;
+  discountedValue: number;
+  discountAmount: number;
 };
 
 type GMRead = {
@@ -620,12 +633,13 @@ function formatStartingBudgetDetail(tier: StartingBudgetTier, amount: number, de
   return tier === "Unlimited" ? `${description} Sandbox reference: ${formatMoney(amount)}.` : `${formatBudgetTier(tier)} opening money. ${description}`;
 }
 
-function getDraftFinanceReadout(wrestlers: Wrestler[], startingBudgetTier: StartingBudgetTier, startingBudgetAmount: number): DraftFinanceReadout {
+function getDraftFinanceReadout(wrestlers: Wrestler[], startingBudgetTier: StartingBudgetTier, startingBudgetAmount: number, bundleDiscountUsd = 0): DraftFinanceReadout {
   const financeRows = wrestlers.map((wrestler) => ({
     financeRow: getRosterFinanceValueForWrestler(wrestler),
     wrestler,
   }));
-  const rosterValue = getDraftedRosterValue(wrestlers);
+  const grossRosterValue = getDraftedRosterValue(wrestlers);
+  const rosterValue = Math.max(0, grossRosterValue - bundleDiscountUsd);
   const projectedReserve = startingBudgetAmount - rosterValue;
   const isUnlimitedBudget = startingBudgetTier === "Unlimited";
   const tightReserveThreshold = Math.max(250000, Math.round(startingBudgetAmount * 0.15));
@@ -638,6 +652,8 @@ function getDraftFinanceReadout(wrestlers: Wrestler[], startingBudgetTier: Start
         : "Healthy";
 
   return {
+    bundleDiscountUsd,
+    grossRosterValue,
     isUnlimitedBudget,
     missingFinanceRows: financeRows.filter(({ financeRow }) => !financeRow).map(({ wrestler }) => wrestler),
     pressureLabel,
@@ -645,6 +661,41 @@ function getDraftFinanceReadout(wrestlers: Wrestler[], startingBudgetTier: Start
     rosterValue,
     startingBudgetAmount,
   };
+}
+
+function getDraftBundleOffers(availableWrestlers: Wrestler[]): DraftBundleOffer[] {
+  const availableById = new Map(availableWrestlers.map((wrestler) => [wrestler.id, wrestler]));
+
+  return affiliationCatalog
+    .filter((affiliation) => affiliation.kind === "tag_team" || affiliation.kind === "faction")
+    .flatMap((affiliation) => {
+      const eligibleMemberIds = affiliation.memberWrestlerIds.filter((id) => draftPool.some((wrestler) => wrestler.id === id));
+      const wrestlers = eligibleMemberIds
+        .map((id) => availableById.get(id))
+        .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
+
+      if (wrestlers.length < 2 || wrestlers.length !== eligibleMemberIds.length) {
+        return [];
+      }
+
+      const grossValue = getDraftedRosterValue(wrestlers);
+      const discountedValue = Math.round(grossValue * 0.8);
+      const kind: DraftBundleOffer["kind"] = affiliation.kind === "tag_team" ? "tag_team" : "faction";
+
+      return [
+        {
+          affiliationId: affiliation.id,
+          affiliationName: affiliation.name,
+          kind,
+          wrestlers,
+          wrestlerIds: wrestlers.map((wrestler) => wrestler.id),
+          grossValue,
+          discountedValue,
+          discountAmount: grossValue - discountedValue,
+        },
+      ];
+    })
+    .sort((a, b) => b.discountAmount - a.discountAmount || a.affiliationName.localeCompare(b.affiliationName));
 }
 
 function formatProjectedReserve(readout: DraftFinanceReadout) {
@@ -1630,6 +1681,20 @@ function getDraftSearchText(wrestler: Wrestler) {
 
 function getDraftTag(value: string | undefined, fallback = "Unlisted") {
   return value?.trim() || fallback;
+}
+
+function getDraftProspectNameClass(name: string) {
+  const length = name.trim().length;
+
+  if (length > 18) {
+    return "is-xlong";
+  }
+
+  if (length > 14) {
+    return "is-long";
+  }
+
+  return "";
 }
 
 function getDraftValueCounts(wrestlers: Wrestler[], getValue: (wrestler: Wrestler) => string | undefined) {
@@ -4246,6 +4311,8 @@ function App() {
     draftMode: DraftMode;
     rivalGMAssignments: RivalGMAssignment[];
     draftedWrestlers: Wrestler[];
+    draftPickGroups?: string[][];
+    draftBundleDiscountUsd?: number;
   }) {
     const newGame = createNewGame(career);
     const nextSavedGame = buildSavedGameState(newGame, "dashboard");
@@ -5514,6 +5581,8 @@ function NewGameSetupScreen({
     draftMode: DraftMode;
     rivalGMAssignments: RivalGMAssignment[];
     draftedWrestlers: Wrestler[];
+    draftPickGroups?: string[][];
+    draftBundleDiscountUsd?: number;
   }) => void;
 }) {
   const [step, setStep] = useState<SetupStep>("contract");
@@ -5526,6 +5595,8 @@ function NewGameSetupScreen({
   const [draftMode, setDraftMode] = useState<DraftMode>(defaultCareer.draftMode);
   const [rivalGMAssignments, setRivalGMAssignments] = useState<RivalGMAssignment[]>(() => createRivalGMAssignments(defaultCareer.brandStyle));
   const [draftedWrestlers, setDraftedWrestlers] = useState<Wrestler[]>([]);
+  const [draftPickGroups, setDraftPickGroups] = useState<string[][]>([]);
+  const [draftBundleDiscountUsd, setDraftBundleDiscountUsd] = useState(0);
   const [draftSearch, setDraftSearch] = useState("");
   const [draftSort, setDraftSort] = useState<DraftSort>("rank");
   const [draftBrandFilter, setDraftBrandFilter] = useState(draftBrandFilters[0]);
@@ -5538,7 +5609,7 @@ function NewGameSetupScreen({
   const selectedDifficulty = difficultyOptions.find((option) => option.label === difficulty) ?? difficultyOptions[1];
   const selectedDifficultyRules = getDifficultyRules(difficulty);
   const startingBudgetAmount = getStartingBudgetAmount(startingBudgetTier);
-  const draftFinanceReadout = getDraftFinanceReadout(draftedWrestlers, startingBudgetTier, startingBudgetAmount);
+  const draftFinanceReadout = getDraftFinanceReadout(draftedWrestlers, startingBudgetTier, startingBudgetAmount, draftBundleDiscountUsd);
   const canPreview = gmName.trim().length > 0 && brandName.trim().length > 0;
   const signedBrandName = brandName.trim() || defaultCareer.brandName;
   const signedGmName = gmName.trim() || defaultCareer.gmName;
@@ -5554,7 +5625,8 @@ function NewGameSetupScreen({
     playerBrandName: signedBrandName,
     rivalBrands: previewRivalBrands,
     playerDraftedWrestlers: draftedWrestlers,
-    playerPickTarget: Math.max(minimumDraftRosterSize, draftedWrestlers.length + 1),
+    playerDraftGroups: draftPickGroups,
+    playerPickTarget: Math.max(minimumDraftRosterSize, draftPickGroups.length + 1),
   });
   const cpuClaimedDraftIds = new Set(openingDraftState.cpuClaimedWrestlerIds);
   const availableDraftCount = openingDraftState.availableCount;
@@ -5583,8 +5655,11 @@ function NewGameSetupScreen({
     .filter((wrestler) => draftAvailabilityFilter === "All Status" || wrestler.sourceAvailability === draftAvailabilityFilter)
     .filter((wrestler) => draftArchetypeFilter === "All Styles" || wrestler.archetype === draftArchetypeFilter)
     .sort((a, b) => getDraftSortValue(b, draftSort) - getDraftSortValue(a, draftSort));
+  const availableDraftWrestlers = draftPool.filter((wrestler) => !draftedIds.has(wrestler.id) && !cpuClaimedDraftIds.has(wrestler.id));
+  const draftBundleOffers = getDraftBundleOffers(availableDraftWrestlers);
   const boardLeader = availableWrestlers[0];
   const focusedDraftWrestler = availableWrestlers.find((wrestler) => wrestler.id === draftFocusId) ?? boardLeader;
+  const focusedDraftBundleOffer = focusedDraftWrestler ? draftBundleOffers.find((offer) => offer.wrestlerIds.includes(focusedDraftWrestler.id)) : undefined;
   const readinessRemaining = Math.max(0, minimumDraftRosterSize - draftedWrestlers.length);
   const currentDraftPick = openingDraftState.currentPick;
   const currentPlayerPickLabel = `${draftedWrestlers.length} drafted`;
@@ -5596,6 +5671,10 @@ function NewGameSetupScreen({
     Boolean(focusedDraftWrestler && focusedDraftFinance) &&
     !draftFinanceReadout.isUnlimitedBudget &&
     focusedDraftCost > draftFinanceReadout.projectedReserve;
+  const focusedDraftBundleExceedsBudget =
+    Boolean(focusedDraftBundleOffer) &&
+    !draftFinanceReadout.isUnlimitedBudget &&
+    (focusedDraftBundleOffer?.discountedValue ?? 0) > draftFinanceReadout.projectedReserve;
   const canDraftFocusedWrestler = Boolean(focusedDraftWrestler && !focusedDraftExceedsBudget);
   const canEnterWeekOne = canPreview && draftedWrestlers.length >= minimumDraftRosterSize;
   const draftClockRead =
@@ -5641,6 +5720,8 @@ function NewGameSetupScreen({
       draftMode,
       rivalGMAssignments,
       draftedWrestlers,
+      draftPickGroups,
+      draftBundleDiscountUsd,
     });
   }
 
@@ -5656,6 +5737,7 @@ function NewGameSetupScreen({
     }
 
     setDraftedWrestlers((current) => [...current, wrestler]);
+    setDraftPickGroups((current) => [...current, [wrestler.id]]);
   }
 
   function draftFocusedWrestler() {
@@ -5664,6 +5746,18 @@ function NewGameSetupScreen({
     }
 
     draftWrestler(focusedDraftWrestler);
+  }
+
+  function draftBundle(offer: DraftBundleOffer) {
+    const alreadyUnavailable = offer.wrestlers.some((wrestler) => draftedIds.has(wrestler.id) || cpuClaimedDraftIds.has(wrestler.id));
+
+    if (alreadyUnavailable || (!draftFinanceReadout.isUnlimitedBudget && offer.discountedValue > draftFinanceReadout.projectedReserve)) {
+      return;
+    }
+
+    setDraftedWrestlers((current) => [...current, ...offer.wrestlers]);
+    setDraftPickGroups((current) => [...current, offer.wrestlerIds]);
+    setDraftBundleDiscountUsd((current) => current + offer.discountAmount);
   }
 
   function resetDraftBoard() {
@@ -5678,6 +5772,8 @@ function NewGameSetupScreen({
 
   function resetDraftSelections() {
     setDraftedWrestlers([]);
+    setDraftPickGroups([]);
+    setDraftBundleDiscountUsd(0);
     setDraftFocusId(undefined);
   }
 
@@ -6024,8 +6120,8 @@ function NewGameSetupScreen({
                         type="button"
                       >
                         <WrestlerPortrait className="draft-prospect-portrait" wrestler={wrestler} />
-                        <span>
-                          <strong>{wrestler.name}</strong>
+                        <span className="draft-prospect-copy">
+                          <strong className={getDraftProspectNameClass(wrestler.name)}>{wrestler.name}</strong>
                           <small>{getWrestlerOverall(wrestler)} OVR</small>
                         </span>
                         <em>Pop {wrestler.popularity}</em>
@@ -6093,6 +6189,13 @@ function NewGameSetupScreen({
                   <button className="primary-action" disabled={!canDraftFocusedWrestler} onClick={draftFocusedWrestler}>
                     {focusedDraftExceedsBudget ? "Over Budget" : "Draft Selected"}
                   </button>
+                  {focusedDraftBundleOffer ? (
+                    <button className="secondary-action" disabled={focusedDraftBundleExceedsBudget} onClick={() => draftBundle(focusedDraftBundleOffer)} type="button">
+                      {focusedDraftBundleExceedsBudget
+                        ? "Bundle Over Budget"
+                        : `Draft ${focusedDraftBundleOffer.kind === "tag_team" ? "Team" : "Faction"} · ${formatMoney(focusedDraftBundleOffer.discountedValue)}`}
+                    </button>
+                  ) : null}
                   <button className={canEnterWeekOne ? "primary-action" : "secondary-action"} disabled={!canEnterWeekOne} onClick={startCareer}>
                     Enter Week 1
                   </button>
@@ -6199,6 +6302,7 @@ function NewGameSetupScreen({
                 <p className="eyebrow">Budget</p>
                 <span>Start <strong>{draftFinanceReadout.isUnlimitedBudget ? "Unlimited" : formatMoney(draftFinanceReadout.startingBudgetAmount)}</strong></span>
                 <span>Roster <strong>{formatMoney(draftFinanceReadout.rosterValue)}</strong></span>
+                {draftFinanceReadout.bundleDiscountUsd > 0 ? <span>Bundle Save <strong>{formatMoney(draftFinanceReadout.bundleDiscountUsd)}</strong></span> : null}
                 <span>Left <strong>{formatProjectedReserve(draftFinanceReadout)}</strong></span>
               </article>
               <article className="draft-bottom-panel up-next">
@@ -6558,9 +6662,13 @@ function DraftFinanceSummary({ readout }: { readout: DraftFinanceReadout }) {
           value={readout.isUnlimitedBudget ? "Unlimited" : formatMoney(readout.startingBudgetAmount)}
           detail={readout.isUnlimitedBudget ? `${formatMoney(readout.startingBudgetAmount)} sandbox reference` : "Current setup selection"}
         />
-        <Metric label="Roster Value" value={formatMoney(readout.rosterValue)} detail="Static catalog draft value total" />
+        <Metric
+          label="Roster Value"
+          value={formatMoney(readout.rosterValue)}
+          detail={readout.bundleDiscountUsd ? `${formatMoney(readout.bundleDiscountUsd)} bundle discount applied` : "Static catalog draft value total"}
+        />
         <Metric label="Projected Reserve" value={formatProjectedReserve(readout)} detail="Carries into Week 1 money" />
-        <Metric label="Reserve Pressure" value={readout.pressureLabel} detail="No pick is blocked" />
+        <Metric label="Reserve Pressure" value={readout.pressureLabel} detail="Money-based picks must fit reserve" />
       </div>
       <p>{getDraftFinanceNote(readout)}</p>
     </section>

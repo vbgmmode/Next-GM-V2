@@ -298,14 +298,6 @@
   min-height: 0;
 }
 
-.market-bundle-panel {
-  display: grid;
-  flex: 0 0 auto;
-  gap: 6px;
-  grid-template-rows: auto minmax(0, auto) auto;
-  max-height: 260px;
-}
-
 .market-panel p,
 .market-panel h1,
 .market-panel h2,
@@ -486,73 +478,6 @@
   justify-self: end;
   text-align: right;
   text-transform: uppercase;
-}
-
-.market-bundle-list {
-  max-height: 150px;
-}
-
-.market-bundle-row {
-  background: rgba(10, 12, 18, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-left: 2px solid rgba(var(--bc-prestige-rgb), 0.66);
-  border-radius: 2px;
-  display: grid;
-  gap: 7px;
-  min-width: 0;
-  padding: 7px 8px;
-}
-
-.market-bundle-row > div,
-.market-bundle-row strong,
-.market-bundle-row small {
-  min-width: 0;
-}
-
-.market-bundle-row strong {
-  color: #f4f7fb;
-  display: block;
-  font-family: var(--font-display);
-  font-size: 0.8rem;
-  font-weight: 900;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.market-bundle-row small {
-  color: #8f98a8;
-  display: block;
-  font-size: 0.6rem;
-  font-weight: 900;
-  line-height: 1.18;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.market-bundle-price {
-  align-items: end;
-  display: flex;
-  gap: 8px;
-  justify-content: space-between;
-}
-
-.market-bundle-price span {
-  color: var(--bc-prestige);
-  font-family: var(--font-display);
-  font-size: 0.9rem;
-  font-weight: 900;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.market-bundle-row .primary-action {
-  min-height: 30px;
-  padding: 0 10px;
-  width: 100%;
 }
 
 .market-wrestler-portrait {

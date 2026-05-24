@@ -47,6 +47,7 @@ export type SimulateOpeningDraftOptions = {
   playerBrandName: string;
   rivalBrands: RivalBrandState[];
   playerDraftedWrestlers: Pick<Wrestler, "id">[];
+  playerDraftGroups?: string[][];
   finalizeCpuDraft?: boolean;
   playerPickTarget?: number;
   cpuPickTarget?: number;
@@ -254,6 +255,7 @@ export function simulateOpeningDraft({
   playerBrandName,
   rivalBrands,
   playerDraftedWrestlers,
+  playerDraftGroups,
   finalizeCpuDraft = false,
   playerPickTarget = defaultPickTarget,
   cpuPickTarget,
@@ -263,7 +265,10 @@ export function simulateOpeningDraft({
   const rules = getDifficultyRules(difficulty);
   const chairs = createOpeningDraftChairs(playerBrandName, rivalBrands, playerChairId, lotteryWeightsByChairId);
   const available = new Map(draftPool.map((wrestler) => [wrestler.id, wrestler]));
-  const reservedPlayerIds = new Set(playerDraftedWrestlers.map((wrestler) => wrestler.id));
+  const normalizedPlayerDraftGroups = playerDraftGroups?.length
+    ? playerDraftGroups.map((group) => [...new Set(group)].filter(Boolean)).filter((group) => group.length)
+    : playerDraftedWrestlers.map((wrestler) => [wrestler.id]);
+  const reservedPlayerIds = new Set(normalizedPlayerDraftGroups.flat());
   const rostersByChairId = new Map<string, Wrestler[]>(chairs.map((chair) => [chair.id, []]));
   const remainingBudgetByChairId = new Map<string, number>(chairs.map((chair) => [chair.id, chair.rivalBrand?.budget ?? 0]));
   const spentByChairId = new Map<string, number>(chairs.map((chair) => [chair.id, 0]));
@@ -295,7 +300,7 @@ export function simulateOpeningDraft({
       };
 
       if (chair.kind === "player") {
-        if (playerPickIndex >= playerDraftedWrestlers.length) {
+        if (playerPickIndex >= normalizedPlayerDraftGroups.length) {
           if (finalizeCpuDraft) {
             continue;
           }
@@ -303,10 +308,10 @@ export function simulateOpeningDraft({
           return createState(chairs, events, clockPick, rostersByChairId, remainingBudgetByChairId, spentByChairId, available, draftMode, draftSeed, playerChairId);
         }
 
-        const requestedPick = playerDraftedWrestlers[playerPickIndex];
-        const wrestler = available.get(requestedPick.id);
+        const requestedGroup = normalizedPlayerDraftGroups[playerPickIndex];
+        const wrestlers = requestedGroup.map((id) => available.get(id)).filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
 
-        if (!wrestler) {
+        if (!wrestlers.length) {
           if (finalizeCpuDraft) {
             playerPickIndex += 1;
             continue;
@@ -315,9 +320,9 @@ export function simulateOpeningDraft({
           return createState(chairs, events, clockPick, rostersByChairId, remainingBudgetByChairId, spentByChairId, available, draftMode, draftSeed, playerChairId);
         }
 
-        available.delete(wrestler.id);
-        rostersByChairId.set(chair.id, [...(rostersByChairId.get(chair.id) ?? []), wrestler]);
-        events.push({ ...clockPick, wrestler });
+        wrestlers.forEach((wrestler) => available.delete(wrestler.id));
+        rostersByChairId.set(chair.id, [...(rostersByChairId.get(chair.id) ?? []), ...wrestlers]);
+        wrestlers.forEach((wrestler) => events.push({ ...clockPick, wrestler }));
         playerPickIndex += 1;
         continue;
       }
@@ -353,7 +358,7 @@ export function simulateOpeningDraft({
       cpuPickedThisRound = true;
     }
 
-    if (finalizeCpuDraft && !cpuPickedThisRound && playerPickIndex >= playerDraftedWrestlers.length) {
+    if (finalizeCpuDraft && !cpuPickedThisRound && playerPickIndex >= normalizedPlayerDraftGroups.length) {
       break;
     }
   }

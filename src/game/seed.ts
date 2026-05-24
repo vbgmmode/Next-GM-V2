@@ -35,6 +35,8 @@ export type NewCareerOptions = {
   draftMode?: DraftMode;
   rivalGMAssignments?: RivalGMAssignment[];
   draftedWrestlers?: Wrestler[];
+  draftPickGroups?: string[][];
+  draftBundleDiscountUsd?: number;
 };
 
 export const prototypeBrands: PrototypeBrand[] = ["Raw", "SmackDown", "NXT", "AEW"];
@@ -107,7 +109,7 @@ export function createRivalBrandUniverse(rivalGMAssignments: RivalGMAssignment[]
   }));
 }
 
-export const defaultCareer: Required<Omit<NewCareerOptions, "draftedWrestlers">> = {
+export const defaultCareer: Required<Omit<NewCareerOptions, "draftedWrestlers" | "draftPickGroups" | "draftBundleDiscountUsd">> = {
   gmName: "Mara Voss",
   gmStyle: "Creative Visionary",
   brandName: "Raw",
@@ -137,14 +139,14 @@ export function getDraftedRosterValue(wrestlers: Pick<Wrestler, "id">[]) {
   return wrestlers.reduce((sum, wrestler) => sum + (getRosterFinanceValueForWrestler(wrestler)?.draftValueUsd ?? 0), 0);
 }
 
-export function getOpeningMoneyAfterDraft(startingBudgetTier: StartingBudgetTier, draftedWrestlers: Pick<Wrestler, "id">[] = []) {
+export function getOpeningMoneyAfterDraft(startingBudgetTier: StartingBudgetTier, draftedWrestlers: Pick<Wrestler, "id">[] = [], draftDiscountUsd = 0) {
   const startingMoney = getStartingBudgetAmount(startingBudgetTier);
 
   if (startingBudgetTier === "Unlimited") {
     return startingMoney;
   }
 
-  return startingMoney - getDraftedRosterValue(draftedWrestlers);
+  return startingMoney - Math.max(0, getDraftedRosterValue(draftedWrestlers) - draftDiscountUsd);
 }
 
 const defaultRosterSize = 12;
@@ -401,7 +403,7 @@ export function createSeasonCalendar(): CalendarWeek[] {
 export function createNewGame(options: NewCareerOptions = {}): GameState {
   const career = { ...defaultCareer, ...options };
   const startingRoster = cloneWrestlers(options.draftedWrestlers?.length ? options.draftedWrestlers : roster);
-  const startingMoney = getOpeningMoneyAfterDraft(career.startingBudgetTier, options.draftedWrestlers);
+  const startingMoney = getOpeningMoneyAfterDraft(career.startingBudgetTier, options.draftedWrestlers, options.draftBundleDiscountUsd);
 
   const rivalBrands = allocateCpuDraftRosters(
     createRivalBrandUniverse(career.rivalGMAssignments),
@@ -412,6 +414,7 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
     `${career.brandStyle}-${career.gmName}`,
     career.brandName,
     career.difficulty,
+    options.draftPickGroups,
   );
 
   const newGame: GameState = {

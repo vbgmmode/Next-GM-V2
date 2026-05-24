@@ -325,6 +325,7 @@ export function allocateCpuDraftRosters(
   draftSeed = "next-gm-draft",
   playerBrandName = "Player Brand",
   difficulty: GameDifficulty = "Medium",
+  playerDraftGroups?: string[][],
 ): RivalBrandState[] {
   const draftState = simulateOpeningDraft({
     draftMode,
@@ -334,8 +335,9 @@ export function allocateCpuDraftRosters(
     playerBrandName,
     rivalBrands,
     playerDraftedWrestlers,
+    playerDraftGroups,
     finalizeCpuDraft: true,
-    playerPickTarget: Math.max(playerDraftedWrestlers.length, cpuPickCount ?? draftPool.length),
+    playerPickTarget: Math.max(playerDraftGroups?.length ?? playerDraftedWrestlers.length, cpuPickCount ?? draftPool.length),
     cpuPickTarget: cpuPickCount,
   });
 
