@@ -1,4 +1,5 @@
 import { getFinancePressureLabel } from "./finance";
+import { formatMoney } from "./formatters";
 import {
   getInjuryStatusLabel,
   getRosterPressureTags,
@@ -197,12 +198,6 @@ type RivalryTimingSnapshot = {
   currentCardParticipants: number;
   recentlyPaidOff: boolean;
 };
-
-
-function formatMoney(amount: number) {
-  const sign = amount < 0 ? "-" : "";
-  return `${sign}$${Math.abs(amount).toLocaleString()}`;
-}
 
 
 function formatPressureLabel(label: PressureLabel) {

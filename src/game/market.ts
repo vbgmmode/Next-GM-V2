@@ -1,4 +1,5 @@
 import { getRosterFinanceValueForWrestler } from "./financeCatalog";
+import { formatMoney } from "./formatters";
 import { getDifficultyRules, scaleNegativePressure } from "./difficultyRules";
 import { affiliationCatalog } from "./affiliationCatalog";
 import { DRAFT_CONTRACT_WEEKS, MARKET_CONTRACT_MAX_WEEKS, STANDARD_BUDGET_AMOUNT } from "./constants";
@@ -1109,7 +1110,7 @@ export function evaluateOfficeMandate(game: GameState): GameState {
     moneyDelta,
     note:
       mandateStatus === "critical"
-        ? `Ownership is pressing after rank #${playerRank}, money at ${game.money.toLocaleString()}, and a thin operating margin.`
+        ? `Ownership is pressing after rank #${playerRank}, money at ${formatMoney(game.money)}, and a thin operating margin.`
         : mandateStatus === "surging"
           ? `Ownership is backing the room after rank #${playerRank} and strong brand momentum.`
           : mandateStatus === "watch"

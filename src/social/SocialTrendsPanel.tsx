@@ -97,7 +97,7 @@ export function SocialTrendsPanel({
   game: GameState;
   onSuperstarMailAction?: (item: SuperstarMailItem) => void;
 }) {
-  const mailSnapshot = getSuperstarMailSnapshot(game, 6);
+  const mailSnapshot = useMemo(() => getSuperstarMailSnapshot(game, 6), [game]);
   const mailIds = useMemo(() => mailSnapshot?.items.map((item) => item.id) ?? [], [mailSnapshot]);
   const [expandedMailId, setExpandedMailId] = useState<string | null>(null);
   const [readMailIds, setReadMailIds] = useState<Set<string>>(() => new Set());

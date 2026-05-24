@@ -1,4 +1,4 @@
-import { formatMoney } from "../game/formatters";
+import { formatAttendance, formatMoney } from "../game/formatters";
 import { getFinancePressureLabel } from "../game/finance";
 import type { FinanceReport, GameState, PressureLabel, ShowResult, ShowType, Wrestler } from "../game/types";
 import { getWrestlerValueProfile } from "../roster/rosterValueReads";
@@ -146,8 +146,8 @@ export function getVenueMarketContextReadout(report: FinanceReport | undefined, 
   }
 
   const crowdRead = avgAttendance === undefined
-    ? `Crowd landed at ${attendance.toLocaleString()} checks this board.`
-    : `${attendance.toLocaleString()} attendance vs ${avgAttendance.toLocaleString()} this-season average.`;
+    ? `Crowd landed at ${formatAttendance(attendance)} checks this board.`
+    : `${formatAttendance(attendance)} attendance vs ${formatAttendance(avgAttendance)} this-season average.`;
   const moneyRead = avgProfit === undefined
     ? `Profit/Loss tracked at ${formatMoney(report.profitLoss)} from ${formatMoney(gross)} gross.`
     : `${formatMoney(report.profitLoss)} closed with a score ${showScore} ${report.profitLoss >= avgProfit ? "above" : "below"} season pace.`;

@@ -17,12 +17,15 @@ import type { RosterFilter, RosterScreenProps, RosterSort } from "./rosterTypes"
 import { getWrestlerValueProfile } from "./rosterValueReads";
 import { WrestlerCard } from "./WrestlerCard";
 
+const ROSTER_FILTER_OPTIONS: RosterFilter[] = ["all", "mens", "womens", "champions"];
+const ROSTER_SORT_OPTIONS: RosterSort[] = ["momentum", "popularity", "fatigue", "morale"];
+
 export function RosterScreen({ game, latestResult, onNavigate, onOpenProfile }: RosterScreenProps) {
   const [sortBy, setSortBy] = useState<RosterSort>("momentum");
   const [filter, setFilter] = useState<RosterFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedWrestlerId, setSelectedWrestlerId] = useState(game.wrestlers[0]?.id ?? "");
-  const rosterAffiliations = getRosterAffiliations(game.wrestlers);
+  const rosterAffiliations = useMemo(() => getRosterAffiliations(game.wrestlers), [game.wrestlers]);
   const visibleWrestlers = useMemo(() => {
     const normalizedSearch = searchQuery.trim().toLowerCase();
 
@@ -43,24 +46,30 @@ export function RosterScreen({ game, latestResult, onNavigate, onOpenProfile }: 
   }, [filter, game, searchQuery, sortBy]);
   const topOverused = getTopOverusedWrestler(game.wrestlers);
   const topUnderused = getTopUnderusedWrestler(game.wrestlers, game.currentWeek);
-  const featuredAffiliations = rosterAffiliations
-    .filter((affiliation) => affiliation.memberWrestlerIds.length > 1)
-    .slice(0, 3);
+  const featuredAffiliations = useMemo(
+    () => rosterAffiliations.filter((affiliation) => affiliation.memberWrestlerIds.length > 1).slice(0, 3),
+    [rosterAffiliations],
+  );
   const selectedWrestler = visibleWrestlers.find((wrestler) => wrestler.id === selectedWrestlerId) ?? visibleWrestlers[0] ?? game.wrestlers[0];
   const selectedPressureTags = selectedWrestler ? getRosterPressureTags(selectedWrestler, game.currentWeek) : [];
   const selectedValueProfile = selectedWrestler ? getWrestlerValueProfile(selectedWrestler) : undefined;
   const selectedIdentity = selectedWrestler ? getWrestlerIdentitySnapshot(selectedWrestler, game) : undefined;
   const selectedLockerRead = selectedWrestler ? getWrestlerLockerRoomRead(selectedWrestler, game) : undefined;
   const selectedChampionships = selectedWrestler ? getWrestlerChampionships(selectedWrestler.id, game.championships) : [];
-  const selectedAffiliations = selectedWrestler ? rosterAffiliations.filter((affiliation) => affiliation.memberWrestlerIds.includes(selectedWrestler.id)) : [];
-  const filterOptions: RosterFilter[] = ["all", "mens", "womens", "champions"];
-  const sortOptions: RosterSort[] = ["momentum", "popularity", "fatigue", "morale"];
-  const filterCounts = filterOptions.reduce(
-    (counts, option) => ({
-      ...counts,
-      [option]: game.wrestlers.filter((wrestler) => getRosterFilterMatch(option, wrestler, game)).length,
-    }),
-    {} as Record<RosterFilter, number>,
+  const selectedAffiliations = useMemo(
+    () => (selectedWrestler ? rosterAffiliations.filter((affiliation) => affiliation.memberWrestlerIds.includes(selectedWrestler.id)) : []),
+    [rosterAffiliations, selectedWrestler],
+  );
+  const filterCounts = useMemo(
+    () =>
+      ROSTER_FILTER_OPTIONS.reduce(
+        (counts, option) => ({
+          ...counts,
+          [option]: game.wrestlers.filter((wrestler) => getRosterFilterMatch(option, wrestler, game)).length,
+        }),
+        {} as Record<RosterFilter, number>,
+      ),
+    [game],
   );
   const rosterCta: DynastyManagementCta = selectedWrestler
     ? {
@@ -83,7 +92,7 @@ export function RosterScreen({ game, latestResult, onNavigate, onOpenProfile }: 
           <aside className="roster-filter-rail" aria-label="Roster filters">
           <RosterPanel kicker="Filters" title="Locker Room" badge={`${game.wrestlers.length} Signed`}>
             <div className="roster-filter-stack">
-              {filterOptions.map((option) => (
+              {ROSTER_FILTER_OPTIONS.map((option) => (
                 <button className={`roster-filter-btn ${filter === option ? "is-active" : ""}`} key={option} onClick={() => setFilter(option)} type="button">
                   <span>{getRosterFilterLabel(option)}</span>
                   <strong>{filterCounts[option]}</strong>
@@ -93,7 +102,7 @@ export function RosterScreen({ game, latestResult, onNavigate, onOpenProfile }: 
             <div className="roster-sort-box">
               <span>Sort By</span>
               <select value={sortBy} onChange={(event) => setSortBy(event.target.value as RosterSort)}>
-                {sortOptions.map((option) => (
+                {ROSTER_SORT_OPTIONS.map((option) => (
                   <option key={option} value={option}>
                     {getRosterSortLabel(option)}
                   </option>

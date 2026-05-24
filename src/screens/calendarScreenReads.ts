@@ -1,5 +1,5 @@
 import { getBestSegment, getShowGrade, isValidSegment } from "../game/scoring";
-import { formatMoney } from "../game/formatters";
+import { formatAttendance, formatMoney } from "../game/formatters";
 import type { CalendarWeek, GameState, ShowResult, ShowType } from "../game/types";
 import { getSegmentOutcomeHeadline } from "./resultsScreenReads";
 
@@ -259,7 +259,7 @@ export function buildCalendarWeekSpotlight(game: GameState, week: CalendarWeek):
       },
       {
         label: "Attendance",
-        value: financeReport ? financeReport.attendance.toLocaleString() : "No report",
+        value: financeReport ? formatAttendance(financeReport.attendance) : "No report",
         detail: financeReport ? formatMoney(financeReport.ticketRevenue) + " tickets" : "Finance pending",
       },
       {
