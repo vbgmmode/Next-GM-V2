@@ -1134,7 +1134,7 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
   }
 
   if (championship.championIds.length === 0) {
-    if (segment.participantIds.length !== 2) {
+    if (!isSinglesTitleContestShape(segment)) {
       return undefined;
     }
 
@@ -1177,7 +1177,7 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
     };
   }
 
-  if (segment.participantIds.length !== 2 || championship.championIds.length !== 1) {
+  if (!isSinglesTitleContestShape(segment) || championship.championIds.length !== 1) {
     return undefined;
   }
 
@@ -1255,6 +1255,10 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
       note,
     } satisfies ChampionshipHistoryEvent,
   };
+}
+
+function isSinglesTitleContestShape(segment: Segment) {
+  return segment.segmentCatalogId === "M002" ? segment.participantIds.length === 3 : segment.participantIds.length === 2;
 }
 
 function getTeamLabel(ids: string[], wrestlers: Wrestler[]) {

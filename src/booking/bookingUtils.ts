@@ -560,7 +560,7 @@ function canSegmentContestVacantSinglesChampionship(segment: Segment, championsh
   return (
     segment.type === "Match" &&
     isValidSegment(segment, wrestlers) &&
-    segment.participantIds.length === 2 &&
+    isSinglesTitleContestShape(segment) &&
     isVacantSinglesChampionship(championship) &&
     doSegmentParticipantsFitChampionship(segment, championship, wrestlers)
   );
@@ -599,6 +599,10 @@ export function getTagTitleSides(segment: Segment, championship: Championship) {
     championSideIds: teamAHasChampions ? teamAIds : teamBIds,
     challengerSideIds: teamAHasChampions ? teamBIds : teamAIds,
   };
+}
+
+function isSinglesTitleContestShape(segment: Segment) {
+  return segment.segmentCatalogId === "M002" ? segment.participantIds.length === 3 : segment.participantIds.length === 2;
 }
 
 export function trimParticipantsForCatalogOption(
@@ -654,7 +658,7 @@ export function canSegmentContestChampionship(segment: Segment, championship: Ch
   return (
     segment.type === "Match" &&
     isValidSegment(segment, wrestlers) &&
-    segment.participantIds.length === 2 &&
+    isSinglesTitleContestShape(segment) &&
     isSinglesChampionship(championship) &&
     segment.participantIds.includes(championship.championIds[0]) &&
     doSegmentParticipantsFitChampionship(segment, championship, wrestlers)

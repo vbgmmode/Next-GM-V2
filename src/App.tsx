@@ -1756,6 +1756,10 @@ function doSegmentParticipantsFitChampionship(segment: Segment, championship: Ch
   return segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship));
 }
 
+function isSinglesTitleContestShape(segment: Segment) {
+  return segment.segmentCatalogId === "M002" ? segment.participantIds.length === 3 : segment.participantIds.length === 2;
+}
+
 function getTagTitleSides(segment: Segment, championship: Championship) {
   if (segment.type !== "Match" || segment.segmentCatalogId !== "M020" || segment.participantIds.length !== 4 || championship.championIds.length !== 2) {
     return undefined;
@@ -1785,7 +1789,7 @@ function canSegmentContestChampionship(segment: Segment, championship: Champions
   return (
     segment.type === "Match" &&
     isValidSegment(segment, wrestlers) &&
-    segment.participantIds.length === 2 &&
+    isSinglesTitleContestShape(segment) &&
     isSinglesChampionship(championship) &&
     segment.participantIds.includes(championship.championIds[0]) &&
     doSegmentParticipantsFitChampionship(segment, championship, wrestlers)

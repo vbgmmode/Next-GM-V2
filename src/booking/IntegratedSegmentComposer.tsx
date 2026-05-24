@@ -34,7 +34,7 @@ import {
 } from "./bookingUtils";
 
 export type IntegratedSegmentComposerHandle = {
-  openFormatPicker: () => void;
+  openSegmentTypePicker: () => void;
 };
 
 export type IntegratedSegmentComposerProps = {
@@ -61,6 +61,7 @@ type OverlayState =
   | { type: "closed" }
   | { type: "talent"; slotIndex: number }
   | { type: "slot-menu"; slotIndex: number }
+  | { type: "segment-type" }
   | { type: "format" }
   | { type: "title" }
   | { type: "rivalry" }
@@ -215,14 +216,14 @@ export const IntegratedSegmentComposer = forwardRef<IntegratedSegmentComposerHan
   const showRivalryBadge = segment.type !== "Open Challenge";
   const showStipulationBadge = segment.type === "Match";
   const showFinishBadge = segment.type === "Match" && segment.participantIds.length > 0;
-  const singlesTitleOption = useMemo(
+  const titleEligibleMatchOption = useMemo(
     () => catalogOptions.find((option) => option.championshipAllowed && option.minParticipants === 2 && option.maxParticipants === 2),
     [catalogOptions],
   );
-  const needsSinglesForTitle =
+  const needsTitleEligibleFormat =
     segment.type === "Match" &&
-    segment.participantIds.length !== 2 &&
-    Boolean(singlesTitleOption && segment.segmentCatalogId !== singlesTitleOption.id);
+    !selectedOption.currentTitleEligible &&
+    Boolean(titleEligibleMatchOption && segment.segmentCatalogId !== titleEligibleMatchOption.id);
 
   function openOverlay(next: OverlayState) {
     setStageMenuOpen(false);
@@ -232,7 +233,10 @@ export const IntegratedSegmentComposer = forwardRef<IntegratedSegmentComposerHan
   useImperativeHandle(
     ref,
     () => ({
-      openFormatPicker: () => openOverlay({ type: "format" }),
+      openSegmentTypePicker: () => {
+        setStageMenuOpen(false);
+        setOverlay({ type: "segment-type" });
+      },
     }),
     [],
   );
@@ -279,15 +283,15 @@ export const IntegratedSegmentComposer = forwardRef<IntegratedSegmentComposerHan
   }
 
   function applySegmentType(type: SegmentType) {
-    if (segment.type === type) {
-      return;
+    if (segment.type !== type) {
+      const option = getDefaultCatalogOption(type);
+
+      if (option) {
+        onApplyCatalogOption(option);
+      }
     }
 
-    const option = getDefaultCatalogOption(type);
-
-    if (option) {
-      onApplyCatalogOption(option);
-    }
+    closeOverlay();
   }
 
   function applySegmentFormat(option: SegmentCatalogOption) {
@@ -556,17 +560,17 @@ export const IntegratedSegmentComposer = forwardRef<IntegratedSegmentComposerHan
       {overlay.type === "title" ? (
         <BookingOverlay ariaLabel="Title picker" onClose={closeOverlay} title={segment.type === "Match" ? "Title Match" : "Title Context"} wide>
           <div className="booking-action-stack">
-            {needsSinglesForTitle && singlesTitleOption ? (
+            {needsTitleEligibleFormat && titleEligibleMatchOption ? (
               <>
                 <p className="booking-overlay-note">
-                  Title defenses need a singles match. Switch format to drop extra talent and unlock title booking.
+                  This format is not title eligible. Switch to a title-eligible match format to unlock title booking.
                 </p>
                 <button
                   className="booking-btn booking-btn-primary"
-                  onClick={() => onApplyCatalogOption(singlesTitleOption)}
+                  onClick={() => onApplyCatalogOption(titleEligibleMatchOption)}
                   type="button"
                 >
-                  Switch to {singlesTitleOption.label}
+                  Switch to {titleEligibleMatchOption.label}
                 </button>
               </>
             ) : null}
