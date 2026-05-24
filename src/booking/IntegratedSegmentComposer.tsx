@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { DashboardDynastyPortrait } from "../components/dashboardDynasty";
-import { bookedFinishCostUsd, getSegmentProductionCostForShow, getSegmentStipulationProductionCostForShow } from "../game/finance";
+import { bookedFinishCostUsd, getBookedFinishProductionCostForShow, getSegmentProductionCostForShow, getSegmentStipulationProductionCostForShow } from "../game/finance";
 import { formatMoney } from "../game/formatters";
 import { getCatalogOptionsForType, getSegmentCatalogOption, getSegmentParticipantRange, type SegmentCatalogOption } from "../game/matchFormatCatalog";
 import { getStipulationById } from "../game/stipulationCatalog";
@@ -201,7 +201,7 @@ export function IntegratedSegmentComposer({
   const currentShowType = game.calendar.find((week) => week.weekNumber === game.currentWeek)?.showType ?? "tv";
   const segmentProductionCost = getSegmentProductionCostForShow(segment, currentShowType) ?? 0;
   const stipulationProductionCost = getSegmentStipulationProductionCostForShow(segment, currentShowType);
-  const bookedFinishCost = segment.type === "Match" && segment.winnerId ? bookedFinishCostUsd : 0;
+  const bookedFinishCost = getBookedFinishProductionCostForShow(segment);
   const plannedSegmentCost = segmentProductionCost + stipulationProductionCost + bookedFinishCost;
   const currentShowTypeLabel = currentShowType === "ple" ? "PLE" : "TV";
   const showTitleBadge = segment.type === "Match" || segment.type === "Contract Signing" || segment.type === "Open Challenge";
@@ -627,7 +627,9 @@ export function IntegratedSegmentComposer({
 
       {overlay.type === "finish" ? (
         <BookingOverlay ariaLabel="Finish picker" onClose={closeOverlay} title="Booked Finish" wide>
-          <p className="booking-overlay-note">Choosing a winner adds {formatMoney(bookedFinishCostUsd)} in production handling. Leaving it open lets the match resolve at show time.</p>
+          <p className="booking-overlay-note">
+            Plain matches stay free. Choosing a winner adds {formatMoney(bookedFinishCostUsd)} in production handling.
+          </p>
           <div className="booking-action-stack">
             <button
               className={`booking-btn booking-btn-secondary ${!segment.winnerId ? "is-active" : ""}`.trim()}

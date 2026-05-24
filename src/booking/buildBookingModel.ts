@@ -1,4 +1,4 @@
-import { bookedFinishCostUsd, getSegmentProductionCostForShow, getSegmentStipulationProductionCostForShow } from "../game/finance";
+import { getBookedFinishProductionCostForShow, getSegmentProductionCostForShow, getSegmentStipulationProductionCostForShow } from "../game/finance";
 import { getPrestigeMainEventAnchorSnapshot } from "../game/championshipPrestigeReads";
 import { formatMoney } from "../game/formatters";
 import { getCurrentCalendarWeek, isValidSegment } from "../game/scoring";
@@ -157,7 +157,7 @@ function buildProducerNote(game: GameState, segment: Segment, titleName?: string
 function getPlannedSegmentCost(segment: Segment, showType: ShowType) {
   const segmentProductionCost = getSegmentProductionCostForShow(segment, showType) ?? 0;
   const stipulationProductionCost = getSegmentStipulationProductionCostForShow(segment, showType);
-  const bookedFinishCost = segment.type === "Match" && segment.winnerId ? bookedFinishCostUsd : 0;
+  const bookedFinishCost = getBookedFinishProductionCostForShow(segment);
   const plannedCost = segmentProductionCost + stipulationProductionCost + bookedFinishCost;
   const detailParts = [
     formatMoney(segmentProductionCost),

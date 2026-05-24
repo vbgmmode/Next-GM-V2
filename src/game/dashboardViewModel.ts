@@ -1,3 +1,4 @@
+import { getBrandChairByStyle, getBrandPlateLabel } from "./brandChairs";
 import { getRatingsBattleSnapshot } from "./cpuRivalLoop";
 import { getFinancePressureLabel } from "./finance";
 import { getRosterFinanceValueForWrestler } from "./financeCatalog";
@@ -24,7 +25,8 @@ export type DashboardAlert = {
 
 export type DashboardViewModel = {
   alerts: DashboardAlert[];
-  brandInitials: string;
+  brandPlateLabel: string;
+  brandPortraitSrc: string;
   brandStatus: {
     budgetLabel: string;
     fansLabel: string;
@@ -263,13 +265,8 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
   const unavailableCount = rosterTags.filter((tag) => tag === "Unavailable").length;
   const injuryCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus !== "healthy").length;
   const freeAgents = getAvailableFreeAgents(game, draftPool).slice(0, 5);
-  const brandInitials =
-    game.brandName
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join("") || "HQ";
+  const brandPlateLabel = getBrandPlateLabel(game.brandStyle);
+  const brandPortraitSrc = getBrandChairByStyle(game.brandStyle).portraitSrc;
 
   const sortedRoster = [...game.wrestlers].sort(
     (a, b) => b.popularity + b.momentum - (a.popularity + a.momentum) || a.name.localeCompare(b.name),
@@ -402,7 +399,8 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
 
   return {
     alerts: alerts.slice(0, 4),
-    brandInitials,
+    brandPlateLabel,
+    brandPortraitSrc,
     brandStatus: {
       budgetLabel: formatMoney(game.money),
       fansLabel: ratingsBattle ? `#${ratingsBattle.playerRank}` : "-",

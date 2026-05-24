@@ -19,6 +19,7 @@ import { getDifficultyRules, type DifficultyRules } from "./difficultyRules";
 import { generateSocialPosts } from "./social";
 import { generateCpuWeeklyResults } from "./cpuRivalLoop";
 import { draftPool } from "./seed";
+import { applyRivalryCatalogDefaults, getDefaultStorylineIdForStakes, getRivalryStoryline } from "./rivalryCatalog";
 import { getSegmentValidationRange } from "./matchFormatCatalog";
 import { getChampionshipDivisionGroup, wrestlerFitsChampionshipDivision } from "./titleCatalog";
 import { applyTitleEventStatFallout, applyTitleSceneStatFallout } from "./titleStatFallout";
@@ -88,6 +89,7 @@ const FALLOUT_BALANCE = {
 };
 
 const RIVALRY_BALANCE = {
+  crowdSparkScore: 85,
   superEliteHeatGain: 12,
   eliteHeatGain: 9,
   strongHeatGain: 6,
@@ -321,8 +323,17 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
           showName: calendarWeek.showName,
           showType: calendarWeek.showType,
         });
+    const sparkedRivalryResolution =
+      isNoContest || rivalryResolution
+        ? undefined
+        : resolveCrowdSparkedRivalry(resolvedSegment, updatedRivalries, score, game.wrestlers, {
+            seasonNumber: game.seasonNumber,
+            weekNumber: game.currentWeek,
+            showName: calendarWeek.showName,
+            showType: calendarWeek.showType,
+          });
     const titleNote = titleResolution?.note;
-    const rivalryNote = rivalryResolution?.note;
+    const rivalryNote = rivalryResolution?.note ?? sparkedRivalryResolution?.note;
 
     resolvedSegment.participantIds.forEach((id) => {
       const fatigueGain =
@@ -351,8 +362,10 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
       rivalryNotes.push(rivalryNote);
     }
 
-    if (rivalryResolution?.events.length) {
-      rivalryHistoryEvents.push(...rivalryResolution.events);
+    const rivalryEvents = rivalryResolution?.events ?? sparkedRivalryResolution?.events;
+
+    if (rivalryEvents?.length) {
+      rivalryHistoryEvents.push(...rivalryEvents);
     }
 
     segmentResults.push({
@@ -368,7 +381,7 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
       momentumChanges,
       fatigueChanges,
       championshipId: resolvedSegment.championshipId,
-      rivalryId: resolvedSegment.rivalryId,
+      rivalryId: resolvedSegment.rivalryId ?? sparkedRivalryResolution?.rivalryId,
       segmentCatalogId: resolvedSegment.segmentCatalogId,
       stipulationId: resolvedSegment.stipulationId,
       winnerId,
@@ -1031,6 +1044,80 @@ type ResolvedShowContext = {
   showName: string;
   showType: "tv" | "ple";
 };
+
+function resolveCrowdSparkedRivalry(
+  segment: Segment,
+  rivalries: Rivalry[],
+  score: number,
+  wrestlers: Wrestler[],
+  context: ResolvedShowContext,
+) {
+  if (segment.type !== "Match" || segment.rivalryId || segment.participantIds.length !== 2 || score < RIVALRY_BALANCE.crowdSparkScore) {
+    return undefined;
+  }
+
+  const participants = segment.participantIds
+    .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
+    .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
+
+  if (
+    participants.length !== 2 ||
+    !canRivalryParticipantsShareDivision(participants) ||
+    participants.some((wrestler) => rivalries.some((rivalry) => rivalry.participantIds.includes(wrestler.id)))
+  ) {
+    return undefined;
+  }
+
+  const [first, second] = participants;
+  const stakes = segment.championshipId ? "title" : "respect";
+  const storylineId = getDefaultStorylineIdForStakes(stakes);
+  const storyline = getRivalryStoryline({ stakes, storylineId });
+  const averageStarSignal = (first.popularity + first.momentum + second.popularity + second.momentum) / 4;
+  const heat = clamp(Math.round(score * 0.55 + averageStarSignal * 0.45));
+  const freshness = context.showType === "ple" || segment.championshipId ? 86 : 82;
+  const rivalryId = `rivalry-spark-s${context.seasonNumber}-w${context.weekNumber}-${segment.id}`;
+  const rivalry = applyRivalryCatalogDefaults({
+    id: rivalryId,
+    name: `${first.name} vs ${second.name}`,
+    participantIds: [first.id, second.id],
+    structure: "singles",
+    storylineId: storyline.id,
+    relationshipTag: storyline.relationshipTag,
+    heat,
+    freshness,
+    weeksActive: 1,
+    lastAdvancedWeek: context.weekNumber,
+    status: getRivalryStatus(heat, freshness),
+    stakes,
+  });
+  const note = `${rivalry.name} sparked after the crowd bought their ${score}-rated match as a real issue.`;
+  const event: RivalryHistoryEvent = {
+    id: `s${context.seasonNumber}-w${context.weekNumber}-${segment.id}-${rivalryId}-started`,
+    rivalryId,
+    rivalryName: rivalry.name,
+    participantIds: [...rivalry.participantIds],
+    weekNumber: context.weekNumber,
+    seasonNumber: context.seasonNumber,
+    showName: context.showName,
+    showType: context.showType,
+    eventType: "started",
+    note,
+    heat: rivalry.heat,
+    freshness: rivalry.freshness,
+    status: rivalry.status,
+  };
+
+  rivalries.push(rivalry);
+
+  return { rivalryId, note, events: [event] };
+}
+
+function canRivalryParticipantsShareDivision(wrestlers: Wrestler[]) {
+  const divisions = [
+    ...new Set(wrestlers.map((wrestler) => getWrestlerDivisionGroup(wrestler)).filter((division): division is "mens" | "womens" => Boolean(division))),
+  ];
+  return divisions.length <= 1;
+}
 
 function resolveRivalrySegment(segment: Segment, rivalries: Rivalry[], score: number, context: ResolvedShowContext) {
   if (!segment.rivalryId) {

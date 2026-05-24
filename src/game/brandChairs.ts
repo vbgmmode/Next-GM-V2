@@ -1,4 +1,5 @@
-import type { BrandStyle } from "./types";
+import { prototypeBrands } from "./seed";
+import type { BrandStyle, PrototypeBrand } from "./types";
 
 export type BrandChair = {
   description: string;
@@ -31,4 +32,12 @@ export const brandChairs: BrandChair[] = [
 
 export function getBrandChairByStyle(style: BrandStyle) {
   return brandChairs.find((chair) => chair.style === style) ?? brandChairs[0];
+}
+
+export function getBrandPlateLabel(brandStyle: BrandStyle) {
+  if (prototypeBrands.includes(brandStyle as PrototypeBrand)) {
+    return brandStyle.toUpperCase();
+  }
+
+  return brandStyle.trim().toUpperCase() || "HQ";
 }

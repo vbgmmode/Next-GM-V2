@@ -6682,8 +6682,8 @@ function DashboardScreen({
         <aside className="dashboard-dynasty-column dashboard-dynasty-left-column">
           <article className="dashboard-dynasty-panel dashboard-dynasty-brand-status">
             <div className="dashboard-dynasty-kicker">Brand Status</div>
-            <div className="dashboard-dynasty-brand-plate" aria-hidden="true">
-              {model.brandInitials}
+            <div className="dashboard-dynasty-brand-plate" aria-label={model.brandPlateLabel}>
+              <img alt="" className="dashboard-dynasty-brand-mark" draggable={false} src={model.brandPortraitSrc} />
             </div>
             <div className="dashboard-dynasty-brand-rating">
               <span>Show Rating</span>
@@ -7489,10 +7489,27 @@ function ChampionshipsScreen({
                   <div className="championship-contender-list">
                     {selectedContenderRows.length ? (
                       selectedContenderRows.map(({ index, wrestler }) => (
-                        <article className="championship-contender-row" key={wrestler.id}>
+                        <article className={`championship-contender-row ${editContendersOpen ? "is-editing" : ""}`.trim()} key={wrestler.id}>
                           <span>{String(index + 1).padStart(2, "0")}</span>
                           <WrestlerPortrait className="championship-mini-portrait" wrestler={wrestler} />
                           <strong>{wrestler.name}</strong>
+                          {editContendersOpen ? (
+                            <button
+                              aria-label={`Remove ${wrestler.name} from ${selectedTitleRead.championship.name} contender lane`}
+                              className="danger-action championship-contender-remove"
+                              onClick={() =>
+                                onSetContenders(
+                                  selectedTitleRead.championship.id,
+                                  selectedContenderRows
+                                    .map((row) => row.wrestler.id)
+                                    .filter((wrestlerId) => wrestlerId !== wrestler.id),
+                                )
+                              }
+                              type="button"
+                            >
+                              Remove
+                            </button>
+                          ) : null}
                         </article>
                       ))
                     ) : (

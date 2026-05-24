@@ -739,6 +739,28 @@
   margin: 0;
 }
 
+.championship-action-rail .championship-contender-row {
+  align-items: center;
+  grid-template-columns: 28px 34px minmax(0, 1fr);
+  padding: 8px;
+}
+
+.championship-action-rail .championship-contender-row.is-editing {
+  grid-template-columns: 28px 34px minmax(0, 1fr) auto;
+}
+
+.championship-action-rail .championship-contender-row strong {
+  min-width: 0;
+}
+
+.championship-contender-remove {
+  align-self: center;
+  font-size: 0.66rem;
+  min-height: 30px;
+  padding: 0 9px;
+  white-space: nowrap;
+}
+
 .championship-committee-collapsible .championship-feed-toggle,
 .championship-committee-collapsible .championship-manage-toggle {
   align-items: center;

@@ -48,6 +48,10 @@ export function getFinancePressureLabel(money: number, latestProfitLoss = 0) {
 }
 
 export function getSegmentProductionCostForShow(segment: Pick<SegmentResult, "segmentCatalogId" | "type">, showType: ShowType) {
+  if (segment.type === "Match") {
+    return 0;
+  }
+
   if (!segment.segmentCatalogId) {
     return undefined;
   }
@@ -63,6 +67,10 @@ export function getSegmentProductionCostForShow(segment: Pick<SegmentResult, "se
 
 export function getSegmentStipulationProductionCostForShow(segment: Pick<SegmentResult, "stipulationId">, showType: ShowType) {
   return getStipulationCostForShow(segment.stipulationId, showType);
+}
+
+export function getBookedFinishProductionCostForShow(segment: Pick<SegmentResult, "stipulationId" | "type"> & { winnerId?: string }) {
+  return segment.type === "Match" && segment.winnerId ? bookedFinishCostUsd : 0;
 }
 
 function getShowProductionCostProfile(result: ShowResult, game: GameState) {
@@ -86,7 +94,11 @@ function getShowProductionCostProfile(result: ShowResult, game: GameState) {
       return total;
     }
 
-    return total + bookedFinishCostUsd;
+    return total + getBookedFinishProductionCostForShow({
+      type: segment.type,
+      stipulationId: plannedSegment?.stipulationId ?? segment.stipulationId,
+      winnerId: manualWinnerId,
+    });
   }, 0);
   const stipulationProductionCost = result.segmentResults.reduce(
     (total, segment) => total + getSegmentStipulationProductionCostForShow(segment, result.showType),

@@ -47,10 +47,11 @@ describe("buildBookingModel production costs", () => {
 
     expect(model.segments).toHaveLength(2);
     model.segments.forEach((row) => {
-      expect(row.segmentProductionCost, row.displayName).toBeGreaterThan(0);
       expect(row.plannedCost, row.displayName).toBeGreaterThan(0);
       expect(row.plannedCostLabel).toContain("$");
     });
+    expect(model.segments.find((row) => row.id === "booking-cost-match")?.segmentProductionCost).toBe(0);
+    expect(model.segments.find((row) => row.id === "booking-cost-promo")?.segmentProductionCost).toBeGreaterThan(0);
     expect(model.production.segmentCost).toBe(expectedSegmentCost);
     expect(model.production.stipulationCost).toBe(expectedStipulationCost);
     expect(model.production.bookedFinishCost).toBe(bookedFinishCostUsd);

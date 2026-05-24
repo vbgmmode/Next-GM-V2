@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { segmentCatalogOptions } from "./matchFormatCatalog";
-import { bookedFinishCostUsd, generateFinanceReport, getSegmentProductionCostForShow, getSegmentStipulationProductionCostForShow } from "./finance";
+import {
+  bookedFinishCostUsd,
+  generateFinanceReport,
+  getBookedFinishProductionCostForShow,
+  getSegmentProductionCostForShow,
+  getSegmentStipulationProductionCostForShow,
+} from "./finance";
 import { getSegmentBookingCost, rosterDraftAndContractValues } from "./financeCatalog";
 import { createNewGame } from "./seed";
-import type { GameState, Segment, SegmentResult, ShowResult, ShowType } from "./types";
+import type { GameState, Segment, SegmentResult, SegmentType, ShowResult, ShowType } from "./types";
 
 const mediumStartingBudget = 2000000;
 const baseTvProductionCost = 65000;
@@ -19,11 +25,30 @@ function getRosterSpend(mix: Array<[string, number]>) {
   return mix.flatMap(([roleTier, count]) => getCheapestRosterRows(roleTier, count)).reduce((sum, row) => sum + row.draftValueUsd, 0);
 }
 
-function getTvCardCost(segmentIds: string[], bookedFinishCount = 0) {
+function getSegmentTypeForCostTest(segmentId: string): SegmentType {
+  if (segmentId.startsWith("M")) {
+    return "Match";
+  }
+
+  if (segmentId.startsWith("P")) {
+    return "Promo";
+  }
+
+  if (segmentId.startsWith("A")) {
+    return "Backstage Angle";
+  }
+
+  return "Contract Signing";
+}
+
+function getTvCardCost(segmentIds: string[], bookedFinishCount = 0, hasStipulation = false) {
   return (
     baseTvProductionCost +
-    segmentIds.reduce((sum, segmentId) => sum + (getSegmentBookingCost(segmentId)?.weeklyTvBookingCostUsd ?? 0), 0) +
-    bookedFinishCount * bookedFinishCostUsd
+    segmentIds.reduce(
+      (sum, segmentId) => sum + (getSegmentProductionCostForShow({ segmentCatalogId: segmentId, type: getSegmentTypeForCostTest(segmentId) }, "tv") ?? 0),
+      0,
+    ) +
+    bookedFinishCount * getBookedFinishProductionCostForShow({ type: "Match", winnerId: "winner", stipulationId: hasStipulation ? "table_match" : undefined })
   );
 }
 
@@ -150,11 +175,18 @@ describe("show production finance", () => {
     });
   });
 
+  it("keeps no-stipulation match base production free while charging booked finishes", () => {
+    expect(getSegmentProductionCostForShow({ segmentCatalogId: "M001", type: "Match" }, "tv")).toBe(0);
+    expect(getSegmentProductionCostForShow({ segmentCatalogId: "M007", type: "Match" }, "ple")).toBe(0);
+    expect(getBookedFinishProductionCostForShow({ type: "Match", winnerId: "winner" })).toBe(bookedFinishCostUsd);
+    expect(getSegmentProductionCostForShow({ segmentCatalogId: "P001", type: "Promo" }, "tv")).toBeGreaterThan(0);
+  });
+
   it("keeps normal TV cards in the intended production range", () => {
-    expect(getTvCardCost(["M001", "M007", "P001", "A001"], 1)).toBeGreaterThanOrEqual(120000);
-    expect(getTvCardCost(["M001", "M007", "P001", "A001"], 1)).toBeLessThanOrEqual(180000);
-    expect(getTvCardCost(["M003", "M007", "P002", "A002", "P008"], 1)).toBeGreaterThanOrEqual(120000);
-    expect(getTvCardCost(["M003", "M007", "P002", "A002", "P008"], 1)).toBeLessThanOrEqual(180000);
+    expect(getTvCardCost(["M001", "M007", "P001", "A001"], 1)).toBeGreaterThanOrEqual(75000);
+    expect(getTvCardCost(["M001", "M007", "P001", "A001"], 1)).toBeLessThanOrEqual(120000);
+    expect(getTvCardCost(["M003", "M007", "P002", "A002", "P008"], 1)).toBeGreaterThanOrEqual(75000);
+    expect(getTvCardCost(["M003", "M007", "P002", "A002", "P008"], 1)).toBeLessThanOrEqual(120000);
   });
 
   it("caps premium spectacle costs while keeping booked finish flat", () => {
@@ -166,6 +198,7 @@ describe("show production finance", () => {
     expect(chamber?.weeklyTvBookingCostUsd).toBeLessThanOrEqual(275000);
     expect(chamber?.plePpvBookingCostUsd).toBeLessThanOrEqual(425000);
     expect(getTvCardCost(["M001"], 1) - getTvCardCost(["M001"], 0)).toBe(bookedFinishCostUsd);
+    expect(getTvCardCost(["M001"], 1, true) - getTvCardCost(["M001"], 0, true)).toBe(bookedFinishCostUsd);
   });
 
   it("generates v3 reports from production costs without weekly payroll or wrestler expenses", () => {
