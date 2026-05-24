@@ -175,7 +175,7 @@ Legend: **P** = Present · **~** = Partial · **—** = Missing
 |-----------|----------|-----------|-----|
 | **Visual** | Aftermath hero, office/handoff boards, consequence strip | Hero + office items + handoff panel | Side rail (social buzz, rival intel) simplified |
 | **Layout** | Hero + main board + side rail + consequence strip | `dynasty-week-review-grid` | Consequence strip collapsed into office panel |
-| **Interactions** | Advance Week → `advanceGameWeek`; season review at week 12 | Advance → playthrough toast (no mutation) | Real week advance + save required |
+| **Interactions** | Advance Week → `advanceGameWeek`; season review at week 50 | Advance → playthrough toast (no mutation) | Real week advance + save required |
 | **Data** | `getWeekReviewOfficeSnapshot`, `getWeekReviewHandoffSnapshot` | Same read models used | Finance rollup from `game.financeReports` — partial |
 
 **Monolith tax:** L

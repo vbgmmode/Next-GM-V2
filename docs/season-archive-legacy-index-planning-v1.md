@@ -97,7 +97,7 @@ Start with a bounded set:
 No finance or simulation rule files in V1.
 
 ## 11) Acceptance tests for future implementation
-- Start a season and complete 12-week flow to Season Review.
+- Start a season and complete the current 50-week flow to Season Review.
 - End season and capture archive entry (render-time or minimal persisted summary).
 - Open Legacy/Archive view and confirm top cards render without runtime errors.
 - Confirm best show/title/rivalry/social/finance moments show meaningful read-only summaries.

@@ -114,7 +114,7 @@ Frame the player as hired GM and begin the new career setup.
 ### Missing Or Thin Data
 
 - Ownership expectations are flavor-only.
-- No explicit starting constraints beyond the broad 12-week premise.
+- No explicit starting constraints beyond the broad season premise.
 
 ### Current UI/UX Feel
 
@@ -127,8 +127,8 @@ Good setup fantasy, direct and low friction.
 ### Human Audit Notes
 
 - The "you are hired" framing is working and should be preserved.
-- The current player-facing "12-week road" framing feels too short for the long-term GM fantasy.
-- Internal season structure can remain 12-week seasons, but setup copy should not imply the whole career is one short challenge.
+- The previous player-facing "12-week road" framing felt too short for the long-term GM fantasy.
+- Current season structure is 50 weeks across 10 five-week PLE builds, but setup copy should still communicate that the player is being hired to run a brand over time.
 - Future contract/setup language should communicate that the player is being hired to run a brand over time, with a multi-season and eventually multi-year fantasy.
 - This is a future copy/framing note only. It does not authorize setup flow, season structure, persistence, or gameplay changes.
 
@@ -264,8 +264,8 @@ Confirm career configuration before draft night.
 - GM name and style.
 - Brand style.
 - Starting money.
-- 12-week season.
-- PLE timing in weeks 4, 8, and 12.
+- 50-week season.
+- 10 PLE builds, each paced as 3 TV weeks, Go-Home week, then PLE.
 
 ### Missing Or Thin Data
 
@@ -826,7 +826,7 @@ Choose which stories to start, maintain, cool, pay off, or end.
 
 ### Current Purpose
 
-Show the 12-week season, current week, PLE path, completed results, and upcoming shows.
+Show the 50-week season, current week, PLE path, completed results, and upcoming shows.
 
 ### Current Data Shown
 
@@ -865,7 +865,7 @@ Understand timing, plan around PLE cycles, and know what kind of show is next.
 ### Open Questions For Human Review
 
 - Does the road to PLE feel meaningful?
-- Is fixed 12-week pacing clear and satisfying?
+- Is fixed 50-week / 10-PLE pacing clear and satisfying?
 
 ## `/social`
 
@@ -954,7 +954,7 @@ Understand business health and adjust booking priorities without seeing predicte
 
 ### Current Purpose
 
-Summarize the completed 12-week season and start the next season.
+Summarize the completed 50-week season and start the next season.
 
 ### Current Data Shown
 

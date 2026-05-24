@@ -103,8 +103,9 @@ The game currently supports:
 - Rivalries Command Desk with active rivalry rail, selected rivalry spotlight, compact Creative Desk strip, create/end controls, and current-state reads from existing heat, freshness, timing, history, card usage, and PLE context
 - Rivalry structure support for Singles, Tag 2v2, and Multi rivalries, with optional persisted `Rivalry.structure`, legacy saves defaulting to singles, participantIds remaining canonical, and no team records, faction records, rankings, or team-level stats
 - Calendar
-- 52-week season
-- 13 PLEs
+- 50-week season
+- 10 PLEs
+- Five-week PLE cycles: 3 TV weeks, Go-Home week, then PLE
 - Season Review
 - Mid-Career Draft between Season Review and Start Next Season
 - Start Next Season
@@ -266,7 +267,7 @@ Completed stabilization passes:
 - Season Archive Persistence v1 (implemented)
 - Full CPU Rival System v1 (implemented)
 - Full Market + Rival Pressure v1 (implemented)
-- Mechanics Review v1 with 52-week seasons, 13 PLE cadence, 52-week prepaid contract cap, no hard roster-count draft/market cap, Mid-Career Draft, singles Open Challenge title resolution, audience heat/trust, and season/career singles/tag records (implemented)
+- Mechanics Review v1 with 50-week seasons, 10 PLE cadence, 52-week prepaid contract cap, no hard roster-count draft/market cap, Mid-Career Draft, singles Open Challenge title resolution, audience heat/trust, and season/career singles/tag records (implemented)
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
@@ -326,6 +327,11 @@ Finance Readiness Rules:
 - Existing saves and legacy finance reports must remain compatible.
 - Current weekly finance formulas include active payroll and same-week market transaction costs; larger formula rewrites still require an explicit ticket.
 - Sponsorships, segment booking costs, finance projections, complex accounting, and weekly formula v2 remain out of scope unless explicitly requested.
+
+Save Compatibility Rules:
+- Current production season cadence is 50 weeks / 10 PLEs for new careers.
+- Older localStorage saves from prior season-cadence prototypes may be deleted instead of migrated.
+- Do not add a 52-week / 13-PLE calendar migration unless an active ticket explicitly asks for preserving those old saves.
 
 ## Permanent Scope Rules
 These should only be added when the user explicitly asks for them in the active ticket:

@@ -37,7 +37,7 @@ The game should never feel like a SaaS dashboard, spreadsheet simulator, admin p
 - Rivalries that feel elastic, staged, and affected by real booking choices.
 - Social/IWC reaction that responds to resolved outcomes and gives the world attitude.
 - Finance that is readable, gamey, and decision-focused without becoming accounting software.
-- Season and career continuity that makes each 12-week season feel like one chapter in a longer GM career, not the whole game.
+- Season and career continuity that makes each 50-week season feel like one chapter in a longer GM career, not the whole game.
 - Rival brands that create pressure and world texture, only becoming simulated competitors when explicitly implemented.
 - Scouting, contracts, free agency, and talent value systems that support the GM fantasy without overwhelming the core booking loop.
 - Presentation that stages major moments — draft picks, title changes, PLEs, injuries, breakout stars, rivalry payoffs, and season endings — with more drama than routine management screens.

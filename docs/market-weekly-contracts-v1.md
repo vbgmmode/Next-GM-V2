@@ -26,7 +26,7 @@ Signed rival entries must reflect real CPU roster/contracts/transactions, not fl
 
 ## Contracts
 
-- Drafted wrestlers begin on a season-length contract.
+- Drafted wrestlers begin on a 52-week prepaid contract, which can extend past the current 50-week season cadence.
 - Market signings use week-based negotiation.
 - Player can select week length for market signings and renewals.
 - Short contracts cost more per week; longer commitments reduce weekly ask.
