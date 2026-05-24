@@ -47,7 +47,7 @@ import {
   signPlayerFreeAgent,
   signPlayerFreeAgentBundle,
 } from "./game/market";
-import { MARKET_CONTRACT_MAX_WEEKS, PLE_COUNT, SEASON_WEEK_COUNT } from "./game/constants";
+import { DRAFT_CONTRACT_WEEKS, MARKET_CONTRACT_MAX_WEEKS, PLE_COUNT, PLE_CYCLE_WEEKS, SEASON_WEEK_COUNT } from "./game/constants";
 import {
   getCpuDraftPreviewSnapshot,
   getCpuResultsFeedSnapshot,
@@ -5780,7 +5780,7 @@ function NewGameSetupScreen({
               eyebrow="Sign The Contract"
               metrics={
                 <>
-                  <MetricTile detail={`${PLE_COUNT} PLE cycles, every fourth week`} label="Season" tone="prestige" value={`${SEASON_WEEK_COUNT} Weeks`} />
+                  <MetricTile detail={`${PLE_COUNT} PLE cycles, every ${PLE_CYCLE_WEEKS} weeks`} label="Season" tone="prestige" value={`${SEASON_WEEK_COUNT} Weeks`} />
                   <MetricTile detail={`${tvReadyDraftRosterTarget} TV-ready guidance, ${recommendedDraftRosterTarget} healthy roster target`} label="Draft Night" tone="brand" value={`${tvReadyDraftRosterTarget} guide / ${recommendedDraftRosterTarget} target`} />
                   <MetricTile detail="Four major brands in the GM universe" label="Universe" tone="info" value="4 Brands" />
                 </>
@@ -6078,10 +6078,20 @@ function NewGameSetupScreen({
                     {focusedDraftExceedsBudget ? "Over Budget" : "Draft Selected"}
                   </button>
                   {focusedDraftBundleOffer ? (
-                    <button className="secondary-action" disabled={focusedDraftBundleExceedsBudget} onClick={() => draftBundle(focusedDraftBundleOffer)} type="button">
-                      {focusedDraftBundleExceedsBudget
-                        ? "Bundle Over Budget"
-                        : `Draft ${focusedDraftBundleOffer.kind === "tag_team" ? "Team" : "Faction"} · ${formatMoney(focusedDraftBundleOffer.discountedValue)}`}
+                    <button
+                      className="secondary-action draft-bundle-action"
+                      disabled={focusedDraftBundleExceedsBudget}
+                      onClick={() => draftBundle(focusedDraftBundleOffer)}
+                      type="button"
+                    >
+                      {focusedDraftBundleExceedsBudget ? (
+                        "Bundle Over Budget"
+                      ) : (
+                        <>
+                          <span>{`Draft ${focusedDraftBundleOffer.kind === "tag_team" ? "Team" : "Faction"}`}</span>
+                          <strong>{formatMoney(focusedDraftBundleOffer.discountedValue)}</strong>
+                        </>
+                      )}
                     </button>
                   ) : null}
                   <button className={canEnterWeekOne ? "primary-action" : "secondary-action"} disabled={!canEnterWeekOne} onClick={startCareer}>
@@ -7624,7 +7634,7 @@ function OffseasonDraftScreen({
       <section className="status-grid" aria-label="Offseason draft budget">
         <Metric label="War Chest" value={game.startingBudgetTier === "Unlimited" ? "Unlimited" : formatMoney(draftBudget)} detail="Fresh offseason draft budget" />
         <Metric label="Selected" value={`${selectedIds.length}`} detail="No hard pick minimum" />
-        <Metric label="Committed" value={formatMoney(selectedSpend)} detail="52-week prepaid contracts" />
+        <Metric label="Committed" value={formatMoney(selectedSpend)} detail={`${DRAFT_CONTRACT_WEEKS}-week prepaid contracts`} />
         <Metric label="Week 1 Cash" value={game.startingBudgetTier === "Unlimited" ? "Unlimited" : formatMoney(remainingBudget)} detail="Carries after draft" />
       </section>
 
@@ -7713,7 +7723,7 @@ function SeasonReviewScreen({
         <div>
           <p className="eyebrow">Season {game.seasonNumber} Review</p>
           <h2>Final Bell</h2>
-          <p className="lede">The 52-week road is complete. The ledger, locker room, titles, and grudges move into the offseason draft.</p>
+          <p className="lede">{`The ${SEASON_WEEK_COUNT}-week road is complete. The ledger, locker room, titles, and grudges move into the offseason draft.`}</p>
         </div>
         <button className="primary-action" onClick={onStartNextSeason}>
           Enter Offseason Draft

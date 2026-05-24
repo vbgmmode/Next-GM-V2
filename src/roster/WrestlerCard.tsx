@@ -1,6 +1,6 @@
 import { SuperstarPortrait as WrestlerPortrait } from "../components/SuperstarPortrait";
 import type { GameState, Wrestler, WrestlerAffiliation } from "../game/types";
-import { formatAffiliationKind } from "./rosterDisplayUtils";
+import { formatAffiliationKind, getRosterCardChipDensityClass } from "./rosterDisplayUtils";
 import {
   getMoraleEmoji,
   getMoraleTone,
@@ -36,6 +36,14 @@ export function WrestlerCard({
   const overall = getWrestlerOverall(wrestler);
   const stamina = Math.max(0, 100 - wrestler.fatigue);
   const showValueTierChip = valueProfile.valueTierLabel.toLowerCase() !== "protected star";
+  const identityLabels = identitySnapshot.labels
+    .filter((label) => {
+      const normalizedLabel = label.toLowerCase();
+      return normalizedLabel !== "protected star" && normalizedLabel !== "champion";
+    })
+    .slice(0, 2);
+  const chipLabels = [...identityLabels, ...(showValueTierChip ? [valueProfile.valueTierLabel] : [])];
+  const chipDensityClass = getRosterCardChipDensityClass(chipLabels);
   const record = getWrestlerMatchRecord(wrestler.id, game.showHistory);
   const titleLine = getWrestlerTitleLine(wrestler.id, game.championships);
   const contractWeeksLabel = getRosterContractWeeksLabel(game);
@@ -73,18 +81,12 @@ export function WrestlerCard({
           </small>
         </div>
       </div>
-      <div className="pressure-tags">
-        {identitySnapshot.labels
-          .filter((label) => {
-            const normalizedLabel = label.toLowerCase();
-            return normalizedLabel !== "protected star" && normalizedLabel !== "champion";
-          })
-          .slice(0, 2)
-          .map((label) => (
-            <span className="identity-chip" key={label}>
-              {label}
-            </span>
-          ))}
+      <div className={`pressure-tags ${chipDensityClass}`.trim()}>
+        {identityLabels.map((label) => (
+          <span className="identity-chip" key={label}>
+            {label}
+          </span>
+        ))}
         {showValueTierChip ? (
           <span className={`value-tier-chip ${valueProfile.contextMode === "missing" ? "value-tier-chip-missing" : ""}`}>
             {valueProfile.valueTierLabel}

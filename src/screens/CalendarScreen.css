@@ -1,4 +1,5 @@
 .calendar-command-shell {
+  --calendar-cycle-columns: 5;
   display: flex;
   flex-direction: column;
   height: var(--app-viewport-height, 100dvh);
@@ -127,12 +128,15 @@
 }
 
 .calendar-grid-board {
-  display: grid;
+  display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
   gap: 8px;
-  grid-template-rows: repeat(3, minmax(0, 1fr));
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-gutter: stable;
 }
 
 .calendar-cycle-block {
@@ -140,29 +144,40 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 2px;
   display: grid;
+  flex: 0 0 auto;
   gap: 4px;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  min-height: 0;
+  grid-template-rows: auto auto auto;
+  min-height: 132px;
   overflow: hidden;
   padding: 6px;
 }
 
 .calendar-cycle-head {
-  align-items: baseline;
-  display: flex;
-  gap: 10px;
-  justify-content: space-between;
+  align-items: center;
+  display: grid;
+  gap: 0;
+  grid-template-columns: repeat(var(--calendar-cycle-columns), minmax(0, 1fr));
   min-width: 0;
 }
 
-.calendar-cycle-head h3 {
-  color: #f4f7fb;
+.calendar-cycle-head .eyebrow {
+  grid-column: 1 / 4;
+  margin: 0;
+}
+
+.calendar-cycle-head h3,
+.calendar-cycle-ple-name {
+  color: var(--bc-brand-selected);
   font-family: var(--font-display);
   font-size: 0.78rem;
   font-weight: 900;
+  grid-column: -1;
+  justify-self: stretch;
   line-height: 1.05;
   margin: 0;
+  min-width: 0;
   overflow: hidden;
+  text-align: center;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
@@ -174,7 +189,7 @@
   font-size: 0.56rem;
   font-weight: 900;
   gap: 0;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--calendar-cycle-columns), minmax(0, 1fr));
   letter-spacing: 0.04em;
   text-align: center;
   text-transform: uppercase;
@@ -184,7 +199,7 @@
   color: var(--bc-brand-selected);
 }
 
-.calendar-cycle-columns span:nth-child(3) {
+.calendar-cycle-columns span:nth-child(4) {
   color: var(--bc-prestige);
 }
 
@@ -193,9 +208,9 @@
   border-radius: 2px;
   display: grid;
   gap: 0;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-template-rows: minmax(0, 1fr);
-  min-height: 0;
+  grid-template-columns: repeat(var(--calendar-cycle-columns), minmax(0, 1fr));
+  grid-template-rows: auto;
+  min-height: 96px;
   overflow: hidden;
 }
 
@@ -211,7 +226,7 @@
   display: grid;
   gap: 4px;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
-  min-height: 0;
+  min-height: 96px;
   min-width: 0;
   padding: 8px;
   text-align: left;
