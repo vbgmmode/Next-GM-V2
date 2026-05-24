@@ -5,12 +5,18 @@ import type { GameState, Wrestler } from "../game/types";
 import { getSuperstarMailSnapshot } from "./socialReads";
 import type { SuperstarMailItem } from "./socialTypes";
 
-function getSuperstarMailDetail(item: SuperstarMailItem, wrestler?: Wrestler) {
+function getSuperstarMailDetail(wrestler?: Wrestler) {
   if (!wrestler) {
-    return "This request came through without a current roster read attached.";
+    return {
+      stats: "No current roster read attached.",
+      disclaimer: "This request came through without live talent context.",
+    };
   }
 
-  return `Fatigue ${wrestler.fatigue} · Morale ${wrestler.morale} · Momentum ${wrestler.momentum}. Booking still runs through your card — this is a direct ask, not an auto-book.`;
+  return {
+    stats: `Fatigue ${wrestler.fatigue} · Morale ${wrestler.morale} · Momentum ${wrestler.momentum}`,
+    disclaimer: "Booking still runs through your card — this is a direct ask, not an auto-book.",
+  };
 }
 
 function SocialTrendCard({ children, title }: { children: ReactNode; title: string }) {
@@ -42,6 +48,8 @@ function SuperstarMailRow({
     }
   };
 
+  const mailDetail = getSuperstarMailDetail(wrestler);
+
   return (
     <article
       aria-expanded={expanded}
@@ -61,8 +69,17 @@ function SuperstarMailRow({
           <em>{item.subject}</em>
           <b>{item.askLabel}</b>
         </div>
-        <p className="social-mail-preview">{item.preview}</p>
-        {expanded ? <p className="social-mail-detail">{getSuperstarMailDetail(item, wrestler)}</p> : null}
+        {expanded ? (
+          <>
+            <p className="social-mail-body">{item.body}</p>
+            <div className="social-mail-meta">
+              <span>{mailDetail.stats}</span>
+              <p>{mailDetail.disclaimer}</p>
+            </div>
+          </>
+        ) : (
+          <p className="social-mail-preview">{item.preview}</p>
+        )}
       </div>
     </article>
   );

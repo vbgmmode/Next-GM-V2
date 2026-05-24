@@ -28,6 +28,7 @@ export type SuperstarMailItem = {
   wrestlerName: string;
   subject: string;
   preview: string;
+  body: string;
   askLabel: string;
   tone: SuperstarMailTone;
 };

@@ -260,6 +260,20 @@ function pickLine(seed: string, lines: string[]) {
   return lines[hashString(seed) % lines.length];
 }
 
+function buildMailBody(seed: string, preview: string, extensions: string[]) {
+  return `${preview} ${pickLine(`${seed}-body`, extensions)}`;
+}
+
+function finalizeSuperstarMail(
+  item: Omit<SuperstarMailCandidate, "body">,
+  bodyExtensions: string[],
+): SuperstarMailCandidate {
+  return {
+    ...item,
+    body: buildMailBody(item.id, item.preview, bodyExtensions),
+  };
+}
+
 function clampTopicLabel(label: string, max = 92) {
   const trimmed = label.trim();
 
@@ -894,176 +908,246 @@ function buildSuperstarMailCandidate(wrestler: Wrestler, game: GameState): Super
   const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= game.currentWeek && !week.completed);
 
   if (wrestler.injuryStatus === "minor") {
-    return {
-      id: `mail-${wrestler.id}-injury`,
-      wrestlerId: wrestler.id,
-      wrestlerName: wrestler.name,
-      subject: "MEDICAL REST ASK",
-      preview: pickLine(`mail-${wrestler.id}-minor`, [
-        "I'm banged up. Give me a light week before you put me back in harm's way.",
-        "The injury is manageable, but I shouldn't be asked to carry another heavy spot yet.",
-        "I can fight through it, but I need protection before the room starts treating me as disposable.",
-      ]),
-      askLabel: "Rest",
-      tone: "urgent",
-      priority: 92,
-    };
+    return finalizeSuperstarMail(
+      {
+        id: `mail-${wrestler.id}-injury`,
+        wrestlerId: wrestler.id,
+        wrestlerName: wrestler.name,
+        subject: "MEDICAL REST ASK",
+        preview: pickLine(`mail-${wrestler.id}-minor`, [
+          "I'm banged up. Give me a light week before you put me back in harm's way.",
+          "The injury is manageable, but I shouldn't be asked to carry another heavy spot yet.",
+          "I can fight through it, but I need protection before the room starts treating me as disposable.",
+        ]),
+        askLabel: "Rest",
+        tone: "urgent",
+        priority: 92,
+      },
+      [
+        "I'm not asking to disappear — I need one week where the card doesn't treat the injury like background noise.",
+        "Book me lighter and I'll be ready when the next important beat actually needs me.",
+        "One protected week now keeps me from becoming a liability when the office needs a bigger spot.",
+      ],
+    );
   }
 
   if (tags.includes("Underused")) {
-    return {
-      id: `mail-${wrestler.id}-tv`,
-      wrestlerId: wrestler.id,
-      wrestlerName: wrestler.name,
-      subject: "NEED TV TIME",
-      preview: pickLine(`mail-${wrestler.id}-underused`, [
-        `I've been off TV for ${weeksSinceBooked} weeks. Put me on the card before the locker room reads this as a demotion.`,
-        "Creative has gone quiet on me. I need a spot next week with actual purpose.",
-        "I'm not asking for a push, I'm asking for visibility before momentum disappears.",
-      ]),
-      askLabel: "TV Time",
-      tone: weeksSinceBooked >= 4 ? "urgent" : "firm",
-      priority: 88 + Math.min(weeksSinceBooked, 4),
-    };
+    return finalizeSuperstarMail(
+      {
+        id: `mail-${wrestler.id}-tv`,
+        wrestlerId: wrestler.id,
+        wrestlerName: wrestler.name,
+        subject: "NEED TV TIME",
+        preview: pickLine(`mail-${wrestler.id}-underused`, [
+          `I've been off TV for ${weeksSinceBooked} weeks. Put me on the card before the locker room reads this as a demotion.`,
+          "Creative has gone quiet on me. I need a spot next week with actual purpose.",
+          "I'm not asking for a push, I'm asking for visibility before momentum disappears.",
+        ]),
+        askLabel: "TV Time",
+        tone: weeksSinceBooked >= 4 ? "urgent" : "firm",
+        priority: 88 + Math.min(weeksSinceBooked, 4),
+      },
+      [
+        "Even a defined mid-card role beats sitting invisible while everyone else builds heat.",
+        "Give me one segment with a point and I'll stop the room from reading this as a freeze-out.",
+        "Visibility next week keeps morale from becoming the next problem on your desk.",
+      ],
+    );
   }
 
   if (tags.includes("Overused") && wrestler.fatigue >= 75) {
-    return {
-      id: `mail-${wrestler.id}-protection`,
-      wrestlerId: wrestler.id,
-      wrestlerName: wrestler.name,
-      subject: "PROTECTION REQUEST",
-      preview: pickLine(`mail-${wrestler.id}-overused-heavy`, [
-        `Fatigue is at ${wrestler.fatigue}. I can go again, but not as another heavy usage week without rest.`,
-        "I'm not refusing work. I'm telling you another hard week is how you burn trust and stamina at the same time.",
-        "Book me lighter next week or the room will think protection only applies to the people you already favor.",
-      ]),
-      askLabel: "Protection",
-      tone: "urgent",
-      priority: 90,
-    };
+    return finalizeSuperstarMail(
+      {
+        id: `mail-${wrestler.id}-protection`,
+        wrestlerId: wrestler.id,
+        wrestlerName: wrestler.name,
+        subject: "PROTECTION REQUEST",
+        preview: pickLine(`mail-${wrestler.id}-overused-heavy`, [
+          `Fatigue is at ${wrestler.fatigue}. I can go again, but not as another heavy usage week without rest.`,
+          "I'm not refusing work. I'm telling you another hard week is how you burn trust and stamina at the same time.",
+          "Book me lighter next week or the room will think protection only applies to the people you already favor.",
+        ]),
+        askLabel: "Protection",
+        tone: "urgent",
+        priority: 90,
+      },
+      [
+        "Use me in a lighter role or keep me off one beat — just don't ask me to carry another full load while I'm running this hot.",
+        "The locker room notices when stars get protected and workhorses get run into the ground.",
+        "One smart usage week now is cheaper than losing me to fatigue or morale later.",
+      ],
+    );
   }
 
   if (tags.includes("Overused")) {
-    return {
-      id: `mail-${wrestler.id}-usage`,
-      wrestlerId: wrestler.id,
-      wrestlerName: wrestler.name,
-      subject: "LIGHTER WEEK ASK",
-      preview: pickLine(`mail-${wrestler.id}-overused`, [
-        "I've been on too many consecutive cards. Give me a lighter week before the usage becomes a morale problem.",
-        "The streak is showing. I need a breather before the next angle asks me to carry the whole block.",
-        "Use me smart next week, not just often.",
-      ]),
-      askLabel: "Usage",
-      tone: "firm",
-      priority: 78,
-    };
+    return finalizeSuperstarMail(
+      {
+        id: `mail-${wrestler.id}-usage`,
+        wrestlerId: wrestler.id,
+        wrestlerName: wrestler.name,
+        subject: "LIGHTER WEEK ASK",
+        preview: pickLine(`mail-${wrestler.id}-overused`, [
+          "I've been on too many consecutive cards. Give me a lighter week before the usage becomes a morale problem.",
+          "The streak is showing. I need a breather before the next angle asks me to carry the whole block.",
+          "Use me smart next week, not just often.",
+        ]),
+        askLabel: "Usage",
+        tone: "firm",
+        priority: 78,
+      },
+      [
+        "I'm not asking to vanish from the card — I need one week where I'm not carrying another heavy beat before fatigue and morale both slide.",
+        "Book me with intent instead of volume and I'll stay ready for the next story that actually matters.",
+        "A lighter week now keeps me from becoming the next usage warning on your desk.",
+      ],
+    );
   }
 
   if (tags.includes("Morale Risk")) {
-    return {
-      id: `mail-${wrestler.id}-morale`,
-      wrestlerId: wrestler.id,
-      wrestlerName: wrestler.name,
-      subject: "CREATIVE MEETING REQUEST",
-      preview: pickLine(`mail-${wrestler.id}-morale`, [
-        "Morale is sliding and I need a clear plan before frustration goes public.",
-        "I'm not happy with where my role is heading. Put me in the next booking conversation.",
-        "Give me something to believe in next week or the locker room will hear about it.",
-      ]),
-      askLabel: "Morale",
-      tone: "firm",
-      priority: 74,
-    };
+    return finalizeSuperstarMail(
+      {
+        id: `mail-${wrestler.id}-morale`,
+        wrestlerId: wrestler.id,
+        wrestlerName: wrestler.name,
+        subject: "CREATIVE MEETING REQUEST",
+        preview: pickLine(`mail-${wrestler.id}-morale`, [
+          "Morale is sliding and I need a clear plan before frustration goes public.",
+          "I'm not happy with where my role is heading. Put me in the next booking conversation.",
+          "Give me something to believe in next week or the locker room will hear about it.",
+        ]),
+        askLabel: "Morale",
+        tone: "firm",
+        priority: 74,
+      },
+      [
+        "Tell me where I fit on the next card before the room starts filling in the blanks for me.",
+        "One clear direction next week is enough to keep this from turning into a public problem.",
+        "I'm still willing to work — I just need the office to show me the plan instead of guessing.",
+      ],
+    );
   }
 
   if (activeRivalry && activeRivalry.heat >= 65) {
-    return {
-      id: `mail-${wrestler.id}-rivalry`,
-      wrestlerId: wrestler.id,
-      wrestlerName: wrestler.name,
-      subject: "PAYOFF SEGMENT REQUEST",
-      preview: pickLine(`mail-${wrestler.id}-rivalry`, [
-        `${activeRivalry.name} has real heat. Don't waste it on a throwaway angle next week.`,
-        "The feud is hot enough to main-event a segment. Use it before the room cools off.",
-        "I want the next beat in this story to matter, not just fill time.",
-      ]),
-      askLabel: "Story",
-      tone: activeRivalry.heat >= 80 ? "urgent" : "hopeful",
-      priority: 70 + Math.min(activeRivalry.heat / 10, 8),
-    };
+    return finalizeSuperstarMail(
+      {
+        id: `mail-${wrestler.id}-rivalry`,
+        wrestlerId: wrestler.id,
+        wrestlerName: wrestler.name,
+        subject: "PAYOFF SEGMENT REQUEST",
+        preview: pickLine(`mail-${wrestler.id}-rivalry`, [
+          `${activeRivalry.name} has real heat. Don't waste it on a throwaway angle next week.`,
+          "The feud is hot enough to main-event a segment. Use it before the room cools off.",
+          "I want the next beat in this story to matter, not just fill time.",
+        ]),
+        askLabel: "Story",
+        tone: activeRivalry.heat >= 80 ? "urgent" : "hopeful",
+        priority: 70 + Math.min(activeRivalry.heat / 10, 8),
+      },
+      [
+        "Book the next segment like the crowd already cares, because they do.",
+        "If this story gets a real payoff beat next week, the whole card feels bigger.",
+        "Don't let this feud cool off on a filler angle when the heat is already there.",
+      ],
+    );
   }
 
   if (isChampion) {
-    return {
-      id: `mail-${wrestler.id}-title`,
-      wrestlerId: wrestler.id,
-      wrestlerName: wrestler.name,
-      subject: "TITLE DEFENSE BOOKING",
-      preview: pickLine(`mail-${wrestler.id}-champion`, [
-        "The belt needs visibility. Book a defense before the division goes quiet.",
-        "Champions don't stay champions on the bench. Put the title back on the card.",
-        "I'll defend it anywhere, but I need the office to actually book the scene.",
-      ]),
-      askLabel: "Title",
-      tone: "firm",
-      priority: 68,
-    };
+    return finalizeSuperstarMail(
+      {
+        id: `mail-${wrestler.id}-title`,
+        wrestlerId: wrestler.id,
+        wrestlerName: wrestler.name,
+        subject: "TITLE DEFENSE BOOKING",
+        preview: pickLine(`mail-${wrestler.id}-champion`, [
+          "The belt needs visibility. Book a defense before the division goes quiet.",
+          "Champions don't stay champions on the bench. Put the title back on the card.",
+          "I'll defend it anywhere, but I need the office to actually book the scene.",
+        ]),
+        askLabel: "Title",
+        tone: "firm",
+        priority: 68,
+      },
+      [
+        "A visible defense next week keeps the division from looking stalled while I'm holding the title.",
+        "Put the championship back on the card and I'll make the scene feel worth the spotlight.",
+        "The belt loses prestige every week it stays off TV — book the defense before that happens.",
+      ],
+    );
   }
 
   if (wrestler.momentum >= 75 && wrestler.popularity >= 65) {
-    return {
-      id: `mail-${wrestler.id}-push`,
-      wrestlerId: wrestler.id,
-      wrestlerName: wrestler.name,
-      subject: "MAIN EVENT PUSH",
-      preview: pickLine(`mail-${wrestler.id}-push`, [
-        "The momentum is there. Use me in a headline spot before it flattens out.",
-        "I'm running hot and the brand should capitalize next week, not stall.",
-        "Give me the spot that matches the buzz I'm carrying.",
-      ]),
-      askLabel: "Push",
-      tone: "hopeful",
-      priority: 62 + Math.min(Math.floor(wrestler.momentum / 10), 6),
-    };
+    return finalizeSuperstarMail(
+      {
+        id: `mail-${wrestler.id}-push`,
+        wrestlerId: wrestler.id,
+        wrestlerName: wrestler.name,
+        subject: "MAIN EVENT PUSH",
+        preview: pickLine(`mail-${wrestler.id}-push`, [
+          "The momentum is there. Use me in a headline spot before it flattens out.",
+          "I'm running hot and the brand should capitalize next week, not stall.",
+          "Give me the spot that matches the buzz I'm carrying.",
+        ]),
+        askLabel: "Push",
+        tone: "hopeful",
+        priority: 62 + Math.min(Math.floor(wrestler.momentum / 10), 6),
+      },
+      [
+        "The room can feel when someone's rising — give me a spot that matches that energy.",
+        "Use the momentum now and the brand gets a main-event feel without forcing it later.",
+        "I'm ready for a headline role if the card has one worth putting me in.",
+      ],
+    );
   }
 
   if (nextPle && nextPle.weekNumber - game.currentWeek <= 2 && wrestler.momentum >= 60) {
-    return {
-      id: `mail-${wrestler.id}-ple`,
-      wrestlerId: wrestler.id,
-      wrestlerName: wrestler.name,
-      subject: "PLE SPOT REQUEST",
-      preview: pickLine(`mail-${wrestler.id}-ple`, [
-        `${nextPle.showName} is close. I want a meaningful role on that card.`,
-        "If there's a PLE lane opening, put my name in the conversation now.",
-        "Don't leave me off the major-event board when the timing is this tight.",
-      ]),
-      askLabel: "PLE Spot",
-      tone: "hopeful",
-      priority: 58,
-    };
+    return finalizeSuperstarMail(
+      {
+        id: `mail-${wrestler.id}-ple`,
+        wrestlerId: wrestler.id,
+        wrestlerName: wrestler.name,
+        subject: "PLE SPOT REQUEST",
+        preview: pickLine(`mail-${wrestler.id}-ple`, [
+          `${nextPle.showName} is close. I want a meaningful role on that card.`,
+          "If there's a PLE lane opening, put my name in the conversation now.",
+          "Don't leave me off the major-event board when the timing is this tight.",
+        ]),
+        askLabel: "PLE Spot",
+        tone: "hopeful",
+        priority: 58,
+      },
+      [
+        "Major events are where careers move — I want a lane on that card if the story supports it.",
+        "Put me in the PLE conversation now so the build actually has time to matter.",
+        "If there's a spot worth fighting for on that show, I want my name in the room.",
+      ],
+    );
   }
 
   return undefined;
 }
 
 function buildFallbackSuperstarMail(wrestler: Wrestler): SuperstarMailCandidate {
-  return {
-    id: `mail-${wrestler.id}-steady`,
-    wrestlerId: wrestler.id,
-    wrestlerName: wrestler.name,
-    subject: "KEEP ME IN THE PLAN",
-    preview: pickLine(`mail-${wrestler.id}-steady`, [
-      "I just need to stay in the weekly plan with something that matters.",
-      "Book me with intent next week and I'll keep the room steady.",
-      "I'm ready for work. Give me a defined role and I'll deliver.",
-    ]),
-    askLabel: "Role",
-    tone: "neutral",
-    priority: 20,
-  };
+  return finalizeSuperstarMail(
+    {
+      id: `mail-${wrestler.id}-steady`,
+      wrestlerId: wrestler.id,
+      wrestlerName: wrestler.name,
+      subject: "KEEP ME IN THE PLAN",
+      preview: pickLine(`mail-${wrestler.id}-steady`, [
+        "I just need to stay in the weekly plan with something that matters.",
+        "Book me with intent next week and I'll keep the room steady.",
+        "I'm ready for work. Give me a defined role and I'll deliver.",
+      ]),
+      askLabel: "Role",
+      tone: "neutral",
+      priority: 20,
+    },
+    [
+      "Even a clear mid-card role beats drifting without direction.",
+      "Put me in the plan with purpose and I'll handle the rest.",
+      "I'm not asking for special treatment — just a defined spot on the next card.",
+    ],
+  );
 }
 
 export function getSuperstarMailSnapshot(game: GameState, limit = 6): SuperstarMailSnapshot | undefined {
