@@ -2,7 +2,7 @@ import { getBrandChairByStyle, getBrandPlateLabel } from "./brandChairs";
 import { getRatingsBattleSnapshot } from "./cpuRivalLoop";
 import { getFinancePressureLabel } from "./finance";
 import { getRosterFinanceValueForWrestler } from "./financeCatalog";
-import { formatMoney } from "./formatters";
+import { formatMoney, formatNumber } from "./formatters";
 import { getWeeklyDecisionPressureSnapshot } from "./gameContextReads";
 import { getAvailableFreeAgents, getContractForWrestler } from "./market";
 import type { GameScreen } from "./migration";
@@ -431,7 +431,7 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
             ? "UP"
             : "DOWN"
           : undefined,
-      viewershipLabel: lastShow ? lastShow.totalScore.toLocaleString() : "-",
+      viewershipLabel: lastShow ? formatNumber(lastShow.totalScore) : "-",
     },
     nextShowMeta: currentShow.isGoHome ? "Go-home week" : currentShow.showType.toUpperCase(),
     nextShowName: currentShow.showName,

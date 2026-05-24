@@ -17,35 +17,35 @@ export function GameNav({
   return (
     <nav className="game-nav" aria-label="Game navigation">
       <button className={currentScreen === "dashboard" ? "active-filter" : ""} onClick={() => onNavigate("dashboard")}>
-        Dashboard
+        Brand HQ
       </button>
       <button className={currentScreen === "booking" ? "active-filter" : ""} onClick={() => onNavigate("booking")}>
-        Booking
+        Booking Desk
       </button>
       <button className={currentScreen === "roster" ? "active-filter" : ""} onClick={() => onNavigate("roster")}>
-        Roster
+        Locker Room
       </button>
       <button className={currentScreen === "market" ? "active-filter" : ""} onClick={() => onNavigate("market")}>
-        Market
+        Market Desk
       </button>
       <button className={currentScreen === "championships" ? "active-filter" : ""} onClick={() => onNavigate("championships")}>
-        Championships
+        Title Office
       </button>
       <button className={currentScreen === "rivalries" ? "active-filter" : ""} onClick={() => onNavigate("rivalries")}>
-        Rivalries
+        Rivalry Desk
       </button>
       <button className={currentScreen === "calendar" ? "active-filter" : ""} onClick={() => onNavigate("calendar")}>
         Calendar
       </button>
       <button className={currentScreen === "social" ? "active-filter" : ""} onClick={() => onNavigate("social")}>
-        Social
+        IWC Pulse
       </button>
       <button className={currentScreen === "finance" ? "active-filter" : ""} onClick={() => onNavigate("finance")}>
-        Finance
+        Finance Desk
       </button>
       {hasResults ? (
         <button className={currentScreen === "results" ? "active-filter" : ""} onClick={() => onNavigate("results")}>
-          Results
+          Show Recap
         </button>
       ) : null}
       {showWeekReview ? (

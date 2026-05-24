@@ -11641,6 +11641,8 @@ h3 {
   text-align: left;
   text-transform: none;
   width: 100%;
+  content-visibility: auto;
+  contain-intrinsic-size: 54px;
 }
 
 .draft-prospect-portrait {
@@ -12392,7 +12394,30 @@ h3 {
   }
 
   .draft-focus-portrait {
-    width: min(72%, 200px);
+    max-height: 176px;
+    width: min(58%, 176px);
+  }
+
+  .draft-clock-stage {
+    gap: 6px;
+    grid-template-rows: 24px minmax(0, 1fr) auto;
+    padding: 6px;
+  }
+
+  .draft-clock-strip {
+    font-size: 1rem;
+  }
+
+  .draft-focus-spotlight {
+    gap: 6px;
+  }
+
+  .draft-focus-spotlight h2 {
+    font-size: 1.55rem;
+  }
+
+  .draft-main-actions {
+    gap: 6px;
   }
 
   .draft-focus-stat-strip {

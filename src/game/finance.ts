@@ -1,4 +1,5 @@
 import { getSegmentBookingCost } from "./financeCatalog";
+import { formatAttendance, formatNumber } from "./formatters";
 import { getStipulationCostForShow } from "./stipulationCatalog";
 import type { FinanceReport, GameState, SegmentResult, ShowResult, ShowType, Wrestler } from "./types";
 
@@ -160,7 +161,7 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
   const profitLoss = revenue - expenses;
   const endingMoney = roundMoney(game.money + profitLoss);
   const notes = [
-    `${result.showName} drew ${attendance.toLocaleString()} fans off a ${result.totalScore} show score, closing at ${roundMoney(revenue).toLocaleString()} revenue against ${roundMoney(expenses).toLocaleString()} costs.`,
+    `${result.showName} drew ${formatAttendance(attendance)} fans off a ${result.totalScore} show score, closing at ${formatNumber(roundMoney(revenue))} revenue against ${formatNumber(roundMoney(expenses))} costs.`,
     isPle
       ? "PLE economics paid out through a larger gate and media package, with major-event production costs attached."
       : "TV economics stayed bounded: gate, merch, and media money tracked the resolved score and booked star power.",
@@ -170,15 +171,15 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
   ];
 
   if (productionCostProfile.segmentProductionCost > 0) {
-    notes.push(`Segment production booked ${productionCostProfile.segmentProductionCost.toLocaleString()} in catalog costs for the resolved card.`);
+    notes.push(`Segment production booked ${formatNumber(productionCostProfile.segmentProductionCost)} in catalog costs for the resolved card.`);
   }
 
   if (productionCostProfile.stipulationProductionCost > 0) {
-    notes.push(`Match stipulations added ${productionCostProfile.stipulationProductionCost.toLocaleString()} in specialty production costs.`);
+    notes.push(`Match stipulations added ${formatNumber(productionCostProfile.stipulationProductionCost)} in specialty production costs.`);
   }
 
   if (productionCostProfile.bookedFinishCost > 0) {
-    notes.push(`Manually booked finishes added ${productionCostProfile.bookedFinishCost.toLocaleString()} in production handling.`);
+    notes.push(`Manually booked finishes added ${formatNumber(productionCostProfile.bookedFinishCost)} in production handling.`);
   }
 
   if (productionCostProfile.missingSegmentCostIds.length) {
