@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { syncAppViewportHeight } from "./viewportHeight";
 import { CommandPanel, HeroDecisionPanel, MetricTile, getBroadcastTheme } from "./components/broadcast";
 import { GameNav, Header, Metric } from "./components/gameShell";
@@ -6803,22 +6803,13 @@ function DashboardScreen({
                     onOpenProfile(member.id);
                   }
 
-                  function handleRowKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      openProfile();
-                    }
-                  }
-
                   return (
-                    <div
+                    <button
                       aria-label={`Open ${member.name} profile`}
                       className={member.id === topStarId ? "dashboard-dynasty-roster-row is-selected is-clickable" : "dashboard-dynasty-roster-row is-clickable"}
                       key={member.id}
                       onClick={openProfile}
-                      onKeyDown={handleRowKeyDown}
-                      role="button"
-                      tabIndex={0}
+                      type="button"
                     >
                       <span>{index + 1}</span>
                       <div className="dashboard-dynasty-superstar-cell">
@@ -6836,7 +6827,7 @@ function DashboardScreen({
                       </span>
                       <span>{member.contract}</span>
                       <span>{member.cost}</span>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -6910,22 +6901,13 @@ function DashboardScreen({
                     onOpenRivalry(rivalry.id);
                   }
 
-                  function handleRivalryKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      openRivalry();
-                    }
-                  }
-
                   return (
-                    <div
+                    <button
                       aria-label={`Open ${rivalry.leftName} vs ${rivalry.rightName} in Rivalry Desk`}
                       className="dashboard-dynasty-rivalry-row is-clickable"
                       key={rivalry.id}
                       onClick={openRivalry}
-                      onKeyDown={handleRivalryKeyDown}
-                      role="button"
-                      tabIndex={0}
+                      type="button"
                     >
                     <div className="dashboard-dynasty-rivalry-matchup">
                       <DashboardDynastyPortrait wrestler={wrestlerOrPlaceholder(rivalry.leftId, rivalry.leftName)} size="sm" />
@@ -6939,7 +6921,7 @@ function DashboardScreen({
                       <DashboardDynastyIntensityMeter value={rivalry.intensity} />
                       <b>{rivalry.intensity}</b>
                     </div>
-                    </div>
+                    </button>
                   );
                 })
               ) : (

@@ -1,5 +1,5 @@
 import { getResolvedSegmentStipulationLabel, getSegmentResultParticipantsLabel } from "../booking/bookingUtils";
-import { formatMoney } from "../game/formatters";
+import { formatAttendance, formatMoney } from "../game/formatters";
 import { getBestSegment, getShowGrade } from "../game/scoring";
 import type { GameState, SegmentResult, ShowResult, Wrestler } from "../game/types";
 import { getFinanceReportForResult, getShowTypeLabel } from "./financeScreenReads";
@@ -376,7 +376,7 @@ export function buildResultsViewModel(game: GameState, result: ShowResult): Resu
       : "Broadcast locked; review the fallout before calendar movement.",
     financeProfitLabel: financeReport ? formatMoney(financeReport.profitLoss) : "—",
     financeProfitDetail: financeReport ? `Balance ${formatMoney(financeReport.endingMoney)}` : "No close",
-    attendanceLabel: financeReport ? financeReport.attendance.toLocaleString() : "—",
+    attendanceLabel: financeReport ? formatAttendance(financeReport.attendance) : "—",
     bestSegmentScore: bestSegment.score,
     bestSegmentDetail: getSegmentResultParticipantsLabel(bestSegment, game.wrestlers),
     runtimeLabel: result.actualRuntimeMinutes !== undefined ? `${result.actualRuntimeMinutes} min` : "Legacy",

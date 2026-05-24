@@ -19,6 +19,7 @@ import type {
   ShowType,
   Wrestler,
 } from "./types";
+import { formatNumber } from "./formatters";
 import { formatMoney } from "./formatters";
 import { createMarketContract, getCpuBudgetDefault } from "./market";
 import { simulateOpeningDraft } from "./openingDraft";
@@ -640,7 +641,7 @@ function generateCpuFinanceReport(brand: RivalBrandState, result: RivalBrandWeek
     expenses,
     profitLoss,
     endingMoney: previousMoney + profitLoss,
-    note: `${brand.brandName} closed CPU books at ${profitLoss >= 0 ? "+" : ""}${profitLoss.toLocaleString()} after production costs and a ${result.score} show.`,
+    note: `${brand.brandName} closed CPU books at ${profitLoss >= 0 ? "+" : ""}${formatNumber(profitLoss)} after production costs and a ${result.score} show.`,
   };
 }
 

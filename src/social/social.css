@@ -449,24 +449,35 @@
 }
 
 .social-mail-row {
-  align-items: start;
   background: rgba(6, 8, 12, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-left: 2px solid rgba(185, 193, 207, 0.45);
   border-radius: 10px;
   box-sizing: border-box;
   color: inherit;
-  cursor: pointer;
-  display: grid;
-  gap: 10px;
-  grid-template-columns: auto minmax(0, 1fr);
+  content-visibility: auto;
+  contain-intrinsic-size: 84px;
   height: auto;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  transition: border-color 120ms ease, background 120ms ease;
+  width: 100%;
+}
+
+.social-mail-row-trigger {
+  align-items: start;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
   padding: 10px;
   text-align: left;
-  transition: border-color 120ms ease, background 120ms ease;
   width: 100%;
 }
 
@@ -476,12 +487,13 @@
   overflow: hidden;
 }
 
-.social-mail-row:focus-visible {
+.social-mail-row-trigger:focus-visible {
   outline: 2px solid var(--bc-prestige);
   outline-offset: 2px;
 }
 
-.social-mail-row:hover {
+.social-mail-row:hover,
+.social-mail-row:focus-within {
   border-color: rgba(255, 255, 255, 0.16);
 }
 
@@ -497,14 +509,15 @@
 }
 
 .social-mail-row.is-expanded {
-  align-items: start;
   background: rgba(8, 10, 16, 0.96);
   border-color: rgba(var(--dashboard-dynasty-accent-rgb), 0.34);
-  gap: 10px;
-  grid-template-columns: 44px minmax(0, 1fr);
   min-height: 172px;
   overflow: hidden;
-  padding: 10px 12px 12px;
+}
+
+.social-mail-row.is-expanded .social-mail-row-trigger {
+  grid-template-columns: 44px minmax(0, 1fr);
+  padding: 10px 12px 0;
 }
 
 .social-mail-list:has(.social-mail-row.is-expanded) .social-mail-row:not(.is-expanded) {
@@ -702,7 +715,7 @@
   align-items: center;
   display: flex;
   gap: 0.5rem;
-  margin-top: 0.35rem;
+  margin: 0.35rem 12px 12px 66px;
   min-width: 0;
 }
 
@@ -757,6 +770,8 @@
   background: rgba(6, 8, 12, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-left: 2px solid rgba(var(--dashboard-dynasty-accent-rgb), 0.45);
+  content-visibility: auto;
+  contain-intrinsic-size: 88px;
   border-radius: 10px;
   display: grid;
   gap: 10px;

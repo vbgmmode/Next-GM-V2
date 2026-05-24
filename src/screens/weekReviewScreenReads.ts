@@ -1,5 +1,5 @@
 import { getCpuResultsFeedSnapshot, getRatingsBattleSnapshot } from "../game/cpuRivalLoop";
-import { formatMoney } from "../game/formatters";
+import { formatAttendance, formatMoney } from "../game/formatters";
 import {
   getWeekReviewHandoffSnapshot,
   getWeekReviewOfficeSnapshot,
@@ -203,7 +203,7 @@ export function buildWeekReviewViewModel(game: GameState, result: ShowResult): W
     grade: getShowGrade(result.totalScore),
     financeReport,
     financeSummary: financeReport
-      ? `${financeReport.attendance.toLocaleString()} paid doors · ${formatMoney(financeReport.profitLoss)} net`
+      ? `${formatAttendance(financeReport.attendance)} paid doors · ${formatMoney(financeReport.profitLoss)} net`
       : "No finance close attached to this show.",
     titleSummary: titleChanges.length
       ? `${titleChanges.length} title change${titleChanges.length === 1 ? "" : "s"} logged · ${result.rivalryHistoryEvents?.length ?? 0} rivalry event${(result.rivalryHistoryEvents?.length ?? 0) === 1 ? "" : "s"}`

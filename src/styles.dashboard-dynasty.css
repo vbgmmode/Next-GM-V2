@@ -841,13 +841,17 @@
 .dashboard-dynasty-roster-row {
   align-items: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  color: inherit;
   display: grid;
+  font: inherit;
   gap: 6px;
   grid-template-columns: 26px minmax(130px, 1.6fr) 32px 52px 52px 40px 56px 52px 52px;
   min-height: 34px;
   min-width: 692px;
   padding: 0 7px;
+  text-align: left;
   text-transform: uppercase;
+  width: 100%;
 }
 
 .dashboard-dynasty-roster-head {
@@ -896,6 +900,8 @@
 }
 
 .dashboard-dynasty-roster-row.is-clickable {
+  content-visibility: auto;
+  contain-intrinsic-size: 34px;
   cursor: pointer;
 }
 
@@ -1186,10 +1192,14 @@
 .dashboard-dynasty-rivalry-row {
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(255, 255, 255, 0.07);
+  color: inherit;
   display: grid;
+  font: inherit;
   gap: 7px;
   min-width: 0;
   padding: 7px;
+  text-align: left;
+  width: 100%;
 }
 
 .dashboard-dynasty-rivalry-row.is-clickable {

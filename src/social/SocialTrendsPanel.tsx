@@ -1,5 +1,5 @@
 import { SuperstarPortrait } from "../components/SuperstarPortrait";
-import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { GameState, Wrestler } from "../game/types";
 import { getActiveSocialInboxRequest } from "../game/socialInboxActions";
@@ -46,64 +46,46 @@ function SuperstarMailRow({
   read: boolean;
   wrestler?: Wrestler;
 }) {
-  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onSelect();
-    }
-  };
-
   const mailDetail = getSuperstarMailDetail(wrestler);
   const activeRequest = getActiveSocialInboxRequest(game, item.id, item.wrestlerId);
   const actionDisabled = Boolean(activeRequest);
 
   return (
     <article
-      aria-expanded={expanded}
       className={`social-mail-row tone-${item.tone}${expanded ? " is-expanded" : ""}${read ? " is-read" : " is-unread"}`}
-      onClick={onSelect}
-      onKeyDown={handleKeyDown}
-      role="button"
-      tabIndex={0}
     >
-      {wrestler ? <SuperstarPortrait className="social-mail-portrait" wrestler={wrestler} /> : null}
-      <div className="social-mail-copy">
-        <div className="social-mail-head">
-          <strong>{item.wrestlerName}</strong>
-          <span>{read ? "Read" : "Unread"}</span>
+      <button aria-expanded={expanded} className="social-mail-row-trigger" onClick={onSelect} type="button">
+        {wrestler ? <SuperstarPortrait className="social-mail-portrait" wrestler={wrestler} /> : null}
+        <span className="social-mail-copy">
+          <span className="social-mail-head">
+            <strong>{item.wrestlerName}</strong>
+            <span>{read ? "Read" : "Unread"}</span>
+          </span>
+          <span className="social-mail-subject">
+            <em>{item.subject}</em>
+            <b>{item.askLabel}</b>
+          </span>
+          {expanded ? (
+            <>
+              <span className="social-mail-body">{item.body}</span>
+              <span className="social-mail-meta">
+                <span>{mailDetail.stats}</span>
+                <span>{mailDetail.disclaimer}</span>
+              </span>
+            </>
+          ) : (
+            <span className="social-mail-preview">{item.preview}</span>
+          )}
+        </span>
+      </button>
+      {expanded && item.action ? (
+        <div className="social-mail-action-row">
+          <button className="social-mail-action" disabled={actionDisabled} onClick={() => onSuperstarMailAction?.(item)} type="button">
+            {actionDisabled ? "Accepted" : item.action.label}
+          </button>
+          <small>{actionDisabled ? "Request is active on the GM desk." : item.action.detail}</small>
         </div>
-        <div className="social-mail-subject">
-          <em>{item.subject}</em>
-          <b>{item.askLabel}</b>
-        </div>
-        {expanded ? (
-          <>
-            <p className="social-mail-body">{item.body}</p>
-            <div className="social-mail-meta">
-              <span>{mailDetail.stats}</span>
-              <p>{mailDetail.disclaimer}</p>
-            </div>
-            {item.action ? (
-              <div className="social-mail-action-row">
-                <button
-                  className="social-mail-action"
-                  disabled={actionDisabled}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onSuperstarMailAction?.(item);
-                  }}
-                  type="button"
-                >
-                  {actionDisabled ? "Accepted" : item.action.label}
-                </button>
-                <small>{actionDisabled ? "Request is active on the GM desk." : item.action.detail}</small>
-              </div>
-            ) : null}
-          </>
-        ) : (
-          <p className="social-mail-preview">{item.preview}</p>
-        )}
-      </div>
+      ) : null}
     </article>
   );
 }
@@ -115,7 +97,7 @@ export function SocialTrendsPanel({
   game: GameState;
   onSuperstarMailAction?: (item: SuperstarMailItem) => void;
 }) {
-  const mailSnapshot = getSuperstarMailSnapshot(game, 6);
+  const mailSnapshot = useMemo(() => getSuperstarMailSnapshot(game, 6), [game]);
   const mailIds = useMemo(() => mailSnapshot?.items.map((item) => item.id) ?? [], [mailSnapshot]);
   const [expandedMailId, setExpandedMailId] = useState<string | null>(null);
   const [readMailIds, setReadMailIds] = useState<Set<string>>(() => new Set());
