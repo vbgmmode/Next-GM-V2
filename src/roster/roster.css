@@ -1545,6 +1545,8 @@
 }
 
 .roster-dynasty-shell .wrestler-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 224px;
   display: flex;
   flex-direction: column;
   gap: 8px;

@@ -455,6 +455,8 @@
   border-radius: 10px;
   box-sizing: border-box;
   color: inherit;
+  content-visibility: auto;
+  contain-intrinsic-size: 84px;
   height: auto;
   min-height: 0;
   min-width: 0;
@@ -768,6 +770,8 @@
   background: rgba(6, 8, 12, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-left: 2px solid rgba(var(--dashboard-dynasty-accent-rgb), 0.45);
+  content-visibility: auto;
+  contain-intrinsic-size: 88px;
   border-radius: 10px;
   display: grid;
   gap: 10px;

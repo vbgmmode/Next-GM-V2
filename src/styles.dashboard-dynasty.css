@@ -900,6 +900,8 @@
 }
 
 .dashboard-dynasty-roster-row.is-clickable {
+  content-visibility: auto;
+  contain-intrinsic-size: 34px;
   cursor: pointer;
 }
 
