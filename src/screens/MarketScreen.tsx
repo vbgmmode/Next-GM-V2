@@ -7,6 +7,7 @@ import { getRosterFinanceValueForWrestler } from "../game/financeCatalog";
 import type { GameScreen } from "../game/migration";
 import { getContractForWrestler, getExternalMarketOffer, getMarketBundleOffers, getMarketSnapshot, getRenewalOffer, getRivalMarketEvents } from "../game/market";
 import { draftPool } from "../game/seed";
+import { MARKET_CONTRACT_MAX_WEEKS } from "../game/constants";
 import type { GameState, ShowResult, Wrestler } from "../game/types";
 import "./MarketScreen.css";
 
@@ -167,7 +168,7 @@ export function MarketScreen({
   const [selectedFreeAgentId, setSelectedFreeAgentId] = useState(defaultBoardId);
   const [selectedOutgoingId, setSelectedOutgoingId] = useState(urgentRosterId || game.wrestlers[0]?.id || "");
   const [selectedTargetId, setSelectedTargetId] = useState(snapshot.rivalTradeTargets[0]?.wrestler.id ?? "");
-  const [selectedContractWeeks, setSelectedContractWeeks] = useState(Math.min(12, Math.max(1, 13 - game.currentWeek)));
+  const [selectedContractWeeks, setSelectedContractWeeks] = useState(MARKET_CONTRACT_MAX_WEEKS);
   const [selectedRenewalWeeks, setSelectedRenewalWeeks] = useState(4);
   const [feedExpanded, setFeedExpanded] = useState(false);
   const [boardNegotiating, setBoardNegotiating] = useState(false);
@@ -195,7 +196,7 @@ export function MarketScreen({
   const selectedFreeAgentOverall =
     selectedFreeAgentFinance?.gameOverall ??
     (selectedFreeAgent ? Math.round((selectedFreeAgent.popularity + selectedFreeAgent.ringSkill + selectedFreeAgent.promoSkill + selectedFreeAgent.momentum) / 4) : 0);
-  const rosterIsFull = game.wrestlers.length >= snapshot.rosterLimit;
+  const rosterIsFull = false;
   const releaseGuardActive = game.wrestlers.length <= 8;
   const selectedContract = selectedOutgoing ? getContractForWrestler(game, selectedOutgoing.id) : undefined;
   const selectedRenewalOffer = selectedOutgoing ? getRenewalOffer(selectedOutgoing, selectedRenewalWeeks) : undefined;
@@ -204,9 +205,7 @@ export function MarketScreen({
   const selectedBoardStatus = selectedBoardEntry?.status ?? "available";
   const signDisabledReason = marketClosed
     ? "Market desk closes after the show runs."
-    : rosterIsFull
-      ? "Clear a roster slot before signing another talent."
-      : selectedBoardStatus !== "available"
+    : selectedBoardStatus !== "available"
         ? selectedBoardEntry?.rivalBrandName
           ? `${selectedBoardEntry.rivalBrandName} already filed that contract.`
           : "This board file is already signed."
@@ -215,9 +214,7 @@ export function MarketScreen({
           : "";
   const negotiateDisabledReason = marketClosed
     ? "Market desk closes after the show runs."
-    : rosterIsFull
-      ? "Clear a roster slot before negotiating another talent."
-      : selectedBoardStatus !== "available"
+    : selectedBoardStatus !== "available"
         ? selectedBoardEntry?.rivalBrandName
           ? `${selectedBoardEntry.rivalBrandName} already filed that contract.`
           : "This board file is already signed."
@@ -231,9 +228,7 @@ export function MarketScreen({
         : "";
   const bundleDisabledReason = marketClosed
     ? "Desk locked"
-    : selectedBundleOffer && selectedBundleOffer.wrestlers.length > snapshot.rosterLimit - game.wrestlers.length
-      ? "No roster slots"
-      : selectedBundleOffer && game.money < selectedBundleOffer.discountedDueNow
+    : selectedBundleOffer && game.money < selectedBundleOffer.discountedDueNow
         ? "Cash short"
         : "";
 
@@ -307,7 +302,7 @@ export function MarketScreen({
             <Metric label="Owner Trust" value={`${office.ownerTrust}`} />
             <Metric label="Reputation" value={`${office.brandReputation}`} />
             <Metric label="Roster Recurrence" value={formatMoney(snapshot.payroll)} detail="Contracts are prepaid" />
-            <Metric label="Slots" value={`${game.wrestlers.length}/${snapshot.rosterLimit}`} />
+            <Metric label="Roster" value={`${game.wrestlers.length}`} detail="No hard cap" />
           </div>
         </section>
 
@@ -373,8 +368,8 @@ export function MarketScreen({
                           <span>Deal Weeks</span>
                           <input
                             min="1"
-                            max="12"
-                            onChange={(event) => setSelectedContractWeeks(Math.max(1, Math.min(12, Number(event.target.value) || 1)))}
+                            max={MARKET_CONTRACT_MAX_WEEKS}
+                            onChange={(event) => setSelectedContractWeeks(Math.max(1, Math.min(MARKET_CONTRACT_MAX_WEEKS, Number(event.target.value) || 1)))}
                             type="number"
                             value={selectedContractWeeks}
                           />
@@ -440,7 +435,7 @@ export function MarketScreen({
                     <Metric label="Weekly Ask" value={formatMoney(selectedFreeAgentCost)} detail={`${selectedContractWeeks} week file`} />
                     <Metric label="Due Now" value={formatMoney(selectedExternalOffer?.dueNow ?? 0)} detail="No refund if released" />
                     <Metric label="Roster Recurrence" value={formatMoney(recurringRosterCost)} detail="Roster rights are prepaid" />
-                    <Metric label="Roster Slots" value={`${game.wrestlers.length}/${snapshot.rosterLimit}`} detail={rosterIsFull ? "Roster full" : `${snapshot.rosterLimit - game.wrestlers.length} open`} />
+                    <Metric label="Roster Count" value={`${game.wrestlers.length}`} detail="No hard cap" />
                   </>
                 }
                 tags={[selectedFreeAgent.roleTier ?? "Performer", selectedFreeAgent.archetype ?? "Open Market", selectedFreeAgent.sourceBrand ?? "Top 200 Pool"]}
@@ -458,8 +453,8 @@ export function MarketScreen({
                           <span>Extend Weeks</span>
                           <input
                             min="1"
-                            max="12"
-                            onChange={(event) => setSelectedRenewalWeeks(Math.max(1, Math.min(12, Number(event.target.value) || 1)))}
+                            max={MARKET_CONTRACT_MAX_WEEKS}
+                            onChange={(event) => setSelectedRenewalWeeks(Math.max(1, Math.min(MARKET_CONTRACT_MAX_WEEKS, Number(event.target.value) || 1)))}
                             type="number"
                             value={selectedRenewalWeeks}
                           />
@@ -521,7 +516,7 @@ export function MarketScreen({
                     <Metric label="Rate Basis" value={formatMoney(selectedContract?.weeklySalary ?? 0)} detail={contractRead(game, selectedOutgoing.id)} />
                     <Metric label="Due Now" value={formatMoney(selectedRenewalOffer?.dueNow ?? 0)} detail={`${selectedRenewalWeeks} week extension`} />
                     <Metric label="Roster Recurrence" value={formatMoney(recurringRosterCost)} detail="Roster rights are prepaid" />
-                    <Metric label="Roster Slots" value={`${game.wrestlers.length}/${snapshot.rosterLimit}`} detail={releaseGuardActive ? "Minimum roster guard active" : "Release opens a slot"} />
+                    <Metric label="Roster Count" value={`${game.wrestlers.length}`} detail={releaseGuardActive ? "Minimum roster guard active" : "No hard cap"} />
                   </>
                 }
                 tags={[

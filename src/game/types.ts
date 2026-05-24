@@ -13,7 +13,8 @@ export type Screen =
   | "finance"
   | "results"
   | "weekReview"
-  | "seasonReview";
+  | "seasonReview"
+  | "offseasonDraft";
 
 export type SegmentType = "Match" | "Promo" | "Backstage Angle" | "Contract Signing" | "Open Challenge";
 
@@ -338,6 +339,20 @@ export type PressureLabel = "Stable" | "Tight" | "Critical" | "Surging";
 
 export type InjuryStatus = "healthy" | "minor" | "major";
 
+export type WrestlerMatchRecordLine = {
+  wins: number;
+  losses: number;
+  draws?: number;
+  tagWins: number;
+  tagLosses: number;
+  tagDraws?: number;
+};
+
+export type WrestlerMatchRecord = {
+  season: WrestlerMatchRecordLine;
+  career: WrestlerMatchRecordLine;
+};
+
 export type Wrestler = {
   id: string;
   name: string;
@@ -355,10 +370,13 @@ export type Wrestler = {
   division?: string;
   popularity: number;
   momentum: number;
+  audienceHeat?: number;
   fatigue: number;
   morale: number;
+  trust?: number;
   ringSkill: number;
   promoSkill: number;
+  record?: WrestlerMatchRecord;
   appearancesThisSeason?: number;
   lastBookedWeek?: number;
   consecutiveWeeksBooked?: number;

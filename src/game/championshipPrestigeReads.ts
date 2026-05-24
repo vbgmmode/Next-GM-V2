@@ -1,5 +1,6 @@
 import { canSegmentContestChampionship } from "../booking/bookingUtils";
 import { getCurrentCalendarWeek } from "./scoring";
+import { SEASON_WEEK_COUNT } from "./constants";
 import type { Championship, GameState, Segment, SegmentResult } from "./types";
 
 export type PrestigeMainEventAnchorStatus = "anchored" | "wrong_closer" | "anchor_missing" | "not_applicable";
@@ -15,7 +16,7 @@ export type PrestigeMainEventAnchorSnapshot = {
 };
 
 export function isSeasonFinalePleWeek(weekNumber: number, showType: string) {
-  return weekNumber === 12 && showType === "ple";
+  return weekNumber === SEASON_WEEK_COUNT && showType === "ple";
 }
 
 export function getChampionshipPrestigeRank(championship: Championship) {
@@ -95,7 +96,7 @@ export function getPrestigeMainEventAnchorSnapshot(game: GameState, validSegment
       isSeasonFinalePle: false,
       status: "not_applicable",
       headline: "Prestige anchor not required",
-      detail: "The season-finale prestige anchor rule applies to Week 12 PLE only.",
+      detail: `The season-finale prestige anchor rule applies to Week ${SEASON_WEEK_COUNT} PLE only.`,
       closingSegment,
     };
   }

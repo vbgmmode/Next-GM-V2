@@ -5,6 +5,7 @@ import {
   getRosterPressureTags,
   getWeeksSinceLastBooked,
 } from "../game/rosterContextReads";
+import { SEASON_WEEK_COUNT } from "../game/constants";
 import type { Championship, GameState, ShowResult, Wrestler } from "../game/types";
 import type {
   GMRead,
@@ -331,7 +332,7 @@ export function getRosterSortLabel(sort: RosterSort) {
 }
 
 export function getRosterContractWeeksLabel(game: GameState) {
-  const seasonWeeksRemaining = Math.max(0, 13 - game.currentWeek);
+  const seasonWeeksRemaining = Math.max(0, (game.calendar.length || SEASON_WEEK_COUNT) - game.currentWeek + 1);
   return `${seasonWeeksRemaining} WK${seasonWeeksRemaining === 1 ? "" : "S"} LEFT`;
 }
 

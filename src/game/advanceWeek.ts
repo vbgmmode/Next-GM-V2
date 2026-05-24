@@ -5,9 +5,9 @@ import { createSeasonCalendar, draftPool } from "./seed";
 import { advanceCpuRivalWeek } from "./cpuRivalLoop";
 import { advanceCpuMarket, advancePlayerContracts, ensureWeeklyMarketBoard, evaluateOfficeMandate, retainContractedPlayerRoster } from "./market";
 import { applyChampionPassiveCarry } from "./titleStatFallout";
+import { WEEKLY_FATIGUE_RECOVERY } from "./constants";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
-const weeklyFatigueRecovery = 3;
 
 export function advanceGameWeek(game: GameState): GameState {
   const latestResult = game.showHistory[game.showHistory.length - 1];
@@ -20,7 +20,8 @@ export function advanceGameWeek(game: GameState): GameState {
         }
       : week,
   );
-  const isSeasonFinaleComplete = game.currentWeek >= 12;
+  const seasonWeekCount = game.calendar.length || 12;
+  const isSeasonFinaleComplete = game.currentWeek >= seasonWeekCount;
   const nextWeek = isSeasonFinaleComplete ? game.currentWeek : game.currentWeek + 1;
   const recoveryNotes: InjuryRecoveryNote[] = [];
   const recoveredWrestlers = game.wrestlers.map((wrestler) => recoverWrestlerInjury(wrestler, nextWeek, recoveryNotes));
@@ -36,13 +37,21 @@ export function advanceGameWeek(game: GameState): GameState {
     injuryRecoveryNotes: [...(game.injuryRecoveryNotes ?? []), ...recoveryNotes],
     wrestlers: recoveredWrestlers.map((wrestler) => {
       const wasBookedThisWeek = (wrestler.lastBookedWeek ?? 0) === game.currentWeek;
-      const momentumDecay = !wasBookedThisWeek ? 4 : wrestler.momentum >= 92 ? 2 : 0;
+      const appearedLastWeek = (wrestler.lastBookedWeek ?? 0) === game.currentWeek - 1;
+      const weeksSinceLastBooked = wrestler.lastBookedWeek ? Math.max(0, game.currentWeek - wrestler.lastBookedWeek) : Math.max(0, game.currentWeek - 1);
+      const absenceDecay = !wasBookedThisWeek && !appearedLastWeek && weeksSinceLastBooked >= 2 ? 3 : 0;
+      const eliteDecay = wasBookedThisWeek && wrestler.momentum >= 88 ? 2 : 0;
+      const topStarDecay = wasBookedThisWeek && wrestler.popularity >= 80 && wrestler.momentum >= 85 ? 2 : 0;
+      const overpushDecay = wasBookedThisWeek && (wrestler.consecutiveWeeksBooked ?? 0) >= 7 ? 5 : wasBookedThisWeek && (wrestler.consecutiveWeeksBooked ?? 0) >= 5 ? 3 : 0;
+      const heatOffset = !wasBookedThisWeek && (wrestler.audienceHeat ?? 50) >= 75 ? 1 : 0;
+      const momentumDecay = Math.max(0, absenceDecay + eliteDecay + topStarDecay + overpushDecay - heatOffset);
 
       return applyChampionPassiveCarry(
         {
           ...wrestler,
-          fatigue: clamp(wrestler.fatigue - weeklyFatigueRecovery),
+          fatigue: clamp(wrestler.fatigue - WEEKLY_FATIGUE_RECOVERY),
           momentum: clamp(wrestler.momentum - momentumDecay),
+          audienceHeat: clamp((wrestler.audienceHeat ?? 50) - (wasBookedThisWeek ? 0 : 1)),
         },
         game,
       );
@@ -148,6 +157,12 @@ export function startNextSeason(game: GameState, completedSeasonArchive?: Season
       appearancesThisSeason: 0,
       lastBookedWeek: 0,
       consecutiveWeeksBooked: 0,
+      record: wrestler.record
+        ? {
+            ...wrestler.record,
+            season: { wins: 0, losses: 0, draws: 0, tagWins: 0, tagLosses: 0, tagDraws: 0 },
+          }
+        : wrestler.record,
     })),
     rivalBrands: retainedGame.rivalBrands.map((brand) => ({
       ...brand,

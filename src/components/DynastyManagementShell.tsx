@@ -27,6 +27,7 @@ function formatLocationLabel(screen: GameScreen) {
     dashboard: "Brand HQ",
     finance: "Finance Desk",
     market: "Market Desk",
+    offseasonDraft: "Offseason Draft",
     profile: "Talent Profile",
     results: "Show Recap",
     rivalries: "Rivalry Desk",

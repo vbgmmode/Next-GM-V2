@@ -1,4 +1,5 @@
 import { getDefaultCatalogOption } from "./matchFormatCatalog";
+import { SEASON_WEEK_COUNT } from "./constants";
 import type { GameState, Segment, ShowResult, SocialInboxActionType, SocialInboxRequest, SocialInboxState, Wrestler } from "./types";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
@@ -127,7 +128,7 @@ function getRequestDeadline(game: GameState, actionType: SocialInboxActionType) 
 
   return {
     deadlineSeasonNumber: game.seasonNumber,
-    deadlineWeekNumber: Math.min(12, game.currentWeek + tvRequestWindowWeeks),
+    deadlineWeekNumber: Math.min(game.calendar.length || SEASON_WEEK_COUNT, game.currentWeek + tvRequestWindowWeeks),
   };
 }
 

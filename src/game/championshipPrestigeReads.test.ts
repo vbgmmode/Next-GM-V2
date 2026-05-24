@@ -6,6 +6,7 @@ import {
   getSegmentPrestigeWeight,
   isSeasonFinalePleWeek,
 } from "./championshipPrestigeReads";
+import { SEASON_WEEK_COUNT } from "./constants";
 import { createNewGame, draftPool } from "./seed";
 import type { Championship, GameState, Segment, SegmentResult, Wrestler } from "./types";
 
@@ -49,7 +50,7 @@ function createTitleMatch(
   };
 }
 
-function createFinaleGame(segments: Segment[], week = 12): GameState {
+function createFinaleGame(segments: Segment[], week = SEASON_WEEK_COUNT): GameState {
   const wrestlers = sameDivisionWrestlers("Mens", 4);
   const worldTitle = createSinglesTitle("world-title", "World Heavyweight Championship", 96, wrestlers[0].id, "Top");
   const midcardTitle = createSinglesTitle("ic-title", "Intercontinental Championship", 78, wrestlers[2].id, "Middle");
@@ -61,20 +62,20 @@ function createFinaleGame(segments: Segment[], week = 12): GameState {
     championships: [worldTitle, midcardTitle],
     currentShow: segments,
     calendar: [
-      { weekNumber: 11, showName: "Las Vegas Go-Home", showType: "tv", isGoHome: true, completed: true },
-      { weekNumber: 12, showName: "Las Vegas", showType: "ple", isGoHome: false, completed: false },
+      { weekNumber: SEASON_WEEK_COUNT - 1, showName: "Las Vegas Go-Home", showType: "tv", isGoHome: true, completed: true },
+      { weekNumber: SEASON_WEEK_COUNT, showName: "Las Vegas", showType: "ple", isGoHome: false, completed: false },
     ],
   };
 }
 
 describe("championshipPrestigeReads", () => {
-  it("detects season finale PLE week only on week 12", () => {
-    expect(isSeasonFinalePleWeek(12, "ple")).toBe(true);
+  it("detects season finale PLE week only on week 52", () => {
+    expect(isSeasonFinalePleWeek(SEASON_WEEK_COUNT, "ple")).toBe(true);
     expect(isSeasonFinalePleWeek(8, "ple")).toBe(false);
-    expect(isSeasonFinalePleWeek(12, "tv")).toBe(false);
+    expect(isSeasonFinalePleWeek(SEASON_WEEK_COUNT, "tv")).toBe(false);
   });
 
-  it("marks the world title as anchored when it closes week 12", () => {
+  it("marks the world title as anchored when it closes the season finale", () => {
     const wrestlers = sameDivisionWrestlers("Mens", 4);
     const segments = [
       createTitleMatch("midcard-match", wrestlers, "ic-title", wrestlers[3].id, [wrestlers[2].id, wrestlers[3].id]),
@@ -86,7 +87,7 @@ describe("championshipPrestigeReads", () => {
     expect(snapshot.anchorChampionship?.id).toBe("world-title");
   });
 
-  it("flags wrong closer when a lower-prestige title closes week 12", () => {
+  it("flags wrong closer when a lower-prestige title closes the season finale", () => {
     const wrestlers = sameDivisionWrestlers("Mens", 4);
     const segments = [
       createTitleMatch("world-match", wrestlers, "world-title", wrestlers[1].id),
@@ -99,7 +100,7 @@ describe("championshipPrestigeReads", () => {
     expect(snapshot.detail).toContain("Intercontinental Championship");
   });
 
-  it("flags anchor missing when the top belt is not booked on week 12", () => {
+  it("flags anchor missing when the top belt is not booked on the season finale", () => {
     const wrestlers = sameDivisionWrestlers("Mens", 4);
     const segments = [createTitleMatch("midcard-match", wrestlers, "ic-title", wrestlers[3].id, [wrestlers[2].id, wrestlers[3].id])];
     const snapshot = getPrestigeMainEventAnchorSnapshot(createFinaleGame(segments), segments);
@@ -139,7 +140,7 @@ describe("championshipPrestigeReads", () => {
     expect(anchor?.id).toBe("world-title");
   });
 
-  it("reads resolved week 12 results in card order", () => {
+  it("reads resolved season-finale results in card order", () => {
     const wrestlers = sameDivisionWrestlers("Mens", 4);
     const game = createFinaleGame([]);
     const segmentResults: SegmentResult[] = [
@@ -185,7 +186,7 @@ describe("championshipPrestigeReads", () => {
     ])?.id).toBe("world-a");
   });
 
-  it("gives world title segments enough prestige weight to beat a hot rivalry on week 12", () => {
+  it("gives world title segments enough prestige weight to beat a hot rivalry on the season finale", () => {
     const wrestlers = sameDivisionWrestlers("Mens", 8);
     const game = createFinaleGame([]);
     const worldSegment = createTitleMatch("world-match", wrestlers, "world-title", wrestlers[1].id);

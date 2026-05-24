@@ -1,6 +1,7 @@
 import { getRosterFinanceValueForWrestler } from "./financeCatalog";
 import { getDifficultyRules, scaleNegativePressure } from "./difficultyRules";
 import { affiliationCatalog } from "./affiliationCatalog";
+import { DRAFT_CONTRACT_WEEKS, MARKET_CONTRACT_MAX_WEEKS, STANDARD_BUDGET_AMOUNT } from "./constants";
 import type {
   GameState,
   MarketContract,
@@ -15,10 +16,8 @@ import type {
   Wrestler,
 } from "./types";
 
-const playerRosterLimit = 20;
-const cpuRosterLimit = 18;
-const defaultContractWeeks = 12;
-const defaultCpuBudget = 1800000;
+const defaultContractWeeks = DRAFT_CONTRACT_WEEKS;
+const defaultCpuBudget = STANDARD_BUDGET_AMOUNT;
 const marketExpiryWarningWeeks = 2;
 const weeklyBoardMaxEntries = 6;
 const bundleDiscountMultiplier = 0.8;
@@ -64,10 +63,10 @@ function getMoneyValue(wrestler: Pick<Wrestler, "id" | "popularity" | "roleTier"
 
   return {
     weeklySalary,
-    releasePenalty: Math.round(weeklySalary * defaultContractWeeks * (releasePenaltyPct / 100)),
-    defaultWeeks: row?.midseasonDefaultContractWeeks ?? defaultContractWeeks,
+    releasePenalty: Math.round(weeklySalary * Math.min(defaultContractWeeks, MARKET_CONTRACT_MAX_WEEKS) * (releasePenaltyPct / 100)),
+    defaultWeeks: Math.min(row?.midseasonDefaultContractWeeks ?? defaultContractWeeks, MARKET_CONTRACT_MAX_WEEKS),
     minWeeks: row?.midseasonMinContractWeeks ?? 4,
-    maxWeeks: row?.midseasonMaxContractWeeks ?? 24,
+    maxWeeks: MARKET_CONTRACT_MAX_WEEKS,
     renewalRisk: row?.renewalRisk ?? 20,
   };
 }
@@ -83,7 +82,7 @@ export function createMarketContract(
   upfrontCostPaid?: number,
 ): MarketContract {
   const value = getMoneyValue(wrestler);
-  const contractWeeksRemaining = Math.max(1, weeks ?? value.defaultWeeks);
+  const contractWeeksRemaining = Math.max(1, Math.min(MARKET_CONTRACT_MAX_WEEKS, weeks ?? value.defaultWeeks));
   const weeklySalary = weeklySalaryOverride ?? value.weeklySalary;
 
   return {
@@ -104,7 +103,7 @@ export function createMarketContract(
 
 export function createDefaultMarketState(wrestlers: Wrestler[]): MarketState {
   return {
-    playerContracts: wrestlers.map((wrestler) => createMarketContract(wrestler, "player", "player", "draft", defaultContractWeeks)),
+    playerContracts: wrestlers.map((wrestler) => createMarketContract(wrestler, "player", "player", "draft", DRAFT_CONTRACT_WEEKS)),
     transactions: [],
     cooldowns: [],
     officeMandate: createDefaultOfficeMandate(),
@@ -226,9 +225,9 @@ function getWeeklyBoardCandidates(game: GameState, draftPool: Wrestler[]) {
 function pickCpuClaimBrand(game: GameState, wrestler: Wrestler, claimedIds: Set<string>) {
   const rules = getDifficultyRules(game.difficulty);
   const eligibleBrands = game.rivalBrands
-    .filter((brand) => brand.rosterWrestlerIds.length < cpuRosterLimit && !brand.rosterWrestlerIds.includes(wrestler.id))
+    .filter((brand) => !brand.rosterWrestlerIds.includes(wrestler.id))
     .map((brand) => {
-      const offer = getExternalMarketOffer(wrestler, game.seasonNumber, game.currentWeek, defaultContractWeeks);
+      const offer = getExternalMarketOffer(wrestler, game.seasonNumber, game.currentWeek, MARKET_CONTRACT_MAX_WEEKS);
       const divisionNeed = brand.rosterWrestlerIds.filter((id) => id !== wrestler.id).length < 14 ? 12 : 0;
       const styleFit =
         brand.assignedGMStyle === "Talent Developer" && wrestler.roleTier === "Prospect"
@@ -255,8 +254,8 @@ function pickCpuClaimBrand(game: GameState, wrestler: Wrestler, claimedIds: Set<
 }
 
 function addCpuBoardSigning(game: GameState, brand: RivalBrandState, wrestler: Wrestler) {
-  const offer = getExternalMarketOffer(wrestler, game.seasonNumber, game.currentWeek, defaultContractWeeks);
-  const contract = createMarketContract(wrestler, "rival", brand.id, "free_agent", defaultContractWeeks, "prepaid", offer.weeklyAsk, offer.dueNow);
+  const offer = getExternalMarketOffer(wrestler, game.seasonNumber, game.currentWeek, MARKET_CONTRACT_MAX_WEEKS);
+  const contract = createMarketContract(wrestler, "rival", brand.id, "free_agent", MARKET_CONTRACT_MAX_WEEKS, "prepaid", offer.weeklyAsk, offer.dueNow);
   const transaction = createTransaction(game, "signing", [wrestler.id], [wrestler.name], offer.dueNow, `${brand.brandName} signed ${wrestler.name} from this week's market board.`, {
     toBrandId: brand.id,
     toBrandName: brand.brandName,
@@ -320,7 +319,7 @@ export function createWeeklyMarketBoard(game: GameState, draftPool: Wrestler[]):
   const entries: WeeklyMarketBoardEntry[] = [];
 
   candidates.forEach((wrestler) => {
-    const baseOffer = getExternalMarketOffer(wrestler, game.seasonNumber, game.currentWeek, 12);
+    const baseOffer = getExternalMarketOffer(wrestler, game.seasonNumber, game.currentWeek, MARKET_CONTRACT_MAX_WEEKS);
     const cpuClaim = pickCpuClaimBrand(nextGame, wrestler, claimedIds);
 
     if (cpuClaim) {
@@ -426,11 +425,11 @@ export function signPlayerFreeAgent(game: GameState, wrestlerId: string, draftPo
   const boardEntry = boardReadyGame.marketState.weeklyBoard?.entries.find((entry) => entry.wrestlerId === wrestlerId);
   const wrestler = boardEntry?.status === "available" ? getAvailableFreeAgents(boardReadyGame, draftPool).find((item) => item.id === wrestlerId) : undefined;
 
-  if (!wrestler || boardReadyGame.wrestlers.length >= playerRosterLimit) {
+  if (!wrestler) {
     return game;
   }
 
-  const contractWeeks = Math.max(1, Math.min(12, requestedWeeks ?? Math.min(12, Math.max(1, 13 - boardReadyGame.currentWeek))));
+  const contractWeeks = getContractWeeksForMarket(boardReadyGame, requestedWeeks);
   const offer = getExternalMarketOffer(wrestler, boardReadyGame.seasonNumber, boardReadyGame.currentWeek, contractWeeks);
 
   if (boardReadyGame.money < offer.dueNow) {
@@ -482,7 +481,8 @@ export function signPlayerFreeAgent(game: GameState, wrestlerId: string, draftPo
 }
 
 function getContractWeeksForMarket(game: GameState, requestedWeeks?: number) {
-  return Math.max(1, Math.min(12, requestedWeeks ?? Math.min(12, Math.max(1, 13 - game.currentWeek))));
+  void game;
+  return Math.max(1, Math.min(MARKET_CONTRACT_MAX_WEEKS, requestedWeeks ?? MARKET_CONTRACT_MAX_WEEKS));
 }
 
 export function getMarketBundleOffers(game: GameState, draftPool: Wrestler[], requestedWeeks?: number): MarketBundleOffer[] {
@@ -541,7 +541,7 @@ export function signPlayerFreeAgentBundle(game: GameState, affiliationId: string
   const boardReadyGame = ensureWeeklyMarketBoard(game, draftPool);
   const bundleOffer = getMarketBundleOffers(boardReadyGame, draftPool, requestedWeeks).find((offer) => offer.affiliationId === affiliationId);
 
-  if (!bundleOffer || boardReadyGame.wrestlers.length + bundleOffer.wrestlers.length > playerRosterLimit || boardReadyGame.money < bundleOffer.discountedDueNow) {
+  if (!bundleOffer || boardReadyGame.money < bundleOffer.discountedDueNow) {
     return game;
   }
 
@@ -632,7 +632,7 @@ export function renewPlayerContract(game: GameState, wrestlerId: string, request
     return game;
   }
 
-  const contractWeeks = Math.max(1, Math.min(12, requestedWeeks));
+  const contractWeeks = Math.max(1, Math.min(MARKET_CONTRACT_MAX_WEEKS, requestedWeeks));
   const offer = getRenewalOffer(wrestler, contractWeeks);
 
   if (game.money < offer.dueNow) {
@@ -641,11 +641,11 @@ export function renewPlayerContract(game: GameState, wrestlerId: string, request
 
   const renewedContract: MarketContract = {
     ...contract,
-    contractWeeksRemaining: contract.contractWeeksRemaining + contractWeeks,
+    contractWeeksRemaining: Math.min(MARKET_CONTRACT_MAX_WEEKS, contract.contractWeeksRemaining + contractWeeks),
     weeklySalary: offer.weeklyAsk,
     releasePenalty: 0,
     acquisitionSource: "renewal",
-    contractStatus: contract.contractWeeksRemaining + contractWeeks <= marketExpiryWarningWeeks ? "expiring" : "active",
+    contractStatus: Math.min(MARKET_CONTRACT_MAX_WEEKS, contract.contractWeeksRemaining + contractWeeks) <= marketExpiryWarningWeeks ? "expiring" : "active",
     paymentModel: "prepaid",
     upfrontCostPaid: (contract.upfrontCostPaid ?? 0) + offer.dueNow,
   };
@@ -840,7 +840,7 @@ export function advanceCpuMarket(game: GameState, draftPool: Wrestler[]): GameSt
 
       expiredContracts.forEach((contract) => {
         const wrestler = draftPool.find((item) => item.id === contract.wrestlerId);
-        const renewalWeeks = wrestler?.roleTier === "MainEvent" || (wrestler?.popularity ?? 0) >= 78 ? 12 : wrestler?.roleTier === "UpperCard" ? 8 : 4;
+        const renewalWeeks = wrestler?.roleTier === "MainEvent" || (wrestler?.popularity ?? 0) >= 78 ? 52 : wrestler?.roleTier === "UpperCard" ? 36 : 24;
         const renewalOffer = wrestler ? getRenewalOffer(wrestler, renewalWeeks) : undefined;
         const shouldRenew =
           wrestler && renewalOffer
@@ -1165,7 +1165,6 @@ export function getMarketSnapshot(game: GameState, draftPool: Wrestler[]) {
     payroll,
     expiringContracts,
     latestTransaction,
-    rosterLimit: playerRosterLimit,
     rivalTradeTargets: game.rivalBrands.flatMap((brand) =>
       brand.rosterWrestlerIds.slice(0, 6).flatMap((wrestlerId) => {
         const wrestler = draftPool.find((item) => item.id === wrestlerId);

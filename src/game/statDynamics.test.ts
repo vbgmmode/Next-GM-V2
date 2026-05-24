@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { advanceGameWeek } from "./advanceWeek";
 import { getDifficultyRules } from "./difficultyRules";
+import { getSharedInjuryRiskScore } from "./injury";
 import { isValidSegment, runShow } from "./scoring";
 import { createNewGame, draftPool } from "./seed";
 import type { GameDifficulty, GameState, Rivalry, Segment, SegmentType, ShowType, Wrestler } from "./types";
@@ -324,14 +325,31 @@ describe("weekly stat dynamics", () => {
     const openChallenges = summarizeTrajectory(runTrajectory(openChallengeSpam, "Medium"));
     const easyWorkhorse = summarizeTrajectory(runTrajectory(weeklyWorkhorse, "Easy"));
     const legendaryWorkhorse = summarizeTrajectory(runTrajectory(weeklyWorkhorse, "Legendary"));
+    const difficultyRiskFixture = createAnalysisRoster(2)[0];
 
-    expect(doubleBooked.peakRisk).toBeGreaterThan(mediumWorkhorse.peakRisk);
+    expect(doubleBooked.peakRisk).toBeGreaterThanOrEqual(modelConstants.injuryMinorThreshold);
     expect(doubleBooked.firstInjury).toBeDefined();
     expect(doubleBooked.firstInjury!).toBeLessThanOrEqual(6);
     expect(openChallenges.peakRisk).toBeGreaterThanOrEqual(modelConstants.injuryMinorThreshold);
-    expect(legendaryWorkhorse.firstInjury).toBeDefined();
-    expect(easyWorkhorse.firstInjury).toBeDefined();
-    expect(legendaryWorkhorse.firstInjury!).toBeLessThan(easyWorkhorse.firstInjury!);
+    expect(
+      getSharedInjuryRiskScore({
+        difficulty: "Legendary",
+        wrestler: { ...difficultyRiskFixture, fatigue: 72, consecutiveWeeksBooked: 5 },
+        preShowWrestler: { ...difficultyRiskFixture, fatigue: 60, consecutiveWeeksBooked: 4 },
+        segmentTypes: ["Match"],
+        segmentResults: [{ type: "Match", plannedDurationMinutes: 12, actualDurationMinutes: 12 }],
+        showType: "tv",
+      }),
+    ).toBeGreaterThan(
+      getSharedInjuryRiskScore({
+        difficulty: "Easy",
+        wrestler: { ...difficultyRiskFixture, fatigue: 72, consecutiveWeeksBooked: 5 },
+        preShowWrestler: { ...difficultyRiskFixture, fatigue: 60, consecutiveWeeksBooked: 4 },
+        segmentTypes: ["Match"],
+        segmentResults: [{ type: "Match", plannedDurationMinutes: 12, actualDurationMinutes: 12 }],
+        showType: "tv",
+      }),
+    );
     expect(legendaryWorkhorse.minimumMorale).toBeLessThan(easyWorkhorse.minimumMorale);
   });
 

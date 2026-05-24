@@ -61,6 +61,8 @@ export function WrestlerProfileScreen({
   const identitySnapshot = getWrestlerIdentitySnapshot(wrestler, game);
   const valueProfile = getWrestlerValueProfile(wrestler);
   const lockerRoomRead = getWrestlerLockerRoomRead(wrestler, game);
+  const record = wrestler.record;
+  const formatRecord = (wins = 0, losses = 0, draws = 0) => `${wins}-${losses}${draws ? `-${draws}` : ""}`;
   const showValueTierChip = valueProfile.valueTierLabel.toLowerCase() !== "protected star";
   const [expandedProfilePanels, setExpandedProfilePanels] = useState<Set<ProfilePanelId>>(() => new Set(["stats", "gmRead"]));
   const profileStatRows = [
@@ -68,9 +70,15 @@ export function WrestlerProfileScreen({
     { label: "Momentum", value: `${wrestler.momentum}` },
     { label: "Fatigue", value: `${wrestler.fatigue}` },
     { label: "Morale", value: `${wrestler.morale}` },
+    { label: "Audience Heat", value: `${wrestler.audienceHeat ?? 50}`, note: "Resolved reaction" },
+    { label: "Trust", value: `${wrestler.trust ?? 50}`, note: "Office relationship" },
     { label: "Ring Skill", value: `${wrestler.ringSkill}` },
     { label: "Promo Skill", value: `${wrestler.promoSkill}` },
     { label: "Injury", value: getInjuryStatusLabel(wrestler.injuryStatus), note: getInjuryDetail(wrestler) },
+    { label: "Season Singles", value: formatRecord(record?.season.wins, record?.season.losses, record?.season.draws), note: "Resolved matches" },
+    { label: "Season Tag", value: formatRecord(record?.season.tagWins, record?.season.tagLosses, record?.season.tagDraws), note: "Resolved tag matches" },
+    { label: "Career Singles", value: formatRecord(record?.career.wins, record?.career.losses, record?.career.draws), note: "Resolved matches" },
+    { label: "Career Tag", value: formatRecord(record?.career.tagWins, record?.career.tagLosses, record?.career.tagDraws), note: "Resolved tag matches" },
     { label: "Appearances", value: `${wrestler.appearancesThisSeason ?? 0}`, note: "This season" },
     { label: "Last Booked", value: wrestler.lastBookedWeek ? `Week ${wrestler.lastBookedWeek}` : "Never", note: `${weeksSinceLastBooked} weeks off TV` },
     { label: "TV Streak", value: `${wrestler.consecutiveWeeksBooked ?? 0}`, note: "Consecutive weeks booked" },
@@ -92,7 +100,7 @@ export function WrestlerProfileScreen({
     setExpandedProfilePanels(new Set(["stats", "gmRead"]));
   }, [wrestler.id]);
 
-  const statsSummary = `POP ${wrestler.popularity} / MOM ${wrestler.momentum} / FAT ${wrestler.fatigue} / MOR ${wrestler.morale}`;
+  const statsSummary = `POP ${wrestler.popularity} / MOM ${wrestler.momentum} / HEAT ${wrestler.audienceHeat ?? 50} / TRUST ${wrestler.trust ?? 50}`;
   const gmReadSummary = `${lockerRoomRead.headline}${pressureTags.length ? ` / ${pressureTags.slice(0, 2).join(" / ")}` : " / Balanced"}`;
   const contractSummary = `${valueProfile.valueTierLabel} / ${valueProfile.weeklyValueLabel}`;
   const affiliationSummary = affiliations.length ? `${affiliations.length} locker room link${affiliations.length === 1 ? "" : "s"}` : "No source link";

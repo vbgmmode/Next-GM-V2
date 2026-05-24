@@ -36,6 +36,7 @@ import type {
 import {
   createDefaultChampionships,
   createDefaultRivalries,
+  createDefaultWrestlerRecord,
   createRivalBrandUniverse,
   createRivalGMAssignments,
   createSeasonCalendar,
@@ -53,6 +54,7 @@ import { applyChampionshipCatalogDefaults } from "./titleCatalog";
 import { applyRivalryCatalogDefaults } from "./rivalryCatalog";
 import { getStipulationsForSegment } from "./stipulationCatalog";
 import { normalizeSocialInboxState } from "./socialInboxActions";
+import { DRAFT_CONTRACT_WEEKS, SENTIMENT_NEUTRAL } from "./constants";
 
 export type GameScreen = Exclude<Screen, "title" | "setup">;
 export type ProfileReturnScreen = Extract<GameScreen, "roster" | "booking" | "dashboard">;
@@ -78,6 +80,7 @@ const savedGameScreens: GameScreen[] = [
   "results",
   "weekReview",
   "seasonReview",
+  "offseasonDraft",
 ];
 
 type SavedGameCandidate = {
@@ -115,6 +118,10 @@ function isGameDifficulty(value: unknown): value is GameDifficulty {
 
 function isStartingBudgetTier(value: unknown): value is StartingBudgetTier {
   return value === "$1M" || value === "$2M" || value === "$4M" || value === "Unlimited";
+}
+
+function normalizeStartingBudgetTier(value: unknown): StartingBudgetTier {
+  return value === "Unlimited" ? "Unlimited" : "$2M";
 }
 
 function normalizeDraftMode(value: unknown): DraftMode {
@@ -222,7 +229,7 @@ function normalizeMarketContract(value: unknown): MarketContract | undefined {
     wrestlerId: candidate.wrestlerId,
     ownerType: candidate.ownerType === "rival" || candidate.ownerType === "free_agent" ? candidate.ownerType : "player",
     ownerBrandId: typeof candidate.ownerBrandId === "string" ? candidate.ownerBrandId : undefined,
-    contractWeeksRemaining: typeof candidate.contractWeeksRemaining === "number" ? candidate.contractWeeksRemaining : 12,
+    contractWeeksRemaining: typeof candidate.contractWeeksRemaining === "number" ? candidate.contractWeeksRemaining : DRAFT_CONTRACT_WEEKS,
     weeklySalary: typeof candidate.weeklySalary === "number" ? candidate.weeklySalary : 8000,
     releasePenalty: paymentModel === "prepaid" ? 0 : typeof candidate.releasePenalty === "number" ? candidate.releasePenalty : 10000,
     acquisitionSource,
@@ -634,6 +641,9 @@ function normalizeWrestlers(wrestlers: unknown): Wrestler[] {
       ...wrestler,
       ...enrichWrestlerIdentityContext(wrestler as Wrestler),
       alignment: resolveWrestlerAlignment(wrestler.alignment, wrestlerId),
+      audienceHeat: typeof wrestler.audienceHeat === "number" ? wrestler.audienceHeat : SENTIMENT_NEUTRAL,
+      trust: typeof wrestler.trust === "number" ? wrestler.trust : SENTIMENT_NEUTRAL,
+      record: wrestler.record ?? createDefaultWrestlerRecord(),
       appearancesThisSeason: wrestler.appearancesThisSeason ?? 0,
       lastBookedWeek: wrestler.lastBookedWeek ?? 0,
       consecutiveWeeksBooked: wrestler.consecutiveWeeksBooked ?? 0,
@@ -771,7 +781,7 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
   const brandStyle = typeof savedGame.brandStyle === "string" ? (savedGame.brandStyle as GameState["brandStyle"]) : defaultCareer.brandStyle;
   const rivalGMAssignments = normalizeRivalGMAssignments(savedGame.rivalGMAssignments);
   const safeRivalGMAssignments = rivalGMAssignments.length ? rivalGMAssignments : createRivalGMAssignments(brandStyle);
-  const startingBudgetTier = isStartingBudgetTier(savedGame.startingBudgetTier) ? savedGame.startingBudgetTier : defaultCareer.startingBudgetTier;
+  const startingBudgetTier = isStartingBudgetTier(savedGame.startingBudgetTier) ? normalizeStartingBudgetTier(savedGame.startingBudgetTier) : defaultCareer.startingBudgetTier;
   const draftMode = normalizeDraftMode(savedGame.draftMode);
   const fallbackMoney = getStartingBudgetAmount(startingBudgetTier);
   const seasonStartingMoney = savedGame.seasonStartingMoney ?? savedGame.money ?? fallbackMoney;

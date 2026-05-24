@@ -316,7 +316,7 @@ describe("market ownership invariants", () => {
     const beforeContract = game.marketState.playerContracts.find((contract) => contract.wrestlerId === wrestler.id);
     const afterContract = updatedGame.marketState.playerContracts.find((contract) => contract.wrestlerId === wrestler.id);
 
-    expect(afterContract?.contractWeeksRemaining).toBe((beforeContract?.contractWeeksRemaining ?? 0) + 5);
+    expect(afterContract?.contractWeeksRemaining).toBe(52);
     expect(afterContract?.paymentModel).toBe("prepaid");
     expect(updatedGame.money).toBeLessThan(game.money);
     expect(updatedGame.marketState.transactions.at(-1)?.type).toBe("renewal");

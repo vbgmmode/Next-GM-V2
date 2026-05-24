@@ -23,9 +23,11 @@ import { formatMoney } from "./formatters";
 import { createMarketContract, getCpuBudgetDefault } from "./market";
 import { simulateOpeningDraft } from "./openingDraft";
 import { getDifficultyRules } from "./difficultyRules";
+import { getSharedInjuryRiskScore } from "./injury";
+import { STANDARD_BUDGET_AMOUNT } from "./constants";
 
 const cpuDraftPicksPerBrand = 12;
-const cpuStartingMoney = 1800000;
+const cpuStartingMoney = STANDARD_BUDGET_AMOUNT;
 
 export type CpuDraftPreviewNote = {
   classLeadWrestlerId?: string;
@@ -573,7 +575,7 @@ function resolveCpuRivalries(brand: RivalBrandState, segments: CpuSegmentResult[
   return { rivalries, rivalryNotes };
 }
 
-function resolveCpuRosterFallout(brand: RivalBrandState, segments: CpuSegmentResult[], playerResult: ShowResult, draftPool: Wrestler[]) {
+function resolveCpuRosterFallout(brand: RivalBrandState, segments: CpuSegmentResult[], playerResult: ShowResult, draftPool: Wrestler[], difficulty: GameDifficulty) {
   const usedIds = new Set(segments.flatMap((segment) => segment.participantIds));
   const injuryNotes: string[] = [];
   const rosterState: CpuRosterMemberState[] = brand.rosterState.map((member) => {
@@ -582,12 +584,25 @@ function resolveCpuRosterFallout(brand: RivalBrandState, segments: CpuSegmentRes
     }
 
     const used = usedIds.has(member.wrestlerId);
-    const segmentLoad = segments.filter((segment) => segment.participantIds.includes(member.wrestlerId)).length;
+    const memberSegments = segments.filter((segment) => segment.participantIds.includes(member.wrestlerId));
+    const segmentLoad = memberSegments.length;
     const fatigue = clamp(member.fatigue + (used ? 8 + segmentLoad * 3 + (playerResult.showType === "ple" ? 3 : 0) : -4));
     const momentum = clamp(member.momentum + (used ? 3 : -1));
     const morale = clamp(member.morale + (used ? 1 : -2));
-    const injuryRoll = hashString(`${brand.id}-${member.wrestlerId}-injury-${playerResult.seasonNumber}-${playerResult.week}`) % 100;
-    const injuryStatus: InjuryStatus = fatigue >= 78 && injuryRoll > 92 ? "major" : fatigue >= 62 && injuryRoll > 86 ? "minor" : member.injuryStatus;
+    const wrestler = draftPool.find((item) => item.id === member.wrestlerId);
+    const injuryRisk = wrestler
+      ? getSharedInjuryRiskScore({
+          wrestler: { ...wrestler, fatigue, momentum, morale, injuryStatus: member.injuryStatus, injuryWeeksRemaining: member.injuryWeeksRemaining, consecutiveWeeksBooked: member.consecutiveWeeksBooked },
+          preShowWrestler: { ...wrestler, fatigue: member.fatigue, momentum: member.momentum, morale: member.morale, injuryStatus: member.injuryStatus, injuryWeeksRemaining: member.injuryWeeksRemaining, consecutiveWeeksBooked: member.consecutiveWeeksBooked },
+          segmentTypes: memberSegments.map((segment) => segment.type),
+          segmentResults: memberSegments.map((segment) => ({ type: segment.type, plannedDurationMinutes: 12, actualDurationMinutes: 12 + (segment.score >= 85 ? 2 : 0) })),
+          showType: playerResult.showType,
+          difficulty,
+        })
+      : 0;
+    const injuryRoll = hashString(`${brand.id}-${member.wrestlerId}-injury-${playerResult.seasonNumber}-${playerResult.week}`) % 20;
+    const deterministicRisk = injuryRisk + injuryRoll;
+    const injuryStatus: InjuryStatus = deterministicRisk >= 97 ? "major" : deterministicRisk >= 92 ? "minor" : member.injuryStatus;
     const injuryWeeksRemaining = injuryStatus === "major" ? 3 : injuryStatus === "minor" ? Math.max(member.injuryWeeksRemaining, 1) : member.injuryWeeksRemaining;
 
     if (injuryStatus !== member.injuryStatus && injuryStatus !== "healthy") {
@@ -677,7 +692,7 @@ export function generateCpuWeeklyResults(game: GameState, playerResult: ShowResu
     const keyAngleSegment = segments.find((segment) => segment.type !== "Match") ?? segments[0];
     const titleResolution = resolveCpuTitles(brand, segments, playerResult, draftPool);
     const rivalryResolution = resolveCpuRivalries(brand, segments, playerResult);
-    const rosterFallout = resolveCpuRosterFallout(brand, segments, playerResult, draftPool);
+    const rosterFallout = resolveCpuRosterFallout(brand, segments, playerResult, draftPool, game.difficulty);
     const previousMoney = brand.financeReports.at(-1)?.endingMoney ?? cpuStartingMoney;
     const resultBase: RivalBrandWeeklyResult = {
       id: `${brand.id}-s${playerResult.seasonNumber}-w${playerResult.week}`,

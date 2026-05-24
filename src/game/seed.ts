@@ -23,6 +23,7 @@ import { getRosterFinanceValueForWrestler } from "./financeCatalog";
 import { allocateCpuDraftRosters } from "./cpuRivalLoop";
 import { createDefaultMarketState, ensureWeeklyMarketBoard, getCpuBudgetDefault } from "./market";
 import { createDefaultSocialInboxState } from "./socialInboxActions";
+import { PLE_CYCLE_WEEKS, SEASON_WEEK_COUNT, SENTIMENT_NEUTRAL, STANDARD_BUDGET_AMOUNT, UNLIMITED_BUDGET_AMOUNT } from "./constants";
 
 type SeedWrestler = Omit<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek"> &
   Partial<Pick<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek">>;
@@ -122,16 +123,21 @@ export const defaultCareer: Required<Omit<NewCareerOptions, "draftedWrestlers" |
   rivalGMAssignments: createRivalGMAssignments("Raw"),
 };
 
-export const unlimitedStartingBudget = 999999999;
+export const unlimitedStartingBudget = UNLIMITED_BUDGET_AMOUNT;
+
+export function createDefaultWrestlerRecord(): NonNullable<Wrestler["record"]> {
+  return {
+    season: { wins: 0, losses: 0, draws: 0, tagWins: 0, tagLosses: 0, tagDraws: 0 },
+    career: { wins: 0, losses: 0, draws: 0, tagWins: 0, tagLosses: 0, tagDraws: 0 },
+  };
+}
 
 export function getStartingBudgetAmount(tier: StartingBudgetTier) {
   switch (tier) {
     case "$1M":
-      return 1000000;
     case "$2M":
-      return 2000000;
     case "$4M":
-      return 4000000;
+      return STANDARD_BUDGET_AMOUNT;
     case "Unlimited":
       return unlimitedStartingBudget;
   }
@@ -158,6 +164,9 @@ function cloneWrestlers(wrestlers: SeedWrestler[]) {
     ...wrestler,
     ...enrichWrestlerIdentityContext(wrestler),
     alignment: resolveWrestlerAlignment(wrestler.alignment, wrestler.id),
+    audienceHeat: wrestler.audienceHeat ?? SENTIMENT_NEUTRAL,
+    trust: wrestler.trust ?? SENTIMENT_NEUTRAL,
+    record: wrestler.record ?? createDefaultWrestlerRecord(),
     appearancesThisSeason: wrestler.appearancesThisSeason ?? 0,
     lastBookedWeek: wrestler.lastBookedWeek ?? 0,
     consecutiveWeeksBooked: wrestler.consecutiveWeeksBooked ?? 0,
@@ -387,20 +396,39 @@ export function createDefaultRivalries(wrestlers: Wrestler[] = roster): Rivalry[
 }
 
 export function createSeasonCalendar(): CalendarWeek[] {
-  return [
-    { weekNumber: 1, showName: "Dallas", showType: "tv", isGoHome: false, completed: false },
-    { weekNumber: 2, showName: "Houston", showType: "tv", isGoHome: false, completed: false },
-    { weekNumber: 3, showName: "Chicago Go-Home", showType: "tv", isGoHome: true, completed: false },
-    { weekNumber: 4, showName: "Chicago", showType: "ple", isGoHome: false, completed: false },
-    { weekNumber: 5, showName: "Atlanta", showType: "tv", isGoHome: false, completed: false },
-    { weekNumber: 6, showName: "Nashville", showType: "tv", isGoHome: false, completed: false },
-    { weekNumber: 7, showName: "Philadelphia Go-Home", showType: "tv", isGoHome: true, completed: false },
-    { weekNumber: 8, showName: "Philadelphia", showType: "ple", isGoHome: false, completed: false },
-    { weekNumber: 9, showName: "Boston", showType: "tv", isGoHome: false, completed: false },
-    { weekNumber: 10, showName: "Toronto", showType: "tv", isGoHome: false, completed: false },
-    { weekNumber: 11, showName: "Las Vegas Go-Home", showType: "tv", isGoHome: true, completed: false },
-    { weekNumber: 12, showName: "Las Vegas", showType: "ple", isGoHome: false, completed: false },
+  const cycleCities = [
+    "Chicago",
+    "Philadelphia",
+    "Las Vegas",
+    "Atlanta",
+    "Boston",
+    "Toronto",
+    "Nashville",
+    "Dallas",
+    "Houston",
+    "Phoenix",
+    "Seattle",
+    "Detroit",
+    "New York",
   ];
+  const tvCities = ["Dallas", "Houston", "Milwaukee", "Atlanta", "Nashville", "Cleveland", "Boston", "Toronto", "Phoenix", "Seattle", "Portland", "Detroit", "New York"];
+
+  return Array.from({ length: SEASON_WEEK_COUNT }, (_, index) => {
+    const weekNumber = index + 1;
+    const cycleIndex = Math.floor(index / PLE_CYCLE_WEEKS);
+    const weekInCycle = index % PLE_CYCLE_WEEKS;
+    const pleCity = cycleCities[cycleIndex] ?? `PLE ${cycleIndex + 1}`;
+    const isPle = weekInCycle === PLE_CYCLE_WEEKS - 1;
+    const isGoHome = weekInCycle === PLE_CYCLE_WEEKS - 2;
+
+    return {
+      weekNumber,
+      showName: isPle ? pleCity : isGoHome ? `${pleCity} Go-Home` : (tvCities[(cycleIndex + weekInCycle) % tvCities.length] ?? "Tour Stop"),
+      showType: isPle ? "ple" : "tv",
+      isGoHome,
+      completed: false,
+    };
+  });
 }
 
 export function normalizeSeasonCalendar(calendar: CalendarWeek[]): CalendarWeek[] {
@@ -428,7 +456,7 @@ export function normalizeSeasonCalendar(calendar: CalendarWeek[]): CalendarWeek[
 
 export function createNewGame(options: NewCareerOptions = {}): GameState {
   const career = { ...defaultCareer, ...options };
-  const startingRoster = cloneWrestlers(options.draftedWrestlers?.length ? options.draftedWrestlers : roster);
+  const startingRoster = cloneWrestlers(options.draftedWrestlers ? options.draftedWrestlers : roster);
   const startingMoney = getOpeningMoneyAfterDraft(career.startingBudgetTier, options.draftedWrestlers, options.draftBundleDiscountUsd);
 
   const rivalBrands = allocateCpuDraftRosters(

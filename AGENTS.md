@@ -67,7 +67,7 @@ The game currently supports:
 - 120 source-balanced game-eligible performers available by default in Draft Night from the staged Top 200 roster data, with Madden-like in-game stat distribution applied at export
 - Open Draft Night availability across source brands; player brand selection does not restrict draft availability
 - NXT treated as an equal major brand, not developmental by default
-- Draft night with a 12-wrestler TV-ready minimum, money-based drafting limit, and tag/faction bundle picks at a 20% package discount
+- Draft night with a 12-wrestler TV-ready guidance target, money-based drafting limit, no hard roster-count cap, and tag/faction bundle picks at a 20% package discount
 - Draft Night search and sort controls for the larger pool
 - Repo-owned finance-planning catalogs under data/finance
 - Typed finance catalog parsing, lookup helpers, ID normalization, and Top 200 finance mapping validation through src/game/financeCatalog.ts
@@ -97,15 +97,16 @@ The game currently supports:
 - Roster pressure labels for overused, underused, protected star, morale risk, and injury risk states
 - Deterministic locker room fallout after shows
 - Injury System v1 with deterministic minor/major injuries from fatigue and overuse, major-injury booking blocks, recovery on Advance Week, and persisted injury state
-- Roster command board with compact wrestler cards, selected-superstar dock, morale trend, injury report, and read-only locker-room reads from existing momentum, morale, fatigue, injury, title, rivalry, and TV-time state
-- Wrestler Profiles v1 with compact stat rows, expandable local-state detail panels, pressure labels, GM Read, championship/rivalry/social context, and deterministic read-only decision support
+- Roster command board with compact wrestler cards, selected-superstar dock, morale trend, injury report, and read-only locker-room reads from existing momentum, morale, fatigue, injury, title, rivalry, sentiment, records, and TV-time state
+- Wrestler Profiles v1 with compact stat rows, audience heat/trust and season/career record splits, expandable local-state detail panels, pressure labels, GM Read, championship/rivalry/social context, and deterministic read-only decision support
 - Championships with a viewport-fit Champion Wall, selected-title command workspace, collapsed committee support strip, contained panel scrolling, title catalog context, vacant-title assignment, champion revocation, player-edited contender order, selected-title contender board, title scene health, and title history for assigned/revoked/resolved title events
 - Rivalries Command Desk with active rivalry rail, selected rivalry spotlight, compact Creative Desk strip, create/end controls, and current-state reads from existing heat, freshness, timing, history, card usage, and PLE context
 - Rivalry structure support for Singles, Tag 2v2, and Multi rivalries, with optional persisted `Rivalry.structure`, legacy saves defaulting to singles, participantIds remaining canonical, and no team records, faction records, rankings, or team-level stats
 - Calendar
-- 12-week season
-- PLEs
+- 52-week season
+- 13 PLEs
 - Season Review
+- Mid-Career Draft between Season Review and Start Next Season
 - Start Next Season
 - Social/IWC with existing post feed, filters, and read-only resolved-state IWC mood summary
 - Finance & Brand Pressure with active payroll and market transaction costs, GM Office Pressure derived from current money, latest finance report, season finance history, best/worst business weeks, and closed-report cost context, with finance summary metrics under nav and expandable support panels for talent value, latest report, season reads, and finance history
@@ -128,6 +129,9 @@ Title
 → Results
 → Week Review
 → Advance Week
+→ Season Review
+→ Mid-Career Draft
+→ Start Next Season
 
 The loop must remain playable after every change.
 
@@ -143,7 +147,7 @@ The loop must remain playable after every change.
 - Social/IWC is the resolved audience mood and post-show reaction surface.
 - Finance is the GM office pressure surface for current money, latest closed business result, season trend, and readable report context.
 - Calendar is the season clock, PLE cadence, and upcoming-show context.
-- Season Review is the end-of-season legacy and continuity recap.
+- Season Review is the end-of-season legacy and continuity recap before the Mid-Career Draft.
 
 ## Product Principles
 - Player agency first.
@@ -152,7 +156,7 @@ The loop must remain playable after every change.
 - Do not show predicted grades, fan reaction, finance fallout, title outcomes, rivalry movement, or social reaction before the show runs.
 - Open Challenge opponents are not revealed before the show runs.
 - Open Challenge opponents resolve deterministically at show-run time.
-- Only Match title matches can change championships.
+- Only Match title matches and singles Open Challenge title matches can change championships.
 - Roster pressure should come from actual booking choices.
 - Injury risk can be warned about before booking, but injury outcomes are revealed only after the show.
 - Major injuries should affect booking availability.
@@ -262,11 +266,12 @@ Completed stabilization passes:
 - Season Archive Persistence v1 (implemented)
 - Full CPU Rival System v1 (implemented)
 - Full Market + Rival Pressure v1 (implemented)
+- Mechanics Review v1 with 52-week seasons, 13 PLE cadence, 52-week prepaid contract cap, no hard roster-count draft/market cap, Mid-Career Draft, singles Open Challenge title resolution, audience heat/trust, and season/career singles/tag records (implemented)
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
 - Keep scout/read-only career-memory features bounded while using the active Market desk for signing, release, trade, and contract pressure.
-- Treat season legacy as read-only narrative continuity first; defer offseason systems to future tickets.
+- Treat season legacy as read-only narrative continuity first; keep the Mid-Career Draft bounded to the current offseason roster-refresh loop.
 - Keep recent context passes read-only and non-predictive: pre-show surfaces may explain existing pressure, but consequences and outcome language stay retrospective after Run Show.
 - Keep rival brands as summarized ratings-battle and market pressure with deterministic internal CPU simulation; do not expand into rival HQ screens, editable CPU booking, progression locks, firing, or career-ending fail states unless a future accepted ticket explicitly asks for it.
 - Use src/game/gameContextReads.ts or another src/game read-model module for pure derived gameplay context when a future slice would otherwise add more helper logic to src/App.tsx.
@@ -313,6 +318,7 @@ Finance Readiness Rules:
 - src/game/financeCatalog.ts owns finance catalog parsing, typed lookups, ID normalization, and Top 200 finance mapping validation.
 - Setup/Draft finance readout is active.
 - Draft Night and Draft Review may show starting budget, drafted roster finance value, projected reserve, and reserve pressure.
+- Setup budget options are $2M and Unlimited; legacy $1M/$4M saves normalize to $2M.
 - Money Based Draft Night prevents picks the current reserve cannot cover.
 - CPU rival opening draft allocation spends rival draft budgets until no affordable candidate remains.
 - Unlimited budget bypasses draft affordability.

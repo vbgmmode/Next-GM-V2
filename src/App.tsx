@@ -33,7 +33,7 @@ import {
   renameSaveRecord,
   updateSaveRecord,
 } from "./gameStorage";
-import { advanceGameWeek, startNextSeason } from "./game/advanceWeek";
+import { advanceGameWeek } from "./game/advanceWeek";
 import { generateExternalAiSocialCommentary } from "./game/aiCommentary";
 import { affiliationCatalog, getRosterAffiliations, getWrestlerAffiliations } from "./game/affiliationCatalog";
 import { getFinancePressureLabel } from "./game/finance";
@@ -47,6 +47,7 @@ import {
   signPlayerFreeAgent,
   signPlayerFreeAgentBundle,
 } from "./game/market";
+import { MARKET_CONTRACT_MAX_WEEKS, PLE_COUNT, SEASON_WEEK_COUNT } from "./game/constants";
 import {
   getCpuDraftPreviewSnapshot,
   getCpuResultsFeedSnapshot,
@@ -56,6 +57,7 @@ import {
   type RatingsBattleSnapshot,
 } from "./game/cpuRivalLoop";
 import { simulateOpeningDraft } from "./game/openingDraft";
+import { completeMidCareerDraft, getMidCareerDraftBudget, getMidCareerDraftPool } from "./game/midCareerDraft";
 import { getDifficultyRules } from "./game/difficultyRules";
 import {
   bookingSegmentTypes,
@@ -469,7 +471,7 @@ type BrandPulseSnapshot = {
 
 type QaHarnessMode = "runtime" | "legacy-runtime" | "title-defense-runtime" | "title-change-runtime";
 
-const minimumDraftRosterSize = 12;
+const tvReadyDraftRosterTarget = 12;
 const recommendedDraftRosterTarget = 16;
 
 const draftSortOptions: { label: string; value: DraftSort }[] = [
@@ -561,16 +563,8 @@ const setupDraftModeOptions: ChoiceOption<"Snake Draft" | "Linear Draft" | "Rand
 ];
 const budgetOptions: ChoiceOption<StartingBudgetTier>[] = [
   {
-    label: "$1M",
-    description: "Scrappy startup pressure with every signing feeling expensive.",
-  },
-  {
     label: "$2M",
     description: "Balanced standard war chest for a focused first season.",
-  },
-  {
-    label: "$4M",
-    description: "Big launch backing for a loaded opening draft board.",
   },
   {
     label: "Unlimited",
@@ -724,7 +718,7 @@ function getDraftFinanceNote(readout: DraftFinanceReadout) {
     ? ` ${readout.missingFinanceRows.length} roster value${readout.missingFinanceRows.length === 1 ? "" : "s"} pending and excluded from this total.`
     : "";
 
-  return `Opening reserve after roster value is carried into Week 1. ${minimumDraftRosterSize} wrestlers is TV-ready; ${recommendedDraftRosterTarget} is the healthy roster target. Aim for about ${formatMoney(readout.recommendedReserveTarget)} left for production and market flexibility.${missingValueNote}`;
+  return `Opening reserve after roster value is carried into Week 1. ${tvReadyDraftRosterTarget} wrestlers is TV-ready guidance; ${recommendedDraftRosterTarget} is the healthy roster target. Aim for about ${formatMoney(readout.recommendedReserveTarget)} left for production and market flexibility.${missingValueNote}`;
 }
 
 function getRivalUniverseRead(rivalBrands: RivalBrandState[]) {
@@ -839,6 +833,7 @@ function formatLocationLabel(screen: GameScreen) {
     rivalries: "Rivalry Desk",
     roster: "Locker Room",
     seasonReview: "Season Review",
+    offseasonDraft: "Offseason Draft",
     social: "IWC Pulse",
     weekReview: "Week Review",
   };
@@ -3482,7 +3477,7 @@ function getPrimaryStrength(wrestler: Wrestler) {
 }
 
 function getRosterContractWeeksLabel(game: GameState) {
-  const seasonWeeksRemaining = Math.max(0, 13 - game.currentWeek);
+  const seasonWeeksRemaining = Math.max(0, (game.calendar.length || SEASON_WEEK_COUNT) - game.currentWeek + 1);
   return `${seasonWeeksRemaining} WK${seasonWeeksRemaining === 1 ? "" : "S"} LEFT`;
 }
 
@@ -3970,7 +3965,7 @@ function buildQaTitlePayoffHarnessState(mode: "title-defense-runtime" | "title-c
 }
 
 function buildQaRuntimeHarnessState(mode: QaHarnessMode): SavedGameState {
-  const draftedWrestlers = draftPool.slice(0, minimumDraftRosterSize);
+  const draftedWrestlers = draftPool.slice(0, tvReadyDraftRosterTarget);
   const game = createNewGame({
     ...defaultCareer,
     draftedWrestlers,
@@ -4927,22 +4922,32 @@ function App() {
       }
 
       const updatedGame = advanceGameWeek(current);
-      const nextScreen = current.currentWeek >= 12 ? "seasonReview" : "dashboard";
+      const seasonWeekCount = current.calendar.length || 12;
+      const nextScreen = current.currentWeek >= seasonWeekCount ? "seasonReview" : "dashboard";
 
       persistGameSnapshot(updatedGame, nextScreen);
       return updatedGame;
     });
-    setScreen(game?.currentWeek === 12 ? "seasonReview" : "dashboard");
+    setScreen(game && game.currentWeek >= (game.calendar.length || 12) ? "seasonReview" : "dashboard");
   }
 
   function handleStartNextSeason() {
+    if (!game) {
+      return;
+    }
+
+    persistGameSnapshot(game, "offseasonDraft");
+    setScreen("offseasonDraft");
+  }
+
+  function completeOffseasonDraft(selectedWrestlerIds: string[]) {
     setGame((current) => {
       if (!current) {
         return current;
       }
 
       const completedSeasonArchive = buildSeasonArchiveSummary(current);
-      const updatedGame = startNextSeason(current, completedSeasonArchive);
+      const updatedGame = completeMidCareerDraft(current, selectedWrestlerIds, completedSeasonArchive);
       persistGameSnapshot(updatedGame, "dashboard");
       return updatedGame;
     });
@@ -5281,6 +5286,10 @@ function App() {
     return <SeasonReviewScreen game={game} onStartNextSeason={handleStartNextSeason} />;
   }
 
+  if (screen === "offseasonDraft") {
+    return <OffseasonDraftScreen game={game} onCompleteDraft={completeOffseasonDraft} onBack={() => setScreen("seasonReview")} />;
+  }
+
   return (
     <DashboardScreen
       game={game}
@@ -5502,7 +5511,7 @@ function NewGameSetupScreen({
     rivalBrands: previewRivalBrands,
     playerDraftedWrestlers: draftedWrestlers,
     playerDraftGroups: draftPickGroups,
-    playerPickTarget: Math.max(minimumDraftRosterSize, draftPickGroups.length + 1),
+    playerPickTarget: Math.max(tvReadyDraftRosterTarget, draftPickGroups.length + 1),
   });
   const cpuClaimedDraftIds = new Set(openingDraftState.cpuClaimedWrestlerIds);
   const availableDraftCount = openingDraftState.availableCount;
@@ -5536,7 +5545,7 @@ function NewGameSetupScreen({
   const boardLeader = availableWrestlers[0];
   const focusedDraftWrestler = availableWrestlers.find((wrestler) => wrestler.id === draftFocusId) ?? boardLeader;
   const focusedDraftBundleOffer = focusedDraftWrestler ? draftBundleOffers.find((offer) => offer.wrestlerIds.includes(focusedDraftWrestler.id)) : undefined;
-  const readinessRemaining = Math.max(0, minimumDraftRosterSize - draftedWrestlers.length);
+  const readinessRemaining = Math.max(0, tvReadyDraftRosterTarget - draftedWrestlers.length);
   const currentDraftPick = openingDraftState.currentPick;
   const currentPlayerPickLabel = `${draftedWrestlers.length}/${recommendedDraftRosterTarget} target`;
   const currentOverallPickLabel = currentDraftPick ? `Pick ${currentDraftPick.overallPick}` : "Locked";
@@ -5552,12 +5561,12 @@ function NewGameSetupScreen({
     !draftFinanceReadout.isUnlimitedBudget &&
     (focusedDraftBundleOffer?.discountedValue ?? 0) > draftFinanceReadout.projectedReserve;
   const canDraftFocusedWrestler = Boolean(focusedDraftWrestler && !focusedDraftExceedsBudget);
-  const canEnterWeekOne = canPreview && draftedWrestlers.length >= minimumDraftRosterSize;
+  const canEnterWeekOne = canPreview;
   const draftClockRead =
     draftedWrestlers.length === 0
       ? `${signedBrandName} has the first pick.`
       : readinessRemaining > 0
-        ? `${readinessRemaining} more for TV-ready minimum.`
+        ? `${readinessRemaining} more reaches TV-ready guidance.`
         : draftedWrestlers.length < recommendedDraftRosterTarget
           ? `TV-ready. ${recommendedDraftRosterTarget - draftedWrestlers.length} more reaches the healthy roster target.`
         : currentDraftPick
@@ -5771,8 +5780,8 @@ function NewGameSetupScreen({
               eyebrow="Sign The Contract"
               metrics={
                 <>
-                  <MetricTile detail="PLEs in Weeks 4, 8, and 12" label="Season" tone="prestige" value="12 Weeks" />
-                  <MetricTile detail={`${minimumDraftRosterSize} TV-ready minimum, ${recommendedDraftRosterTarget} healthy roster target`} label="Draft Night" tone="brand" value={`${minimumDraftRosterSize} min / ${recommendedDraftRosterTarget} target`} />
+                  <MetricTile detail={`${PLE_COUNT} PLE cycles, every fourth week`} label="Season" tone="prestige" value={`${SEASON_WEEK_COUNT} Weeks`} />
+                  <MetricTile detail={`${tvReadyDraftRosterTarget} TV-ready guidance, ${recommendedDraftRosterTarget} healthy roster target`} label="Draft Night" tone="brand" value={`${tvReadyDraftRosterTarget} guide / ${recommendedDraftRosterTarget} target`} />
                   <MetricTile detail="Four major brands in the GM universe" label="Universe" tone="info" value="4 Brands" />
                 </>
               }
@@ -6556,7 +6565,7 @@ function DraftFinanceSummary({ readout }: { readout: DraftFinanceReadout }) {
         />
         <Metric label="Projected Reserve" value={formatProjectedReserve(readout)} detail="Carries into Week 1 money" />
         <Metric label="Healthy Reserve" value={readout.isUnlimitedBudget ? "Open" : formatMoney(readout.recommendedReserveTarget)} detail="Production and market target" />
-        <Metric label="Reserve Pressure" value={readout.pressureLabel} detail={`${minimumDraftRosterSize} minimum, ${recommendedDraftRosterTarget} target`} />
+        <Metric label="Reserve Pressure" value={readout.pressureLabel} detail={`${tvReadyDraftRosterTarget} guide, ${recommendedDraftRosterTarget} target`} />
       </div>
       <p>{getDraftFinanceNote(readout)}</p>
     </section>
@@ -7563,6 +7572,107 @@ function ChampionshipsScreen({
 }
 
 
+function OffseasonDraftScreen({
+  game,
+  onBack,
+  onCompleteDraft,
+}: {
+  game: GameState;
+  onBack: () => void;
+  onCompleteDraft: (selectedWrestlerIds: string[]) => void;
+}) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const draftBudget = getMidCareerDraftBudget(game);
+  const availablePool = getMidCareerDraftPool(game);
+  const selectedWrestlers = selectedIds
+    .map((id) => availablePool.find((wrestler) => wrestler.id === id))
+    .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
+  const selectedSpend = selectedWrestlers.reduce((sum, wrestler) => sum + (getRosterFinanceValueForWrestler(wrestler)?.draftValueUsd ?? 0), 0);
+  const remainingBudget = game.startingBudgetTier === "Unlimited" ? draftBudget : Math.max(0, draftBudget - selectedSpend);
+  const selectedIdSet = new Set(selectedIds);
+  const focusedPool = availablePool.slice(0, 72);
+
+  function toggleDraftPick(wrestler: Wrestler) {
+    const cost = getRosterFinanceValueForWrestler(wrestler)?.draftValueUsd ?? 0;
+
+    if (selectedIdSet.has(wrestler.id)) {
+      setSelectedIds((current) => current.filter((id) => id !== wrestler.id));
+      return;
+    }
+
+    if (game.startingBudgetTier !== "Unlimited" && cost > remainingBudget) {
+      return;
+    }
+
+    setSelectedIds((current) => [...current, wrestler.id]);
+  }
+
+  return (
+    <main className="app-shell">
+      <Header game={game} />
+      <section className="results-hero season-review-hero">
+        <div>
+          <p className="eyebrow">Season {game.seasonNumber} Offseason</p>
+          <h2>Mid-Career Draft</h2>
+          <p className="lede">The old season bank is wiped. Build the next roster from a fresh war chest before Week 1 opens.</p>
+        </div>
+        <button className="primary-action" onClick={() => onCompleteDraft(selectedIds)}>
+          Start Next Season
+        </button>
+      </section>
+
+      <section className="status-grid" aria-label="Offseason draft budget">
+        <Metric label="War Chest" value={game.startingBudgetTier === "Unlimited" ? "Unlimited" : formatMoney(draftBudget)} detail="Fresh offseason draft budget" />
+        <Metric label="Selected" value={`${selectedIds.length}`} detail="No hard pick minimum" />
+        <Metric label="Committed" value={formatMoney(selectedSpend)} detail="52-week prepaid contracts" />
+        <Metric label="Week 1 Cash" value={game.startingBudgetTier === "Unlimited" ? "Unlimited" : formatMoney(remainingBudget)} detail="Carries after draft" />
+      </section>
+
+      <section className="command-panel">
+        <div className="section-heading">
+          <p className="eyebrow">Available Talent</p>
+          <h3>Offseason Board</h3>
+        </div>
+        <div className="draft-prospect-list">
+          {focusedPool.map((wrestler) => {
+            const cost = getRosterFinanceValueForWrestler(wrestler)?.draftValueUsd ?? 0;
+            const selected = selectedIdSet.has(wrestler.id);
+            const disabled = !selected && game.startingBudgetTier !== "Unlimited" && cost > remainingBudget;
+
+            return (
+              <button
+                className={`draft-prospect-row${selected ? " is-focused" : ""}`}
+                disabled={disabled}
+                key={wrestler.id}
+                onClick={() => toggleDraftPick(wrestler)}
+                type="button"
+              >
+                <WrestlerPortrait className="draft-prospect-portrait" wrestler={wrestler} />
+                <span className="draft-prospect-copy">
+                  <strong className={getDraftProspectNameClass(wrestler.name)}>{wrestler.name}</strong>
+                  <small>
+                    {getDraftTag(wrestler.roleTier)} · {getWrestlerOverall(wrestler)} OVR
+                  </small>
+                </span>
+                <em>{formatMoney(cost)}</em>
+                <b>{selected ? "Picked" : disabled ? "Cash" : "Add"}</b>
+              </button>
+            );
+          })}
+        </div>
+        <div className="title-actions">
+          <button className="secondary-action" onClick={onBack}>
+            Back To Review
+          </button>
+          <button className="primary-action" onClick={() => onCompleteDraft(selectedIds)}>
+            Start Next Season
+          </button>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 function SeasonReviewScreen({
   game,
   onStartNextSeason,
@@ -7603,10 +7713,10 @@ function SeasonReviewScreen({
         <div>
           <p className="eyebrow">Season {game.seasonNumber} Review</p>
           <h2>Final Bell</h2>
-          <p className="lede">The 12-week road is complete. The ledger, locker room, titles, and grudges carry into the next season.</p>
+          <p className="lede">The 52-week road is complete. The ledger, locker room, titles, and grudges move into the offseason draft.</p>
         </div>
         <button className="primary-action" onClick={onStartNextSeason}>
-          Start Next Season
+          Enter Offseason Draft
         </button>
       </section>
 
@@ -7671,7 +7781,7 @@ function SeasonReviewScreen({
             {archivedSeasons.map((archive) => (
               <article key={`archive-${archive.seasonNumber}`} className="card">
                 <p className="eyebrow">Season {archive.seasonNumber}</p>
-                <h4>Closed at Week 12</h4>
+                <h4>Closed at Week {SEASON_WEEK_COUNT}</h4>
                 <div className="archive-metrics">
                   <Metric label="Final Money" value={formatMoney(archive.finalMoney)} detail={`Started at ${formatMoney(archive.seasonStartingMoney)}`} />
                   <Metric label="Season Delta" value={formatMoney(archive.seasonDelta)} detail="Read-only season summary" />
