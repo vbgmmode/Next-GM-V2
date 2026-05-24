@@ -369,7 +369,16 @@ export function isRivalryIntergenderBlocked(rivalry: Rivalry, wrestlers: Wrestle
   return participants.length > 1 && !canWrestlersShareMatch(participants);
 }
 
-export function getRivalryCreationBlockReason(structure: RivalryStructure, participantIds: string[], wrestlers: Wrestler[]) {
+export function getActiveRivalryParticipantIds(rivalries: Rivalry[]) {
+  return new Set(rivalries.flatMap((rivalry) => rivalry.participantIds));
+}
+
+export function getRivalryCreationBlockReason(
+  structure: RivalryStructure,
+  participantIds: string[],
+  wrestlers: Wrestler[],
+  rivalries: Rivalry[] = [],
+) {
   const selectedIds = participantIds.filter(Boolean);
   const range = getRivalryStructureParticipantRange(structure);
 
@@ -383,6 +392,17 @@ export function getRivalryCreationBlockReason(structure: RivalryStructure, parti
 
   if (new Set(selectedIds).size !== selectedIds.length) {
     return "Each wrestler can only appear once in a rivalry.";
+  }
+
+  const activeRivalryParticipantIds = getActiveRivalryParticipantIds(rivalries);
+  const busyParticipants = selectedIds.filter((id) => activeRivalryParticipantIds.has(id));
+
+  if (busyParticipants.length) {
+    const busyNames = getWrestlerNames(busyParticipants, wrestlers);
+
+    return busyNames
+      ? `${busyNames} ${busyParticipants.length === 1 ? "is" : "are"} already locked into an active feud.`
+      : "One or more selected wrestlers are already locked into an active feud.";
   }
 
   if (structure === "tag_team" && selectedIds.length !== 4) {
@@ -648,7 +668,7 @@ function pickDiverseFeudSuggestions(candidates: ScoredFeudSuggestion[], limit: n
   return picked.map(({ score: _score, ...suggestion }) => suggestion);
 }
 
-export function buildRivalryFeudSuggestions(game: GameState, limit = 4) {
+export function buildRivalryFeudSuggestions(game: GameState, limit = 3) {
   const candidates = [...buildSinglesFeudSuggestions(game), ...buildTagFeudSuggestions(game)].sort((left, right) => right.score - left.score);
 
   return pickDiverseFeudSuggestions(candidates, limit);

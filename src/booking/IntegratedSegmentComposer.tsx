@@ -1,17 +1,18 @@
-import { useMemo, useState } from "react";
+import { forwardRef, useImperativeHandle, useMemo, useState } from "react";
 import { DashboardDynastyPortrait } from "../components/dashboardDynasty";
 import { bookedFinishCostUsd, getSegmentProductionCostForShow } from "../game/finance";
 import { formatMoney } from "../game/formatters";
-import { getCatalogOptionsForType, getSegmentCatalogOption, getSegmentParticipantRange, type SegmentCatalogOption } from "../game/matchFormatCatalog";
+import { bookingSegmentTypes, getCatalogOptionsForType, getDefaultCatalogOption, getSegmentCatalogOption, getSegmentParticipantRange, type SegmentCatalogOption } from "../game/matchFormatCatalog";
 import { getStipulationById } from "../game/stipulationCatalog";
 import { hasIntergenderMatchParticipants } from "../game/scoring";
-import type { Championship, GameState, Rivalry, Segment, Wrestler } from "../game/types";
+import type { Championship, GameState, Rivalry, Segment, SegmentType, Wrestler } from "../game/types";
 import { BookingOverlay } from "./BookingOverlay";
 import type { BookingComposerView } from "./buildBookingModel";
 import {
   getBuildableChampionships,
   getEligibleChampionships,
   getEligibleRivalries,
+  getActiveRivalryParticipantIds,
   getSelectedCatalogLabel,
   getSegmentBookedCounts,
   getStageLayout,
@@ -24,12 +25,17 @@ import {
 } from "./composerReads";
 import {
   canSegmentAttachRivalry,
+  getSegmentDescription,
   getSegmentDurationMinutes,
   getStipulationsForSegmentId,
   getWrestlerNames,
   isRivalryIntergenderBlocked,
   wouldCreateIntergenderMatch,
 } from "./bookingUtils";
+
+export type IntegratedSegmentComposerHandle = {
+  openFormatPicker: () => void;
+};
 
 export type IntegratedSegmentComposerProps = {
   championships: Championship[];
@@ -156,25 +162,29 @@ function StageSlots({
   return <div className="booking-stage-lineup">{layout.slots.map(renderSlot)}</div>;
 }
 
-export function IntegratedSegmentComposer({
-  championships,
-  composer,
-  game,
-  onApplyCatalogOption,
-  onBuildTitleMatch,
-  onClearParticipants,
-  onOpenProfile,
-  onRemoveSegment,
-  onSetDuration,
-  onSetSegmentChampionship,
-  onSetSegmentStipulation,
-  onSetSegmentRivalry,
-  onSetManualWinner,
-  onUpdateParticipants,
-  rivalries,
-  segment,
-  wrestlers,
-}: IntegratedSegmentComposerProps) {
+export const IntegratedSegmentComposer = forwardRef<IntegratedSegmentComposerHandle, IntegratedSegmentComposerProps>(
+  function IntegratedSegmentComposer(
+    {
+      championships,
+      composer,
+      game,
+      onApplyCatalogOption,
+      onBuildTitleMatch,
+      onClearParticipants,
+      onOpenProfile,
+      onRemoveSegment,
+      onSetDuration,
+      onSetSegmentChampionship,
+      onSetSegmentStipulation,
+      onSetSegmentRivalry,
+      onSetManualWinner,
+      onUpdateParticipants,
+      rivalries,
+      segment,
+      wrestlers,
+    },
+    ref,
+  ) {
   const [overlay, setOverlay] = useState<OverlayState>({ type: "closed" });
   const [stageMenuOpen, setStageMenuOpen] = useState(false);
 
@@ -192,6 +202,7 @@ export function IntegratedSegmentComposer({
   const buildableChampionships = eligibleChampionships.length ? [] : getBuildableChampionships(segment, championships);
   const selectedChampionship = championships.find((championship) => championship.id === segment.championshipId);
   const eligibleRivalries = getEligibleRivalries(segment, rivalries, wrestlers);
+  const activeRivalryParticipantIds = useMemo(() => getActiveRivalryParticipantIds(rivalries), [rivalries]);
   const selectedRivalry = rivalries.find((rivalry) => rivalry.id === segment.rivalryId);
   const selectedWinner = wrestlerById(wrestlers, segment.winnerId);
   const formatLabel = getSelectedCatalogLabel(segment);
@@ -199,15 +210,32 @@ export function IntegratedSegmentComposer({
   const segmentProductionCost = getSegmentProductionCostForShow(segment, currentShowType) ?? 0;
   const bookedFinishCost = segment.type === "Match" && segment.winnerId ? bookedFinishCostUsd : 0;
   const plannedSegmentCost = segmentProductionCost + bookedFinishCost;
+  const currentShowTypeLabel = currentShowType === "ple" ? "PLE" : "TV";
   const showTitleBadge = segment.type === "Match" || segment.type === "Contract Signing" || segment.type === "Open Challenge";
   const showRivalryBadge = segment.type !== "Open Challenge";
   const showStipulationBadge = segment.type === "Match";
   const showFinishBadge = segment.type === "Match" && segment.participantIds.length > 0;
+  const singlesTitleOption = useMemo(
+    () => catalogOptions.find((option) => option.championshipAllowed && option.minParticipants === 2 && option.maxParticipants === 2),
+    [catalogOptions],
+  );
+  const needsSinglesForTitle =
+    segment.type === "Match" &&
+    segment.participantIds.length !== 2 &&
+    Boolean(singlesTitleOption && segment.segmentCatalogId !== singlesTitleOption.id);
 
   function openOverlay(next: OverlayState) {
     setStageMenuOpen(false);
     setOverlay(next);
   }
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      openFormatPicker: () => openOverlay({ type: "format" }),
+    }),
+    [],
+  );
 
   function closeOverlay() {
     setOverlay({ type: "closed" });
@@ -247,6 +275,23 @@ export function IntegratedSegmentComposer({
 
   function removeSlotTalent(slotIndex: number) {
     onUpdateParticipants(removeParticipantAtIndex(segment, slotIndex));
+    closeOverlay();
+  }
+
+  function applySegmentType(type: SegmentType) {
+    if (segment.type === type) {
+      return;
+    }
+
+    const option = getDefaultCatalogOption(type);
+
+    if (option) {
+      onApplyCatalogOption(option);
+    }
+  }
+
+  function applySegmentFormat(option: SegmentCatalogOption) {
+    onApplyCatalogOption(option);
     closeOverlay();
   }
 
@@ -323,6 +368,14 @@ export function IntegratedSegmentComposer({
         </div>
 
         <div className="booking-hero-badges">
+          <div className="booking-hero-cost-ledger" aria-label={`Planned segment cost ${formatMoney(plannedSegmentCost)}`}>
+            <span>{currentShowTypeLabel} Segment Cost</span>
+            <strong>{formatMoney(plannedSegmentCost)}</strong>
+            <em>
+              Base {formatMoney(segmentProductionCost)}
+              {bookedFinishCost ? ` + booked finish ${formatMoney(bookedFinishCost)}` : ""}
+            </em>
+          </div>
           {showTitleBadge ? (
             <button className={`booking-hero-badge ${segment.championshipId ? "has-value" : ""}`.trim()} onClick={() => openOverlay({ type: "title" })} type="button">
               <span>Title</span>
@@ -413,9 +466,10 @@ export function IntegratedSegmentComposer({
           <div className="booking-picker-list">
             {pickerRows.map((wrestler) => {
               const disabled = wrestler.injuryStatus === "major" || wouldCreateIntergenderMatch(segment, wrestler, wrestlers);
+              const inRivalry = activeRivalryParticipantIds.has(wrestler.id);
               const hints = getTalentPickerHints(segment, wrestler, game, bookedCounts[wrestler.id] ?? 0);
               return (
-                <div className={`booking-picker-row ${disabled ? "is-disabled" : ""}`.trim()} key={wrestler.id}>
+                <div className={`booking-picker-row ${disabled ? "is-disabled" : ""} ${inRivalry ? "is-in-rivalry" : ""}`.trim()} key={wrestler.id}>
                   <button className="booking-picker-main" disabled={disabled} onClick={() => assignTalent(wrestler.id, overlay.slotIndex)} type="button">
                     <DashboardDynastyPortrait size="sm" wrestler={wrestler} />
                     <span className="booking-picker-copy">
@@ -424,7 +478,9 @@ export function IntegratedSegmentComposer({
                       {hints.length ? (
                         <span className="booking-picker-hints">
                           {hints.map((hint) => (
-                            <b key={hint}>{hint}</b>
+                            <b className={hint === "In feud" || hint === "Rivalry cast" ? "is-feud" : undefined} key={hint}>
+                              {hint}
+                            </b>
                           ))}
                         </span>
                       ) : null}
@@ -459,16 +515,28 @@ export function IntegratedSegmentComposer({
       ) : null}
 
       {overlay.type === "format" ? (
-        <BookingOverlay ariaLabel="Format picker" onClose={closeOverlay} title="Segment Format" wide>
+        <BookingOverlay ariaLabel="Format picker" onClose={closeOverlay} title="Segment Type & Format" wide>
+          <p className="booking-overlay-note">Change the segment type or pick a format variant below. Assigned talent carries over when it still fits.</p>
+          <div className="booking-format-type-list" aria-label="Segment type">
+            {bookingSegmentTypes.map((type) => (
+              <button
+                className={`booking-format-type-option ${segment.type === type ? "is-selected" : ""}`.trim()}
+                key={type}
+                onClick={() => applySegmentType(type)}
+                type="button"
+              >
+                <strong>{type}</strong>
+                <span>{getSegmentDescription(type)}</span>
+              </button>
+            ))}
+          </div>
+          <p className="booking-overlay-note">{segment.type} formats</p>
           <div className="booking-picker-grid">
             {catalogOptions.map((option) => (
               <button
                 className={`booking-picker-card ${segment.segmentCatalogId === option.id ? "is-selected" : ""}`.trim()}
                 key={option.id}
-                onClick={() => {
-                  onApplyCatalogOption(option);
-                  closeOverlay();
-                }}
+                onClick={() => applySegmentFormat(option)}
                 type="button"
               >
                 <strong>{option.label}</strong>
@@ -477,6 +545,7 @@ export function IntegratedSegmentComposer({
                   {option.defaultDurationMinutes} min · {option.minParticipants}
                   {option.minParticipants === option.maxParticipants ? "" : `-${option.maxParticipants}`} talent
                 </small>
+                <b className="booking-picker-card-cost">{currentShowTypeLabel} cost {formatMoney(getSegmentProductionCostForShow({ segmentCatalogId: option.id, type: option.family }, currentShowType) ?? 0)}</b>
                 <em>{option.productionCue}</em>
               </button>
             ))}
@@ -487,6 +556,20 @@ export function IntegratedSegmentComposer({
       {overlay.type === "title" ? (
         <BookingOverlay ariaLabel="Title picker" onClose={closeOverlay} title={segment.type === "Match" ? "Title Match" : "Title Context"} wide>
           <div className="booking-action-stack">
+            {needsSinglesForTitle && singlesTitleOption ? (
+              <>
+                <p className="booking-overlay-note">
+                  Title defenses need a singles match. Switch format to drop extra talent and unlock title booking.
+                </p>
+                <button
+                  className="booking-btn booking-btn-primary"
+                  onClick={() => onApplyCatalogOption(singlesTitleOption)}
+                  type="button"
+                >
+                  Switch to {singlesTitleOption.label}
+                </button>
+              </>
+            ) : null}
             {eligibleChampionships.length || selectedChampionship ? (
               <button className={`booking-btn booking-btn-secondary ${!segment.championshipId ? "is-active" : ""}`.trim()} onClick={() => { onSetSegmentChampionship(segment.id, ""); closeOverlay(); }} type="button">
                 {segment.type === "Match" ? "Non-Title" : "No Title Context"}
@@ -614,4 +697,5 @@ export function IntegratedSegmentComposer({
       ) : null}
     </div>
   );
-}
+  },
+);

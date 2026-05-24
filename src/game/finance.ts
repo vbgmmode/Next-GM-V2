@@ -103,10 +103,6 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
   const titleMatches = result.segmentResults.filter((segment) => segment.type === "Match" && segment.championshipId).length;
   const isPle = result.showType === "ple";
   const segmentCount = result.segmentResults.length;
-  const runtimeMinutes =
-    result.actualRuntimeMinutes ??
-    result.plannedRuntimeMinutes ??
-    result.segmentResults.reduce((sum, segment) => sum + (segment.actualDurationMinutes ?? segment.plannedDurationMinutes ?? 10), 0);
   const scoreFactor = clamp((result.totalScore - 50) / 50, 0, 1);
   const overrunRevenueDrag =
     result.broadcastOverrunLevel === "major" ? 0.09 : result.broadcastOverrunLevel === "moderate" ? 0.05 : result.broadcastOverrunLevel === "minor" ? 0.02 : 0;

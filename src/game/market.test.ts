@@ -4,6 +4,8 @@ import { advanceCpuRivalWeek } from "./cpuRivalLoop";
 import {
   advancePlayerContracts,
   ensureWeeklyMarketBoard,
+  evaluateOfficeMandate,
+  getActivePlayerPayroll,
   getExternalMarketOffer,
   getMarketBundleOffers,
   proposePlayerTrade,
@@ -184,7 +186,37 @@ describe("market ownership invariants", () => {
 
     expect(migrated?.screen).toBe("market");
     expect(migrated?.game.marketState.playerContracts).toHaveLength(game.wrestlers.length);
+    expect(migrated?.game.marketState.playerContracts.every((contract) => contract.acquisitionSource !== "draft" || contract.paymentModel === "prepaid")).toBe(true);
     expect(migrated?.game.marketState.officeMandate.mandateStatus).toBe("stable");
+  });
+
+  it("treats drafted roster contracts as prepaid instead of weekly payroll", () => {
+    const game = createNewGame();
+
+    expect(game.marketState.playerContracts.every((contract) => contract.acquisitionSource !== "draft" || contract.paymentModel === "prepaid")).toBe(true);
+    expect(game.marketState.playerContracts.every((contract) => contract.acquisitionSource !== "draft" || contract.releasePenalty === 0)).toBe(true);
+    expect(getActivePlayerPayroll(game)).toBe(0);
+  });
+
+  it("does not let office mandate evaluation directly change player cash", () => {
+    const game: GameState = {
+      ...createNewGame(),
+      money: 90000,
+      marketState: {
+        ...createNewGame().marketState,
+        officeMandate: {
+          ownerTrust: 20,
+          brandReputation: 20,
+          mandateStatus: "critical",
+          mandateHistory: [],
+        },
+      },
+    };
+
+    const updatedGame = evaluateOfficeMandate(game);
+
+    expect(updatedGame.money).toBe(game.money);
+    expect(updatedGame.marketState.officeMandate.mandateHistory.at(-1)?.moneyDelta).toBe(0);
   });
 
   it("creates a fixed weekly board with no more than six entries", () => {

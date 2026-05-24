@@ -150,6 +150,24 @@
   font-weight: 900;
 }
 
+.booking-panel-heading-badge {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--accent-gold-bright);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  text-transform: uppercase;
+}
+
+.booking-panel-heading-badge:hover,
+.booking-panel-heading-badge:focus-visible {
+  border-color: rgba(var(--dynasty-accent-rgb), 0.55);
+  color: white;
+}
+
 .booking-segment-rail,
 .booking-composer-stage {
   display: flex;
@@ -234,6 +252,24 @@
 
 .booking-segment-row-wrap.is-selected .booking-segment-trash {
   border-color: rgba(var(--dynasty-accent-rgb), 0.42);
+}
+
+.booking-segment-row-wrap.is-dragging {
+  opacity: 0.45;
+}
+
+.booking-segment-row-wrap.is-drag-over {
+  box-shadow: inset 0 3px 0 rgba(var(--dynasty-accent-rgb), 0.95);
+}
+
+.booking-segment-drag-handle {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.booking-segment-drag-handle:active {
+  cursor: grabbing;
 }
 
 .booking-segment-trash {
@@ -324,6 +360,14 @@
   color: var(--accent-gold);
   font-size: 0.82rem;
   font-weight: 900;
+}
+
+.booking-segment-cost {
+  color: var(--accent-gold-bright);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 1000;
+  letter-spacing: 0;
 }
 
 .booking-segment-status {
@@ -575,6 +619,36 @@
   flex-wrap: wrap;
   gap: 6px;
   justify-content: center;
+}
+
+.booking-hero-cost-ledger {
+  background:
+    linear-gradient(135deg, rgba(255, 215, 0, 0.12), transparent 70%),
+    rgba(0, 0, 0, 0.58);
+  border: 1px solid rgba(255, 215, 0, 0.34);
+  display: grid;
+  gap: 1px;
+  min-height: 42px;
+  min-width: 180px;
+  padding: 5px 10px;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.booking-hero-cost-ledger span,
+.booking-hero-cost-ledger em {
+  color: var(--text-soft);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.booking-hero-cost-ledger strong {
+  color: var(--accent-gold-bright);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 1000;
+  line-height: 1;
 }
 
 .booking-hero-badge {
@@ -940,6 +1014,14 @@
   opacity: 0.45;
 }
 
+.booking-picker-row.is-in-rivalry:not(.is-disabled) .booking-picker-main {
+  background:
+    linear-gradient(90deg, rgba(255, 195, 80, 0.1), transparent 55%),
+    rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 195, 80, 0.28);
+  box-shadow: inset 3px 0 0 var(--accent-gold-bright);
+}
+
 .booking-picker-main {
   align-items: center;
   background: rgba(255, 255, 255, 0.03);
@@ -988,6 +1070,52 @@
   text-transform: uppercase;
 }
 
+.booking-picker-hints b.is-feud {
+  background: rgba(255, 195, 80, 0.08);
+  border-color: rgba(255, 195, 80, 0.35);
+  color: var(--accent-gold-bright);
+}
+
+.booking-format-type-list {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.booking-format-type-option {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.booking-format-type-option:hover,
+.booking-format-type-option:focus-visible {
+  border-color: rgba(var(--dynasty-accent-rgb), 0.48);
+}
+
+.booking-format-type-option.is-selected {
+  border-color: rgba(var(--dynasty-accent-rgb), 0.62);
+  box-shadow: inset 3px 0 0 rgba(var(--dynasty-accent-rgb), 0.95);
+}
+
+.booking-format-type-option strong {
+  color: white;
+  font-size: 0.82rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.booking-format-type-option span {
+  color: var(--text-soft);
+  font-size: 0.76rem;
+  line-height: 1.3;
+}
+
 .booking-picker-grid {
   display: grid;
   gap: 6px;
@@ -1026,6 +1154,12 @@
 .booking-picker-card small {
   color: var(--text-muted);
   font-size: 0.96rem;
+}
+
+.booking-picker-card-cost {
+  color: var(--accent-gold-bright);
+  font-size: 0.82rem;
+  font-weight: 1000;
 }
 
 .booking-action-stack {
@@ -1729,6 +1863,31 @@
   font-size: 0.96rem;
   font-weight: 1000;
   text-transform: uppercase;
+}
+
+.booking-status-cost {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 215, 0, 0.18);
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  text-transform: uppercase;
+}
+
+.booking-status-cost span,
+.booking-status-cost em {
+  color: var(--text-soft);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.booking-status-cost b {
+  color: var(--accent-gold-bright);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 1000;
+  line-height: 1;
 }
 
 .booking-balance-bars {

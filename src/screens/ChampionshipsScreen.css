@@ -117,19 +117,14 @@
 }
 
 .championship-focus-full-name {
-  color: #8f98a8;
-  font-size: 0.68rem;
-  font-weight: 800;
-  line-height: 1.2;
-  margin: 4px 0 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.championship-focus-title-block h3 {
-  font-size: 1.28rem;
-  letter-spacing: 0.02em;
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 900;
+  line-height: 1.05;
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
 }
 
 .championship-focus-read p {
@@ -241,7 +236,7 @@
   cursor: pointer;
   display: grid;
   gap: 8px;
-  grid-template-columns: 34px 36px minmax(0, 1fr) auto;
+  grid-template-columns: 46px 36px minmax(0, 1fr) auto;
   min-width: 0;
   padding: 7px 8px;
   text-align: left;
@@ -275,6 +270,20 @@
   height: 34px;
   justify-content: center;
   text-transform: uppercase;
+}
+
+.championship-belt-row-art {
+  aspect-ratio: 251 / 307;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(var(--bc-prestige-rgb), 0.18), transparent 58%),
+    rgba(3, 4, 7, 0.92);
+  border: 1px solid rgba(var(--bc-prestige-rgb), 0.36);
+  border-radius: 2px;
+  box-shadow: 0 0 12px rgba(var(--bc-prestige-rgb), 0.1);
+  display: block;
+  height: 56px;
+  object-fit: cover;
+  width: 46px;
 }
 
 .championship-row-portrait {
@@ -362,6 +371,45 @@
   min-width: 0;
 }
 
+.championship-focus-visuals {
+  align-items: center;
+  display: flex;
+  gap: 7px;
+}
+
+.championship-focus-title-art {
+  aspect-ratio: 251 / 307;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(var(--bc-prestige-rgb), 0.2), transparent 58%),
+    rgba(3, 4, 7, 0.94);
+  border: 1px solid rgba(var(--bc-prestige-rgb), 0.5);
+  border-radius: 2px;
+  box-shadow: 0 0 18px rgba(var(--bc-prestige-rgb), 0.14);
+  display: block;
+  height: 116px;
+  object-fit: cover;
+  width: 95px;
+}
+
+.championship-focus-title-fallback {
+  align-items: center;
+  aspect-ratio: 251 / 307;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(var(--bc-prestige-rgb), 0.18), transparent 58%),
+    rgba(3, 4, 7, 0.94);
+  border: 1px solid rgba(var(--bc-prestige-rgb), 0.46);
+  border-radius: 2px;
+  color: var(--bc-prestige);
+  display: inline-flex;
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 900;
+  height: 116px;
+  justify-content: center;
+  text-transform: uppercase;
+  width: 95px;
+}
+
 .championship-hero-portraits {
   align-items: center;
   display: flex;
@@ -372,8 +420,8 @@
   aspect-ratio: 1;
   border-color: rgba(var(--bc-prestige-rgb), 0.52);
   box-shadow: 0 0 18px rgba(var(--bc-prestige-rgb), 0.14);
-  font-size: 0.92rem;
-  width: 96px;
+  font-size: 0.72rem;
+  width: 64px;
 }
 
 .championship-hero-vacant {
@@ -387,28 +435,17 @@
   display: inline-flex;
   flex-direction: column;
   font-family: var(--font-display);
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   font-weight: 900;
   gap: 4px;
-  height: 96px;
+  height: 64px;
   justify-content: center;
   text-transform: uppercase;
-  width: 96px;
+  width: 64px;
 }
 
 .championship-focus-title-block .eyebrow {
   color: var(--bc-brand-selected);
-}
-
-.championship-focus-title-block h3 {
-  color: #f4f7fb;
-  font-family: var(--font-display);
-  font-size: 1.45rem;
-  font-weight: 900;
-  line-height: 1;
-  margin: 0;
-  overflow-wrap: anywhere;
-  text-transform: uppercase;
 }
 
 .championship-focus-badge {
@@ -587,6 +624,31 @@
   width: 100%;
 }
 
+.championship-challenger-card.is-tag-team strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+.championship-challenger-team-portraits {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.championship-challenger-card.is-tag-team .championship-challenger-portrait {
+  flex: 1 1 0;
+  max-width: 42px;
+  width: 42px;
+}
+
 .championship-action-rail {
   display: flex;
   flex-direction: column;
@@ -606,6 +668,68 @@
 .championship-action-rail .history-list {
   max-height: 180px;
   overflow: auto;
+}
+
+.championship-action-rail .championship-tag-assign-form {
+  max-height: none;
+  overflow: visible;
+}
+
+.championship-tag-assign-form {
+  display: grid;
+  gap: 10px;
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.championship-tag-assign-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.championship-tag-assign-field span {
+  color: #9ea8ba;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.championship-tag-assign-field select {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #eef2f8;
+  font-family: var(--font-ui);
+  font-size: 0.76rem;
+  font-weight: 700;
+  min-height: 36px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+.championship-tag-assign-field select:focus-visible {
+  outline: 2px solid rgba(var(--dashboard-dynasty-accent-rgb), 0.72);
+  outline-offset: 1px;
+}
+
+.championship-tag-assign-confirm {
+  justify-self: stretch;
+  min-height: 38px;
+  width: 100%;
+}
+
+.championship-tag-assign-confirm:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.championship-action-rail .championship-assign-options:has(.championship-tag-assign-form) {
+  display: block;
+  max-height: none;
+  overflow: visible;
 }
 
 .championship-action-note {

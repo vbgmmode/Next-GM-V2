@@ -277,6 +277,29 @@ export const titleCatalogEntries: TitleCatalogEntry[] = [
   },
 ];
 
+const titleArtworkByCanonicalId: Record<string, string> = {
+  aew_tag_team_championship: "/title-belts/aew-world-tag-team-championship.png",
+  aew_tbs_championship: "/title-belts/tbs-championship.png",
+  aew_tnt_championship: "/title-belts/tnt-championship.png",
+  aew_womens_world_championship: "/title-belts/aew-womens-world-championship.png",
+  aew_world_championship: "/title-belts/aew-world-championship.png",
+  intercontinental_championship: "/title-belts/intercontinental-championship.png",
+  nxt_championship: "/title-belts/nxt-championship.png",
+  nxt_north_american_championship: "/title-belts/nxt-north-american-championship.png",
+  nxt_tag_team_championship: "/title-belts/nxt-tag-team-championship.png",
+  nxt_womens_championship: "/title-belts/nxt-womens-championship.png",
+  nxt_womens_north_american_championship: "/title-belts/nxt-womens-north-american-championship.png",
+  raw_tag_team_championship: "/title-belts/world-tag-team-championship.png",
+  smackdown_tag_team_championship: "/title-belts/wwe-tag-team-championship.png",
+  undisputed_wwe_championship: "/title-belts/undisputed-wwe-championship.png",
+  united_states_championship: "/title-belts/united-states-championship.png",
+  womens_intercontinental_championship: "/title-belts/womens-intercontinental-championship.png",
+  womens_united_states_championship: "/title-belts/womens-united-states-championship.png",
+  womens_world_championship: "/title-belts/womens-world-championship.png",
+  world_heavyweight_championship: "/title-belts/world-heavyweight-championship.png",
+  wwe_womens_championship: "/title-belts/wwe-womens-championship.png",
+};
+
 export function getTitleCatalogBrand(brandStyle: BrandStyle): PrototypeBrand {
   return brandStyle === "SmackDown" || brandStyle === "NXT" || brandStyle === "AEW" ? brandStyle : "Raw";
 }
@@ -286,14 +309,27 @@ export function getTitleCatalogEntriesForBrand(brandStyle: BrandStyle) {
   return titleCatalogEntries.filter((entry) => entry.brand === brand);
 }
 
+export function getChampionshipArtworkSrc(championship: Championship) {
+  const canonicalTitleId =
+    championship.canonicalTitleId ??
+    titleCatalogEntries.find((entry) => entry.catalogId === championship.catalogId || entry.displayName === championship.name)?.canonicalTitleId;
+
+  return canonicalTitleId ? titleArtworkByCanonicalId[canonicalTitleId] : undefined;
+}
+
 export function getChampionshipDivisionGroup(championship: Championship) {
   const division = championship.division.toLowerCase();
+  const name = championship.name.toLowerCase();
 
-  if (division.includes("women")) {
+  if (division.includes("women") || name.includes("women")) {
     return "womens";
   }
 
   if (division.includes("men")) {
+    return "mens";
+  }
+
+  if (division.includes("tag") || championship.eligibleMatchScope === "tag_team") {
     return "mens";
   }
 

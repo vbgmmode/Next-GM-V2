@@ -16,6 +16,7 @@ import {
   formatRivalryStakes,
   formatRivalryStructure,
   getDefaultRivalryComposerParticipantIds,
+  getActiveRivalryParticipantIds,
   getPreferredTagPartnerId,
   getRivalryCreationBlockReason,
   getRivalryParticipants,
@@ -101,6 +102,7 @@ export function RivalriesScreen({
   const [stakes, setStakes] = useState<RivalryStakes>("personal");
   const [storylineId, setStorylineId] = useState(getDefaultStorylineIdForStakes("personal"));
   const [storyFilesExpanded, setStoryFilesExpanded] = useState(false);
+  const [feudSuggestionsExpanded, setFeudSuggestionsExpanded] = useState(true);
   const [endDraftOpen, setEndDraftOpen] = useState(false);
   const [endReason, setEndReason] = useState<string>(RIVALRY_END_REASONS[0]);
 
@@ -110,7 +112,7 @@ export function RivalriesScreen({
   const range = getRivalryStructureParticipantRange(structure);
   const composerParticipantIds = participantIds.slice(0, range.max).filter(Boolean);
   const isDuplicate = composerParticipantIds.length >= range.min && hasDuplicateRivalry(game.rivalries, structure, composerParticipantIds);
-  const rivalryBlockReason = getRivalryCreationBlockReason(structure, composerParticipantIds, game.wrestlers);
+  const rivalryBlockReason = getRivalryCreationBlockReason(structure, composerParticipantIds, game.wrestlers, game.rivalries);
   const canCreate = composerParticipantIds.length >= range.min && composerParticipantIds.length <= range.max && !isDuplicate && !rivalryBlockReason;
   const selectedStoryline = getRivalryStoryline({ stakes, storylineId });
   const selectedRivalry = game.rivalries.find((rivalry) => rivalry.id === selectedRivalryId);
@@ -122,7 +124,12 @@ export function RivalriesScreen({
   const selectedBlocked = selectedRivalry ? isRivalryIntergenderBlocked(selectedRivalry, game.wrestlers) : false;
   const selectedGmRead = selectedRivalry ? buildRivalryGmRead(game, selectedRivalry, currentWeek.isGoHome, currentWeek.showType === "ple") : "";
   const wallEntries = rivalrySnapshots.filter(({ rivalry }) => !onClockIds.has(rivalry.id));
-  const feudSuggestions = useMemo(() => buildRivalryFeudSuggestions(game), [game]);
+  const feudSuggestions = useMemo(() => buildRivalryFeudSuggestions(game, 3), [game]);
+  const activeRivalryParticipantIds = useMemo(() => getActiveRivalryParticipantIds(game.rivalries), [game.rivalries]);
+
+  useEffect(() => {
+    setParticipantIds((current) => current.map((id) => (id && activeRivalryParticipantIds.has(id) ? "" : id)));
+  }, [activeRivalryParticipantIds]);
 
   useEffect(() => {
     if (initialSelectedRivalryId && game.rivalries.some((rivalry) => rivalry.id === initialSelectedRivalryId)) {
@@ -153,7 +160,7 @@ export function RivalriesScreen({
         if (!next[partnerIndex]) {
           const partnerId = getPreferredTagPartnerId(wrestlerId, game.wrestlers, next);
 
-          if (partnerId) {
+          if (partnerId && !activeRivalryParticipantIds.has(partnerId)) {
             next[partnerIndex] = partnerId;
           }
         }
@@ -270,26 +277,36 @@ export function RivalriesScreen({
                 </button>
               ))}
             </div>
-            <div className="rivalry-feud-suggestions" aria-label="Suggested feuds">
-              <div className="rivalry-feud-suggestions-head">
-                <p className="eyebrow">Suggest Feuds</p>
-                <span>{feudSuggestions.length} ready</span>
-              </div>
-              <div className="rivalry-feud-suggestion-list">
-                {feudSuggestions.length ? (
-                  feudSuggestions.map((suggestion) => (
-                    <button className="rivalry-feud-suggestion" key={suggestion.id} onClick={() => applyFeudSuggestion(suggestion)} type="button">
-                      <strong title={suggestion.headline}>{suggestion.headline}</strong>
-                      <small>
-                        {formatRivalryStructure(suggestion.structure)} · {formatRivalryStakes(suggestion.stakes)}
-                      </small>
-                      <p>{suggestion.reason}</p>
-                    </button>
-                  ))
-                ) : (
-                  <p className="muted-copy">No clean feud lanes left on the roster board.</p>
-                )}
-              </div>
+            <div className={`rivalry-feud-suggestions ${feudSuggestionsExpanded ? "is-expanded" : ""}`} aria-label="Suggested feuds">
+              <button
+                aria-expanded={feudSuggestionsExpanded}
+                className="rivalry-feud-suggestions-toggle"
+                onClick={() => setFeudSuggestionsExpanded((open) => !open)}
+                type="button"
+              >
+                <div>
+                  <p className="eyebrow">Suggest Feuds</p>
+                  <strong>{feudSuggestions.length} ready</strong>
+                </div>
+                <span>{feudSuggestionsExpanded ? "Hide ▴" : "Show ▾"}</span>
+              </button>
+              {feudSuggestionsExpanded ? (
+                <div className="rivalry-feud-suggestion-list">
+                  {feudSuggestions.length ? (
+                    feudSuggestions.map((suggestion) => (
+                      <button className="rivalry-feud-suggestion" key={suggestion.id} onClick={() => applyFeudSuggestion(suggestion)} type="button">
+                        <strong title={suggestion.headline}>{suggestion.headline}</strong>
+                        <small>
+                          {formatRivalryStructure(suggestion.structure)} · {formatRivalryStakes(suggestion.stakes)}
+                        </small>
+                        <p>{suggestion.reason}</p>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="muted-copy">No clean feud lanes left on the roster board.</p>
+                  )}
+                </div>
+              ) : null}
             </div>
             <div className="rivalry-composer-body">
               <div className="rivalry-composer-selects">
@@ -308,7 +325,12 @@ export function RivalriesScreen({
                         onChange={(event) => updateParticipantSlot(index, event.target.value)}
                       >
                         <option value="">Choose wrestler</option>
-                        {game.wrestlers.map((wrestler) => (
+                        {game.wrestlers
+                          .filter(
+                            (wrestler) =>
+                              !activeRivalryParticipantIds.has(wrestler.id) || wrestler.id === (participantIds[index] ?? ""),
+                          )
+                          .map((wrestler) => (
                           <option key={wrestler.id} value={wrestler.id}>
                             {wrestler.name}
                           </option>

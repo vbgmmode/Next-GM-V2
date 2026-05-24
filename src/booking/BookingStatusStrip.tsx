@@ -18,6 +18,13 @@ export function BookingStatusStrip({ model, onNavigate }: Props) {
         <strong>
           Runtime {runtime.validMinutes} / {runtime.targetMinMinutes} min
         </strong>
+        <div className="booking-status-cost">
+          <span>Planned Segment Cost</span>
+          <b>{model.production.totalCostLabel}</b>
+          <em>
+            Segment production {model.production.bookedFinishCost ? `+ booked finishes` : "only"}
+          </em>
+        </div>
         <div className="booking-balance-bars">
           <div className="booking-balance-row">
             <span>Fights</span>

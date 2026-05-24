@@ -13,25 +13,40 @@ type Props = {
   onClearCard: () => void;
   onGenerateSmartRundown: () => void;
   onRemoveSegment: (segmentId: string) => void;
+  onReorderSegments: (draggedSegmentId: string, targetSegmentId: string) => void;
   onRequestClearCard: () => void;
   onRunShow: () => void;
   onSelectSegment: (segmentId: string) => void;
 };
 
 function SegmentRowButton({
+  dragOver,
+  dragging,
   pendingRemove,
   row,
   selected,
   onCancelRemove,
   onConfirmRemove,
+  onDragEnd,
+  onDragLeave,
+  onDragOver,
+  onDragStart,
+  onDrop,
   onRequestRemove,
   onSelect,
 }: {
+  dragOver: boolean;
+  dragging: boolean;
   pendingRemove: boolean;
   row: BookingSegmentRow;
   selected: boolean;
   onCancelRemove: () => void;
   onConfirmRemove: () => void;
+  onDragEnd: () => void;
+  onDragLeave: () => void;
+  onDragOver: (segmentId: string) => void;
+  onDragStart: (segmentId: string) => void;
+  onDrop: (segmentId: string) => void;
   onRequestRemove: () => void;
   onSelect: (segmentId: string) => void;
 }) {
@@ -56,7 +71,18 @@ function SegmentRowButton({
   }
 
   return (
-    <div className={`booking-segment-row-wrap ${selected ? "is-selected" : ""}`.trim()}>
+    <div
+      className={`booking-segment-row-wrap ${selected ? "is-selected" : ""}${dragging ? " is-dragging" : ""}${dragOver ? " is-drag-over" : ""}`.trim()}
+      onDragLeave={onDragLeave}
+      onDragOver={(event) => {
+        event.preventDefault();
+        onDragOver(row.id);
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        onDrop(row.id);
+      }}
+    >
       <button
         className={[
           "booking-segment-row",
@@ -71,13 +97,29 @@ function SegmentRowButton({
         onClick={() => onSelect(row.id)}
         type="button"
       >
-        <span className="booking-segment-index">{String(row.index).padStart(2, "0")}</span>
+        <span
+          aria-label={`Drag segment ${row.index} to reorder`}
+          className="booking-segment-index booking-segment-drag-handle"
+          draggable
+          onDragEnd={onDragEnd}
+          onDragStart={(event) => {
+            event.stopPropagation();
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", row.id);
+            onDragStart(row.id);
+          }}
+          onMouseDown={(event) => event.stopPropagation()}
+          title="Drag to reorder"
+        >
+          {String(row.index).padStart(2, "0")}
+        </span>
         <span className="booking-segment-copy">
           <strong>{row.displayName}</strong>
           <em>{row.participantLine2}</em>
           {row.participantLine3 ? <em>{row.participantLine3}</em> : null}
         </span>
         <span className="booking-segment-meta">
+          <span className="booking-segment-cost">{row.plannedCostLabel}</span>
           <span className="booking-segment-duration">{row.durationLabel}</span>
           <span className={row.valid ? "booking-segment-status ready" : "booking-segment-status needs-talent"}>{row.statusLabel}</span>
         </span>
@@ -100,11 +142,28 @@ export function BookingSegmentRail({
   onClearCard,
   onGenerateSmartRundown,
   onRemoveSegment,
+  onReorderSegments,
   onRequestClearCard,
   onRunShow,
   onSelectSegment,
 }: Props) {
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
+  const [draggingSegmentId, setDraggingSegmentId] = useState<string | null>(null);
+  const [dragOverSegmentId, setDragOverSegmentId] = useState<string | null>(null);
+
+  function handleDrop(targetSegmentId: string) {
+    if (draggingSegmentId && draggingSegmentId !== targetSegmentId) {
+      onReorderSegments(draggingSegmentId, targetSegmentId);
+    }
+
+    setDraggingSegmentId(null);
+    setDragOverSegmentId(null);
+  }
+
+  function handleDragEnd() {
+    setDraggingSegmentId(null);
+    setDragOverSegmentId(null);
+  }
 
   return (
     <BookingPanel className="booking-segment-rail" kicker="TV Segments" title={model.showName} badge={`${model.segmentCount} Total`}>
@@ -119,12 +178,19 @@ export function BookingSegmentRail({
           <>
             {model.segments.map((row) => (
               <SegmentRowButton
+                dragOver={dragOverSegmentId === row.id && draggingSegmentId !== row.id}
+                dragging={draggingSegmentId === row.id}
                 key={row.id}
                 onCancelRemove={() => setPendingRemoveId(null)}
                 onConfirmRemove={() => {
                   onRemoveSegment(row.id);
                   setPendingRemoveId(null);
                 }}
+                onDragEnd={handleDragEnd}
+                onDragLeave={() => setDragOverSegmentId((current) => (current === row.id ? null : current))}
+                onDragOver={setDragOverSegmentId}
+                onDragStart={setDraggingSegmentId}
+                onDrop={handleDrop}
                 onRequestRemove={() => setPendingRemoveId(row.id)}
                 onSelect={onSelectSegment}
                 pendingRemove={pendingRemoveId === row.id}

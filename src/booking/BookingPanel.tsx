@@ -2,15 +2,19 @@ import type { ReactNode } from "react";
 
 export function BookingPanel({
   badge,
+  badgeAriaLabel,
   children,
   className = "",
   kicker,
+  onBadgeClick,
   title,
 }: {
   badge?: string;
+  badgeAriaLabel?: string;
   children: ReactNode;
   className?: string;
   kicker?: string;
+  onBadgeClick?: () => void;
   title?: string;
 }) {
   return (
@@ -19,7 +23,20 @@ export function BookingPanel({
       {title || badge ? (
         <div className="booking-panel-heading">
           <span>{title}</span>
-          {badge ? <b>{badge}</b> : null}
+          {badge ? (
+            onBadgeClick ? (
+              <button
+                aria-label={badgeAriaLabel ?? `Change segment type from ${badge}`}
+                className="booking-panel-heading-badge"
+                onClick={onBadgeClick}
+                type="button"
+              >
+                {badge}
+              </button>
+            ) : (
+              <b>{badge}</b>
+            )
+          ) : null}
         </div>
       ) : null}
       {children}

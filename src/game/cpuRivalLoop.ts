@@ -612,9 +612,8 @@ function resolveCpuRosterFallout(brand: RivalBrandState, segments: CpuSegmentRes
 }
 
 function generateCpuFinanceReport(brand: RivalBrandState, result: RivalBrandWeeklyResult, previousMoney: number): CpuFinanceReport {
-  const payroll = brand.contracts.filter((contract) => contract.contractStatus === "active" || contract.contractStatus === "expiring").reduce((sum, contract) => sum + contract.weeklySalary, 0);
   const revenue = Math.round(62000 + result.score * 950 + result.segments.length * 4200 + (result.showType === "ple" ? 115000 : 0));
-  const expenses = Math.round(54000 + brand.rosterWrestlerIds.length * 3200 + result.segments.length * 3600 + payroll + (result.showType === "ple" ? 98000 : 0));
+  const expenses = Math.round(54000 + result.segments.length * 3600 + (result.showType === "ple" ? 98000 : 0));
   const profitLoss = revenue - expenses;
 
   return {
@@ -626,7 +625,7 @@ function generateCpuFinanceReport(brand: RivalBrandState, result: RivalBrandWeek
     expenses,
     profitLoss,
     endingMoney: previousMoney + profitLoss,
-    note: `${brand.brandName} closed CPU books at ${profitLoss >= 0 ? "+" : ""}${profitLoss.toLocaleString()} after payroll and a ${result.score} show.`,
+    note: `${brand.brandName} closed CPU books at ${profitLoss >= 0 ? "+" : ""}${profitLoss.toLocaleString()} after production costs and a ${result.score} show.`,
   };
 }
 

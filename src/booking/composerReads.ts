@@ -69,6 +69,14 @@ export function getStageLayout(segment: Segment): StageLayout {
   };
 }
 
+export function getActiveRivalryParticipantIds(rivalries: Rivalry[]) {
+  return new Set(rivalries.flatMap((rivalry) => rivalry.participantIds));
+}
+
+export function getWrestlerActiveRivalry(wrestlerId: string, rivalries: Rivalry[]) {
+  return rivalries.find((rivalry) => rivalry.participantIds.includes(wrestlerId));
+}
+
 export function getTalentPickerPressureLine(wrestler: Wrestler, bookedCount: number) {
   const reads = getBookingWrestlerRiskReads(wrestler, bookedCount);
   if (!reads.length) {
@@ -101,11 +109,10 @@ export function getTalentPickerHints(segment: Segment, wrestler: Wrestler, game:
     }
   }
 
-  if (segment.rivalryId) {
-    const rivalry = game.rivalries.find((item) => item.id === segment.rivalryId);
-    if (rivalry?.participantIds.includes(wrestler.id)) {
-      hints.push("Rivalry cast");
-    }
+  const activeRivalry = getWrestlerActiveRivalry(wrestler.id, game.rivalries);
+
+  if (activeRivalry) {
+    hints.push(segment.rivalryId === activeRivalry.id ? "Rivalry cast" : "In feud");
   }
 
   if (bookedCount > 0 && !checked) {

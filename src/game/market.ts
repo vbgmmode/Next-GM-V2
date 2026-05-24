@@ -900,7 +900,7 @@ export function advanceCpuMarket(game: GameState, draftPool: Wrestler[]): GameSt
         hashString(`${brand.id}-release-${game.seasonNumber}-${game.currentWeek}`) % 100 > getDifficultyRules(game.difficulty).cpuMarket.releaseRollThreshold
       ) {
         const wrestlerName = getWrestlerName(releaseCandidate.member.wrestlerId, draftPool, "CPU talent");
-        const transaction = createTransaction(game, "release", [releaseCandidate.member.wrestlerId], [wrestlerName], releaseCandidate.contract.releasePenalty, `${brand.brandName} released ${wrestlerName} to clear payroll pressure.`, {
+        const transaction = createTransaction(game, "release", [releaseCandidate.member.wrestlerId], [wrestlerName], releaseCandidate.contract.releasePenalty, `${brand.brandName} released ${wrestlerName} to clear roster budget pressure.`, {
           fromBrandId: brand.id,
           fromBrandName: brand.brandName,
         });
@@ -1098,7 +1098,7 @@ export function evaluateOfficeMandate(game: GameState): GameState {
   const ownerTrust = clamp(office.ownerTrust + ownerTrustDelta);
   const brandReputation = clamp(office.brandReputation + brandReputationDelta);
   const mandateStatus: OfficeMandateStatus = ownerTrust <= 25 || brandReputation <= 25 || game.money < -250000 ? "critical" : ownerTrust >= 75 && brandReputation >= 70 ? "surging" : ownerTrust <= 45 || game.money < 0 ? "watch" : "stable";
-  const moneyDelta = mandateStatus === "critical" ? -25000 : mandateStatus === "surging" ? 15000 : 0;
+  const moneyDelta = 0;
   const event: OfficeMandateEvent = {
     id: `mandate-s${game.seasonNumber}-w${game.currentWeek}`,
     seasonNumber: game.seasonNumber,
@@ -1119,7 +1119,6 @@ export function evaluateOfficeMandate(game: GameState): GameState {
 
   return {
     ...game,
-    money: game.money + moneyDelta,
     marketState: {
       ...game.marketState,
       officeMandate: {

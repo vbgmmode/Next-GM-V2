@@ -128,7 +128,7 @@ import {
   isValidSegment,
   runShow,
 } from "./game/scoring";
-import { getChampionshipDivisionGroup, getTitleCatalogBrand, wrestlerFitsChampionshipDivision } from "./game/titleCatalog";
+import { getChampionshipArtworkSrc, getChampionshipDivisionGroup, getTitleCatalogBrand, wrestlerFitsChampionshipDivision } from "./game/titleCatalog";
 import type {
   CalendarWeek,
   AffiliationKind,
@@ -233,6 +233,7 @@ type DraftFinanceReadout = {
   missingFinanceRows: Wrestler[];
   pressureLabel: DraftReservePressure;
   projectedReserve: number;
+  recommendedReserveTarget: number;
   rosterValue: number;
   startingBudgetAmount: number;
 };
@@ -455,6 +456,7 @@ type BrandPulseSnapshot = {
 type QaHarnessMode = "runtime" | "legacy-runtime" | "title-defense-runtime" | "title-change-runtime";
 
 const minimumDraftRosterSize = 12;
+const recommendedDraftRosterTarget = 16;
 
 const draftSortOptions: { label: string; value: DraftSort }[] = [
   { label: "Top 200 Rank", value: "rank" },
@@ -642,12 +644,12 @@ function getDraftFinanceReadout(wrestlers: Wrestler[], startingBudgetTier: Start
   const rosterValue = Math.max(0, grossRosterValue - bundleDiscountUsd);
   const projectedReserve = startingBudgetAmount - rosterValue;
   const isUnlimitedBudget = startingBudgetTier === "Unlimited";
-  const tightReserveThreshold = Math.max(250000, Math.round(startingBudgetAmount * 0.15));
+  const recommendedReserveTarget = startingBudgetTier === "$2M" ? 450000 : Math.max(250000, Math.round(startingBudgetAmount * 0.15));
   const pressureLabel: DraftReservePressure = isUnlimitedBudget
     ? "Healthy"
     : projectedReserve < 0
       ? "Over Budget"
-      : projectedReserve <= tightReserveThreshold
+      : projectedReserve < recommendedReserveTarget
         ? "Tight"
         : "Healthy";
 
@@ -658,6 +660,7 @@ function getDraftFinanceReadout(wrestlers: Wrestler[], startingBudgetTier: Start
     missingFinanceRows: financeRows.filter(({ financeRow }) => !financeRow).map(({ wrestler }) => wrestler),
     pressureLabel,
     projectedReserve,
+    recommendedReserveTarget,
     rosterValue,
     startingBudgetAmount,
   };
@@ -707,7 +710,7 @@ function getDraftFinanceNote(readout: DraftFinanceReadout) {
     ? ` ${readout.missingFinanceRows.length} roster value${readout.missingFinanceRows.length === 1 ? "" : "s"} pending and excluded from this total.`
     : "";
 
-  return `Opening reserve after roster value is carried into Week 1. Money-based drafts can keep picking until the budget cannot cover the selected draft value.${missingValueNote}`;
+  return `Opening reserve after roster value is carried into Week 1. ${minimumDraftRosterSize} wrestlers is TV-ready; ${recommendedDraftRosterTarget} is the healthy roster target. Aim for about ${formatMoney(readout.recommendedReserveTarget)} left for production and market flexibility.${missingValueNote}`;
 }
 
 function getRivalUniverseRead(rivalBrands: RivalBrandState[]) {
@@ -3142,6 +3145,39 @@ function getPreferredTagPartnerId(wrestlerId: string, wrestlers: Wrestler[], exc
   return "";
 }
 
+function buildTagTeamChallengerRows(
+  contenderRows: Array<{ index: number; wrestler: Wrestler }>,
+  wrestlers: Wrestler[],
+  excludedIds: string[],
+  limit = 3,
+) {
+  const usedIds = new Set(excludedIds);
+  const rows: Array<{ rank: number; wrestlers: [Wrestler, Wrestler] }> = [];
+
+  for (const { wrestler } of contenderRows) {
+    if (rows.length >= limit || usedIds.has(wrestler.id)) {
+      continue;
+    }
+
+    const partnerId = getPreferredTagPartnerId(wrestler.id, wrestlers, [...usedIds]);
+    const partner =
+      (partnerId ? wrestlers.find((talent) => talent.id === partnerId) : undefined) ??
+      contenderRows
+        .map((row) => row.wrestler)
+        .find((candidate) => candidate.id !== wrestler.id && !usedIds.has(candidate.id) && canWrestlersShareMatch([wrestler, candidate]));
+
+    if (!partner) {
+      continue;
+    }
+
+    rows.push({ rank: rows.length + 1, wrestlers: [wrestler, partner] });
+    usedIds.add(wrestler.id);
+    usedIds.add(partner.id);
+  }
+
+  return rows;
+}
+
 function getRivalryStructureKey(structure: RivalryStructure, participantIds: string[]) {
   if (structure === "tag_team" && participantIds.length === 4) {
     const firstSide = participantIds.slice(0, 2).sort().join("+");
@@ -3166,7 +3202,12 @@ function isRivalryIntergenderBlocked(rivalry: Rivalry, wrestlers: Wrestler[]) {
   return participants.length > 1 && !canWrestlersShareMatch(participants);
 }
 
-function getRivalryCreationBlockReason(structure: RivalryStructure, participantIds: string[], wrestlers: Wrestler[]) {
+function getRivalryCreationBlockReason(
+  structure: RivalryStructure,
+  participantIds: string[],
+  wrestlers: Wrestler[],
+  rivalries: Rivalry[] = [],
+) {
   const selectedIds = participantIds.filter(Boolean);
   const range = getRivalryStructureParticipantRange(structure);
 
@@ -3180,6 +3221,17 @@ function getRivalryCreationBlockReason(structure: RivalryStructure, participantI
 
   if (new Set(selectedIds).size !== selectedIds.length) {
     return "Each wrestler can only appear once in a rivalry.";
+  }
+
+  const activeRivalryParticipantIds = new Set(rivalries.flatMap((rivalry) => rivalry.participantIds));
+  const busyParticipants = selectedIds.filter((id) => activeRivalryParticipantIds.has(id));
+
+  if (busyParticipants.length) {
+    const busyNames = getWrestlerNames(busyParticipants, wrestlers);
+
+    return busyNames
+      ? `${busyNames} ${busyParticipants.length === 1 ? "is" : "are"} already locked into an active feud.`
+      : "One or more selected wrestlers are already locked into an active feud.";
   }
 
   if (structure === "tag_team" && selectedIds.length !== 4) {
@@ -4970,7 +5022,11 @@ function App() {
     setGame((current) => {
       const selectedIds = participantIds.filter(Boolean);
 
-      if (!current || hasDuplicateRivalry(current.rivalries, structure, selectedIds) || getRivalryCreationBlockReason(structure, selectedIds, current.wrestlers)) {
+      if (
+        !current ||
+        hasDuplicateRivalry(current.rivalries, structure, selectedIds) ||
+        getRivalryCreationBlockReason(structure, selectedIds, current.wrestlers, current.rivalries)
+      ) {
         return current;
       }
 
@@ -5438,7 +5494,7 @@ function NewGameSetupScreen({
   const focusedDraftBundleOffer = focusedDraftWrestler ? draftBundleOffers.find((offer) => offer.wrestlerIds.includes(focusedDraftWrestler.id)) : undefined;
   const readinessRemaining = Math.max(0, minimumDraftRosterSize - draftedWrestlers.length);
   const currentDraftPick = openingDraftState.currentPick;
-  const currentPlayerPickLabel = `${draftedWrestlers.length} drafted`;
+  const currentPlayerPickLabel = `${draftedWrestlers.length}/${recommendedDraftRosterTarget} target`;
   const currentOverallPickLabel = currentDraftPick ? `Pick ${currentDraftPick.overallPick}` : "Locked";
   const focusedDraftFinance = focusedDraftWrestler ? getRosterFinanceValueForWrestler(focusedDraftWrestler) : undefined;
   const focusedDraftOverall = focusedDraftWrestler ? getWrestlerOverall(focusedDraftWrestler) : 0;
@@ -5458,10 +5514,13 @@ function NewGameSetupScreen({
       ? `${signedBrandName} has the first pick.`
       : readinessRemaining > 0
         ? `${readinessRemaining} more for TV-ready minimum.`
+        : draftedWrestlers.length < recommendedDraftRosterTarget
+          ? `TV-ready. ${recommendedDraftRosterTarget - draftedWrestlers.length} more reaches the healthy roster target.`
         : currentDraftPick
           ? `Overall pick ${currentDraftPick.overallPick} is live.`
           : "Opening board locked.";
   const draftedRosterNeedRows = [
+    { label: "Roster", count: draftedWrestlers.length, target: recommendedDraftRosterTarget },
     { label: "Main Event", count: draftedWrestlers.filter((wrestler) => getDraftTag(wrestler.roleTier).includes("Main")).length, target: 2 },
     { label: "Talkers", count: draftedWrestlers.filter((wrestler) => wrestler.promoSkill >= 82).length, target: 4 },
     { label: "Workers", count: draftedWrestlers.filter((wrestler) => wrestler.ringSkill >= 82).length, target: 4 },
@@ -5669,7 +5728,7 @@ function NewGameSetupScreen({
               metrics={
                 <>
                   <MetricTile detail="PLEs in Weeks 4, 8, and 12" label="Season" tone="prestige" value="12 Weeks" />
-                  <MetricTile detail="Draft until the budget stops the room" label="Draft Night" tone="brand" value={`${minimumDraftRosterSize}+ min`} />
+                  <MetricTile detail={`${minimumDraftRosterSize} TV-ready minimum, ${recommendedDraftRosterTarget} healthy roster target`} label="Draft Night" tone="brand" value={`${minimumDraftRosterSize} min / ${recommendedDraftRosterTarget} target`} />
                   <MetricTile detail="Four major brands in the GM universe" label="Universe" tone="info" value="4 Brands" />
                 </>
               }
@@ -6085,6 +6144,7 @@ function NewGameSetupScreen({
                 <span>Roster <strong>{formatMoney(draftFinanceReadout.rosterValue)}</strong></span>
                 {draftFinanceReadout.bundleDiscountUsd > 0 ? <span>Bundle Save <strong>{formatMoney(draftFinanceReadout.bundleDiscountUsd)}</strong></span> : null}
                 <span>Left <strong>{formatProjectedReserve(draftFinanceReadout)}</strong></span>
+                <span>Healthy Reserve <strong>{draftFinanceReadout.isUnlimitedBudget ? "Open" : formatMoney(draftFinanceReadout.recommendedReserveTarget)}</strong></span>
               </article>
               <article className="draft-bottom-panel up-next">
                 <p className="eyebrow">Up Next</p>
@@ -6328,7 +6388,7 @@ function RivalIntelligencePanel({ compact = false, game }: { compact?: boolean; 
       <div className="rival-intel-grid">
         <Metric label="Owner Trust" value={`${office.ownerTrust}`} />
         <Metric label="Reputation" value={`${office.brandReputation}`} />
-        <Metric label="Weekly Payroll" value={formatMoney(snapshot.payroll)} detail="No recurring roster payroll" />
+        <Metric label="Roster Recurrence" value={formatMoney(snapshot.payroll)} detail="Contracts are prepaid" />
         <Metric label="Open Market" value={`${snapshot.freeAgents.length}`} />
       </div>
       {!compact && rivalEvents.length ? (
@@ -6451,7 +6511,8 @@ function DraftFinanceSummary({ readout }: { readout: DraftFinanceReadout }) {
           detail={readout.bundleDiscountUsd ? `${formatMoney(readout.bundleDiscountUsd)} bundle discount applied` : "Static catalog draft value total"}
         />
         <Metric label="Projected Reserve" value={formatProjectedReserve(readout)} detail="Carries into Week 1 money" />
-        <Metric label="Reserve Pressure" value={readout.pressureLabel} detail="Money-based picks must fit reserve" />
+        <Metric label="Healthy Reserve" value={readout.isUnlimitedBudget ? "Open" : formatMoney(readout.recommendedReserveTarget)} detail="Production and market target" />
+        <Metric label="Reserve Pressure" value={readout.pressureLabel} detail={`${minimumDraftRosterSize} minimum, ${recommendedDraftRosterTarget} target`} />
       </div>
       <p>{getDraftFinanceNote(readout)}</p>
     </section>
@@ -6940,6 +7001,8 @@ function ChampionshipsScreen({
   const officeRead = getChampionshipOfficeRead(game);
   const [editContendersOpen, setEditContendersOpen] = useState(false);
   const [assignChampionOpen, setAssignChampionOpen] = useState(false);
+  const [assignTagChampionOneId, setAssignTagChampionOneId] = useState("");
+  const [assignTagChampionTwoId, setAssignTagChampionTwoId] = useState("");
   const [committeeExpanded, setCommitteeExpanded] = useState(false);
   const defaultSelectedChampionship =
     game.championships.find((championship) => championship.name === officeRead.attentionTitle) ??
@@ -6992,23 +7055,27 @@ function ChampionshipsScreen({
         .sort((a, b) => getTitleSceneTalentScore(b, selectedTitleRead.championship, game.rivalries) - getTitleSceneTalentScore(a, selectedTitleRead.championship, game.rivalries))
         .slice(0, 8)
     : [];
+  const tagTeamChallengerRows = selectedTitleRead?.isTagTitle
+    ? buildTagTeamChallengerRows(selectedContenderRows, game.wrestlers, [...selectedChampionIds], 3)
+    : [];
   const assignableChampionCandidates = selectedTitleRead
     ? game.wrestlers
         .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, selectedTitleRead.championship))
         .sort((a, b) => getTitleSceneTalentScore(b, selectedTitleRead.championship, game.rivalries) - getTitleSceneTalentScore(a, selectedTitleRead.championship, game.rivalries))
-        .slice(0, 10)
     : [];
-  const assignableChampionPairs = selectedTitleRead?.isTagTitle
-    ? assignableChampionCandidates
-        .flatMap((wrestler, index) => assignableChampionCandidates.slice(index + 1, index + 4).map((partner) => [wrestler, partner] as const))
-        .slice(0, 8)
-    : [];
+  const tagChampionAssignReady =
+    Boolean(assignTagChampionOneId && assignTagChampionTwoId && assignTagChampionOneId !== assignTagChampionTwoId);
 
   useEffect(() => {
     if (!championshipReads.some((read) => read.championship.id === selectedChampionshipId)) {
       setSelectedChampionshipId(defaultSelectedChampionship?.id ?? "");
     }
   }, [championshipReads, defaultSelectedChampionship?.id, selectedChampionshipId]);
+
+  useEffect(() => {
+    setAssignTagChampionOneId("");
+    setAssignTagChampionTwoId("");
+  }, [selectedChampionshipId, assignChampionOpen]);
 
   function handleSelectChampionship(championshipId: string) {
     setSelectedChampionshipId(championshipId);
@@ -7032,6 +7099,7 @@ function ChampionshipsScreen({
     const { championship, pressureSnapshot, scene } = read;
     const isSelected = selectedTitleRead?.championship.id === championship.id;
     const champion = scene.champions[0];
+    const artworkSrc = getChampionshipArtworkSrc(championship);
 
     return (
       <button
@@ -7040,7 +7108,11 @@ function ChampionshipsScreen({
         onClick={() => handleSelectChampionship(championship.id)}
         type="button"
       >
-        <span className="championship-belt-row-mark">{getChampionshipAcronym(championship.name)}</span>
+        {artworkSrc ? (
+          <img alt="" aria-hidden="true" className="championship-belt-row-art" src={artworkSrc} />
+        ) : (
+          <span className="championship-belt-row-mark">{getChampionshipAcronym(championship.name)}</span>
+        )}
         {champion ? (
           <WrestlerPortrait className="championship-row-portrait" wrestler={champion} />
         ) : (
@@ -7098,6 +7170,7 @@ function ChampionshipsScreen({
         label: "No Title Selected",
         tone: "neutral",
       };
+  const selectedTitleArtworkSrc = selectedTitleRead ? getChampionshipArtworkSrc(selectedTitleRead.championship) : undefined;
 
   return (
     <DynastyManagementShell className="championships-command-shell" currentScreen="championships" cta={championshipsCta} game={game} latestResult={latestResult} onNavigate={onNavigate}>
@@ -7136,22 +7209,32 @@ function ChampionshipsScreen({
             >
               <div className="championship-focus-head">
                 <div className="championship-focus-title-block">
-                  <div className="championship-hero-portraits">
-                    {selectedTitleRead.scene.champions.length ? (
-                      selectedTitleRead.scene.champions.slice(0, 2).map((wrestler) => (
-                        <WrestlerPortrait className="championship-hero-portrait" key={wrestler.id} wrestler={wrestler} />
-                      ))
+                  <div className="championship-focus-visuals">
+                    {selectedTitleArtworkSrc ? (
+                      <img
+                        alt={`${selectedTitleRead.championship.name} title belt`}
+                        className="championship-focus-title-art"
+                        src={selectedTitleArtworkSrc}
+                      />
                     ) : (
-                      <span className="championship-hero-vacant">
-                        <span>Vacant</span>
-                        <small>Belt Open</small>
-                      </span>
+                      <span className="championship-focus-title-fallback">{getChampionshipAcronym(selectedTitleRead.championship.name)}</span>
                     )}
+                    <div className="championship-hero-portraits">
+                      {selectedTitleRead.scene.champions.length ? (
+                        selectedTitleRead.scene.champions.slice(0, 2).map((wrestler) => (
+                          <WrestlerPortrait className="championship-hero-portrait" key={wrestler.id} wrestler={wrestler} />
+                        ))
+                      ) : (
+                        <span className="championship-hero-vacant">
+                          <span>Vacant</span>
+                          <small>Belt Open</small>
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <p className="eyebrow">On The Desk</p>
-                    <h3 title={selectedTitleRead.championship.name}>{getChampionshipAcronym(selectedTitleRead.championship.name)}</h3>
-                    <p className="championship-focus-full-name">{selectedTitleRead.championship.name}</p>
+                    <h3 className="championship-focus-full-name">{selectedTitleRead.championship.name}</h3>
                     <div className="championship-focus-tags">
                       <span>{selectedTitleRead.championship.division}</span>
                       <span>{selectedTitleRead.championship.eligibleMatchScope === "tag_team" ? "Tag" : "Singles"}</span>
@@ -7189,13 +7272,40 @@ function ChampionshipsScreen({
                   </div>
                 </div>
 
-                <section className="championship-challenger-strip" aria-label={`${selectedTitleRead.championship.name} challenger lane`}>
+                <section
+                  className="championship-challenger-strip"
+                  aria-label={`${selectedTitleRead.championship.name} ${selectedTitleRead.isTagTitle ? "tag team" : "challenger"} lane`}
+                >
                   <div className="championship-challenger-strip-head">
-                    <span>Next Challengers</span>
-                    <strong>{selectedContenderRows.length ? `Top ${Math.min(3, selectedContenderRows.length)}` : "No Lane"}</strong>
+                    <span>{selectedTitleRead.isTagTitle ? "Tag Teams" : "Next Challengers"}</span>
+                    <strong>
+                      {selectedTitleRead.isTagTitle
+                        ? tagTeamChallengerRows.length
+                          ? `Top ${Math.min(3, tagTeamChallengerRows.length)}`
+                          : "No Lane"
+                        : selectedContenderRows.length
+                          ? `Top ${Math.min(3, selectedContenderRows.length)}`
+                          : "No Lane"}
+                    </strong>
                   </div>
                   <div className="championship-challenger-cards">
-                    {selectedContenderRows.length ? (
+                    {selectedTitleRead.isTagTitle ? (
+                      tagTeamChallengerRows.length ? (
+                        tagTeamChallengerRows.map(({ rank, wrestlers }) => (
+                          <article className="championship-challenger-card is-tag-team" key={`${wrestlers[0].id}-${wrestlers[1].id}`}>
+                            <span>{String(rank).padStart(2, "0")}</span>
+                            <div className="championship-challenger-team-portraits">
+                              {wrestlers.map((wrestler) => (
+                                <WrestlerPortrait className="championship-challenger-portrait" key={wrestler.id} wrestler={wrestler} />
+                              ))}
+                            </div>
+                            <strong>{wrestlers.map((wrestler) => wrestler.name).join(" / ")}</strong>
+                          </article>
+                        ))
+                      ) : (
+                        <p className="muted-copy">No tag teams in the lane yet.</p>
+                      )
+                    ) : selectedContenderRows.length ? (
                       selectedContenderRows.slice(0, 3).map(({ index, wrestler }) => (
                         <article className="championship-challenger-card" key={wrestler.id}>
                           <span>{String(index + 1).padStart(2, "0")}</span>
@@ -7239,24 +7349,61 @@ function ChampionshipsScreen({
                   {assignChampionOpen && !selectedTitleRead.championship.championIds.length ? (
                     <div className="championship-assign-options">
                       {selectedTitleRead.isTagTitle ? (
-                        assignableChampionPairs.length ? (
-                          assignableChampionPairs.map(([first, second]) => (
+                        assignableChampionCandidates.length >= 2 ? (
+                          <div className="championship-tag-assign-form">
+                            <label className="championship-tag-assign-field">
+                              <span>Champion 1</span>
+                              <select
+                                onChange={(event) => setAssignTagChampionOneId(event.target.value)}
+                                value={assignTagChampionOneId}
+                              >
+                                <option value="">Select wrestler</option>
+                                {assignableChampionCandidates
+                                  .filter((wrestler) => wrestler.id !== assignTagChampionTwoId)
+                                  .map((wrestler) => (
+                                    <option key={wrestler.id} value={wrestler.id}>
+                                      {wrestler.name}
+                                    </option>
+                                  ))}
+                              </select>
+                            </label>
+                            <label className="championship-tag-assign-field">
+                              <span>Champion 2</span>
+                              <select
+                                onChange={(event) => setAssignTagChampionTwoId(event.target.value)}
+                                value={assignTagChampionTwoId}
+                              >
+                                <option value="">Select wrestler</option>
+                                {assignableChampionCandidates
+                                  .filter((wrestler) => wrestler.id !== assignTagChampionOneId)
+                                  .map((wrestler) => (
+                                    <option key={wrestler.id} value={wrestler.id}>
+                                      {wrestler.name}
+                                    </option>
+                                  ))}
+                              </select>
+                            </label>
                             <button
-                              key={`${first.id}-${second.id}`}
+                              className="primary-action championship-tag-assign-confirm"
+                              disabled={!tagChampionAssignReady}
                               onClick={() => {
-                                onAssignChampionship(selectedTitleRead.championship.id, [first.id, second.id]);
+                                if (!tagChampionAssignReady) {
+                                  return;
+                                }
+
+                                onAssignChampionship(selectedTitleRead.championship.id, [assignTagChampionOneId, assignTagChampionTwoId]);
                                 setAssignChampionOpen(false);
                               }}
                               type="button"
                             >
-                              {first.name} / {second.name}
+                              Assign Tag Champions
                             </button>
-                          ))
+                          </div>
                         ) : (
-                          <p className="muted-copy">No eligible pair available.</p>
+                          <p className="muted-copy">Need at least two eligible wrestlers in this division.</p>
                         )
                       ) : assignableChampionCandidates.length ? (
-                        assignableChampionCandidates.map((wrestler) => (
+                        assignableChampionCandidates.slice(0, 10).map((wrestler) => (
                           <button
                             key={wrestler.id}
                             onClick={() => {

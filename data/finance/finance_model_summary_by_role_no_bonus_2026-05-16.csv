@@ -1,6 +1,6 @@
 role_tier,count,min_draft_value_usd,median_draft_value_usd,max_draft_value_usd,median_weekly_hire_rate_usd,contract_notes
-MainEvent,36,270000,292500,320000,28000,Draft value = full-season opening roster rights. Weekly hire rate = midseason contract rate only. No signing bonus.
-UpperCard,17,110000,180000,190000,16000,Draft value = full-season opening roster rights. Weekly hire rate = midseason contract rate only. No signing bonus.
-Midcard,61,60000,115000,145000,10000,Draft value = full-season opening roster rights. Weekly hire rate = midseason contract rate only. No signing bonus.
-Prospect,80,25000,60000,70000,5000,Draft value = full-season opening roster rights. Weekly hire rate = midseason contract rate only. No signing bonus.
-Enhancement,6,45000,50000,50000,5000,Draft value = full-season opening roster rights. Weekly hire rate = midseason contract rate only. No signing bonus.
+MainEvent,36,210000,245000,260000,23500,Economy v4. Draft value buys full-season opening roster rights. Weekly hire rate is midseason-only and targets roughly 115% of draft value over 12 weeks. No payroll or appearance expense.
+UpperCard,17,135000,150000,170000,14500,Economy v4. Draft value buys full-season opening roster rights. Weekly hire rate is midseason-only and targets roughly 115% of draft value over 12 weeks. No payroll or appearance expense.
+Midcard,61,75000,90000,110000,8500,Economy v4. Draft value buys full-season opening roster rights. Weekly hire rate is midseason-only and targets roughly 115% of draft value over 12 weeks. No payroll or appearance expense.
+Prospect,80,45000,47500,65000,4500,Economy v4. Draft value buys full-season opening roster rights. Weekly hire rate is midseason-only and targets roughly 115% of draft value over 12 weeks. No payroll or appearance expense.
+Enhancement,6,30000,35000,45000,3250,Economy v4. Draft value buys full-season opening roster rights. Weekly hire rate is midseason-only and targets roughly 115% of draft value over 12 weeks. No payroll or appearance expense.

@@ -601,6 +601,47 @@ export function getTagTitleSides(segment: Segment, championship: Championship) {
   };
 }
 
+export function trimParticipantsForCatalogOption(
+  segment: Segment,
+  option: SegmentCatalogOption,
+  championships: Championship[] = [],
+) {
+  const participantIds = segment.participantIds;
+
+  if (participantIds.length <= option.maxParticipants) {
+    return participantIds;
+  }
+
+  if (option.id === "M020" && option.maxParticipants === 4) {
+    return participantIds.slice(0, 4);
+  }
+
+  if (option.maxParticipants === 2 && segment.type === "Match") {
+    const attachedTitle = segment.championshipId
+      ? championships.find((championship) => championship.id === segment.championshipId)
+      : undefined;
+    const championTitle =
+      attachedTitle ??
+      championships.find(
+        (championship) =>
+          !isTagChampionship(championship) &&
+          championship.championIds.length === 1 &&
+          participantIds.includes(championship.championIds[0]),
+      );
+
+    if (championTitle?.championIds.length === 1) {
+      const championId = championTitle.championIds[0];
+      const challengerId = participantIds.find((id) => id !== championId);
+
+      if (participantIds.includes(championId) && challengerId) {
+        return [championId, challengerId];
+      }
+    }
+  }
+
+  return participantIds.slice(0, option.maxParticipants);
+}
+
 export function canSegmentContestChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[] = []) {
   if (isTagChampionship(championship)) {
     return Boolean(isValidSegment(segment, wrestlers) && getTagTitleSides(segment, championship));

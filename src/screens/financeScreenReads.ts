@@ -261,7 +261,7 @@ export function getTalentValuePressure(wrestlers: Wrestler[]): TalentValuePressu
     mappedProfiles.length === 0
       ? "Talent value context is still pending for this roster. Finance pressure should be read from closed show reports until mappings are available."
       : premiumCount > bargainCount + 2
-        ? "This roster leans top-heavy. The office read is prestige value with elevated weekly-cost pressure, not a payroll restriction."
+        ? "This roster leans top-heavy. The office read is prestige value with elevated acquisition-cost pressure, not a recurring payroll restriction."
         : bargainCount > premiumCount + 2
           ? "This roster has a strong value base. You have room to shape TV identity without every slot needing a premium draw."
           : "Roster value is balanced across premium anchors and useful value pieces. Treat this as context for booking emphasis, not an enforced budget gate.";

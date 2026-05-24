@@ -107,6 +107,19 @@ describe("smartRundown", () => {
     expect(normalizeSegments(first.segments)).toEqual(normalizeSegments(second.segments));
   });
 
+  it("does not repeat the same wrestler pairing across segments in a full smart rundown", () => {
+    const game = makeGame();
+    const result = buildSmartRundown(game, 6);
+
+    expect(result.error).toBeUndefined();
+
+    const pairKeys = result.segments
+      .filter((segment) => segment.participantIds.length === 2)
+      .map((segment) => [...segment.participantIds].sort().join("|"));
+
+    expect(new Set(pairKeys).size).toBe(pairKeys.length);
+  });
+
   it("uses the tag match format for tag-team rivalries when participants fit", () => {
     const tagWrestlers = getSameDivisionWrestlers(12);
     const game = makeGame(tagWrestlers);

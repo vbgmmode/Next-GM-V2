@@ -1,5 +1,7 @@
+import { bookedFinishCostUsd, getSegmentProductionCostForShow } from "../game/finance";
+import { formatMoney } from "../game/formatters";
 import { getCurrentCalendarWeek, isValidSegment } from "../game/scoring";
-import type { GameState, Segment } from "../game/types";
+import type { GameState, Segment, ShowType } from "../game/types";
 import {
   getBookingProducerNote,
   getBookingRuntimeHeat,
@@ -27,6 +29,11 @@ export type BookingSegmentRow = {
   durationLabel: string;
   valid: boolean;
   statusLabel: string;
+  segmentProductionCost: number;
+  bookedFinishCost: number;
+  plannedCost: number;
+  plannedCostLabel: string;
+  costDetailLabel: string;
   isMainEvent: boolean;
   hasTitle: boolean;
   hasRivalry: boolean;
@@ -92,6 +99,12 @@ export type BookingViewModel = {
     heatFillPercent: number;
     heatScaleMaxMinutes: number;
   };
+  production: {
+    segmentCost: number;
+    bookedFinishCost: number;
+    totalCost: number;
+    totalCostLabel: string;
+  };
   readiness: {
     status: string;
     tone: string;
@@ -137,13 +150,28 @@ function buildProducerNote(game: GameState, segment: Segment, titleName?: string
   return `${participants} booked for a ${duration}-minute ${segment.type.toLowerCase()} on tonight's rundown.`;
 }
 
-function buildSegmentRow(game: GameState, segment: Segment, index: number, total: number): BookingSegmentRow {
+function getPlannedSegmentCost(segment: Segment, showType: ShowType) {
+  const segmentProductionCost = getSegmentProductionCostForShow(segment, showType) ?? 0;
+  const bookedFinishCost = segment.type === "Match" && segment.winnerId ? bookedFinishCostUsd : 0;
+  const plannedCost = segmentProductionCost + bookedFinishCost;
+
+  return {
+    bookedFinishCost,
+    costDetailLabel: bookedFinishCost > 0 ? `${formatMoney(segmentProductionCost)} + finish ${formatMoney(bookedFinishCost)}` : formatMoney(segmentProductionCost),
+    plannedCost,
+    plannedCostLabel: formatMoney(plannedCost),
+    segmentProductionCost,
+  };
+}
+
+function buildSegmentRow(game: GameState, segment: Segment, index: number, total: number, showType: ShowType): BookingSegmentRow {
   const valid = isValidSegment(segment, game.wrestlers);
   const championship = segment.championshipId ? game.championships.find((title) => title.id === segment.championshipId) : undefined;
   const rivalry = segment.rivalryId ? game.rivalries.find((item) => item.id === segment.rivalryId) : undefined;
   const durationMinutes = getSegmentDurationMinutes(segment);
   const validationWarning = getSegmentValidationWarning(segment, game.wrestlers);
   const participantLines = getSegmentRailParticipantLines(segment, game.wrestlers, valid, validationWarning);
+  const cost = getPlannedSegmentCost(segment, showType);
 
   return {
     id: segment.id,
@@ -158,6 +186,7 @@ function buildSegmentRow(game: GameState, segment: Segment, index: number, total
     durationLabel: `${durationMinutes}:00`,
     valid,
     statusLabel: valid ? "Ready" : "Needs Talent",
+    ...cost,
     isMainEvent: total > 1 && index === total - 1,
     hasTitle: Boolean(championship),
     hasRivalry: Boolean(rivalry),
@@ -275,7 +304,7 @@ function buildWarnings(game: GameState, invalidCount: number, unbookedCount: num
 export function buildBookingModel(game: GameState, selectedSegmentId?: string | null): BookingViewModel {
   const calendarWeek = getCurrentCalendarWeek(game);
   const segments = game.currentShow;
-  const segmentRows = segments.map((segment, index) => buildSegmentRow(game, segment, index, segments.length));
+  const segmentRows = segments.map((segment, index) => buildSegmentRow(game, segment, index, segments.length, calendarWeek.showType));
   const validSegments = segments.filter((segment) => isValidSegment(segment, game.wrestlers));
   const invalidCount = segments.length - validSegments.length;
   const plannedMinutes = segments.reduce((total, segment) => total + getSegmentDurationMinutes(segment), 0);
@@ -311,6 +340,9 @@ export function buildBookingModel(game: GameState, selectedSegmentId?: string | 
     segmentCount: segments.length,
     titleContextCount,
   });
+  const segmentProductionCost = segmentRows.reduce((total, row) => total + row.segmentProductionCost, 0);
+  const bookedFinishCost = segmentRows.reduce((total, row) => total + row.bookedFinishCost, 0);
+  const totalProductionCost = segmentProductionCost + bookedFinishCost;
 
   return {
     showName: calendarWeek.showName,
@@ -327,6 +359,12 @@ export function buildBookingModel(game: GameState, selectedSegmentId?: string | 
       heatDetail: runtimeHeat.detail,
       heatFillPercent: runtimeHeat.fillPercent,
       heatScaleMaxMinutes: runtimeHeat.scaleMaxMinutes,
+    },
+    production: {
+      segmentCost: segmentProductionCost,
+      bookedFinishCost,
+      totalCost: totalProductionCost,
+      totalCostLabel: formatMoney(totalProductionCost),
     },
     readiness: {
       status: readiness.status,

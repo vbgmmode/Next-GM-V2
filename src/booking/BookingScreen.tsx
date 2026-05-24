@@ -10,7 +10,7 @@ import { BookingEmptyStage } from "./BookingEmptyStage";
 import { BookingSegmentRail } from "./BookingSegmentRail";
 import { BookingStatusStrip } from "./BookingStatusStrip";
 import { BookingTypePickerOverlay } from "./BookingTypePickerOverlay";
-import { IntegratedSegmentComposer } from "./IntegratedSegmentComposer";
+import { IntegratedSegmentComposer, type IntegratedSegmentComposerHandle } from "./IntegratedSegmentComposer";
 import { buildBookingModel } from "./buildBookingModel";
 import type { BookingScreenProps } from "./bookingTypes";
 import {
@@ -20,6 +20,7 @@ import {
   getShowReadiness,
   isRivalryIntergenderBlocked,
   maxBookingSegments,
+  trimParticipantsForCatalogOption,
 } from "./bookingUtils";
 import { buildSmartRundown, buildSmartSingleSegment } from "./smartRundown";
 
@@ -46,6 +47,7 @@ export function BookingScreen({
   const [pendingClearCard, setPendingClearCard] = useState(false);
   const [typePickerOpen, setTypePickerOpen] = useState(false);
   const smartRundownVariantRef = useRef(0);
+  const composerRef = useRef<IntegratedSegmentComposerHandle>(null);
   const validShowSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers));
   const validSegments = validShowSegments.length;
   const invalidSegments = game.currentShow.length - validSegments;
@@ -102,16 +104,28 @@ export function BookingScreen({
   }
 
   function applyCatalogOption(segment: Segment, option: SegmentCatalogOption) {
-    const allowedStipulations = getStipulationsForSegment({ ...segment, segmentCatalogId: option.id });
+    const allowedStipulations = getStipulationsForSegment({ ...segment, type: option.family, segmentCatalogId: option.id });
     const hasCompatibleStipulation = segment.stipulationId && allowedStipulations.some((item) => item.id === segment.stipulationId);
+    const draftSegment = { ...segment, type: option.family };
+    const participantIds = trimParticipantsForCatalogOption(draftSegment, option, game.championships);
+    const rivalryStillValid =
+      Boolean(segment.rivalryId) &&
+      game.rivalries.some(
+        (rivalry) =>
+          rivalry.id === segment.rivalryId && rivalry.participantIds.every((participantId) => participantIds.includes(participantId)),
+      );
 
     onUpdateSegment(segment.id, {
+      type: option.family,
       segmentCatalogId: option.id,
       segmentDisplayName: option.label,
       durationMinutes: option.defaultDurationMinutes,
       participantMin: option.minParticipants,
       participantMax: option.maxParticipants,
+      participantIds,
       championshipId: option.championshipAllowed ? segment.championshipId : undefined,
+      rivalryId: rivalryStillValid ? segment.rivalryId : undefined,
+      winnerId: segment.winnerId && participantIds.includes(segment.winnerId) ? segment.winnerId : undefined,
       stipulationId: hasCompatibleStipulation ? segment.stipulationId : undefined,
     });
   }
@@ -184,6 +198,20 @@ export function BookingScreen({
     setTypePickerOpen(false);
   }
 
+  function reorderSegments(draggedSegmentId: string, targetSegmentId: string) {
+    const fromIndex = game.currentShow.findIndex((segment) => segment.id === draggedSegmentId);
+    const toIndex = game.currentShow.findIndex((segment) => segment.id === targetSegmentId);
+
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+      return;
+    }
+
+    const nextSegments = [...game.currentShow];
+    const [movedSegment] = nextSegments.splice(fromIndex, 1);
+    nextSegments.splice(toIndex, 0, movedSegment);
+    onReplaceCurrentShow(nextSegments);
+  }
+
   return (
     <DynastyManagementShell className="booking-dynasty-shell" currentScreen="booking" cta={bookingCta} game={game} latestResult={game.showHistory[game.showHistory.length - 1]} onNavigate={onNavigate}>
       {isQaHarness ? (
@@ -206,6 +234,7 @@ export function BookingScreen({
             onClearCard={confirmClearCard}
             onGenerateSmartRundown={generateSmartRundown}
             onRemoveSegment={removeAndClose}
+            onReorderSegments={reorderSegments}
             onRequestClearCard={() => setPendingClearCard(true)}
             onRunShow={onRunShow}
             onSelectSegment={(segmentId) => {
@@ -217,9 +246,10 @@ export function BookingScreen({
         </aside>
 
         <section className="booking-desk-stage" aria-label="Selected segment composer">
-          <BookingComposerStage model={model}>
+          <BookingComposerStage model={model} onSegmentTypeClick={() => composerRef.current?.openFormatPicker()}>
             {selectedSegment && model.composer ? (
               <IntegratedSegmentComposer
+                ref={composerRef}
                 championships={game.championships}
                 composer={model.composer}
                 game={game}
