@@ -407,9 +407,6 @@ export function createSeasonCalendar(): CalendarWeek[] {
     "Dallas",
     "Houston",
     "Phoenix",
-    "Seattle",
-    "Detroit",
-    "New York",
   ];
   const tvCities = ["Dallas", "Houston", "Milwaukee", "Atlanta", "Nashville", "Cleveland", "Boston", "Toronto", "Phoenix", "Seattle", "Portland", "Detroit", "New York"];
 

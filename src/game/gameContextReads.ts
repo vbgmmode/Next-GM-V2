@@ -1,4 +1,6 @@
 import { getFinancePressureLabel } from "./finance";
+import { formatMoney } from "./formatters";
+import { SEASON_WEEK_COUNT } from "./constants";
 import {
   getInjuryStatusLabel,
   getRosterPressureTags,
@@ -197,12 +199,6 @@ type RivalryTimingSnapshot = {
   currentCardParticipants: number;
   recentlyPaidOff: boolean;
 };
-
-
-function formatMoney(amount: number) {
-  const sign = amount < 0 ? "-" : "";
-  return `${sign}$${Math.abs(amount).toLocaleString()}`;
-}
 
 
 function formatPressureLabel(label: PressureLabel) {
@@ -1258,7 +1254,7 @@ export function getWeekReviewHandoffSnapshot(game: GameState, result: ShowResult
   const titleEvents = result.titleHistoryEvents ?? [];
   const rivalryEvents = result.rivalryHistoryEvents ?? [];
   const prestigeFinaleAnchor =
-    result.week === 12 && result.showType === "ple"
+    result.week === SEASON_WEEK_COUNT && result.showType === "ple"
       ? getPrestigeMainEventAnchorSnapshotFromResult(game, result.segmentResults ?? [])
       : undefined;
   const financePressure = getFinancePressureLabel(game.money, financeReport?.profitLoss ?? 0);

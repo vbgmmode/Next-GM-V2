@@ -1,3 +1,4 @@
+import { PLE_COUNT, PLE_CYCLE_WEEKS, SEASON_WEEK_COUNT } from "../game/constants";
 import { getBestSegment, getShowGrade, isValidSegment } from "../game/scoring";
 import { formatMoney } from "../game/formatters";
 import type { CalendarWeek, GameState, ShowResult, ShowType } from "../game/types";
@@ -50,11 +51,25 @@ export type CalendarCycleBlock = {
   weeks: CalendarWeek[];
 };
 
+export function getCalendarCycleColumnLabels() {
+  return Array.from({ length: PLE_CYCLE_WEEKS }, (_, weekInCycle) => {
+    if (weekInCycle === PLE_CYCLE_WEEKS - 1) {
+      return "PLE";
+    }
+
+    if (weekInCycle === PLE_CYCLE_WEEKS - 2) {
+      return "Go-Home";
+    }
+
+    return "TV";
+  });
+}
+
 export function getSeasonCalendarBlocks(calendar: CalendarWeek[]): CalendarCycleBlock[] {
   const blocks: CalendarCycleBlock[] = [];
 
-  for (let index = 0; index < calendar.length; index += 4) {
-    const weeks = calendar.slice(index, index + 4);
+  for (let index = 0; index < calendar.length; index += PLE_CYCLE_WEEKS) {
+    const weeks = calendar.slice(index, index + PLE_CYCLE_WEEKS);
     const pleWeek = weeks.find((week) => week.showType === "ple");
 
     blocks.push({
@@ -160,7 +175,7 @@ export function buildCalendarRecapStrip(game: GameState, currentShow: CalendarWe
 
   return {
     headline: `Week ${game.currentWeek} · ${currentShow.showName}`,
-    detail: `Season ${game.seasonNumber} · ${calendarTag} · ${pleTag} · ${completedCount}/12 Logged`,
+    detail: `Season ${game.seasonNumber} · ${calendarTag} · ${pleTag} · ${completedCount}/${PLE_COUNT} Logged`,
     lede: nextPle
       ? `${nextPle.showName} is ${weeksUntilPle === 0 ? "tonight" : `${weeksUntilPle} week${weeksUntilPle === 1 ? "" : "s"} away`}.`
       : "The season calendar is complete.",
@@ -245,7 +260,7 @@ export function buildCalendarWeekSpotlight(game: GameState, week: CalendarWeek):
     tags.push("Go-Home");
   }
 
-  if (week.weekNumber === 12) {
+  if (week.weekNumber === SEASON_WEEK_COUNT) {
     tags.push("Season Finale");
   }
 

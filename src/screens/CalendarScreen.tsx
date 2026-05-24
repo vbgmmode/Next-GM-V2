@@ -5,9 +5,11 @@ import type { GameScreen } from "../game/migration";
 import { getCurrentCalendarWeek } from "../game/scoring";
 import type { GameState, ShowResult } from "../game/types";
 import "./CalendarScreen.css";
+import { PLE_COUNT } from "../game/constants";
 import {
   buildCalendarRecapStrip,
   buildCalendarWeekSpotlight,
+  getCalendarCycleColumnLabels,
   getCalendarTileColumnLabel,
   getCalendarTileShowName,
   getCalendarWeekStatus,
@@ -31,6 +33,7 @@ export function CalendarScreen({
   const recap = buildCalendarRecapStrip(game, currentShow);
   const completedCount = game.calendar.filter((week) => week.completed).length;
   const calendarBlocks = useMemo(() => getSeasonCalendarBlocks(game.calendar), [game.calendar]);
+  const cycleColumnLabels = useMemo(() => getCalendarCycleColumnLabels(), []);
   const [selectedWeekNumber, setSelectedWeekNumber] = useState(game.currentWeek);
 
   useEffect(() => {
@@ -63,9 +66,9 @@ export function CalendarScreen({
             <div className="calendar-panel-head">
               <div>
                 <p className="eyebrow">Season Calendar</p>
-                <h2>12-Week Broadcast Grid</h2>
+                <h2>{PLE_COUNT}-Cycle Broadcast Grid</h2>
               </div>
-              <strong>{completedCount}/12 Logged</strong>
+              <strong>{completedCount}/{PLE_COUNT} Logged</strong>
             </div>
 
             <div className="calendar-grid-board">
@@ -73,14 +76,13 @@ export function CalendarScreen({
                 <section className="calendar-cycle-block" aria-label={`${block.pleShowName} cycle`} key={block.id}>
                   <header className="calendar-cycle-head">
                     <p className="eyebrow">Build {block.cycleNumber}</p>
-                    <h3>{block.pleShowName}</h3>
+                    <h3 className="calendar-cycle-ple-name">{block.pleShowName}</h3>
                   </header>
 
                   <div className="calendar-cycle-columns" aria-hidden="true">
-                    <span>TV</span>
-                    <span>TV</span>
-                    <span>Go-Home</span>
-                    <span>PLE</span>
+                    {cycleColumnLabels.map((label, columnIndex) => (
+                      <span key={`${block.id}-col-${columnIndex}`}>{label}</span>
+                    ))}
                   </div>
 
                   <div className="calendar-cycle-grid">
