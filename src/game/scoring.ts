@@ -1133,6 +1133,50 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
     return resolveTagTitleMatch(segment, championship, wrestlers, context);
   }
 
+  if (championship.championIds.length === 0) {
+    if (segment.participantIds.length !== 2) {
+      return undefined;
+    }
+
+    const titleDivision = getChampionshipDivisionGroup(championship);
+
+    if (titleDivision && !segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship))) {
+      return undefined;
+    }
+
+    const winner = getSegmentWinner(segment, wrestlers);
+
+    if (!winner) {
+      return undefined;
+    }
+
+    championship.championIds = [winner.id];
+    championship.reignStartWeek = context.weekNumber;
+    championship.defenses = 0;
+    const note =
+      context.showType === "ple"
+        ? `${winner.name} won the vacant ${championship.name} at a major event. The division finally has a center again, and every challenger line starts here.`
+        : `${winner.name} won the vacant ${championship.name}. The belt is no longer open, and the title scene snaps to a new champion immediately.`;
+
+    return {
+      note,
+      event: {
+        id: `s${context.seasonNumber}-w${context.weekNumber}-${segment.id}-${championship.id}-title-change`,
+        championshipId: championship.id,
+        championshipName: championship.name,
+        eventType: "title_change",
+        championIds: [winner.id],
+        previousChampionIds: [],
+        weekNumber: context.weekNumber,
+        seasonNumber: context.seasonNumber,
+        showName: context.showName,
+        showType: context.showType,
+        segmentId: segment.id,
+        note,
+      } satisfies ChampionshipHistoryEvent,
+    };
+  }
+
   if (segment.participantIds.length !== 2 || championship.championIds.length !== 1) {
     return undefined;
   }

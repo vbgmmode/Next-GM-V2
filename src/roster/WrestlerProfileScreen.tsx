@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { isRivalryIntergenderBlocked } from "../booking/bookingUtils";
 import { DynastyManagementShell, type DynastyManagementCta } from "../components/DynastyManagementShell";
+import { DashboardDynastyAlignment } from "../components/dashboardDynasty";
 import { SuperstarPortrait as WrestlerPortrait } from "../components/SuperstarPortrait";
+import { resolveWrestlerAlignment, WRESTLER_ALIGNMENT_OPTIONS } from "../game/wrestlerAlignment";
 import { getWrestlerAffiliations } from "../game/affiliationCatalog";
 import { formatAffiliationKind, getAffiliationMemberNames } from "./rosterDisplayUtils";
 import { getInjuryStatusLabel, getRosterPressureTags, getWeeksSinceLastBooked } from "../game/rosterContextReads";
@@ -37,11 +39,14 @@ export function WrestlerProfileScreen({
   game,
   latestResult,
   onBackToBooking,
+  onBackToDashboard,
   onBackToRoster,
   onNavigate,
+  onSetAlignment,
   returnScreen,
   wrestler,
 }: WrestlerProfileScreenProps) {
+  const currentAlignment = resolveWrestlerAlignment(wrestler.alignment, wrestler.id);
   const pressureTags = getRosterPressureTags(wrestler, game.currentWeek);
   const championships = getWrestlerChampionships(wrestler.id, game.championships);
   const titleSceneRows = getWrestlerTitleSceneRows(wrestler, game);
@@ -102,8 +107,8 @@ export function WrestlerProfileScreen({
 
   const profileCta: DynastyManagementCta = {
     eyebrow: "Talent Profile",
-    label: returnScreen === "booking" ? "Back to Booking" : "Back to Roster",
-    onClick: returnScreen === "booking" ? onBackToBooking : onBackToRoster,
+    label: returnScreen === "booking" ? "Back to Booking" : returnScreen === "dashboard" ? "Back to Dashboard" : "Back to Roster",
+    onClick: returnScreen === "booking" ? onBackToBooking : returnScreen === "dashboard" ? onBackToDashboard : onBackToRoster,
     tone: "brand",
   };
 
@@ -121,6 +126,28 @@ export function WrestlerProfileScreen({
           <div className="roster-profile-hero-body">
             <WrestlerPortrait className="roster-profile-hero-portrait" wrestler={wrestler} />
             <div className="roster-profile-hero-main">
+              <div className="roster-profile-alignment-desk" aria-label="Gimmick side">
+                <span>Side</span>
+                <div className="roster-profile-alignment-options" role="group" aria-label="Alignment">
+                  {WRESTLER_ALIGNMENT_OPTIONS.map((option) => {
+                    const dashboardAlignment =
+                      option === "Face" ? "face" : option === "Heel" ? "heel" : ("neutral" as const);
+
+                    return (
+                      <button
+                        aria-pressed={currentAlignment === option}
+                        className={currentAlignment === option ? "is-active" : ""}
+                        key={option}
+                        onClick={() => onSetAlignment(wrestler.id, option)}
+                        type="button"
+                      >
+                        <DashboardDynastyAlignment alignment={dashboardAlignment} />
+                        <em>{option}</em>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <div className="pressure-tags">
                 {identitySnapshot.labels
                   .filter((label) => {

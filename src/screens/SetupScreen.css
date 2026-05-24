@@ -973,11 +973,16 @@
 }
 
 .setup-dynasty-shell.setup-step-draft .drafted-mini section > span > span strong {
-  font-size: 0.72rem;
+  font-size: 0.62rem;
 }
 
 .setup-dynasty-shell.setup-step-draft .drafted-mini section > span > span small {
-  font-size: 0.54rem;
+  font-size: 0.5rem;
+}
+
+.setup-dynasty-shell.setup-step-draft .drafted-mini .draft-mini-portrait {
+  height: 28px;
+  width: 28px;
 }
 
 .setup-dynasty-shell.setup-step-draft .draft-war-toolbar {

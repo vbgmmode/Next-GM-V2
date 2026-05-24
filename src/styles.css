@@ -11569,20 +11569,23 @@ h3 {
 }
 
 .draft-rival-list article {
-  align-items: center;
+  align-items: start;
   background: rgba(14, 17, 24, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  box-sizing: border-box;
   display: grid;
-  gap: 8px;
+  gap: 7px;
   grid-template-columns: 34px minmax(0, 1fr);
-  min-height: 68px;
-  padding: 8px;
+  min-height: 0;
+  overflow: hidden;
+  padding: 7px 8px;
 }
 
 .draft-rival-card-copy {
   display: grid;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .draft-panel-head {
@@ -12042,14 +12045,27 @@ h3 {
 .draft-update-panel {
   display: grid;
   gap: 6px;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
 }
 
+.draft-update-panel .eyebrow {
+  line-height: 1;
+  margin-bottom: 0;
+}
+
+.draft-update-feed {
+  display: grid;
+  gap: 4px;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
 .draft-update-latest {
   display: grid;
-  flex: 0 0 auto;
   gap: 4px;
 }
 
@@ -12068,9 +12084,6 @@ h3 {
 .draft-update-history {
   display: grid;
   gap: 4px;
-  min-height: 0;
-  overflow: auto;
-  padding-right: 2px;
 }
 
 .draft-update-history-empty {
@@ -12110,10 +12123,14 @@ h3 {
 .draft-rival-list strong,
 .draft-update-panel strong {
   color: #f4f7fb;
+  display: block;
   font-family: var(--font-display);
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .draft-rival-list span,
@@ -12125,11 +12142,15 @@ h3 {
 .draft-update-copy small,
 .draft-update-panel small {
   color: #9ea8ba;
-  font-size: 0.66rem;
+  display: block;
+  font-size: 0.58rem;
   font-style: normal;
   font-weight: 800;
-  line-height: 1.25;
+  line-height: 1.08;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .draft-update-copy small {
@@ -12206,12 +12227,23 @@ h3 {
   background: #ff5361;
 }
 
+.draft-bottom-panel.drafted-mini {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
 .draft-bottom-panel.up-next div,
 .drafted-mini section {
   display: grid;
-  gap: 5px;
+  gap: 4px;
   min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.drafted-mini .eyebrow {
+  line-height: 1;
+  margin-bottom: 0;
 }
 
 .draft-bottom-panel.up-next div span {
@@ -12240,48 +12272,50 @@ h3 {
 }
 
 .drafted-mini section > span {
+  align-items: center;
   background: rgba(14, 17, 24, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  min-height: 0;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  min-height: 36px;
   overflow: hidden;
   padding: 4px 6px;
 }
 
-.drafted-mini section > span {
-  align-items: center;
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  max-height: 42px;
-}
-
 .drafted-mini section > span > span {
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
   overflow: hidden;
 }
 
 .drafted-mini section > span > span strong {
   display: block;
-  font-size: 0.78rem;
-  line-height: 1;
+  font-family: var(--font-ui);
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.05;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .drafted-mini section > span > span small {
   display: block;
-  font-size: 0.56rem;
+  font-size: 0.52rem;
+  font-weight: 800;
   line-height: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .drafted-mini .draft-mini-portrait {
   flex-shrink: 0;
-  height: 34px;
-  width: 34px;
+  height: 30px;
+  width: 30px;
 }
 
 .drafted-mini > div {

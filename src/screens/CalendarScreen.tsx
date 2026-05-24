@@ -161,12 +161,15 @@ export function CalendarScreen({
                 </div>
                 <div className="calendar-segment-table">
                   {spotlight.segmentRows.map((segment) => (
-                    <article className="calendar-segment-row" key={segment.id}>
-                      <div>
+                    <article className={segment.isTitleMatch ? "calendar-segment-row is-title-match" : "calendar-segment-row"} key={segment.id}>
+                      <div className="calendar-segment-row-copy">
                         <span>{segment.label}</span>
-                        <strong>{segment.participants}</strong>
+                        <strong className={segment.outcome ? "is-outcome" : undefined}>{segment.outcome ?? segment.participants}</strong>
                       </div>
-                      <b>{spotlight.score !== undefined ? segment.score : "—"}</b>
+                      <div className="calendar-segment-row-score">
+                        <span>Score</span>
+                        <b>{spotlight.score !== undefined ? segment.score : "—"}</b>
+                      </div>
                     </article>
                   ))}
                 </div>

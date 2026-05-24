@@ -18,6 +18,7 @@ import { getTitleCatalogEntriesForBrand } from "./titleCatalog";
 import { applyRivalryCatalogDefaults, getDefaultStorylineIdForStakes, getRivalryStoryline } from "./rivalryCatalog";
 import { top200DraftPool } from "./top200DraftPool";
 import { enrichWrestlerIdentityContext } from "./wrestlerIdentityContext";
+import { resolveWrestlerAlignment } from "./wrestlerAlignment";
 import { getRosterFinanceValueForWrestler } from "./financeCatalog";
 import { allocateCpuDraftRosters } from "./cpuRivalLoop";
 import { createDefaultMarketState, ensureWeeklyMarketBoard, getCpuBudgetDefault } from "./market";
@@ -155,6 +156,7 @@ function cloneWrestlers(wrestlers: SeedWrestler[]) {
   return wrestlers.map((wrestler) => ({
     ...wrestler,
     ...enrichWrestlerIdentityContext(wrestler),
+    alignment: resolveWrestlerAlignment(wrestler.alignment, wrestler.id),
     appearancesThisSeason: wrestler.appearancesThisSeason ?? 0,
     lastBookedWeek: wrestler.lastBookedWeek ?? 0,
     consecutiveWeeksBooked: wrestler.consecutiveWeeksBooked ?? 0,

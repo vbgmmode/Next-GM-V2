@@ -10,6 +10,7 @@ import { formatRivalryEventType, getRivalryHistory } from "../game/storyContextR
 import type { GameState, RivalryStakes, RivalryStructure, ShowResult } from "../game/types";
 import "./RivalriesScreen.css";
 import {
+  buildRivalryFeudSuggestions,
   buildRivalryGmRead,
   formatHistoryStamp,
   formatRivalryStakes,
@@ -28,6 +29,7 @@ import {
   hasDuplicateRivalry,
   isRivalryIntergenderBlocked,
   isRivalryOnClock,
+  type RivalryFeudSuggestion,
 } from "./rivalriesScreenReads";
 
 export type RivalryCreateInput = {
@@ -75,6 +77,7 @@ function renderFeudRow({
 
 export function RivalriesScreen({
   game,
+  initialSelectedRivalryId,
   latestResult,
   onBookRivalry,
   onCreateRivalry,
@@ -82,6 +85,7 @@ export function RivalriesScreen({
   onNavigate,
 }: {
   game: GameState;
+  initialSelectedRivalryId?: string;
   latestResult?: ShowResult;
   onBookRivalry: (rivalryId: string) => void;
   onCreateRivalry: (input: RivalryCreateInput) => void;
@@ -91,7 +95,7 @@ export function RivalriesScreen({
   const rivalrySnapshots = useMemo(() => getRivalryTimingSnapshots(game), [game]);
   const onClockEntries = useMemo(() => rivalrySnapshots.filter(({ rivalry, snapshot }) => isRivalryOnClock(rivalry, snapshot)), [rivalrySnapshots]);
   const onClockIds = useMemo(() => new Set(onClockEntries.map(({ rivalry }) => rivalry.id)), [onClockEntries]);
-  const [selectedRivalryId, setSelectedRivalryId] = useState("");
+  const [selectedRivalryId, setSelectedRivalryId] = useState(initialSelectedRivalryId ?? "");
   const [structure, setStructure] = useState<RivalryStructure>("singles");
   const [participantIds, setParticipantIds] = useState<string[]>(() => getDefaultRivalryComposerParticipantIds(game.wrestlers));
   const [stakes, setStakes] = useState<RivalryStakes>("personal");
@@ -118,6 +122,13 @@ export function RivalriesScreen({
   const selectedBlocked = selectedRivalry ? isRivalryIntergenderBlocked(selectedRivalry, game.wrestlers) : false;
   const selectedGmRead = selectedRivalry ? buildRivalryGmRead(game, selectedRivalry, currentWeek.isGoHome, currentWeek.showType === "ple") : "";
   const wallEntries = rivalrySnapshots.filter(({ rivalry }) => !onClockIds.has(rivalry.id));
+  const feudSuggestions = useMemo(() => buildRivalryFeudSuggestions(game), [game]);
+
+  useEffect(() => {
+    if (initialSelectedRivalryId && game.rivalries.some((rivalry) => rivalry.id === initialSelectedRivalryId)) {
+      setSelectedRivalryId(initialSelectedRivalryId);
+    }
+  }, [game.rivalries, initialSelectedRivalryId]);
 
   useEffect(() => {
     if (!game.rivalries.length) {
@@ -158,6 +169,13 @@ export function RivalriesScreen({
     }
 
     onCreateRivalry({ participantIds: composerParticipantIds, structure, stakes, storylineId });
+  }
+
+  function applyFeudSuggestion(suggestion: RivalryFeudSuggestion) {
+    setStructure(suggestion.structure);
+    setParticipantIds([...suggestion.participantIds, "", "", "", ""].slice(0, 4));
+    setStakes(suggestion.stakes);
+    setStorylineId(suggestion.storylineId);
   }
 
   function handleSelectRivalry(rivalryId: string) {
@@ -236,7 +254,14 @@ export function RivalriesScreen({
                 <p className="eyebrow">Spark Desk</p>
                 <h2>Start The Spark</h2>
               </div>
-              <strong>+ New Feud</strong>
+              <button
+                className="rivalry-panel-action"
+                disabled={!feudSuggestions.length}
+                onClick={() => feudSuggestions[0] && applyFeudSuggestion(feudSuggestions[0])}
+                type="button"
+              >
+                + New Feud
+              </button>
             </div>
             <div className="rivalry-mode-toggle" aria-label="Rivalry structure">
               {(["singles", "tag_team", "multi_person"] as RivalryStructure[]).map((option) => (
@@ -244,6 +269,27 @@ export function RivalriesScreen({
                   {formatRivalryStructure(option)}
                 </button>
               ))}
+            </div>
+            <div className="rivalry-feud-suggestions" aria-label="Suggested feuds">
+              <div className="rivalry-feud-suggestions-head">
+                <p className="eyebrow">Suggest Feuds</p>
+                <span>{feudSuggestions.length} ready</span>
+              </div>
+              <div className="rivalry-feud-suggestion-list">
+                {feudSuggestions.length ? (
+                  feudSuggestions.map((suggestion) => (
+                    <button className="rivalry-feud-suggestion" key={suggestion.id} onClick={() => applyFeudSuggestion(suggestion)} type="button">
+                      <strong title={suggestion.headline}>{suggestion.headline}</strong>
+                      <small>
+                        {formatRivalryStructure(suggestion.structure)} · {formatRivalryStakes(suggestion.stakes)}
+                      </small>
+                      <p>{suggestion.reason}</p>
+                    </button>
+                  ))
+                ) : (
+                  <p className="muted-copy">No clean feud lanes left on the roster board.</p>
+                )}
+              </div>
             </div>
             <div className="rivalry-composer-body">
               <div className="rivalry-composer-selects">
@@ -491,9 +537,9 @@ export function RivalriesScreen({
                         <p className="rivalry-story-files-read">
                           <strong>GM Read:</strong> {selectedBlocked ? "Invalid pairing under current booking rules." : selectedGmRead}
                         </p>
-                        <div className="history-list rivalry-history-scroll">
+                        <div className="history-list rivalry-history-scroll" aria-label="Rivalry history">
                           {selectedHistory.length ? (
-                            selectedHistory.slice(0, 3).map((event) => (
+                            selectedHistory.map((event) => (
                               <article className="history-event" key={event.id}>
                                 <span>
                                   {formatRivalryEventType(event.eventType)} · {formatHistoryStamp(event)}

@@ -1,6 +1,7 @@
 import { getBestSegment, getShowGrade, isValidSegment } from "../game/scoring";
 import { formatMoney } from "../game/formatters";
 import type { CalendarWeek, GameState, ShowResult, ShowType } from "../game/types";
+import { getSegmentOutcomeHeadline } from "./resultsScreenReads";
 
 export type CalendarWeekStatus = "completed" | "current" | "upcoming";
 
@@ -12,9 +13,11 @@ export type CalendarWeekMetric = {
 
 export type CalendarWeekSegmentRow = {
   id: string;
+  isTitleMatch?: boolean;
   label: string;
   score: number;
   participants: string;
+  outcome?: string;
 };
 
 export type CalendarWeekCpuRow = {
@@ -197,16 +200,33 @@ export function getCpuRaceForWeek(game: GameState, seasonNumber: number, weekNum
   return rows.sort((left, right) => right.score - left.score);
 }
 
+function isTitleSegment(segment: { championshipId?: string; titleNote?: string }) {
+  return Boolean(segment.championshipId || segment.titleNote);
+}
+
+function getSegmentRowLabel(type: string, isTitleMatch: boolean) {
+  if (isTitleMatch) {
+    return "Title Match";
+  }
+
+  return getSegmentTypeLabel(type);
+}
+
 function getSegmentTypeLabel(type: string) {
   switch (type) {
+    case "Match":
     case "match":
       return "Match";
+    case "Promo":
     case "promo":
       return "Promo";
+    case "Backstage Angle":
     case "backstage":
       return "Backstage";
+    case "Contract Signing":
     case "contract_signing":
       return "Contract";
+    case "Open Challenge":
     case "open_challenge":
       return "Open Challenge";
     default:
@@ -257,12 +277,18 @@ export function buildCalendarWeekSpotlight(game: GameState, week: CalendarWeek):
     const segmentRows = [...result.segmentResults]
       .sort((left, right) => right.score - left.score)
       .slice(0, 4)
-      .map((segment) => ({
-        id: segment.segmentId,
-        label: getSegmentTypeLabel(segment.type),
-        score: segment.score,
-        participants: segment.participantNames.join(" / ") || "No participants",
-      }));
+      .map((segment) => {
+        const titleMatch = isTitleSegment(segment);
+
+        return {
+          id: segment.segmentId,
+          isTitleMatch: titleMatch,
+          label: getSegmentRowLabel(segment.type, titleMatch),
+          score: segment.score,
+          participants: segment.participantNames.join(" / ") || "No participants",
+          outcome: getSegmentOutcomeHeadline(segment, game.wrestlers),
+        };
+      });
 
     const notes = [...result.titleNotes, ...result.rivalryNotes].slice(0, 4);
 
@@ -319,16 +345,21 @@ export function buildCalendarWeekSpotlight(game: GameState, week: CalendarWeek):
           detail: "Run Show to lock score, grade, and business stats",
         },
       ],
-      segmentRows: validSegments.slice(0, 4).map((segment, index) => ({
-        id: segment.id || `current-segment-${index}`,
-        label: getSegmentTypeLabel(segment.type),
-        score: 0,
-        participants:
-          segment.participantIds
-            .map((id) => game.wrestlers.find((wrestler) => wrestler.id === id)?.name)
-            .filter((name): name is string => Boolean(name))
-            .join(" / ") || "TBD",
-      })),
+      segmentRows: validSegments.slice(0, 4).map((segment, index) => {
+        const titleMatch = isTitleSegment(segment);
+
+        return {
+          id: segment.id || `current-segment-${index}`,
+          isTitleMatch: titleMatch,
+          label: getSegmentRowLabel(segment.type, titleMatch),
+          score: 0,
+          participants:
+            segment.participantIds
+              .map((id) => game.wrestlers.find((wrestler) => wrestler.id === id)?.name)
+              .filter((name): name is string => Boolean(name))
+              .join(" / ") || "TBD",
+        };
+      }),
       notes: [],
       cpuRace: [],
     };

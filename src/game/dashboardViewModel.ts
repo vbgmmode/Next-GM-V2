@@ -3,10 +3,11 @@ import { getFinancePressureLabel } from "./finance";
 import { getRosterFinanceValueForWrestler } from "./financeCatalog";
 import { formatMoney } from "./formatters";
 import { getWeeklyDecisionPressureSnapshot } from "./gameContextReads";
-import { getAvailableFreeAgents } from "./market";
+import { getAvailableFreeAgents, getContractForWrestler } from "./market";
 import type { GameScreen } from "./migration";
 import { getRosterPressureTags } from "./rosterContextReads";
 import { draftPool } from "./seed";
+import { resolveWrestlerAlignment } from "./wrestlerAlignment";
 import { getCurrentCalendarWeek, getShowGrade, isValidSegment } from "./scoring";
 import type { GameState, Segment, ShowResult, Wrestler } from "./types";
 
@@ -103,22 +104,18 @@ function getLatestFinanceReport(game: GameState) {
   return game.financeReports[game.financeReports.length - 1];
 }
 
-function mapAlignment(alignment?: string): DashboardAlignmentLevel {
-  const normalized = alignment?.trim().toLowerCase();
+function mapAlignment(alignment: string | undefined, wrestlerId: string): DashboardAlignmentLevel {
+  const resolved = resolveWrestlerAlignment(alignment, wrestlerId);
 
-  if (normalized === "face" || normalized === "babyface") {
+  if (resolved === "Face") {
     return "face";
   }
 
-  if (normalized === "heel") {
+  if (resolved === "Heel") {
     return "heel";
   }
 
-  if (normalized === "tweener" || normalized === "neutral") {
-    return "neutral";
-  }
-
-  return "unknown";
+  return "neutral";
 }
 
 function mapMorale(morale: number): DashboardMoraleLevel {
@@ -280,9 +277,10 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
 
   const roster = sortedRoster.map((wrestler, index) => {
     const finance = getRosterFinanceValueForWrestler(wrestler);
+    const contract = getContractForWrestler(game, wrestler.id);
 
     return {
-      contract: finance ? `${finance.midseasonDefaultContractWeeks ?? 12}W` : "-",
+      contract: contract ? `${contract.contractWeeksRemaining}W` : "-",
       cost: finance ? formatShortMoney(finance.weeklyHireRateUsd) : "-",
       id: wrestler.id,
       morale: mapMorale(wrestler.morale),
@@ -292,7 +290,7 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
       pop: wrestler.popularity,
       popDelta: rosterDeltas.getPopDelta(wrestler.id),
       rank: index + 1,
-      alignment: mapAlignment(wrestler.alignment),
+      alignment: mapAlignment(wrestler.alignment, wrestler.id),
       selected: index === 0,
       stamina: Math.max(0, 100 - wrestler.fatigue),
       staminaDelta: rosterDeltas.getStaminaDelta(wrestler.id),

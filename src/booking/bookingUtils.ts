@@ -544,8 +544,26 @@ export function getWrestlerNames(ids: string[], wrestlers: Wrestler[]) {
   return ids.map((id) => wrestlers.find((wrestler) => wrestler.id === id)?.name ?? "Unknown").join(" / ");
 }
 
+export function isSinglesTitleChampionship(championship: Championship) {
+  return championship.eligibleMatchScope !== "tag_team" && championship.division !== "Tag Team";
+}
+
 export function isSinglesChampionship(championship: Championship) {
-  return championship.eligibleMatchScope !== "tag_team" && championship.division !== "Tag Team" && championship.championIds.length === 1;
+  return isSinglesTitleChampionship(championship) && championship.championIds.length === 1;
+}
+
+export function isVacantSinglesChampionship(championship: Championship) {
+  return isSinglesTitleChampionship(championship) && championship.championIds.length === 0;
+}
+
+function canSegmentContestVacantSinglesChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[] = []) {
+  return (
+    segment.type === "Match" &&
+    isValidSegment(segment, wrestlers) &&
+    segment.participantIds.length === 2 &&
+    isVacantSinglesChampionship(championship) &&
+    doSegmentParticipantsFitChampionship(segment, championship, wrestlers)
+  );
 }
 
 export function isTagChampionship(championship: Championship) {
@@ -586,6 +604,10 @@ export function getTagTitleSides(segment: Segment, championship: Championship) {
 export function canSegmentContestChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[] = []) {
   if (isTagChampionship(championship)) {
     return Boolean(isValidSegment(segment, wrestlers) && getTagTitleSides(segment, championship));
+  }
+
+  if (canSegmentContestVacantSinglesChampionship(segment, championship, wrestlers)) {
+    return true;
   }
 
   return (

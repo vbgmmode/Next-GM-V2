@@ -1,4 +1,5 @@
 import type { GameScreen } from "../game/migration";
+import type { WrestlerAlignment } from "../game/wrestlerAlignment";
 import type { GameState, ShowResult, Wrestler } from "../game/types";
 import type { ProfileReturnScreen } from "../game/migration";
 
@@ -58,8 +59,10 @@ export type WrestlerProfileScreenProps = {
   game: GameState;
   latestResult?: ShowResult;
   onBackToBooking: () => void;
+  onBackToDashboard: () => void;
   onBackToRoster: () => void;
   onNavigate: (screen: GameScreen) => void;
+  onSetAlignment: (wrestlerId: string, alignment: WrestlerAlignment) => void;
   returnScreen: ProfileReturnScreen;
   wrestler: Wrestler;
 };

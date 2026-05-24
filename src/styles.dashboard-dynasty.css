@@ -495,6 +495,14 @@
 
 .dashboard-dynasty-brand-status {
   flex: 0 0 188px;
+  gap: 0;
+  justify-content: space-between;
+  padding-block: 8px;
+}
+
+.dashboard-dynasty-brand-status .dashboard-dynasty-kicker {
+  font-size: 0.72rem;
+  margin-bottom: 2px;
 }
 
 .dashboard-dynasty-brand-plate {
@@ -504,33 +512,46 @@
   color: var(--dashboard-dynasty-gold);
   display: flex;
   font-family: var(--font-display);
-  font-size: 1.8rem;
+  font-size: 1.35rem;
   font-weight: 900;
-  height: 52px;
+  height: 40px;
   justify-content: center;
-  margin: 8px 0 10px;
+  margin: 4px 0 6px;
   width: 100%;
 }
 
 .dashboard-dynasty-brand-rating {
   align-items: baseline;
   display: flex;
-  gap: 10px;
+  gap: 8px;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   min-width: 0;
 }
 
 .dashboard-dynasty-brand-rating span {
   color: var(--dashboard-dynasty-muted);
   flex: 0 0 auto;
-  font-size: 0.67rem;
+  font-size: 0.62rem;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .dashboard-dynasty-brand-rating strong {
-  font-size: 2rem;
+  flex: 1 1 auto;
+  font-size: clamp(0.78rem, 1.4vw, 1rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  min-width: 0;
+  text-align: right;
+}
+
+.dashboard-dynasty-brand-status .dashboard-dynasty-mini-stat-grid div {
+  padding: 4px 6px;
+}
+
+.dashboard-dynasty-brand-status .dashboard-dynasty-mini-stat-grid strong {
+  font-size: 0.68rem;
 }
 
 .dashboard-dynasty-mini-stat-grid,
@@ -545,13 +566,34 @@
   margin-bottom: 8px;
 }
 
+.dashboard-dynasty-metrics {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dashboard-dynasty-metrics .dashboard-dynasty-section-heading {
+  margin-bottom: 6px;
+  padding-bottom: 5px;
+}
+
 .dashboard-dynasty-metrics .dashboard-dynasty-metric-grid {
   flex: 0 0 auto;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.dashboard-dynasty-metrics .dashboard-dynasty-metric-grid div {
+  padding: 4px 6px;
+}
+
+.dashboard-dynasty-metrics .dashboard-dynasty-metric-grid strong {
+  font-size: 0.72rem;
 }
 
 .dashboard-dynasty-chart-shell {
   flex: 1 1 auto;
-  min-height: 92px;
+  max-height: 56px;
+  min-height: 0;
   min-width: 0;
   width: 100%;
 }
@@ -559,7 +601,8 @@
 .dashboard-dynasty-chart {
   display: block;
   height: 100%;
-  min-height: 92px;
+  max-height: 56px;
+  min-height: 0;
   width: 100%;
 }
 
@@ -610,6 +653,20 @@
 
 .dashboard-dynasty-goals {
   flex: 0 0 188px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dashboard-dynasty-goals .dashboard-dynasty-section-heading {
+  margin-bottom: 6px;
+  padding-bottom: 5px;
+}
+
+.dashboard-dynasty-goal-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0;
 }
 
 .dashboard-dynasty-champion-list,
@@ -625,6 +682,7 @@
 }
 
 .dashboard-dynasty-champion-list,
+.dashboard-dynasty-goal-list,
 .dashboard-dynasty-show-card-list,
 .dashboard-dynasty-rivalry-list,
 .dashboard-dynasty-alert-list,
@@ -681,38 +739,57 @@
 .dashboard-dynasty-goal-row {
   border-bottom: 1px solid var(--dashboard-dynasty-border);
   display: grid;
-  gap: 4px;
+  flex: 0 0 auto;
+  gap: 3px;
   min-width: 0;
-  padding: 6px 0;
+  padding: 4px 0;
   text-transform: uppercase;
 }
 
 .dashboard-dynasty-goal-top {
-  align-items: center;
+  align-items: start;
   display: grid;
-  gap: 7px;
-  grid-template-columns: 22px minmax(0, 1fr) 54px;
+  gap: 5px;
+  grid-template-columns: 20px minmax(0, 1fr);
+  grid-template-rows: auto auto;
   min-width: 0;
 }
 
 .dashboard-dynasty-goal-top span {
   color: var(--dashboard-dynasty-hot);
-  font-size: 0.58rem;
+  font-size: 0.56rem;
   font-weight: 900;
+  grid-column: 1;
+  grid-row: 1;
+  line-height: 1.2;
 }
 
 .dashboard-dynasty-goal-top strong {
   color: var(--dashboard-dynasty-text);
-  font-size: 0.62rem;
+  display: -webkit-box;
+  font-size: 0.58rem;
   font-weight: 900;
+  grid-column: 2;
+  grid-row: 1;
+  line-height: 1.15;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
 }
 
 .dashboard-dynasty-goal-top em {
   color: var(--dashboard-dynasty-soft);
-  font-size: 0.6rem;
+  display: -webkit-box;
+  font-size: 0.54rem;
   font-style: normal;
   font-weight: 900;
-  text-align: right;
+  grid-column: 2;
+  grid-row: 2;
+  line-height: 1.2;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  text-align: left;
+  white-space: normal;
 }
 
 .dashboard-dynasty-goal-row.is-complete .dashboard-dynasty-goal-top span,
@@ -723,7 +800,8 @@
 .dashboard-dynasty-progress {
   background: rgba(255, 255, 255, 0.08);
   height: 4px;
-  margin-left: 29px;
+  margin-left: 0;
+  width: 100%;
 }
 
 .dashboard-dynasty-progress span {
@@ -785,6 +863,15 @@
 .dashboard-dynasty-roster-row.is-selected {
   background: rgba(255, 255, 255, 0.045);
   box-shadow: inset 3px 0 0 var(--dashboard-dynasty-hot);
+}
+
+.dashboard-dynasty-roster-row.is-clickable {
+  cursor: pointer;
+}
+
+.dashboard-dynasty-roster-row.is-clickable:focus-visible {
+  outline: 2px solid rgba(var(--dashboard-dynasty-accent-rgb), 0.72);
+  outline-offset: -2px;
 }
 
 .dashboard-dynasty-roster-row > * {
@@ -1075,6 +1162,21 @@
   padding: 7px;
 }
 
+.dashboard-dynasty-rivalry-row.is-clickable {
+  cursor: pointer;
+}
+
+.dashboard-dynasty-rivalry-row.is-clickable:hover {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(var(--dashboard-dynasty-accent-rgb), 0.28);
+  box-shadow: inset 3px 0 0 var(--dashboard-dynasty-hot);
+}
+
+.dashboard-dynasty-rivalry-row.is-clickable:focus-visible {
+  outline: 2px solid rgba(var(--dashboard-dynasty-accent-rgb), 0.72);
+  outline-offset: -2px;
+}
+
 .dashboard-dynasty-rivalry-matchup {
   align-items: center;
   display: grid;
@@ -1128,11 +1230,31 @@
   box-shadow: 0 0 8px rgba(var(--dashboard-dynasty-accent-rgb), 0.55);
 }
 
+.dashboard-dynasty-alerts {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dashboard-dynasty-alerts .dashboard-dynasty-section-heading {
+  margin-bottom: 6px;
+  padding-bottom: 5px;
+}
+
 .dashboard-dynasty-alert {
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(255, 255, 255, 0.07);
-  grid-template-columns: 28px minmax(0, 1fr);
-  padding: 7px;
+  flex: 0 0 auto;
+  grid-template-columns: 24px minmax(0, 1fr);
+  padding: 5px 6px;
+}
+
+.dashboard-dynasty-alert strong {
+  display: -webkit-box;
+  font-size: 0.6rem;
+  line-height: 1.15;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
 }
 
 .dashboard-dynasty-alert span {
@@ -1326,7 +1448,7 @@
 
 .dashboard-dynasty-chart-label {
   fill: var(--dashboard-dynasty-muted);
-  font-size: 10px;
+  font-size: 8px;
   font-weight: 800;
 }
 

@@ -1,5 +1,6 @@
 import { formatWeekCount } from "../booking/bookingUtils";
 import { getWrestlerIdentityContext } from "../game/wrestlerIdentityContext";
+import { resolveWrestlerAlignment } from "../game/wrestlerAlignment";
 import {
   getRosterPressureTags,
   getWeeksSinceLastBooked,
@@ -75,8 +76,7 @@ export function getMoraleTone(morale: number) {
 }
 
 export function getRosterAlignmentLabel(wrestler: Wrestler) {
-  const alignment = wrestler.alignment?.trim();
-  return alignment && alignment.toLowerCase() !== "unknown" ? alignment : "Alignment TBD";
+  return resolveWrestlerAlignment(wrestler.alignment, wrestler.id);
 }
 
 function getChampionshipAcronym(championshipName: string) {

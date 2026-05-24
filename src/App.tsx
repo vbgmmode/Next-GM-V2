@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { CommandPanel, HeroDecisionPanel, MetricTile, getBroadcastTheme } from "./components/broadcast";
 import { GameNav, Header, Metric } from "./components/gameShell";
 import { DynastyManagementShell, type DynastyManagementCta } from "./components/DynastyManagementShell";
@@ -1695,6 +1695,28 @@ function getDraftProspectNameClass(name: string) {
   }
 
   return "";
+}
+
+function getDraftRosterGenderCounts(roster: Wrestler[]) {
+  return roster.reduce(
+    (counts, wrestler) => {
+      const group = getWrestlerDivisionGroup(wrestler);
+
+      if (group === "mens") {
+        counts.men += 1;
+      } else if (group === "womens") {
+        counts.women += 1;
+      }
+
+      return counts;
+    },
+    { men: 0, women: 0 },
+  );
+}
+
+function formatDraftGenderReadout(roster: Wrestler[]) {
+  const { men, women } = getDraftRosterGenderCounts(roster);
+  return `${men} men · ${women} women`;
 }
 
 function getDraftValueCounts(wrestlers: Wrestler[], getValue: (wrestler: Wrestler) => string | undefined) {
@@ -4247,6 +4269,7 @@ function App() {
   const [profileWrestlerId, setProfileWrestlerId] = useState<string | undefined>(qaHarnessState?.profileWrestlerId);
   const [profileReturnScreen, setProfileReturnScreen] = useState<ProfileReturnScreen>(qaHarnessState?.profileReturnScreen ?? "roster");
   const [bookingFocusSegmentId, setBookingFocusSegmentId] = useState<string | undefined>();
+  const [rivalriesFocusId, setRivalriesFocusId] = useState<string | undefined>();
   const latestResult = game?.showHistory[game.showHistory.length - 1];
   const hasCurrentWeekReview = latestResult ? latestResult.week === game?.currentWeek : false;
   const recentCareer = getMostRecentCareer(careerSaves);
@@ -4407,7 +4430,18 @@ function App() {
     persistGameSnapshot(game, nextScreen);
     setProfileWrestlerId(undefined);
     setProfileReturnScreen(nextScreen === "booking" ? "booking" : "roster");
+    setRivalriesFocusId(undefined);
     setScreen(nextScreen);
+  }
+
+  function openRivalryDesk(rivalryId: string) {
+    if (!game || !game.rivalries.some((rivalry) => rivalry.id === rivalryId)) {
+      return;
+    }
+
+    persistGameSnapshot(game, "rivalries");
+    setRivalriesFocusId(rivalryId);
+    setScreen("rivalries");
   }
 
   function openWrestlerProfile(wrestlerId: string, returnScreen: ProfileReturnScreen) {
@@ -5132,6 +5166,22 @@ function App() {
     });
   }
 
+  function setWrestlerAlignment(wrestlerId: string, alignment: import("./game/wrestlerAlignment").WrestlerAlignment) {
+    setGame((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const updatedGame = {
+        ...current,
+        wrestlers: current.wrestlers.map((wrestler) => (wrestler.id === wrestlerId ? { ...wrestler, alignment } : wrestler)),
+      };
+
+      persistGameSnapshot(updatedGame, "roster");
+      return updatedGame;
+    });
+  }
+
   function renewContract(wrestlerId: string, contractWeeks: number) {
     setGame((current) => {
       if (!current) {
@@ -5331,8 +5381,10 @@ function App() {
         game={game}
         latestResult={latestResult}
         onBackToBooking={() => closeWrestlerProfile("booking")}
+        onBackToDashboard={() => closeWrestlerProfile("dashboard")}
         onBackToRoster={() => closeWrestlerProfile("roster")}
         onNavigate={navigateTo}
+        onSetAlignment={setWrestlerAlignment}
         returnScreen={profileReturnScreen}
         wrestler={profileWrestler}
       />
@@ -5366,6 +5418,7 @@ function App() {
     return (
       <RivalriesScreen
         game={game}
+        initialSelectedRivalryId={rivalriesFocusId}
         latestResult={latestResult}
         onBookRivalry={bookRivalryStory}
         onCreateRivalry={createRivalry}
@@ -5412,6 +5465,8 @@ function App() {
       game={game}
       latestResult={latestResult}
       onNavigate={navigateTo}
+      onOpenProfile={(wrestlerId) => openWrestlerProfile(wrestlerId, "dashboard")}
+      onOpenRivalry={openRivalryDesk}
     />
   );
 }
@@ -6216,6 +6271,7 @@ function NewGameSetupScreen({
                       const roster = openingDraftState.rostersByChairId[brand.id] ?? [];
                       const latestPick = roster[roster.length - 1];
                       const brandPortraitSrc = getBrandChairByStyle(brand.brandKey).portraitSrc;
+                      const genderReadout = formatDraftGenderReadout(roster);
 
                       return (
                         <article key={brand.id}>
@@ -6227,10 +6283,12 @@ function NewGameSetupScreen({
                             <span>{brand.assignedGMName}</span>
                             <small>
                               {latestPick
-                                ? `Latest · ${latestPick.name} · ${roster.length} claimed`
-                                : `${roster.length} claimed`}
+                                ? `Latest · ${latestPick.name} · ${roster.length} drafted`
+                                : `${roster.length} drafted`}
                             </small>
-                            <em>{formatMoney(openingDraftState.remainingBudgetByChairId[brand.id] ?? brand.budget)} left</em>
+                            <small>
+                              {genderReadout} · {formatMoney(openingDraftState.remainingBudgetByChairId[brand.id] ?? brand.budget)} left
+                            </small>
                           </div>
                         </article>
                       );
@@ -6239,49 +6297,51 @@ function NewGameSetupScreen({
                 </section>
                 <div className="draft-update-panel">
                   <p className="eyebrow">War Room Updates</p>
-                  <div className="draft-update-latest">
-                    {rivalLatestPicks.map(({ brand, latestPick, pickCount }) => {
-                      const brandPortraitSrc = getBrandChairByStyle(brand.brandKey).portraitSrc;
+                  <div className="draft-update-feed">
+                    <div className="draft-update-latest">
+                      {rivalLatestPicks.map(({ brand, latestPick, pickCount }) => {
+                        const brandPortraitSrc = getBrandChairByStyle(brand.brandKey).portraitSrc;
 
-                      return (
-                      <div className="draft-update-brand-row" key={brand.id}>
-                        {latestPick ? (
-                          <WrestlerPortrait className="draft-mini-portrait" wrestler={latestPick} />
-                        ) : (
-                          <span aria-hidden="true" className="draft-brand-mini-portrait">
-                            <img alt="" draggable={false} src={brandPortraitSrc} />
-                          </span>
-                        )}
-                        <span className="draft-update-copy">
-                          <strong>{brand.brandName}</strong>
-                          <small>
-                            {latestPick
-                              ? `Latest · ${latestPick.name} · ${pickCount} claimed`
-                              : "Waiting on your first pick"}
-                          </small>
-                        </span>
-                      </div>
-                      );
-                    })}
-                  </div>
-                  <div className="draft-update-history" aria-label="Previous rival picks">
-                    {rivalPickHistory.length ? (
-                      rivalPickHistory.map((event) => (
-                        <span className="draft-update-history-row" key={`${event.overallPick}-${event.wrestler.id}`}>
-                          <WrestlerPortrait className="draft-mini-portrait" wrestler={event.wrestler} />
+                        return (
+                        <div className="draft-update-brand-row" key={brand.id}>
+                          {latestPick ? (
+                            <WrestlerPortrait className="draft-mini-portrait" wrestler={latestPick} />
+                          ) : (
+                            <span aria-hidden="true" className="draft-brand-mini-portrait">
+                              <img alt="" draggable={false} src={brandPortraitSrc} />
+                            </span>
+                          )}
                           <span className="draft-update-copy">
-                            <strong>{event.chair.brandName}</strong>
+                            <strong>{brand.brandName}</strong>
                             <small>
-                              Pick {event.overallPick} · {event.wrestler.name}
+                              {latestPick
+                                ? `Latest · ${latestPick.name} · ${pickCount} drafted`
+                                : "Waiting on your first pick"}
                             </small>
                           </span>
+                        </div>
+                        );
+                      })}
+                    </div>
+                    <div className="draft-update-history" aria-label="Previous rival picks">
+                      {rivalPickHistory.length ? (
+                        rivalPickHistory.map((event) => (
+                          <span className="draft-update-history-row" key={`${event.overallPick}-${event.wrestler.id}`}>
+                            <WrestlerPortrait className="draft-mini-portrait" wrestler={event.wrestler} />
+                            <span className="draft-update-copy">
+                              <strong>{event.chair.brandName}</strong>
+                              <small>
+                                Pick {event.overallPick} · {event.wrestler.name}
+                              </small>
+                            </span>
+                          </span>
+                        ))
+                      ) : (
+                        <span className="draft-update-history-empty">
+                          <small>No earlier rival picks yet.</small>
                         </span>
-                      ))
-                    ) : (
-                      <span className="draft-update-history-empty">
-                        <small>No earlier rival picks yet.</small>
-                      </span>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               </aside>
@@ -6318,7 +6378,9 @@ function NewGameSetupScreen({
                 </div>
               </article>
               <article className="draft-bottom-panel drafted-mini">
-                <p className="eyebrow">Drafted · {draftedWrestlers.length}</p>
+                <p className="eyebrow">
+                  Drafted · {draftedWrestlers.length} · {formatDraftGenderReadout(draftedWrestlers)}
+                </p>
                 <section>
                   {draftedWrestlers.length ? (
                     draftedWrestlers.map((wrestler, index) => (
@@ -6732,10 +6794,14 @@ function DashboardScreen({
   game,
   latestResult,
   onNavigate,
+  onOpenProfile,
+  onOpenRivalry,
 }: {
   game: GameState;
   latestResult?: ShowResult;
   onNavigate: (screen: GameScreen) => void;
+  onOpenProfile: (wrestlerId: string) => void;
+  onOpenRivalry: (rivalryId: string) => void;
 }) {
   const model = buildDashboardViewModel(game, latestResult);
   const chartRangeLabel =
@@ -6854,8 +6920,27 @@ function DashboardScreen({
                 {model.roster.map((member) => {
                   const wrestler = findWrestler(member.id);
 
+                  function openProfile() {
+                    onOpenProfile(member.id);
+                  }
+
+                  function handleRowKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openProfile();
+                    }
+                  }
+
                   return (
-                    <div className={member.selected ? "dashboard-dynasty-roster-row is-selected" : "dashboard-dynasty-roster-row"} role="row" key={member.id}>
+                    <div
+                      aria-label={`Open ${member.name} profile`}
+                      className={member.selected ? "dashboard-dynasty-roster-row is-selected is-clickable" : "dashboard-dynasty-roster-row is-clickable"}
+                      key={member.id}
+                      onClick={openProfile}
+                      onKeyDown={handleRowKeyDown}
+                      role="button"
+                      tabIndex={0}
+                    >
                       <span>{member.rank}</span>
                       <div className="dashboard-dynasty-superstar-cell">
                         {wrestler ? <DashboardDynastyPortrait wrestler={wrestler} size="sm" /> : null}
@@ -6941,8 +7026,28 @@ function DashboardScreen({
             </div>
             <div className="dashboard-dynasty-rivalry-list">
               {model.rivalries.length ? (
-                model.rivalries.map((rivalry) => (
-                  <div className="dashboard-dynasty-rivalry-row" key={rivalry.id}>
+                model.rivalries.map((rivalry) => {
+                  function openRivalry() {
+                    onOpenRivalry(rivalry.id);
+                  }
+
+                  function handleRivalryKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openRivalry();
+                    }
+                  }
+
+                  return (
+                    <div
+                      aria-label={`Open ${rivalry.leftName} vs ${rivalry.rightName} in Rivalry Desk`}
+                      className="dashboard-dynasty-rivalry-row is-clickable"
+                      key={rivalry.id}
+                      onClick={openRivalry}
+                      onKeyDown={handleRivalryKeyDown}
+                      role="button"
+                      tabIndex={0}
+                    >
                     <div className="dashboard-dynasty-rivalry-matchup">
                       <DashboardDynastyPortrait wrestler={wrestlerOrPlaceholder(rivalry.leftId, rivalry.leftName)} size="sm" />
                       <strong title={rivalry.leftName + " vs " + rivalry.rightName}>
@@ -6955,8 +7060,9 @@ function DashboardScreen({
                       <DashboardDynastyIntensityMeter value={rivalry.intensity} />
                       <b>{rivalry.intensity}</b>
                     </div>
-                  </div>
-                ))
+                    </div>
+                  );
+                })
               ) : (
                 <p className="dashboard-dynasty-empty">No active rivalries. Create a program when the story room needs heat.</p>
               )}

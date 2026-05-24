@@ -127,8 +127,8 @@ export function DashboardDynastyShowScoreChart({ points }: { points: Array<{ lab
   if (!points.length) {
     return (
       <div className="dashboard-dynasty-chart-shell">
-        <svg className="dashboard-dynasty-chart dashboard-dynasty-chart--empty" preserveAspectRatio="xMidYMid meet" viewBox="0 0 280 92" role="img" aria-label="No show history yet">
-          <text className="dashboard-dynasty-chart-label" x="140" y="48" textAnchor="middle">
+        <svg className="dashboard-dynasty-chart dashboard-dynasty-chart--empty" preserveAspectRatio="xMidYMid meet" viewBox="0 0 280 48" role="img" aria-label="No show history yet">
+          <text className="dashboard-dynasty-chart-label" x="140" y="28" textAnchor="middle">
             No resolved shows
           </text>
         </svg>

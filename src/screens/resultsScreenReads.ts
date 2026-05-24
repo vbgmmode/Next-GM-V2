@@ -145,6 +145,20 @@ function buildCompetitiveRead(segment: SegmentResult, wrestlers: Wrestler[]): Pi
   };
 }
 
+export function getSegmentOutcomeHeadline(segment: SegmentResult, wrestlers: Wrestler[]) {
+  if (segment.type !== "Match" && segment.type !== "Open Challenge") {
+    return undefined;
+  }
+
+  const read = buildCompetitiveRead(segment, wrestlers);
+
+  if (read.isNoContest || segment.winnerId) {
+    return read.headline;
+  }
+
+  return undefined;
+}
+
 export function buildSegmentBroadcastReads(result: ShowResult, wrestlers: Wrestler[]): SegmentBroadcastRead[] {
   return result.segmentResults.map((segment, index) => {
     const isCompetitiveSegment = segment.type === "Match" || segment.type === "Open Challenge";

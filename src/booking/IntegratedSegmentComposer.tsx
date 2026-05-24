@@ -478,7 +478,7 @@ export function IntegratedSegmentComposer({
                 type="button"
               >
                 {championship.name}
-                <small>Champion: {getWrestlerNames(championship.championIds, wrestlers)}</small>
+                <small>Champion: {championship.championIds.length ? getWrestlerNames(championship.championIds, wrestlers) : "Vacant"}</small>
               </button>
             ))}
             {buildableChampionships.slice(0, 4).map((championship) => (

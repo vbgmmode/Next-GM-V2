@@ -1,9 +1,9 @@
-import { canWrestlersShareMatch } from "../booking/bookingUtils";
+import { canWrestlersShareMatch, isSinglesChampionship, isVacantSinglesChampionship } from "../booking/bookingUtils";
 import { getRosterAffiliations } from "../game/affiliationCatalog";
-import { deriveRivalryStage, getRivalryGMRead, getRivalryStoryline } from "../game/rivalryCatalog";
+import { getWeeksSinceLastBooked } from "../game/rosterContextReads";
+import { deriveRivalryStage, getDefaultStorylineIdForStakes, getRivalryGMRead, getRivalryStoryline } from "../game/rivalryCatalog";
 import { getCurrentCalendarWeek } from "../game/scoring";
 import { formatRivalryStatus, getRivalryHistory, hasPlePayoff } from "../game/storyContextReads";
-import { isSinglesChampionship } from "../booking/bookingUtils";
 import { wrestlerFitsChampionshipDivision } from "../game/titleCatalog";
 import type {
   CalendarWeek,
@@ -470,4 +470,186 @@ export function buildRivalryGmRead(game: GameState, rivalry: Rivalry, isGoHome: 
     isPle,
     titleRelevant: Boolean(titleRelevance && titleRelevance.label !== "Title-Friendly Story"),
   });
+}
+
+export type RivalryFeudSuggestion = {
+  id: string;
+  headline: string;
+  reason: string;
+  structure: RivalryStructure;
+  participantIds: string[];
+  stakes: RivalryStakes;
+  storylineId: string;
+};
+
+type ScoredFeudSuggestion = RivalryFeudSuggestion & { score: number };
+
+function getWrestlerStarScore(wrestler: Wrestler) {
+  return wrestler.popularity + wrestler.momentum;
+}
+
+function buildSinglesFeudSuggestions(game: GameState) {
+  const wrestlers = game.wrestlers.filter((wrestler) => wrestler.injuryStatus !== "major");
+  const suggestions: ScoredFeudSuggestion[] = [];
+
+  for (let firstIndex = 0; firstIndex < wrestlers.length; firstIndex += 1) {
+    for (let secondIndex = firstIndex + 1; secondIndex < wrestlers.length; secondIndex += 1) {
+      const first = wrestlers[firstIndex];
+      const second = wrestlers[secondIndex];
+      const participantIds = [first.id, second.id];
+
+      if (!canWrestlersShareMatch([first, second]) || hasDuplicateRivalry(game.rivalries, "singles", participantIds)) {
+        continue;
+      }
+
+      let score = getWrestlerStarScore(first) + getWrestlerStarScore(second);
+      let stakes: RivalryStakes = "personal";
+      let storylineId = getDefaultStorylineIdForStakes("personal");
+      let reason = `${first.name} and ${second.name} fit a division-safe singles program.`;
+
+      for (const championship of game.championships) {
+        if (isSinglesChampionship(championship)) {
+          const championId = championship.championIds[0];
+          const challenger = championId === first.id ? second : championId === second.id ? first : undefined;
+
+          if (challenger && wrestlerFitsChampionshipDivision(challenger, championship)) {
+            score += 140;
+            stakes = "title";
+            storylineId = getDefaultStorylineIdForStakes("title");
+            reason = `${challenger.name} can challenge ${championship.name} holder ${championId === first.id ? first.name : second.name}.`;
+            break;
+          }
+        }
+
+        if (
+          isVacantSinglesChampionship(championship) &&
+          wrestlerFitsChampionshipDivision(first, championship) &&
+          wrestlerFitsChampionshipDivision(second, championship)
+        ) {
+          score += 120;
+          stakes = "title";
+          storylineId = getDefaultStorylineIdForStakes("title");
+          reason = `Vacant ${championship.name} lane: ${first.name} vs ${second.name} fits the division race.`;
+          break;
+        }
+      }
+
+      if (first.popularity >= 85 && second.popularity >= 85) {
+        score += 45;
+        if (stakes === "personal") {
+          reason = `Main-event star power sets up ${first.name} vs ${second.name}.`;
+        }
+      }
+
+      const firstWeeksOff = getWeeksSinceLastBooked(first, game.currentWeek);
+      const secondWeeksOff = getWeeksSinceLastBooked(second, game.currentWeek);
+      const underused = Math.max(firstWeeksOff, secondWeeksOff) >= 2 && Math.max(first.popularity, second.popularity) >= 78;
+
+      if (underused && stakes === "personal") {
+        score += 35;
+        stakes = "respect";
+        storylineId = getDefaultStorylineIdForStakes("respect");
+        const focusName = firstWeeksOff >= secondWeeksOff ? first.name : second.name;
+        reason = `${focusName} has been off TV and needs a meaningful program.`;
+      }
+
+      if (Math.abs(first.momentum - second.momentum) >= 20 && stakes === "personal") {
+        score += 24;
+        const hotName = first.momentum >= second.momentum ? first.name : second.name;
+        const coolName = hotName === first.name ? second.name : first.name;
+        reason = `${hotName} is running hotter than ${coolName}, giving the room a clear temperature swing.`;
+      }
+
+      suggestions.push({
+        id: `singles-${first.id}-${second.id}`,
+        headline: `${first.name} vs ${second.name}`,
+        reason,
+        structure: "singles",
+        participantIds,
+        stakes,
+        storylineId,
+        score,
+      });
+    }
+  }
+
+  return suggestions;
+}
+
+function buildTagFeudSuggestions(game: GameState) {
+  const tagAffiliations = getRosterAffiliations(game.wrestlers).filter((affiliation) => affiliation.kind === "tag_team" && affiliation.memberWrestlerIds.length >= 2);
+  const suggestions: ScoredFeudSuggestion[] = [];
+
+  for (let firstIndex = 0; firstIndex < tagAffiliations.length; firstIndex += 1) {
+    for (let secondIndex = firstIndex + 1; secondIndex < tagAffiliations.length; secondIndex += 1) {
+      const teamA = tagAffiliations[firstIndex].memberWrestlerIds
+        .slice(0, 2)
+        .map((id) => game.wrestlers.find((wrestler) => wrestler.id === id))
+        .filter((wrestler): wrestler is Wrestler => Boolean(wrestler && wrestler.injuryStatus !== "major"));
+      const teamB = tagAffiliations[secondIndex].memberWrestlerIds
+        .slice(0, 2)
+        .map((id) => game.wrestlers.find((wrestler) => wrestler.id === id))
+        .filter((wrestler): wrestler is Wrestler => Boolean(wrestler && wrestler.injuryStatus !== "major"));
+
+      if (teamA.length < 2 || teamB.length < 2) {
+        continue;
+      }
+
+      const participants = [...teamA, ...teamB];
+      const participantIds = participants.map((wrestler) => wrestler.id);
+
+      if (!canWrestlersShareMatch(participants) || hasDuplicateRivalry(game.rivalries, "tag_team", participantIds)) {
+        continue;
+      }
+
+      const score = participants.reduce((total, wrestler) => total + getWrestlerStarScore(wrestler), 0) + 30;
+
+      suggestions.push({
+        id: `tag-${participantIds.join("-")}`,
+        headline: `${getWrestlerNames(teamA.map((wrestler) => wrestler.id), game.wrestlers)} vs ${getWrestlerNames(teamB.map((wrestler) => wrestler.id), game.wrestlers)}`,
+        reason: `${tagAffiliations[firstIndex].name} and ${tagAffiliations[secondIndex].name} already read as natural tag opposition.`,
+        structure: "tag_team",
+        participantIds,
+        stakes: "personal",
+        storylineId: getDefaultStorylineIdForStakes("personal"),
+        score,
+      });
+    }
+  }
+
+  return suggestions;
+}
+
+function pickDiverseFeudSuggestions(candidates: ScoredFeudSuggestion[], limit: number) {
+  const picked: ScoredFeudSuggestion[] = [];
+  const usedWrestlerIds = new Set<string>();
+
+  for (const candidate of candidates) {
+    if (picked.length >= limit) {
+      break;
+    }
+
+    if (candidate.participantIds.some((id) => usedWrestlerIds.has(id))) {
+      continue;
+    }
+
+    candidate.participantIds.forEach((id) => usedWrestlerIds.add(id));
+    picked.push(candidate);
+  }
+
+  for (const candidate of candidates) {
+    if (picked.length >= limit || picked.some((entry) => entry.id === candidate.id)) {
+      continue;
+    }
+
+    picked.push(candidate);
+  }
+
+  return picked.map(({ score: _score, ...suggestion }) => suggestion);
+}
+
+export function buildRivalryFeudSuggestions(game: GameState, limit = 4) {
+  const candidates = [...buildSinglesFeudSuggestions(game), ...buildTagFeudSuggestions(game)].sort((left, right) => right.score - left.score);
+
+  return pickDiverseFeudSuggestions(candidates, limit);
 }

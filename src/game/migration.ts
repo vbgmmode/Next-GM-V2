@@ -46,13 +46,14 @@ import {
 } from "./seed";
 import { createDefaultMarketState, createMarketContract, getCpuBudgetDefault } from "./market";
 import { enrichWrestlerIdentityContext } from "./wrestlerIdentityContext";
+import { resolveWrestlerAlignment } from "./wrestlerAlignment";
 import { getSegmentTypeDefaults } from "./matchFormatCatalog";
 import { applyChampionshipCatalogDefaults } from "./titleCatalog";
 import { applyRivalryCatalogDefaults } from "./rivalryCatalog";
 import { getStipulationsForSegment } from "./stipulationCatalog";
 
 export type GameScreen = Exclude<Screen, "title" | "setup">;
-export type ProfileReturnScreen = Extract<GameScreen, "roster" | "booking">;
+export type ProfileReturnScreen = Extract<GameScreen, "roster" | "booking" | "dashboard">;
 
 export type SavedGameState = {
   game: GameState;
@@ -606,7 +607,7 @@ function normalizeRivalBrands(value: unknown, fallbackAssignments: RivalGMAssign
 }
 
 function isProfileReturnScreen(value: unknown): value is ProfileReturnScreen {
-  return value === "roster" || value === "booking";
+  return value === "roster" || value === "booking" || value === "dashboard";
 }
 
 function isSavedGameCandidate(value: unknown): value is SavedGameCandidate {
@@ -621,17 +622,22 @@ function isSavedGameCandidate(value: unknown): value is SavedGameCandidate {
 }
 
 function normalizeWrestlers(wrestlers: unknown): Wrestler[] {
-  return (Array.isArray(wrestlers) ? (wrestlers as Partial<Wrestler>[]) : []).map((wrestler) => ({
-    ...wrestler,
-    ...enrichWrestlerIdentityContext(wrestler as Wrestler),
-    appearancesThisSeason: wrestler.appearancesThisSeason ?? 0,
-    lastBookedWeek: wrestler.lastBookedWeek ?? 0,
-    consecutiveWeeksBooked: wrestler.consecutiveWeeksBooked ?? 0,
-    injuryStatus: wrestler.injuryStatus ?? "healthy",
-    injuryDescription: wrestler.injuryDescription,
-    injuryWeeksRemaining: wrestler.injuryWeeksRemaining ?? 0,
-    injuryOccurredWeek: wrestler.injuryOccurredWeek,
-  })) as Wrestler[];
+  return (Array.isArray(wrestlers) ? (wrestlers as Partial<Wrestler>[]) : []).map((wrestler) => {
+    const wrestlerId = typeof wrestler.id === "string" ? wrestler.id : "unknown-wrestler";
+
+    return {
+      ...wrestler,
+      ...enrichWrestlerIdentityContext(wrestler as Wrestler),
+      alignment: resolveWrestlerAlignment(wrestler.alignment, wrestlerId),
+      appearancesThisSeason: wrestler.appearancesThisSeason ?? 0,
+      lastBookedWeek: wrestler.lastBookedWeek ?? 0,
+      consecutiveWeeksBooked: wrestler.consecutiveWeeksBooked ?? 0,
+      injuryStatus: wrestler.injuryStatus ?? "healthy",
+      injuryDescription: wrestler.injuryDescription,
+      injuryWeeksRemaining: wrestler.injuryWeeksRemaining ?? 0,
+      injuryOccurredWeek: wrestler.injuryOccurredWeek,
+    };
+  }) as Wrestler[];
 }
 
 function normalizeShowHistory(showHistory: unknown): ShowResult[] {
