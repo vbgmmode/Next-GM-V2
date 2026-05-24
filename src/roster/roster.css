@@ -1049,14 +1049,10 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 2px;
   color: var(--text-soft, var(--bc-text-secondary));
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   font-size: 0.78rem;
   font-weight: 900;
-  max-width: 100%;
-  min-width: 0;
-  overflow: hidden;
   padding: 2px 5px;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -1533,7 +1529,6 @@
   margin: 0;
 }
 
-.roster-dynasty-shell .wrestler-card .pressure-tags span,
 .roster-dynasty-shell .wrestler-card .affiliation-strip span,
 .roster-profile-shell .pressure-tags span {
   font-size: 0.96rem;
@@ -1554,6 +1549,7 @@
   isolation: isolate;
   max-height: 224px;
   min-height: 224px;
+  min-width: 0;
   overflow: hidden;
   padding: 10px;
   position: relative;
@@ -1655,6 +1651,7 @@
 
 .roster-dynasty-shell .wrestler-card-head > div:last-child {
   min-height: 56px;
+  min-width: 0;
 }
 
 .roster-dynasty-shell .wrestler-card-select {
@@ -1684,8 +1681,17 @@
 }
 
 .roster-dynasty-shell .wrestler-card-meta-line {
-  font-size: 1rem;
+  font-size: 0.76rem;
   gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.roster-dynasty-shell .wrestler-card-meta-line span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .roster-dynasty-shell .roster-card-kicker {
@@ -1703,24 +1709,48 @@
   display: flex;
   flex: 0 0 22px;
   flex-wrap: nowrap;
-  gap: 4px;
+  gap: 3px;
   height: 22px;
+  justify-content: center;
   margin: 0;
   max-height: 22px;
+  min-width: 0;
   overflow: hidden;
+  width: 100%;
 }
 
 .roster-dynasty-shell .wrestler-card .pressure-tags span {
+  align-items: center;
   background: rgba(8, 9, 13, 0.72);
   border-radius: 2px;
-  flex: 0 1 auto;
-  font-size: 0.78rem;
-  max-width: 100%;
+  display: flex;
+  flex: 1 1 0;
+  font-size: 0.58rem;
+  justify-content: center;
+  line-height: 1.1;
   min-width: 0;
   overflow: hidden;
-  padding: 2px 5px;
+  padding: 1px 3px;
+  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.roster-dynasty-shell .wrestler-card .pressure-tags.roster-card-chips-dense span {
+  font-size: 0.52rem;
+  padding: 1px 2px;
+}
+
+.roster-dynasty-shell .wrestler-card .pressure-tags.roster-card-chips-compact span {
+  font-size: 0.48rem;
+  letter-spacing: 0;
+  padding: 1px 2px;
+}
+
+.roster-dynasty-shell .wrestler-card .pressure-tags.roster-card-chips-tight span {
+  font-size: 0.44rem;
+  letter-spacing: 0;
+  padding: 0 2px;
 }
 
 .roster-dynasty-shell .wrestler-card .pressure-tags .identity-chip {
@@ -1731,10 +1761,7 @@
 .roster-dynasty-shell .wrestler-card .pressure-tags .value-tier-chip {
   border: 1px solid rgba(111, 226, 212, 0.34);
   color: #6fe2d4;
-  flex: 0 1 42%;
-  font-size: 0.66rem;
-  letter-spacing: 0.03em;
-  padding: 1px 4px;
+  letter-spacing: 0.01em;
 }
 
 .roster-dynasty-shell .wrestler-card .compact-affiliation-strip {
@@ -1761,8 +1788,17 @@
 .roster-dynasty-shell .wrestler-card-foot {
   flex: 0 0 auto;
   font-size: 0.76rem;
+  gap: 6px;
   margin-top: auto;
+  min-width: 0;
   padding-top: 6px;
+}
+
+.roster-dynasty-shell .wrestler-card-foot span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .roster-dynasty-shell .roster-selected-tags {

@@ -29,7 +29,7 @@ function stripNewWrestlerFields(wrestler: Wrestler) {
 }
 
 describe("mechanics review foundations", () => {
-  it("creates new careers with 52 weeks, 13 PLEs, neutral sentiment, and 52-week draft contracts", () => {
+  it("creates new careers with full-season weeks, PLE cadence, neutral sentiment, and prepaid draft contracts", () => {
     const game = createNewGame();
 
     expect(game.calendar).toHaveLength(SEASON_WEEK_COUNT);
@@ -39,7 +39,7 @@ describe("mechanics review foundations", () => {
     expect(game.wrestlers.every((wrestler) => wrestler.record?.season.wins === 0 && wrestler.record?.career.tagWins === 0)).toBe(true);
   });
 
-  it("migrates legacy sentiment and records without forcing 12-week saves into a 52-week calendar", () => {
+  it("migrates legacy sentiment and records without forcing 12-week saves into a full-season calendar", () => {
     const legacyGame = createNewGame({ draftedWrestlers: draftPool.slice(0, 4) });
     const migrated = migrateSavedGameState({
       game: {
