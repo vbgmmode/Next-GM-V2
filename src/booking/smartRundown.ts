@@ -438,30 +438,22 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
   )[0];
 
   if (rivalry && !cardHasRivalry(rivalry.id)) {
-    const [firstId, secondId] = rivalry.participantIds;
-    const first = available.find((wrestler) => wrestler.id === firstId);
-    const second = available.find((wrestler) => wrestler.id === secondId);
+    const rivalryParticipantIds = rivalry.participantIds.filter((id) => (usage[id] ?? 0) < 2);
 
-    if (first && second && (usage[first.id] ?? 0) < 2 && (usage[second.id] ?? 0) < 2) {
-      if (canWrestlersShareMatch([first, second]) && !usedPairs.has(getSmartPairKey([first.id, second.id]))) {
-        const segment = buildSmartSegment(
-          game,
-          getSmartRivalryMatchOptionId(rivalry),
-          [first.id, second.id],
-          28,
-          currentShow.length,
-          rivalry.id,
-        );
+    if (rivalryParticipantIds.length >= 2) {
+      if (canUseRivalryMatch(game, rivalry, rivalryParticipantIds) && !usedPairs.has(getSmartPairKey(rivalryParticipantIds))) {
+        const segment = buildSmartSegment(game, getSmartRivalryMatchOptionId(rivalry), rivalryParticipantIds, 28, currentShow.length, rivalry.id);
 
-        if (isValidSegment(segment, game.wrestlers)) {
-          return {
-            notes: [`Featured active rivalry: ${rivalry.name}.`],
-            segments: [segment],
-          };
-        }
+        return {
+          notes: [`Featured active rivalry: ${rivalry.name}.`],
+          segments: [segment],
+        };
       }
 
-      const promoSegment = buildSmartSegment(game, "P003", [first.id], 14, currentShow.length, rivalry.id);
+      const storyOptionId = getSmartStoryOptionId(rivalry, variantSeed);
+      const option = getCatalogOptionById(storyOptionId);
+      const storyParticipantIds = rivalryParticipantIds.slice(0, option?.maxParticipants ?? rivalryParticipantIds.length);
+      const promoSegment = buildSmartSegment(game, storyOptionId, storyParticipantIds, 14, currentShow.length, rivalry.id);
 
       if (isValidSegment(promoSegment, game.wrestlers)) {
         return {
@@ -506,8 +498,8 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
     const storyTalent = chooseSmartTalent(game, available, usage, "story", variantSeed);
     const rivalryParticipants = rivalry?.participantIds.filter((id) => (usage[id] ?? 0) < 2) ?? [];
 
-    if (rivalry && rivalryParticipants.length === 2) {
-      const segment = buildSmartSegment(game, "A046", rivalryParticipants, 14, currentShow.length, rivalry.id);
+    if (rivalry && rivalryParticipants.length >= 2) {
+      const segment = buildSmartSegment(game, "A046", rivalryParticipants.slice(0, 4), 14, currentShow.length, rivalry.id);
 
       if (isValidSegment(segment, game.wrestlers)) {
         return {

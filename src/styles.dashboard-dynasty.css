@@ -859,6 +859,36 @@
   min-height: 30px;
 }
 
+.dashboard-dynasty-roster-head-btn {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  min-width: 0;
+  padding: 0;
+  text-align: inherit;
+  text-transform: inherit;
+}
+
+.dashboard-dynasty-roster-head-btn:hover,
+.dashboard-dynasty-roster-head-btn:focus-visible {
+  color: var(--dashboard-dynasty-text);
+  outline: none;
+}
+
+.dashboard-dynasty-roster-head-btn.is-active {
+  color: var(--dashboard-dynasty-hot);
+}
+
+.dashboard-dynasty-roster-head-btn.is-active.is-desc::after {
+  content: " ↓";
+}
+
+.dashboard-dynasty-roster-head-btn.is-active.is-asc::after {
+  content: " ↑";
+}
+
 .dashboard-dynasty-roster-row:not(.dashboard-dynasty-roster-head):hover,
 .dashboard-dynasty-roster-row.is-selected {
   background: rgba(255, 255, 255, 0.045);

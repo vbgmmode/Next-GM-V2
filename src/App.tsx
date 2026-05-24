@@ -16,6 +16,12 @@ import {
   DashboardDynastyStatValue,
 } from "./components/dashboardDynasty";
 import { buildDashboardViewModel } from "./game/dashboardViewModel";
+import {
+  getDefaultDashboardRosterSortDirection,
+  sortDashboardRosterRows,
+  type DashboardRosterSortColumn,
+  type DashboardRosterSortDirection,
+} from "./game/dashboardRosterSort";
 import { formatMoney } from "./game/formatters";
 import {
   MAX_SAVE_SLOTS,
@@ -6804,6 +6810,40 @@ function DashboardScreen({
   onOpenRivalry: (rivalryId: string) => void;
 }) {
   const model = buildDashboardViewModel(game, latestResult);
+  const [rosterSortColumn, setRosterSortColumn] = useState<DashboardRosterSortColumn>("rank");
+  const [rosterSortDirection, setRosterSortDirection] = useState<DashboardRosterSortDirection>("asc");
+  const topStarId = model.roster[0]?.id;
+  const displayRoster = useMemo(
+    () => sortDashboardRosterRows(model.roster, rosterSortColumn, rosterSortDirection),
+    [model.roster, rosterSortColumn, rosterSortDirection]
+  );
+
+  function toggleRosterSort(column: DashboardRosterSortColumn) {
+    if (rosterSortColumn === column) {
+      setRosterSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setRosterSortColumn(column);
+    setRosterSortDirection(getDefaultDashboardRosterSortDirection(column));
+  }
+
+  function renderRosterHeadButton(label: string, column: DashboardRosterSortColumn) {
+    const isActive = rosterSortColumn === column;
+
+    return (
+      <button
+        type="button"
+        aria-label={`Sort by ${label}${isActive ? `, ${rosterSortDirection === "asc" ? "ascending" : "descending"}` : ""}`}
+        aria-sort={isActive ? (rosterSortDirection === "asc" ? "ascending" : "descending") : "none"}
+        className={`dashboard-dynasty-roster-head-btn${isActive ? ` is-active is-${rosterSortDirection}` : ""}`}
+        onClick={() => toggleRosterSort(column)}
+      >
+        {label}
+      </button>
+    );
+  }
+
   const chartRangeLabel =
     model.metrics.chartPoints.length > 1
       ? model.metrics.chartPoints[0]?.label + "-" + model.metrics.chartPoints[model.metrics.chartPoints.length - 1]?.label
@@ -6906,18 +6946,18 @@ function DashboardScreen({
             </div>
             <div className="dashboard-dynasty-roster-table" role="table" aria-label="Roster overview">
               <div className="dashboard-dynasty-roster-row dashboard-dynasty-roster-head" role="row">
-                <span>#</span>
-                <span>Superstar</span>
-                <span>Side</span>
-                <span>Pop</span>
-                <span>Sta</span>
-                <span>Mor</span>
-                <span>OVR</span>
-                <span>Contract</span>
-                <span>Cost</span>
+                {renderRosterHeadButton("#", "rank")}
+                {renderRosterHeadButton("Superstar", "name")}
+                {renderRosterHeadButton("Side", "side")}
+                {renderRosterHeadButton("Pop", "pop")}
+                {renderRosterHeadButton("Sta", "stamina")}
+                {renderRosterHeadButton("Mor", "morale")}
+                {renderRosterHeadButton("OVR", "overall")}
+                {renderRosterHeadButton("Contract", "contract")}
+                {renderRosterHeadButton("Cost", "cost")}
               </div>
               <div className="dashboard-dynasty-roster-scroll">
-                {model.roster.map((member) => {
+                {displayRoster.map((member, index) => {
                   const wrestler = findWrestler(member.id);
 
                   function openProfile() {
@@ -6934,14 +6974,14 @@ function DashboardScreen({
                   return (
                     <div
                       aria-label={`Open ${member.name} profile`}
-                      className={member.selected ? "dashboard-dynasty-roster-row is-selected is-clickable" : "dashboard-dynasty-roster-row is-clickable"}
+                      className={member.id === topStarId ? "dashboard-dynasty-roster-row is-selected is-clickable" : "dashboard-dynasty-roster-row is-clickable"}
                       key={member.id}
                       onClick={openProfile}
                       onKeyDown={handleRowKeyDown}
                       role="button"
                       tabIndex={0}
                     >
-                      <span>{member.rank}</span>
+                      <span>{index + 1}</span>
                       <div className="dashboard-dynasty-superstar-cell">
                         {wrestler ? <DashboardDynastyPortrait wrestler={wrestler} size="sm" /> : null}
                         <strong title={member.name}>{member.name}</strong>

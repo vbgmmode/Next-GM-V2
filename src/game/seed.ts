@@ -387,19 +387,42 @@ export function createDefaultRivalries(wrestlers: Wrestler[] = roster): Rivalry[
 
 export function createSeasonCalendar(): CalendarWeek[] {
   return [
-    { weekNumber: 1, showName: "Neon Harbor TV", showType: "tv", isGoHome: false, completed: false },
-    { weekNumber: 2, showName: "Neon Harbor TV", showType: "tv", isGoHome: false, completed: false },
-    { weekNumber: 3, showName: "Collision Course Go-Home", showType: "tv", isGoHome: true, completed: false },
-    { weekNumber: 4, showName: "Collision Course", showType: "ple", isGoHome: false, completed: false },
-    { weekNumber: 5, showName: "Neon Harbor TV", showType: "tv", isGoHome: false, completed: false },
-    { weekNumber: 6, showName: "Neon Harbor TV", showType: "tv", isGoHome: false, completed: false },
-    { weekNumber: 7, showName: "Heatwave Havoc Go-Home", showType: "tv", isGoHome: true, completed: false },
-    { weekNumber: 8, showName: "Heatwave Havoc", showType: "ple", isGoHome: false, completed: false },
-    { weekNumber: 9, showName: "Neon Harbor TV", showType: "tv", isGoHome: false, completed: false },
-    { weekNumber: 10, showName: "Neon Harbor TV", showType: "tv", isGoHome: false, completed: false },
-    { weekNumber: 11, showName: "Final Bell Go-Home", showType: "tv", isGoHome: true, completed: false },
-    { weekNumber: 12, showName: "Final Bell", showType: "ple", isGoHome: false, completed: false },
+    { weekNumber: 1, showName: "Dallas", showType: "tv", isGoHome: false, completed: false },
+    { weekNumber: 2, showName: "Houston", showType: "tv", isGoHome: false, completed: false },
+    { weekNumber: 3, showName: "Chicago Go-Home", showType: "tv", isGoHome: true, completed: false },
+    { weekNumber: 4, showName: "Chicago", showType: "ple", isGoHome: false, completed: false },
+    { weekNumber: 5, showName: "Atlanta", showType: "tv", isGoHome: false, completed: false },
+    { weekNumber: 6, showName: "Nashville", showType: "tv", isGoHome: false, completed: false },
+    { weekNumber: 7, showName: "Philadelphia Go-Home", showType: "tv", isGoHome: true, completed: false },
+    { weekNumber: 8, showName: "Philadelphia", showType: "ple", isGoHome: false, completed: false },
+    { weekNumber: 9, showName: "Boston", showType: "tv", isGoHome: false, completed: false },
+    { weekNumber: 10, showName: "Toronto", showType: "tv", isGoHome: false, completed: false },
+    { weekNumber: 11, showName: "Las Vegas Go-Home", showType: "tv", isGoHome: true, completed: false },
+    { weekNumber: 12, showName: "Las Vegas", showType: "ple", isGoHome: false, completed: false },
   ];
+}
+
+export function normalizeSeasonCalendar(calendar: CalendarWeek[]): CalendarWeek[] {
+  const template = createSeasonCalendar();
+
+  if (calendar.length !== template.length) {
+    return calendar;
+  }
+
+  return calendar.map((week) => {
+    const canonical = template.find((entry) => entry.weekNumber === week.weekNumber);
+
+    if (!canonical) {
+      return week;
+    }
+
+    return {
+      ...week,
+      showName: canonical.showName,
+      showType: canonical.showType,
+      isGoHome: canonical.isGoHome,
+    };
+  });
 }
 
 export function createNewGame(options: NewCareerOptions = {}): GameState {

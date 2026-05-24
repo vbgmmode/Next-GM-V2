@@ -43,6 +43,7 @@ import {
   getStartingBudgetAmount,
   draftPool,
   isPrototypeBrand,
+  normalizeSeasonCalendar,
 } from "./seed";
 import { createDefaultMarketState, createMarketContract, getCpuBudgetDefault } from "./market";
 import { enrichWrestlerIdentityContext } from "./wrestlerIdentityContext";
@@ -794,7 +795,9 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
       rivalries: normalizeRivalries(savedGame.rivalries, wrestlers),
       championshipHistory: Array.isArray(savedGame.championshipHistory) ? savedGame.championshipHistory : [],
       rivalryHistory: Array.isArray(savedGame.rivalryHistory) ? savedGame.rivalryHistory : [],
-      calendar: Array.isArray(savedGame.calendar) && savedGame.calendar.length ? savedGame.calendar : createSeasonCalendar(),
+      calendar: normalizeSeasonCalendar(
+        Array.isArray(savedGame.calendar) && savedGame.calendar.length ? savedGame.calendar : createSeasonCalendar(),
+      ),
       socialPosts: Array.isArray(savedGame.socialPosts) ? savedGame.socialPosts : [],
       financeReports: Array.isArray(savedGame.financeReports) ? savedGame.financeReports : [],
       marketState: normalizeMarketState(savedGame.marketState, wrestlers),
