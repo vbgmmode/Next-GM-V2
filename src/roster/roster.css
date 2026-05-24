@@ -633,14 +633,17 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-left: 3px solid rgba(255, 255, 255, 0.14);
   border-radius: 2px;
+  color: inherit;
   cursor: pointer;
   display: grid;
+  font: inherit;
   gap: 8px;
   padding: 10px;
   text-align: left;
   transition:
     border-color 120ms ease,
     box-shadow 120ms ease;
+  width: 100%;
 }
 
 .wrestler-card:focus-visible {

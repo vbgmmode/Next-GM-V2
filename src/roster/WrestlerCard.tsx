@@ -42,22 +42,13 @@ export function WrestlerCard({
   const divisionHighlightClass = getWrestlerDivisionHighlightClass(wrestler);
   const championHighlight = isWrestlerChampion(wrestler.id, game.championships);
 
-  function handleCardKeyDown(event: React.KeyboardEvent<HTMLElement>) {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onSelectWrestler(wrestler.id);
-    }
-  }
-
   return (
-    <article
+    <button
       aria-label={`Select ${wrestler.name}`}
       aria-pressed={isSelected}
       className={`wrestler-card ${divisionHighlightClass} ${championHighlight ? "is-champion" : ""} status-${status.toLowerCase()} ${isSelected ? "selected" : ""}`}
       onClick={() => onSelectWrestler(wrestler.id)}
-      onKeyDown={handleCardKeyDown}
-      role="button"
-      tabIndex={0}
+      type="button"
     >
       <div className="wrestler-card-head">
         <div className="wrestler-card-select" aria-hidden="true">
@@ -118,6 +109,6 @@ export function WrestlerCard({
         <span>{contractWeeksLabel}</span>
         <span>{`W: ${record.wins} | L: ${record.losses}`}</span>
       </div>
-    </article>
+    </button>
   );
 }
