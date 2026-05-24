@@ -1,6 +1,6 @@
 .social-dynasty-shell {
-  height: 100vh;
-  max-height: 100vh;
+  height: var(--app-viewport-height, 100dvh);
+  max-height: var(--app-viewport-height, 100dvh);
   overflow: hidden;
 }
 

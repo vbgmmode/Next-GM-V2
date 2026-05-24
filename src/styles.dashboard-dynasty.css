@@ -22,7 +22,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  height: 100dvh;
+  height: var(--app-viewport-height, 100dvh);
   min-height: 0;
   min-width: 0;
   overflow: hidden;
@@ -1516,7 +1516,7 @@
 
 @media (max-width: 960px) {
   .dashboard-dynasty-shell {
-    height: 100dvh;
+    height: var(--app-viewport-height, 100dvh);
     min-height: 0;
     overflow: hidden;
   }

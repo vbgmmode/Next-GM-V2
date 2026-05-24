@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
+import { syncAppViewportHeight } from "./viewportHeight";
 import { CommandPanel, HeroDecisionPanel, MetricTile, getBroadcastTheme } from "./components/broadcast";
 import { GameNav, Header, Metric } from "./components/gameShell";
 import { DynastyManagementShell, type DynastyManagementCta } from "./components/DynastyManagementShell";
@@ -4044,6 +4045,8 @@ function App() {
   const latestResult = game?.showHistory[game.showHistory.length - 1];
   const hasCurrentWeekReview = latestResult ? latestResult.week === game?.currentWeek : false;
   const recentCareer = getMostRecentCareer(careerSaves);
+
+  useEffect(() => syncAppViewportHeight(), []);
 
   function refreshCareerSaves() {
     const updatedCareerSaves = loadCareerSaves();

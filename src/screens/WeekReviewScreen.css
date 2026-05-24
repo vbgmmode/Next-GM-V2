@@ -1,7 +1,7 @@
 .week-review-command-shell {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: var(--app-viewport-height, 100dvh);
   max-width: 1660px;
   overflow: hidden;
   text-transform: uppercase;

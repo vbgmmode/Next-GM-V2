@@ -19,6 +19,10 @@ body,
   letter-spacing: var(--broadcast-tracking-ui);
   line-height: 1.25;
 }
+
+#root {
+  min-height: var(--app-viewport-height, 100dvh);
+}
 button,
 input,
 select,
