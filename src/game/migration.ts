@@ -704,12 +704,25 @@ function normalizeCurrentShow(currentShow: unknown): Segment[] {
   return (Array.isArray(currentShow) ? (currentShow as Partial<Segment>[]) : []).map((segment, index) => {
     const type = segment.type ?? "Match";
     const defaults = getSegmentTypeDefaults(type);
-    const candidateFormatId = segment.segmentCatalogId ?? defaults.segmentCatalogId;
+    let candidateFormatId = segment.segmentCatalogId ?? defaults.segmentCatalogId;
+    let migratedStipulationId =
+      segment.stipulationId === "no_disqualification" ? "extreme_rules" : segment.stipulationId;
+
+    if (candidateFormatId === "M019") {
+      candidateFormatId = "M001";
+      migratedStipulationId = migratedStipulationId ?? "extreme_rules";
+    }
+
     const normalizedStipulationId =
-      typeof segment.stipulationId === "string" &&
-      getStipulationsForSegment({ type, segmentCatalogId: candidateFormatId }).some((stipulation) => stipulation.id === segment.stipulationId)
-        ? segment.stipulationId
+      typeof migratedStipulationId === "string" &&
+      getStipulationsForSegment({ type, segmentCatalogId: candidateFormatId }).some((stipulation) => stipulation.id === migratedStipulationId)
+        ? migratedStipulationId
         : undefined;
+    const formatDefaults = getSegmentTypeDefaults(type);
+    const resolvedFormatId = candidateFormatId ?? formatDefaults.segmentCatalogId;
+    const resolvedDefaults = resolvedFormatId === "M001" && normalizedStipulationId === "extreme_rules"
+      ? { ...formatDefaults, durationMinutes: segment.durationMinutes ?? 13 }
+      : formatDefaults;
 
     return {
       id: segment.id ?? `migrated-segment-${index}`,
@@ -719,11 +732,14 @@ function normalizeCurrentShow(currentShow: unknown): Segment[] {
       rivalryId: segment.rivalryId,
       stipulationId: normalizedStipulationId,
       winnerId: typeof segment.winnerId === "string" && segment.participantIds?.includes(segment.winnerId) ? segment.winnerId : undefined,
-      segmentCatalogId: candidateFormatId,
-      segmentDisplayName: segment.segmentDisplayName ?? defaults.segmentDisplayName,
-      durationMinutes: segment.durationMinutes ?? defaults.durationMinutes,
-      participantMin: segment.participantMin ?? defaults.participantMin,
-      participantMax: segment.participantMax ?? defaults.participantMax,
+      segmentCatalogId: resolvedFormatId,
+      segmentDisplayName:
+        segment.segmentDisplayName === "Extreme Rules" && resolvedFormatId === "M001"
+          ? "Singles Match"
+          : segment.segmentDisplayName ?? resolvedDefaults.segmentDisplayName,
+      durationMinutes: segment.durationMinutes ?? resolvedDefaults.durationMinutes,
+      participantMin: segment.participantMin ?? resolvedDefaults.participantMin,
+      participantMax: segment.participantMax ?? resolvedDefaults.participantMax,
     };
   });
 }

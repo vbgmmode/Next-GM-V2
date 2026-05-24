@@ -12,11 +12,11 @@ export type StipulationCatalogOption = {
 
 export const stipulationCatalog: StipulationCatalogOption[] = [
   {
-    id: "no_disqualification",
-    label: "No Disqualification",
-    description: "No disqualifications and no count-outs: a more volatile finish window with broader in-ring risk.",
+    id: "extreme_rules",
+    label: "Extreme Rules",
+    description: "No disqualifications and no count-outs: a harder-edged finish window with broader in-ring risk.",
     riskContext: "Higher physical risk.",
-    presentationalContext: "blowoff-style framing",
+    presentationalContext: "No-DQ escalation",
     rivalryTone: "escalation lens",
     eligibleFormatIds: ["M001", "M020"],
   },

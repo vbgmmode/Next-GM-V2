@@ -1,4 +1,5 @@
 import { getCatalogOptionById, getDefaultCatalogOption } from "../game/matchFormatCatalog";
+import { getStipulationsForSegment } from "../game/stipulationCatalog";
 import { isValidSegment } from "../game/scoring";
 import type { GameState, Rivalry, Segment, Wrestler } from "../game/types";
 import {
@@ -180,7 +181,15 @@ function getSmartRivalryMatchOptionId(rivalry: Rivalry) {
     return rivalry.participantIds.length >= 4 ? "M003" : "M002";
   }
 
-  return rivalry.heat >= 65 ? "M019" : "M001";
+  return "M001";
+}
+
+function getSmartRivalryStipulationId(rivalry: Rivalry) {
+  if (getRivalryStructure(rivalry) !== "singles") {
+    return undefined;
+  }
+
+  return rivalry.heat >= 65 ? "extreme_rules" : undefined;
 }
 
 function getSmartStoryOptionId(rivalry: Rivalry | undefined, variantSeed: number) {
@@ -224,6 +233,22 @@ function buildSmartSegment(
     const championship = game.championships.find((title) => canSegmentAttachChampionship(segment, title, game.wrestlers));
     if (championship) {
       segment = { ...segment, championshipId: championship.id };
+    }
+  }
+
+  if (rivalryId) {
+    const rivalry = game.rivalries.find((item) => item.id === rivalryId);
+
+    if (rivalry) {
+      const stipulationId = getSmartRivalryStipulationId(rivalry);
+
+      if (stipulationId && getStipulationsForSegment(segment).some((stipulation) => stipulation.id === stipulationId)) {
+        segment = {
+          ...segment,
+          stipulationId,
+          durationMinutes: Math.max(durationMinutes, 13),
+        };
+      }
     }
   }
 

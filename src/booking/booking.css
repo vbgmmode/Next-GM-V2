@@ -567,6 +567,7 @@
   gap: 8px;
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
 
 .booking-composer-hero {

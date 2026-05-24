@@ -1757,7 +1757,15 @@ function doSegmentParticipantsFitChampionship(segment: Segment, championship: Ch
 }
 
 function isSinglesTitleContestShape(segment: Segment) {
-  return segment.segmentCatalogId === "M002" ? segment.participantIds.length === 3 : segment.participantIds.length === 2;
+  if (segment.segmentCatalogId === "M002") {
+    return segment.participantIds.length === 3;
+  }
+
+  if (segment.segmentCatalogId === "M003") {
+    return segment.participantIds.length === 4;
+  }
+
+  return segment.participantIds.length === 2;
 }
 
 function getTagTitleSides(segment: Segment, championship: Championship) {
@@ -4280,7 +4288,7 @@ function App() {
       }
 
       if (calendarWeek.showType === "ple" || isPleReady || isPayoffOverdue || rivalry.heat >= 65) {
-        candidateIds.push("M019", "M001");
+        candidateIds.push("M001");
       }
 
       candidateIds.push("P003", "A046");

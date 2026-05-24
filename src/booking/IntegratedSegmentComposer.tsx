@@ -1,11 +1,11 @@
-import { forwardRef, useImperativeHandle, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { DashboardDynastyPortrait } from "../components/dashboardDynasty";
 import { bookedFinishCostUsd, getSegmentProductionCostForShow } from "../game/finance";
 import { formatMoney } from "../game/formatters";
-import { bookingSegmentTypes, getCatalogOptionsForType, getDefaultCatalogOption, getSegmentCatalogOption, getSegmentParticipantRange, type SegmentCatalogOption } from "../game/matchFormatCatalog";
+import { getCatalogOptionsForType, getSegmentCatalogOption, getSegmentParticipantRange, type SegmentCatalogOption } from "../game/matchFormatCatalog";
 import { getStipulationById } from "../game/stipulationCatalog";
 import { hasIntergenderMatchParticipants } from "../game/scoring";
-import type { Championship, GameState, Rivalry, Segment, SegmentType, Wrestler } from "../game/types";
+import type { Championship, GameState, Rivalry, Segment, Wrestler } from "../game/types";
 import { BookingOverlay } from "./BookingOverlay";
 import type { BookingComposerView } from "./buildBookingModel";
 import {
@@ -25,17 +25,12 @@ import {
 } from "./composerReads";
 import {
   canSegmentAttachRivalry,
-  getSegmentDescription,
   getSegmentDurationMinutes,
   getStipulationsForSegmentId,
   getWrestlerNames,
   isRivalryIntergenderBlocked,
   wouldCreateIntergenderMatch,
 } from "./bookingUtils";
-
-export type IntegratedSegmentComposerHandle = {
-  openSegmentTypePicker: () => void;
-};
 
 export type IntegratedSegmentComposerProps = {
   championships: Championship[];
@@ -61,7 +56,6 @@ type OverlayState =
   | { type: "closed" }
   | { type: "talent"; slotIndex: number }
   | { type: "slot-menu"; slotIndex: number }
-  | { type: "segment-type" }
   | { type: "format" }
   | { type: "title" }
   | { type: "rivalry" }
@@ -163,29 +157,25 @@ function StageSlots({
   return <div className="booking-stage-lineup">{layout.slots.map(renderSlot)}</div>;
 }
 
-export const IntegratedSegmentComposer = forwardRef<IntegratedSegmentComposerHandle, IntegratedSegmentComposerProps>(
-  function IntegratedSegmentComposer(
-    {
-      championships,
-      composer,
-      game,
-      onApplyCatalogOption,
-      onBuildTitleMatch,
-      onClearParticipants,
-      onOpenProfile,
-      onRemoveSegment,
-      onSetDuration,
-      onSetSegmentChampionship,
-      onSetSegmentStipulation,
-      onSetSegmentRivalry,
-      onSetManualWinner,
-      onUpdateParticipants,
-      rivalries,
-      segment,
-      wrestlers,
-    },
-    ref,
-  ) {
+export function IntegratedSegmentComposer({
+  championships,
+  composer,
+  game,
+  onApplyCatalogOption,
+  onBuildTitleMatch,
+  onClearParticipants,
+  onOpenProfile,
+  onRemoveSegment,
+  onSetDuration,
+  onSetSegmentChampionship,
+  onSetSegmentStipulation,
+  onSetSegmentRivalry,
+  onSetManualWinner,
+  onUpdateParticipants,
+  rivalries,
+  segment,
+  wrestlers,
+}: IntegratedSegmentComposerProps) {
   const [overlay, setOverlay] = useState<OverlayState>({ type: "closed" });
   const [stageMenuOpen, setStageMenuOpen] = useState(false);
 
@@ -230,17 +220,6 @@ export const IntegratedSegmentComposer = forwardRef<IntegratedSegmentComposerHan
     setOverlay(next);
   }
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      openSegmentTypePicker: () => {
-        setStageMenuOpen(false);
-        setOverlay({ type: "segment-type" });
-      },
-    }),
-    [],
-  );
-
   function closeOverlay() {
     setOverlay({ type: "closed" });
   }
@@ -279,18 +258,6 @@ export const IntegratedSegmentComposer = forwardRef<IntegratedSegmentComposerHan
 
   function removeSlotTalent(slotIndex: number) {
     onUpdateParticipants(removeParticipantAtIndex(segment, slotIndex));
-    closeOverlay();
-  }
-
-  function applySegmentType(type: SegmentType) {
-    if (segment.type !== type) {
-      const option = getDefaultCatalogOption(type);
-
-      if (option) {
-        onApplyCatalogOption(option);
-      }
-    }
-
     closeOverlay();
   }
 
@@ -519,22 +486,8 @@ export const IntegratedSegmentComposer = forwardRef<IntegratedSegmentComposerHan
       ) : null}
 
       {overlay.type === "format" ? (
-        <BookingOverlay ariaLabel="Format picker" onClose={closeOverlay} title="Segment Type & Format" wide>
-          <p className="booking-overlay-note">Change the segment type or pick a format variant below. Assigned talent carries over when it still fits.</p>
-          <div className="booking-format-type-list" aria-label="Segment type">
-            {bookingSegmentTypes.map((type) => (
-              <button
-                className={`booking-format-type-option ${segment.type === type ? "is-selected" : ""}`.trim()}
-                key={type}
-                onClick={() => applySegmentType(type)}
-                type="button"
-              >
-                <strong>{type}</strong>
-                <span>{getSegmentDescription(type)}</span>
-              </button>
-            ))}
-          </div>
-          <p className="booking-overlay-note">{segment.type} formats</p>
+        <BookingOverlay ariaLabel="Format picker" onClose={closeOverlay} title={`${segment.type} Format`} wide>
+          <p className="booking-overlay-note">Pick the {segment.type.toLowerCase()} variant for this segment.</p>
           <div className="booking-picker-grid">
             {catalogOptions.map((option) => (
               <button
@@ -701,5 +654,4 @@ export const IntegratedSegmentComposer = forwardRef<IntegratedSegmentComposerHan
       ) : null}
     </div>
   );
-  },
-);
+}

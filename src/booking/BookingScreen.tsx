@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DynastyManagementShell, type DynastyManagementCta } from "../components/DynastyManagementShell";
-import { getSegmentParticipantRange, type SegmentCatalogOption } from "../game/matchFormatCatalog";
+import { getDefaultCatalogOption, getSegmentParticipantRange, type SegmentCatalogOption } from "../game/matchFormatCatalog";
 import { hasIntergenderMatchParticipants, isValidSegment } from "../game/scoring";
 import { getStipulationsForSegment } from "../game/stipulationCatalog";
 import type { Segment, SegmentType } from "../game/types";
@@ -9,13 +9,13 @@ import { BookingContextRail } from "./BookingContextRail";
 import { BookingEmptyStage } from "./BookingEmptyStage";
 import { BookingSegmentRail } from "./BookingSegmentRail";
 import { BookingStatusStrip } from "./BookingStatusStrip";
+import { BookingSegmentTypePickerOverlay } from "./BookingSegmentTypePickerOverlay";
 import { BookingTypePickerOverlay } from "./BookingTypePickerOverlay";
-import { IntegratedSegmentComposer, type IntegratedSegmentComposerHandle } from "./IntegratedSegmentComposer";
+import { IntegratedSegmentComposer } from "./IntegratedSegmentComposer";
 import { buildBookingModel } from "./buildBookingModel";
 import type { BookingScreenProps } from "./bookingTypes";
 import {
   canSegmentAttachRivalry,
-  getSegmentDescription,
   getSegmentDurationMinutes,
   getShowReadiness,
   isRivalryIntergenderBlocked,
@@ -46,8 +46,8 @@ export function BookingScreen({
   const [smartRundownError, setSmartRundownError] = useState("");
   const [pendingClearCard, setPendingClearCard] = useState(false);
   const [typePickerOpen, setTypePickerOpen] = useState(false);
+  const [segmentTypePickerOpen, setSegmentTypePickerOpen] = useState(false);
   const smartRundownVariantRef = useRef(0);
-  const composerRef = useRef<IntegratedSegmentComposerHandle>(null);
   const validShowSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers));
   const validSegments = validShowSegments.length;
   const invalidSegments = game.currentShow.length - validSegments;
@@ -101,6 +101,21 @@ export function BookingScreen({
     const nextSegment = game.currentShow.find((segment) => segment.id !== segmentId);
     setSelectedSegmentId(nextSegment?.id);
     setPendingClearCard(false);
+  }
+
+  function applySegmentType(segment: Segment, type: SegmentType) {
+    if (segment.type === type) {
+      setSegmentTypePickerOpen(false);
+      return;
+    }
+
+    const option = getDefaultCatalogOption(type);
+
+    if (option) {
+      applyCatalogOption(segment, option);
+    }
+
+    setSegmentTypePickerOpen(false);
   }
 
   function applyCatalogOption(segment: Segment, option: SegmentCatalogOption) {
@@ -241,15 +256,15 @@ export function BookingScreen({
               setSelectedSegmentId(segmentId);
               setPendingClearCard(false);
               setTypePickerOpen(false);
+              setSegmentTypePickerOpen(false);
             }}
           />
         </aside>
 
         <section className="booking-desk-stage" aria-label="Selected segment composer">
-          <BookingComposerStage model={model} onSegmentTypeClick={() => composerRef.current?.openFormatPicker()}>
+          <BookingComposerStage model={model} onSegmentTypeClick={() => setSegmentTypePickerOpen(true)}>
             {selectedSegment && model.composer ? (
               <IntegratedSegmentComposer
-                ref={composerRef}
                 championships={game.championships}
                 composer={model.composer}
                 game={game}
@@ -277,6 +292,14 @@ export function BookingScreen({
               />
             )}
           </BookingComposerStage>
+
+          {segmentTypePickerOpen && selectedSegment ? (
+            <BookingSegmentTypePickerOverlay
+              onClose={() => setSegmentTypePickerOpen(false)}
+              onSelectType={(type) => applySegmentType(selectedSegment, type)}
+              segment={selectedSegment}
+            />
+          ) : null}
         </section>
 
         <BookingContextRail game={game} model={model} />

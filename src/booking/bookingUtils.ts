@@ -602,7 +602,15 @@ export function getTagTitleSides(segment: Segment, championship: Championship) {
 }
 
 function isSinglesTitleContestShape(segment: Segment) {
-  return segment.segmentCatalogId === "M002" ? segment.participantIds.length === 3 : segment.participantIds.length === 2;
+  if (segment.segmentCatalogId === "M002") {
+    return segment.participantIds.length === 3;
+  }
+
+  if (segment.segmentCatalogId === "M003") {
+    return segment.participantIds.length === 4;
+  }
+
+  return segment.participantIds.length === 2;
 }
 
 export function trimParticipantsForCatalogOption(
