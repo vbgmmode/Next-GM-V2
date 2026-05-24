@@ -601,6 +601,18 @@ export function getTagTitleSides(segment: Segment, championship: Championship) {
   };
 }
 
+function canSegmentContestVacantTagChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[] = []) {
+  return (
+    segment.type === "Match" &&
+    segment.segmentCatalogId === "M020" &&
+    segment.participantIds.length === 4 &&
+    new Set(segment.participantIds).size === 4 &&
+    championship.championIds.length === 0 &&
+    isValidSegment(segment, wrestlers) &&
+    doSegmentParticipantsFitChampionship(segment, championship, wrestlers)
+  );
+}
+
 function isSinglesTitleContestShape(segment: Segment) {
   if (segment.segmentCatalogId === "M002") {
     return segment.participantIds.length === 3;
@@ -656,7 +668,7 @@ export function trimParticipantsForCatalogOption(
 
 export function canSegmentContestChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[] = []) {
   if (isTagChampionship(championship)) {
-    return Boolean(isValidSegment(segment, wrestlers) && getTagTitleSides(segment, championship));
+    return Boolean((isValidSegment(segment, wrestlers) && getTagTitleSides(segment, championship)) || canSegmentContestVacantTagChampionship(segment, championship, wrestlers));
   }
 
   if (canSegmentContestVacantSinglesChampionship(segment, championship, wrestlers)) {

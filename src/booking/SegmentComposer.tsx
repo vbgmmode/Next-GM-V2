@@ -14,6 +14,7 @@ import {
   getSegmentRequirementForSegment,
   getStipulationsForSegmentId,
   getWrestlerNames,
+  isVacantSinglesChampionship,
   wouldCreateIntergenderMatch,
 } from "./bookingUtils";
 
@@ -56,7 +57,10 @@ function TitleMatchControl({
 
   const eligibleChampionships = championships.filter((championship) => canSegmentAttachChampionship(segment, championship, wrestlers));
   const selectedChampionship = championships.find((championship) => championship.id === segment.championshipId);
-  const buildableChampionships = segment.type === "Match" && !eligibleChampionships.length ? championships.filter((championship) => championship.championIds.length) : [];
+  const buildableChampionships =
+    segment.type === "Match" && !eligibleChampionships.length
+      ? championships.filter((championship) => championship.championIds.length || isVacantSinglesChampionship(championship) || championship.eligibleMatchScope === "tag_team")
+      : [];
   const clearLabel = segment.type === "Match" ? "Non-Title" : "No Title Context";
 
   return (

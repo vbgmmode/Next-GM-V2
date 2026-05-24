@@ -65,7 +65,7 @@ const SHOW_BALANCE = {
 };
 
 const SEGMENT_FATIGUE_GAIN: Record<SegmentType, number> = {
-  Match: 6,
+  Match: 8,
   Promo: 2,
   "Backstage Angle": 3,
   "Contract Signing": 2,
@@ -75,12 +75,12 @@ const SEGMENT_FATIGUE_GAIN: Record<SegmentType, number> = {
 const FALLOUT_BALANCE = {
   underuseWeeks: 3,
   overuseConsecutiveWeeks: 3,
-  highFatigue: 56,
+  highFatigue: 50,
   severeFatigue: 76,
-  bookedMoraleGain: 1,
+  bookedMoraleGain: 2,
   underusedReturnMoraleGain: 4,
-  pressureBookingMoralePenalty: 3,
-  severePressureMoralePenalty: 5,
+  pressureBookingMoralePenalty: 4,
+  severePressureMoralePenalty: 6,
   underuseMoralePenalty: 3,
 };
 
@@ -95,19 +95,19 @@ const RIVALRY_BALANCE = {
   titleStakesBonus: 2,
   backstageStoryBonus: 1,
   contractStoryBonus: 2,
-  freshnessCost: -5,
+  freshnessCost: -3,
   eliteFreshnessCost: -3,
   plePayoffFreshnessCost: -2,
   coldFreshnessPenalty: -4,
   repeatedEliteFreshnessCost: -5,
   repeatedPlePayoffFreshnessCost: -4,
-  repeatedBeatFreshnessCost: -14,
-  repeatedWeakBeatFreshnessCost: -18,
+  repeatedBeatFreshnessCost: -11,
+  repeatedWeakBeatFreshnessCost: -14,
 };
 
 const INJURY_BALANCE = {
-  minorThreshold: 82,
-  majorThreshold: 94,
+  minorThreshold: 92,
+  majorThreshold: 97,
   highFatigue: 70,
   severeFatigue: 85,
   minorMoralePenalty: 1,
@@ -690,11 +690,12 @@ function getInjuryRiskScore(wrestler: Wrestler, segmentTypes: SegmentType[], res
   const consecutiveWeeks = Math.max(preShowWrestler?.consecutiveWeeksBooked ?? 0, wrestler.consecutiveWeeksBooked ?? 0);
   const minorInjuryLoad = preShowWrestler?.injuryStatus === "minor" || wrestler.injuryStatus === "minor" ? 12 : 0;
   const physicalLoad = physicalSegments * 12;
-  const repeatLoad = consecutiveWeeks * 7;
-  const fatigueLoad = highestFatigue * 0.55 + (highestFatigue >= INJURY_BALANCE.severeFatigue ? 8 : highestFatigue >= INJURY_BALANCE.highFatigue ? 4 : 0);
+  const stackedPhysicalLoad = physicalSegments >= 2 ? 14 : 0;
+  const repeatLoad = consecutiveWeeks * 4;
+  const fatigueLoad = highestFatigue * 0.7 + (highestFatigue >= INJURY_BALANCE.severeFatigue ? 8 : highestFatigue >= INJURY_BALANCE.highFatigue ? 4 : 0);
   const stageLoad = result.showType === "ple" ? INJURY_BALANCE.pleStageLoad : 0;
 
-  return fatigueLoad + repeatLoad + physicalLoad + minorInjuryLoad + stageLoad + getDifficultyRules(game.difficulty).playerPressure.injuryRiskModifier;
+  return fatigueLoad + repeatLoad + physicalLoad + stackedPhysicalLoad + minorInjuryLoad + stageLoad + getDifficultyRules(game.difficulty).playerPressure.injuryRiskModifier;
 }
 
 function getInjuryDescription(wrestler: Wrestler, status: "minor" | "major", segmentTypes: SegmentType[], riskScore: number) {
@@ -773,7 +774,7 @@ function getSegmentFatigueGain(segment: Segment, actualDurationMinutes: number, 
   const repeatedUseLoad = priorCardUses * 2;
   const healthLoad = wrestler?.injuryStatus === "minor" ? 1 : 0;
 
-  return Math.max(1, Math.round(Math.max(fallback * 0.6, profile.fatigueBase + durationLoad + repeatedUseLoad + healthLoad)));
+  return Math.max(1, Math.round(Math.max(fallback, profile.fatigueBase + durationLoad + repeatedUseLoad + healthLoad)));
 }
 
 function getSegmentMomentumGain(score: number, isPle: boolean) {
@@ -1297,14 +1298,61 @@ function getTagTitleSides(segment: Segment, championship: Championship) {
 function resolveTagTitleMatch(segment: Segment, championship: Championship, wrestlers: Wrestler[], context: ResolvedShowContext) {
   const uniqueParticipantCount = new Set(segment.participantIds).size;
 
-  if (segment.segmentCatalogId !== "M020" || segment.participantIds.length !== 4 || uniqueParticipantCount !== 4 || championship.championIds.length !== 2) {
+  if (segment.segmentCatalogId !== "M020" || segment.participantIds.length !== 4 || uniqueParticipantCount !== 4 || (championship.championIds.length !== 0 && championship.championIds.length !== 2)) {
     return undefined;
   }
 
-  const sides = getTagTitleSides(segment, championship);
   const winner = getSegmentWinner(segment, wrestlers);
 
-  if (!sides || !winner) {
+  if (!winner) {
+    return undefined;
+  }
+
+  if (championship.championIds.length === 0) {
+    const teams = getTagMatchTeams(segment);
+
+    if (!teams) {
+      return undefined;
+    }
+
+    const winningPairIds = teams.teamAIds.includes(winner.id) ? teams.teamAIds : teams.teamBIds;
+    const losingPairIds = teams.teamAIds.includes(winner.id) ? teams.teamBIds : teams.teamAIds;
+    const winningPairLabel = getTeamLabel(winningPairIds, wrestlers);
+    const losingPairLabel = getTeamLabel(losingPairIds, wrestlers);
+    championship.championIds = [...winningPairIds];
+    championship.reignStartWeek = context.weekNumber;
+    championship.defenses = 0;
+    const note =
+      context.showType === "ple"
+        ? `${winningPairLabel} won the vacant ${championship.name} against ${losingPairLabel} at a major event, giving the tag division a new center.`
+        : `${winningPairLabel} won the vacant ${championship.name} against ${losingPairLabel}. The tag title picture now has a team to chase.`;
+
+    return {
+      note,
+      event: {
+        id: `s${context.seasonNumber}-w${context.weekNumber}-${segment.id}-${championship.id}-title-change`,
+        championshipId: championship.id,
+        championshipName: championship.name,
+        eventType: "title_change",
+        championIds: [...winningPairIds],
+        previousChampionIds: [],
+        winningPairIds: [...winningPairIds],
+        losingPairIds: [...losingPairIds],
+        winningPairLabel,
+        losingPairLabel,
+        weekNumber: context.weekNumber,
+        seasonNumber: context.seasonNumber,
+        showName: context.showName,
+        showType: context.showType,
+        segmentId: segment.id,
+        note,
+      } satisfies ChampionshipHistoryEvent,
+    };
+  }
+
+  const sides = getTagTitleSides(segment, championship);
+
+  if (!sides) {
     return undefined;
   }
 

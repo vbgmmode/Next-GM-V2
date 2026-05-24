@@ -184,7 +184,7 @@ export function getBuildableChampionships(segment: Segment, championships: Champ
   if (segment.type !== "Match") {
     return [];
   }
-  return championships.filter((championship) => championship.championIds.length);
+  return championships.filter((championship) => championship.championIds.length || championship.eligibleMatchScope === "singles" || championship.eligibleMatchScope === "tag_team");
 }
 
 export function getSelectedCatalogLabel(segment: Segment) {

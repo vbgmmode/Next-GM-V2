@@ -6,6 +6,7 @@ import { advanceCpuRivalWeek } from "./cpuRivalLoop";
 import { advanceCpuMarket, advancePlayerContracts, ensureWeeklyMarketBoard, evaluateOfficeMandate, retainContractedPlayerRoster } from "./market";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
+const weeklyFatigueRecovery = 3;
 
 export function advanceGameWeek(game: GameState): GameState {
   const latestResult = game.showHistory[game.showHistory.length - 1];
@@ -32,10 +33,16 @@ export function advanceGameWeek(game: GameState): GameState {
     calendar: completedCalendar,
     currentShow: [],
     injuryRecoveryNotes: [...(game.injuryRecoveryNotes ?? []), ...recoveryNotes],
-    wrestlers: recoveredWrestlers.map((wrestler) => ({
-      ...wrestler,
-      fatigue: clamp(wrestler.fatigue - 6),
-    })),
+    wrestlers: recoveredWrestlers.map((wrestler) => {
+      const wasBookedThisWeek = (wrestler.lastBookedWeek ?? 0) === game.currentWeek;
+      const momentumDecay = !wasBookedThisWeek ? 4 : wrestler.momentum >= 92 ? 2 : 0;
+
+      return {
+        ...wrestler,
+        fatigue: clamp(wrestler.fatigue - weeklyFatigueRecovery),
+        momentum: clamp(wrestler.momentum - momentumDecay),
+      };
+    }),
     rivalries: pendingEndResolution.rivalries.map((rivalry) => {
       const wasAdvancedThisWeek = rivalry.lastAdvancedWeek >= game.currentWeek;
       const stalePenalty = rivalry.status === "stale" ? 4 : 0;

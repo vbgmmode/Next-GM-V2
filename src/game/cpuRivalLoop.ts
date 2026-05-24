@@ -770,7 +770,7 @@ export function advanceCpuRivalWeek(game: GameState): RivalBrandState[] {
 
       return {
         ...member,
-        fatigue: clamp(member.fatigue - 6),
+        fatigue: clamp(member.fatigue - 3),
         injuryStatus,
         injuryDescription: injuryStatus === "healthy" ? undefined : member.injuryDescription,
         injuryWeeksRemaining,

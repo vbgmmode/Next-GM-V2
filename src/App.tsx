@@ -1789,9 +1789,21 @@ function getTagTitleSides(segment: Segment, championship: Championship) {
   };
 }
 
+function canSegmentContestVacantTagChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[] = []) {
+  return (
+    segment.type === "Match" &&
+    segment.segmentCatalogId === "M020" &&
+    segment.participantIds.length === 4 &&
+    new Set(segment.participantIds).size === 4 &&
+    championship.championIds.length === 0 &&
+    isValidSegment(segment, wrestlers) &&
+    doSegmentParticipantsFitChampionship(segment, championship, wrestlers)
+  );
+}
+
 function canSegmentContestChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[] = []) {
   if (isTagChampionship(championship)) {
-    return Boolean(isValidSegment(segment, wrestlers) && getTagTitleSides(segment, championship));
+    return Boolean((isValidSegment(segment, wrestlers) && getTagTitleSides(segment, championship)) || canSegmentContestVacantTagChampionship(segment, championship, wrestlers));
   }
 
   return (
@@ -1867,12 +1879,51 @@ function buildSanctionedTitleMatchSegment(game: GameState, sourceSegment: Segmen
   const challengerPool = scene.eligibleRoster.length ? scene.eligibleRoster : scene.topContenders;
 
   if (!isTagTitle) {
+    if (championship.championIds.length === 0) {
+      for (let firstIndex = 0; firstIndex < challengerPool.length; firstIndex += 1) {
+        for (let secondIndex = firstIndex + 1; secondIndex < challengerPool.length; secondIndex += 1) {
+          const candidate = makeCandidate([challengerPool[firstIndex].id, challengerPool[secondIndex].id]);
+          const attachedCandidate = getAttachedCandidate(candidate);
+
+          if (attachedCandidate) {
+            return attachedCandidate;
+          }
+        }
+      }
+
+      return undefined;
+    }
+
     for (const contender of challengerPool) {
       const candidate = makeCandidate([...championship.championIds, contender.id]);
       const attachedCandidate = getAttachedCandidate(candidate);
 
       if (attachedCandidate) {
         return attachedCandidate;
+      }
+    }
+
+    return undefined;
+  }
+
+  if (championship.championIds.length === 0) {
+    for (let firstIndex = 0; firstIndex < challengerPool.length; firstIndex += 1) {
+      for (let secondIndex = firstIndex + 1; secondIndex < challengerPool.length; secondIndex += 1) {
+        for (let thirdIndex = secondIndex + 1; thirdIndex < challengerPool.length; thirdIndex += 1) {
+          for (let fourthIndex = thirdIndex + 1; fourthIndex < challengerPool.length; fourthIndex += 1) {
+            const candidate = makeCandidate([
+              challengerPool[firstIndex].id,
+              challengerPool[secondIndex].id,
+              challengerPool[thirdIndex].id,
+              challengerPool[fourthIndex].id,
+            ]);
+            const attachedCandidate = getAttachedCandidate(candidate);
+
+            if (attachedCandidate) {
+              return attachedCandidate;
+            }
+          }
+        }
       }
     }
 
@@ -4422,7 +4473,9 @@ function App() {
       const isTagTitle = isTagChampionship(championship);
       const option = getCatalogOptionById(isTagTitle ? "M020" : "M001") ?? getDefaultCatalogOption("Match")!;
       const scene = getTitleDivisionScene(championship, current.wrestlers, current.rivalries, current.currentWeek, current.championships);
-      const challengerIds = scene.topContenders.slice(0, isTagTitle ? 2 : 1).map((wrestler) => wrestler.id);
+      const contenderPool = scene.eligibleRoster.length ? scene.eligibleRoster : scene.topContenders;
+      const contenderCount = isTagTitle ? (championship.championIds.length ? 2 : 4) : (championship.championIds.length ? 1 : 2);
+      const challengerIds = contenderPool.slice(0, contenderCount).map((wrestler) => wrestler.id);
       const participantIds = [...championship.championIds, ...challengerIds];
       const segmentId = `title-segment-${Date.now()}-${current.currentShow.length}`;
       const titleSegment: Segment = {

@@ -187,7 +187,7 @@ function getLastShowRosterDeltas(game: GameState, lastShow?: ShowResult, previou
       }
 
       const fatigueGain = totals.get(wrestlerId)?.fatigue ?? 0;
-      const recovery = game.currentWeek > lastShow.week ? 6 : 0;
+      const recovery = game.currentWeek > lastShow.week ? 3 : 0;
       const netChange = -fatigueGain + recovery;
 
       if (netChange === 0) {
