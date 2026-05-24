@@ -2,10 +2,12 @@ import { getCatalogOptionById, getDefaultCatalogOption } from "../game/matchForm
 import { isValidSegment } from "../game/scoring";
 import type { GameState, Rivalry, Segment, Wrestler } from "../game/types";
 import {
+  canSegmentAttachRivalry,
   canSegmentAttachChampionship,
   canWrestlersShareMatch,
   getSegmentDurationMinutes,
   getShowReadiness,
+  getRivalryStructure,
   maxBookingSegments,
   showRuntimeMinMinutes,
   showRuntimeOvertimeMinutes,
@@ -29,11 +31,30 @@ function getSmartUsagePenalty(wrestler: Wrestler, usage: Record<string, number>)
   return (usage[wrestler.id] ?? 0) * 26;
 }
 
+function getSmartHash(value: string) {
+  return [...value].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) % 997, 17);
+}
+
+function getSmartVariantJitter(wrestler: Wrestler, variantSeed: number, role: "match" | "promo" | "story") {
+  const roleOffset = role === "match" ? 11 : role === "promo" ? 29 : 47;
+  return ((getSmartHash(wrestler.id) + variantSeed * roleOffset) % 25) - 12;
+}
+
+function rotateSmartList<T>(items: T[], variantSeed: number) {
+  if (items.length < 2) {
+    return items;
+  }
+
+  const offset = Math.abs(variantSeed) % items.length;
+  return [...items.slice(offset), ...items.slice(0, offset)];
+}
+
 function getSmartTalentScore(
   wrestler: Wrestler,
   game: GameState,
   usage: Record<string, number>,
   role: "match" | "promo" | "story" = "match",
+  variantSeed = 0,
 ) {
   const championBonus = game.championships.some((championship) => championship.championIds.includes(wrestler.id)) ? 10 : 0;
   const rivalryBonus = game.rivalries.some((rivalry) => rivalry.participantIds.includes(wrestler.id)) ? 8 : 0;
@@ -51,7 +72,8 @@ function getSmartTalentScore(
     underuseBonus +
     conditionBonus -
     wrestler.fatigue * 0.22 -
-    getSmartUsagePenalty(wrestler, usage)
+    getSmartUsagePenalty(wrestler, usage) +
+    getSmartVariantJitter(wrestler, variantSeed, role)
   );
 }
 
@@ -60,10 +82,11 @@ function sortSmartTalent(
   game: GameState,
   usage: Record<string, number>,
   role: "match" | "promo" | "story" = "match",
+  variantSeed = 0,
 ) {
   return [...wrestlers].sort(
     (a, b) =>
-      getSmartTalentScore(b, game, usage, role) - getSmartTalentScore(a, game, usage, role) ||
+      getSmartTalentScore(b, game, usage, role, variantSeed) - getSmartTalentScore(a, game, usage, role, variantSeed) ||
       b.popularity - a.popularity ||
       b.momentum - a.momentum ||
       a.fatigue - b.fatigue ||
@@ -75,12 +98,14 @@ function getSmartPairKey(ids: string[]) {
   return [...ids].sort().join("|");
 }
 
-function getSmartRivalry(game: GameState, available: Wrestler[]) {
+function getSmartRivalries(game: GameState, available: Wrestler[], variantSeed = 0) {
   const availableIds = new Set(available.map((wrestler) => wrestler.id));
 
-  return [...game.rivalries]
-    .filter((rivalry) => rivalry.participantIds.length === 2 && rivalry.participantIds.every((id) => availableIds.has(id)))
-    .sort((a, b) => b.heat + b.freshness - (a.heat + a.freshness) || a.name.localeCompare(b.name))[0];
+  const sorted = [...game.rivalries]
+    .filter((rivalry) => rivalry.participantIds.length >= 2 && rivalry.participantIds.every((id) => availableIds.has(id)))
+    .sort((a, b) => b.heat + b.freshness - (a.heat + a.freshness) || a.name.localeCompare(b.name));
+
+  return rotateSmartList(sorted.slice(0, 4), variantSeed);
 }
 
 function chooseSmartTalent(
@@ -88,6 +113,7 @@ function chooseSmartTalent(
   available: Wrestler[],
   usage: Record<string, number>,
   role: "match" | "promo" | "story",
+  variantSeed = 0,
   excludeIds: string[] = [],
 ) {
   const excluded = new Set(excludeIds);
@@ -96,14 +122,15 @@ function chooseSmartTalent(
     game,
     usage,
     role,
+    variantSeed,
   )[0];
 }
 
-function chooseSmartPair(game: GameState, available: Wrestler[], usage: Record<string, number>, usedPairs: Set<string>) {
-  const sorted = sortSmartTalent(available, game, usage, "match").filter((wrestler) => (usage[wrestler.id] ?? 0) < 2);
+function chooseSmartPair(game: GameState, available: Wrestler[], usage: Record<string, number>, usedPairs: Set<string>, variantSeed = 0) {
+  const sorted = sortSmartTalent(available, game, usage, "match", variantSeed).filter((wrestler) => (usage[wrestler.id] ?? 0) < 2);
 
-  for (const first of sorted) {
-    const second = sorted.find(
+  for (const first of rotateSmartList(sorted, variantSeed)) {
+    const second = rotateSmartList(sorted, variantSeed + getSmartHash(first.id)).find(
       (candidate) =>
         candidate.id !== first.id &&
         !usedPairs.has(getSmartPairKey([first.id, candidate.id])) &&
@@ -115,6 +142,47 @@ function chooseSmartPair(game: GameState, available: Wrestler[], usage: Record<s
   }
 
   return [];
+}
+
+function getSmartCardShape(game: GameState, available: Wrestler[], variantSeed: number) {
+  const rivalryCount = getSmartRivalries(game, available, variantSeed).length;
+  const baseMatchCounts = available.length >= 10 ? [2, 3, 4] : available.length >= 6 ? [2, 3] : [2];
+  const targetMatchCount = baseMatchCounts[Math.abs(variantSeed) % baseMatchCounts.length];
+
+  return {
+    targetMatchCount,
+    targetRivalryBeats: Math.min(Math.max(1, rivalryCount), targetMatchCount + 1),
+  };
+}
+
+function getSmartRivalryMatchOptionId(rivalry: Rivalry) {
+  const structure = getRivalryStructure(rivalry);
+
+  if (structure === "tag_team") {
+    return "M020";
+  }
+
+  if (structure === "multi_person") {
+    return rivalry.participantIds.length >= 4 ? "M003" : "M002";
+  }
+
+  return rivalry.heat >= 65 ? "M019" : "M001";
+}
+
+function getSmartStoryOptionId(rivalry: Rivalry | undefined, variantSeed: number) {
+  if (!rivalry) {
+    return variantSeed % 2 === 0 ? "A001" : "P002";
+  }
+
+  const options = getRivalryStructure(rivalry) === "singles" ? ["P003", "A046", "P008"] : ["A046", "P003"];
+  return options[Math.abs(variantSeed) % options.length];
+}
+
+function canUseRivalryMatch(game: GameState, rivalry: Rivalry, participantIds: string[]) {
+  const optionId = getSmartRivalryMatchOptionId(rivalry);
+  const segment = buildSmartSegment(game, optionId, participantIds, 24, 0, rivalry.id);
+
+  return canSegmentAttachRivalry(segment, rivalry, game.wrestlers) && isValidSegment(segment, game.wrestlers);
 }
 
 function buildSmartSegment(
@@ -148,7 +216,7 @@ function buildSmartSegment(
   return segment;
 }
 
-export function buildSmartRundown(game: GameState): SmartRundownResult {
+export function buildSmartRundown(game: GameState, variantSeed = 0): SmartRundownResult {
   const available = game.wrestlers.filter(isSmartRundownAvailable);
   const notes = new Set<string>();
   const segments: Segment[] = [];
@@ -180,34 +248,59 @@ export function buildSmartRundown(game: GameState): SmartRundownResult {
     };
   }
 
-  const rivalry: Rivalry | undefined = getSmartRivalry(game, available);
+  const shape = getSmartCardShape(game, available, variantSeed);
+  const rivalryPool = getSmartRivalries(game, available, variantSeed);
 
-  if (rivalry) {
-    const [firstId, secondId] = rivalry.participantIds;
-    const first = available.find((wrestler) => wrestler.id === firstId);
-    const second = available.find((wrestler) => wrestler.id === secondId);
+  rivalryPool.slice(0, shape.targetRivalryBeats).forEach((rivalry, index) => {
+    const participantIds = rivalry.participantIds.filter((id) => (usage[id] ?? 0) < 2);
 
-    if (first && second) {
-      addSegment("P003", [first.id], 14, rivalry.id);
-      if (canWrestlersShareMatch([first, second])) {
-        addSegment(rivalry.heat >= 65 ? "M019" : "M001", [first.id, second.id], 30, rivalry.id);
+    if (participantIds.length < 2) {
+      return;
+    }
+
+    const canBookMatch =
+      segments.filter((segment) => segment.type === "Match").length < shape.targetMatchCount &&
+      canUseRivalryMatch(game, rivalry, participantIds);
+
+    if (canBookMatch) {
+      const optionId = getSmartRivalryMatchOptionId(rivalry);
+      if (addSegment(optionId, participantIds, index === 0 ? 30 : 24, rivalry.id)) {
         notes.add(`Featured active rivalry: ${rivalry.name}.`);
-      } else {
-        notes.add(`Featured ${rivalry.name} in a talk segment because current match rules need same-division competitors.`);
+        return;
       }
     }
-  }
+
+    const storyOptionId = getSmartStoryOptionId(rivalry, variantSeed + index);
+    const option = getCatalogOptionById(storyOptionId);
+    const storyParticipantIds = participantIds.slice(0, option?.maxParticipants ?? participantIds.length);
+
+    if (addSegment(storyOptionId, storyParticipantIds, index === 0 ? 14 : 10, rivalry.id)) {
+      notes.add(`Gave active rivalry TV time: ${rivalry.name}.`);
+    } else {
+      notes.add(`Skipped ${rivalry.name} because the current segment rules would not accept a clean TV beat.`);
+    }
+  });
 
   if (!segments.some((segment) => segment.type === "Match")) {
-    const pair = chooseSmartPair(game, available, usage, usedPairs);
+    const pair = chooseSmartPair(game, available, usage, usedPairs, variantSeed);
     if (pair.length === 2) {
       addSegment("M001", pair.map((wrestler) => wrestler.id), 28);
       notes.add("Built a match around visible popularity, momentum, and manageable fatigue.");
     }
   }
 
-  if (!segments.some((segment) => segment.type === "Promo")) {
-    const promoTalent = chooseSmartTalent(game, available, usage, "promo");
+  while (segments.filter((segment) => segment.type === "Match").length < shape.targetMatchCount) {
+    const pair = chooseSmartPair(game, available, usage, usedPairs, variantSeed + segments.length);
+    if (pair.length !== 2) {
+      break;
+    }
+
+    addSegment("M001", pair.map((wrestler) => wrestler.id), segments.length <= 2 ? 24 : 20);
+    notes.add("Added a match beat so the card shape changes from one smart draft to the next.");
+  }
+
+  if (!segments.some((segment) => segment.type === "Promo" || segment.type === "Contract Signing")) {
+    const promoTalent = chooseSmartTalent(game, available, usage, "promo", variantSeed);
     if (promoTalent) {
       addSegment("P001", [promoTalent.id], 16);
       notes.add("Showcased a strong talker with visible popularity or momentum.");
@@ -215,11 +308,12 @@ export function buildSmartRundown(game: GameState): SmartRundownResult {
   }
 
   if (!segments.some((segment) => segment.type === "Backstage Angle" || segment.type === "Contract Signing" || segment.type === "Open Challenge")) {
-    const storyTalent = chooseSmartTalent(game, available, usage, "story");
-    const rivalryParticipants = rivalry?.participantIds.filter((id) => (usage[id] ?? 0) < 2) ?? [];
+    const storyTalent = chooseSmartTalent(game, available, usage, "story", variantSeed);
+    const storyRivalry = rivalryPool.find((rivalry) => !segments.some((segment) => segment.rivalryId === rivalry.id));
+    const rivalryParticipants = storyRivalry?.participantIds.filter((id) => (usage[id] ?? 0) < 2) ?? [];
 
-    if (rivalry && rivalryParticipants.length === 2) {
-      addSegment("A046", rivalryParticipants, 14, rivalry.id);
+    if (storyRivalry && rivalryParticipants.length >= 2) {
+      addSegment("A046", rivalryParticipants.slice(0, 4), 14, storyRivalry.id);
       notes.add("Added backstage texture so the rivalry has more than one TV surface.");
     } else if (storyTalent) {
       addSegment("A001", [storyTalent.id], 14);
@@ -230,15 +324,16 @@ export function buildSmartRundown(game: GameState): SmartRundownResult {
   while (segments.reduce((total, segment) => total + getSegmentDurationMinutes(segment), 0) < showRuntimeMinMinutes && segments.length < 8) {
     const currentRuntime = segments.reduce((total, segment) => total + getSegmentDurationMinutes(segment), 0);
     const remaining = showRuntimeMinMinutes - currentRuntime;
-    const pair = chooseSmartPair(game, available, usage, usedPairs);
+    const matchCount = segments.filter((segment) => segment.type === "Match").length;
+    const pair = chooseSmartPair(game, available, usage, usedPairs, variantSeed + segments.length);
 
-    if (remaining >= 20 && pair.length === 2) {
+    if (remaining >= 20 && pair.length === 2 && matchCount < shape.targetMatchCount + 1) {
       addSegment("M001", pair.map((wrestler) => wrestler.id), Math.min(26, Math.max(20, remaining)));
       notes.add("Added another match to bring the card into the broadcast window.");
       continue;
     }
 
-    const talker = chooseSmartTalent(game, available, usage, "promo");
+    const talker = chooseSmartTalent(game, available, usage, "promo", variantSeed + segments.length);
     if (talker && addSegment("P002", [talker.id], Math.min(14, Math.max(10, remaining)))) {
       notes.add("Used short hype time to fill the TV block without forcing another match.");
       continue;
@@ -296,6 +391,7 @@ export function buildSmartRundown(game: GameState): SmartRundownResult {
   }
 
   notes.add(`Kept the rough draft inside the ${showRuntimeMinMinutes}-${showRuntimeOvertimeMinutes} minute broadcast-ready window and away from an overrun-heavy layout.`);
+  notes.add(`Rotated this smart draft toward a ${shape.targetMatchCount}-match card shape.`);
 
   return {
     notes: [...notes],
@@ -303,7 +399,7 @@ export function buildSmartRundown(game: GameState): SmartRundownResult {
   };
 }
 
-export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] = game.currentShow): SmartRundownResult {
+export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] = game.currentShow, variantSeed = 0): SmartRundownResult {
   const available = game.wrestlers.filter(isSmartRundownAvailable);
   const usage: Record<string, number> = {};
   const usedPairs = new Set<string>();
@@ -335,10 +431,11 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
   }
 
   const cardHasRivalry = (rivalryId: string) => currentShow.some((segment) => segment.rivalryId === rivalryId);
-  const rivalry = getSmartRivalry(
+  const rivalry = getSmartRivalries(
     game,
     available.filter((wrestler) => (usage[wrestler.id] ?? 0) < 2),
-  );
+    variantSeed,
+  )[0];
 
   if (rivalry && !cardHasRivalry(rivalry.id)) {
     const [firstId, secondId] = rivalry.participantIds;
@@ -349,7 +446,7 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
       if (canWrestlersShareMatch([first, second]) && !usedPairs.has(getSmartPairKey([first.id, second.id]))) {
         const segment = buildSmartSegment(
           game,
-          rivalry.heat >= 65 ? "M019" : "M001",
+          getSmartRivalryMatchOptionId(rivalry),
           [first.id, second.id],
           28,
           currentShow.length,
@@ -376,7 +473,7 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
   }
 
   if (!currentShow.some((segment) => segment.type === "Match")) {
-    const pair = chooseSmartPair(game, available, usage, usedPairs);
+    const pair = chooseSmartPair(game, available, usage, usedPairs, variantSeed);
 
     if (pair.length === 2) {
       const segment = buildSmartSegment(game, "M001", pair.map((wrestler) => wrestler.id), 28, currentShow.length);
@@ -391,7 +488,7 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
   }
 
   if (!currentShow.some((segment) => segment.type === "Promo")) {
-    const promoTalent = chooseSmartTalent(game, available, usage, "promo");
+    const promoTalent = chooseSmartTalent(game, available, usage, "promo", variantSeed);
 
     if (promoTalent) {
       const segment = buildSmartSegment(game, "P001", [promoTalent.id], 16, currentShow.length);
@@ -406,7 +503,7 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
   }
 
   if (!currentShow.some((segment) => segment.type === "Backstage Angle" || segment.type === "Contract Signing" || segment.type === "Open Challenge")) {
-    const storyTalent = chooseSmartTalent(game, available, usage, "story");
+    const storyTalent = chooseSmartTalent(game, available, usage, "story", variantSeed);
     const rivalryParticipants = rivalry?.participantIds.filter((id) => (usage[id] ?? 0) < 2) ?? [];
 
     if (rivalry && rivalryParticipants.length === 2) {
@@ -432,7 +529,7 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
     }
   }
 
-  const pair = chooseSmartPair(game, available, usage, usedPairs);
+  const pair = chooseSmartPair(game, available, usage, usedPairs, variantSeed);
 
   if (pair.length === 2) {
     const segment = buildSmartSegment(game, "M001", pair.map((wrestler) => wrestler.id), 24, currentShow.length);
@@ -445,7 +542,7 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
     }
   }
 
-  const talker = chooseSmartTalent(game, available, usage, "promo");
+  const talker = chooseSmartTalent(game, available, usage, "promo", variantSeed);
 
   if (talker) {
     const segment = buildSmartSegment(game, "P002", [talker.id], 12, currentShow.length);

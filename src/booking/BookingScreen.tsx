@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DynastyManagementShell, type DynastyManagementCta } from "../components/DynastyManagementShell";
 import { getSegmentParticipantRange, type SegmentCatalogOption } from "../game/matchFormatCatalog";
 import { hasIntergenderMatchParticipants, isValidSegment } from "../game/scoring";
@@ -45,6 +45,7 @@ export function BookingScreen({
   const [smartRundownError, setSmartRundownError] = useState("");
   const [pendingClearCard, setPendingClearCard] = useState(false);
   const [typePickerOpen, setTypePickerOpen] = useState(false);
+  const smartRundownVariantRef = useRef(0);
   const validShowSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers));
   const validSegments = validShowSegments.length;
   const invalidSegments = game.currentShow.length - validSegments;
@@ -137,7 +138,8 @@ export function BookingScreen({
   }
 
   function generateSmartRundown() {
-    const result = buildSmartRundown(game);
+    smartRundownVariantRef.current += 1;
+    const result = buildSmartRundown(game, smartRundownVariantRef.current);
 
     if (result.error) {
       setSmartRundownError(result.error);
@@ -152,7 +154,8 @@ export function BookingScreen({
   }
 
   function generateSmartSegment() {
-    const result = buildSmartSingleSegment(game, game.currentShow);
+    smartRundownVariantRef.current += 1;
+    const result = buildSmartSingleSegment(game, game.currentShow, smartRundownVariantRef.current);
 
     if (result.error) {
       setSmartRundownError(result.error);
