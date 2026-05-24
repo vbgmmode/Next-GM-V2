@@ -518,7 +518,7 @@ const difficultyOptions: ChoiceOption<GameDifficulty>[] = [
 const setupBudgetModeOptions: ChoiceOption<"Money Based" | "Sandbox">[] = [
   {
     label: "Money Based",
-    description: "Default $2M opening war chest. Payroll and market moves spend real budget.",
+    description: "Default $2M opening war chest. Draft and market moves spend real budget.",
   },
   {
     label: "Sandbox",
@@ -4552,6 +4552,10 @@ function App() {
             updatedSegment = { ...updatedSegment, participantIds: updatedSegment.participantIds.slice(0, range.max) };
           }
 
+          if (updatedSegment.winnerId && (updatedSegment.type !== "Match" || !updatedSegment.participantIds.includes(updatedSegment.winnerId))) {
+            updatedSegment = { ...updatedSegment, winnerId: undefined };
+          }
+
           const championship = updatedSegment.championshipId
             ? current.championships.find((title) => title.id === updatedSegment.championshipId)
             : undefined;
@@ -4753,6 +4757,11 @@ function App() {
               : segment.participantIds;
 
           let updatedSegment = { ...segment, participantIds };
+
+          if (updatedSegment.winnerId && !participantIds.includes(updatedSegment.winnerId)) {
+            updatedSegment = { ...updatedSegment, winnerId: undefined };
+          }
+
           const championship = updatedSegment.championshipId
             ? current.championships.find((title) => title.id === updatedSegment.championshipId)
             : undefined;
@@ -6319,7 +6328,7 @@ function RivalIntelligencePanel({ compact = false, game }: { compact?: boolean; 
       <div className="rival-intel-grid">
         <Metric label="Owner Trust" value={`${office.ownerTrust}`} />
         <Metric label="Reputation" value={`${office.brandReputation}`} />
-        <Metric label="Payroll" value={formatMoney(snapshot.payroll)} />
+        <Metric label="Weekly Payroll" value={formatMoney(snapshot.payroll)} detail="No recurring roster payroll" />
         <Metric label="Open Market" value={`${snapshot.freeAgents.length}`} />
       </div>
       {!compact && rivalEvents.length ? (

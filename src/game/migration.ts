@@ -207,6 +207,15 @@ function normalizeMarketContract(value: unknown): MarketContract | undefined {
     return undefined;
   }
 
+  const acquisitionSource =
+    candidate.acquisitionSource === "free_agent" ||
+    candidate.acquisitionSource === "trade" ||
+    candidate.acquisitionSource === "renewal" ||
+    candidate.acquisitionSource === "release"
+      ? candidate.acquisitionSource
+      : "draft";
+  const paymentModel = acquisitionSource === "draft" ? "prepaid" : candidate.paymentModel === "weekly" ? "weekly" : "prepaid";
+
   return {
     id: typeof candidate.id === "string" ? candidate.id : `contract-${candidate.wrestlerId}`,
     wrestlerId: candidate.wrestlerId,
@@ -214,20 +223,14 @@ function normalizeMarketContract(value: unknown): MarketContract | undefined {
     ownerBrandId: typeof candidate.ownerBrandId === "string" ? candidate.ownerBrandId : undefined,
     contractWeeksRemaining: typeof candidate.contractWeeksRemaining === "number" ? candidate.contractWeeksRemaining : 12,
     weeklySalary: typeof candidate.weeklySalary === "number" ? candidate.weeklySalary : 8000,
-    releasePenalty: typeof candidate.releasePenalty === "number" ? candidate.releasePenalty : 10000,
-    acquisitionSource:
-      candidate.acquisitionSource === "free_agent" ||
-      candidate.acquisitionSource === "trade" ||
-      candidate.acquisitionSource === "renewal" ||
-      candidate.acquisitionSource === "release"
-        ? candidate.acquisitionSource
-        : "draft",
+    releasePenalty: paymentModel === "prepaid" ? 0 : typeof candidate.releasePenalty === "number" ? candidate.releasePenalty : 10000,
+    acquisitionSource,
     contractStatus:
       candidate.contractStatus === "expiring" || candidate.contractStatus === "expired" || candidate.contractStatus === "released"
         ? candidate.contractStatus
         : "active",
     renewalRisk: typeof candidate.renewalRisk === "number" ? candidate.renewalRisk : 20,
-    paymentModel: candidate.paymentModel === "prepaid" ? "prepaid" : candidate.paymentModel === "weekly" ? "weekly" : undefined,
+    paymentModel,
     upfrontCostPaid: typeof candidate.upfrontCostPaid === "number" ? candidate.upfrontCostPaid : undefined,
   };
 }
@@ -715,6 +718,7 @@ function normalizeCurrentShow(currentShow: unknown): Segment[] {
       championshipId: segment.championshipId,
       rivalryId: segment.rivalryId,
       stipulationId: normalizedStipulationId,
+      winnerId: typeof segment.winnerId === "string" && segment.participantIds?.includes(segment.winnerId) ? segment.winnerId : undefined,
       segmentCatalogId: candidateFormatId,
       segmentDisplayName: segment.segmentDisplayName ?? defaults.segmentDisplayName,
       durationMinutes: segment.durationMinutes ?? defaults.durationMinutes,

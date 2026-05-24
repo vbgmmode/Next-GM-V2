@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { DashboardDynastyPortrait } from "../components/dashboardDynasty";
+import { bookedFinishCostUsd, getSegmentProductionCostForShow } from "../game/finance";
+import { formatMoney } from "../game/formatters";
 import { getCatalogOptionsForType, getSegmentCatalogOption, getSegmentParticipantRange, type SegmentCatalogOption } from "../game/matchFormatCatalog";
 import { getStipulationById } from "../game/stipulationCatalog";
 import { hasIntergenderMatchParticipants } from "../game/scoring";
@@ -42,6 +44,7 @@ export type IntegratedSegmentComposerProps = {
   onSetSegmentChampionship: (segmentId: string, championshipId: string) => void;
   onSetSegmentStipulation: (segmentId: string, stipulationId: string) => void;
   onSetSegmentRivalry: (rivalryId: string) => void;
+  onSetManualWinner: (winnerId?: string) => void;
   onUpdateParticipants: (participantIds: string[]) => void;
   rivalries: Rivalry[];
   segment: Segment;
@@ -56,6 +59,7 @@ type OverlayState =
   | { type: "title" }
   | { type: "rivalry" }
   | { type: "stipulation" }
+  | { type: "finish" }
   | { type: "stage-menu" };
 
 function wrestlerById(wrestlers: Wrestler[], id?: string) {
@@ -165,6 +169,7 @@ export function IntegratedSegmentComposer({
   onSetSegmentChampionship,
   onSetSegmentStipulation,
   onSetSegmentRivalry,
+  onSetManualWinner,
   onUpdateParticipants,
   rivalries,
   segment,
@@ -188,10 +193,16 @@ export function IntegratedSegmentComposer({
   const selectedChampionship = championships.find((championship) => championship.id === segment.championshipId);
   const eligibleRivalries = getEligibleRivalries(segment, rivalries, wrestlers);
   const selectedRivalry = rivalries.find((rivalry) => rivalry.id === segment.rivalryId);
+  const selectedWinner = wrestlerById(wrestlers, segment.winnerId);
   const formatLabel = getSelectedCatalogLabel(segment);
+  const currentShowType = game.calendar.find((week) => week.weekNumber === game.currentWeek)?.showType ?? "tv";
+  const segmentProductionCost = getSegmentProductionCostForShow(segment, currentShowType) ?? 0;
+  const bookedFinishCost = segment.type === "Match" && segment.winnerId ? bookedFinishCostUsd : 0;
+  const plannedSegmentCost = segmentProductionCost + bookedFinishCost;
   const showTitleBadge = segment.type === "Match" || segment.type === "Contract Signing" || segment.type === "Open Challenge";
   const showRivalryBadge = segment.type !== "Open Challenge";
   const showStipulationBadge = segment.type === "Match";
+  const showFinishBadge = segment.type === "Match" && segment.participantIds.length > 0;
 
   function openOverlay(next: OverlayState) {
     setStageMenuOpen(false);
@@ -330,6 +341,12 @@ export function IntegratedSegmentComposer({
               <strong>{selectedStipulation?.label ?? "Standard match"}</strong>
             </button>
           ) : null}
+          {showFinishBadge ? (
+            <button className={`booking-hero-badge ${segment.winnerId ? "has-value" : ""}`.trim()} onClick={() => openOverlay({ type: "finish" })} type="button">
+              <span>Finish</span>
+              <strong>{selectedWinner ? selectedWinner.name : "Let match resolve"}</strong>
+            </button>
+          ) : null}
         </div>
 
         <StageSlots layout={layout} onSlotClick={handleSlotClick} wrestlers={wrestlers} />
@@ -380,6 +397,14 @@ export function IntegratedSegmentComposer({
               +
             </button>
           </div>
+        </div>
+        <div className="booking-strip-cost">
+          <span>Planned Cost</span>
+          <strong>{formatMoney(plannedSegmentCost)}</strong>
+          <small>
+            Production {formatMoney(segmentProductionCost)}
+            {bookedFinishCost ? ` + Finish ${formatMoney(bookedFinishCost)}` : ""}
+          </small>
         </div>
       </div>
 
@@ -548,6 +573,42 @@ export function IntegratedSegmentComposer({
                 <small>{option.riskContext}</small>
               </button>
             ))}
+          </div>
+        </BookingOverlay>
+      ) : null}
+
+      {overlay.type === "finish" ? (
+        <BookingOverlay ariaLabel="Finish picker" onClose={closeOverlay} title="Booked Finish" wide>
+          <p className="booking-overlay-note">Choosing a winner adds {formatMoney(bookedFinishCostUsd)} in production handling. Leaving it open lets the match resolve at show time.</p>
+          <div className="booking-action-stack">
+            <button
+              className={`booking-btn booking-btn-secondary ${!segment.winnerId ? "is-active" : ""}`.trim()}
+              onClick={() => {
+                onSetManualWinner(undefined);
+                closeOverlay();
+              }}
+              type="button"
+            >
+              Let Match Resolve
+            </button>
+            {segment.participantIds.map((wrestlerId) => {
+              const wrestler = wrestlerById(wrestlers, wrestlerId);
+
+              return wrestler ? (
+                <button
+                  className={`booking-btn booking-btn-secondary ${segment.winnerId === wrestler.id ? "is-active" : ""}`.trim()}
+                  key={wrestler.id}
+                  onClick={() => {
+                    onSetManualWinner(wrestler.id);
+                    closeOverlay();
+                  }}
+                  type="button"
+                >
+                  {wrestler.name}
+                  <small>Booked Finish +{formatMoney(bookedFinishCostUsd)}</small>
+                </button>
+              ) : null;
+            })}
           </div>
         </BookingOverlay>
       ) : null}

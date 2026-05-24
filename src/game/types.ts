@@ -372,6 +372,7 @@ export type Segment = {
   id: string;
   type: SegmentType;
   participantIds: string[];
+  winnerId?: string;
   championshipId?: string;
   rivalryId?: string;
   stipulationId?: string;
@@ -497,7 +498,8 @@ export type FinanceReport = {
   ticketRevenue: number;
   merchRevenue: number;
   mediaRevenue: number;
-  talentCost: number;
+  /** Legacy v1/v2 report field. Show Production Finance v3 does not emit weekly talent expense. */
+  talentCost?: number;
   productionCost: number;
   profitLoss: number;
   endingMoney: number;
@@ -505,6 +507,10 @@ export type FinanceReport = {
   modelVersion?: string;
   grossRevenue?: number;
   totalExpenses?: number;
+  baseShowProductionCost?: number;
+  segmentProductionCost?: number;
+  bookedFinishCost?: number;
+  overrunCost?: number;
   revenueBreakdown?: FinanceReportBreakdownItem[];
   expenseBreakdown?: FinanceReportBreakdownItem[];
 };

@@ -78,7 +78,7 @@ export function createMarketContract(
   ownerBrandId: string | undefined,
   acquisitionSource: MarketContract["acquisitionSource"],
   weeks?: number,
-  paymentModel: MarketContract["paymentModel"] = acquisitionSource === "draft" ? "weekly" : "prepaid",
+  paymentModel: MarketContract["paymentModel"] = "prepaid",
   weeklySalaryOverride?: number,
   upfrontCostPaid?: number,
 ): MarketContract {
@@ -173,9 +173,8 @@ export function getContractForWrestler(game: GameState, wrestlerId: string) {
 }
 
 export function getActivePlayerPayroll(game: GameState) {
-  return game.marketState.playerContracts
-    .filter((contract) => (contract.contractStatus === "active" || contract.contractStatus === "expiring") && contract.paymentModel !== "prepaid")
-    .reduce((sum, contract) => sum + contract.weeklySalary, 0);
+  void game;
+  return 0;
 }
 
 export function getMarketTransactionCostsForWeek(game: GameState, seasonNumber = game.seasonNumber, weekNumber = game.currentWeek) {

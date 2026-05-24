@@ -33,7 +33,7 @@ function contractRead(game: GameState, wrestlerId: string) {
   const contract = getContractForWrestler(game, wrestlerId);
 
   return contract
-    ? `${contract.contractWeeksRemaining} wk · ${formatMoney(contract.weeklySalary)}/wk · ${contract.paymentModel === "prepaid" ? "No refund" : `Penalty ${formatMoney(contract.releasePenalty)}`}`
+    ? `${contract.contractWeeksRemaining} wk · ${formatMoney(contract.weeklySalary)}/wk rate · ${contract.paymentModel === "prepaid" ? "Prepaid" : `Penalty ${formatMoney(contract.releasePenalty)}`}`
     : "No active contract read";
 }
 
@@ -46,7 +46,7 @@ function contractRailRead(game: GameState, wrestlerId: string) {
 
   const statusLabel = contract.contractStatus === "expiring" ? " · Expiring" : "";
 
-  return `${contract.contractWeeksRemaining} wk · ${formatMoney(contract.weeklySalary)}/wk${statusLabel}`;
+  return `${contract.contractWeeksRemaining} wk · ${formatMoney(contract.weeklySalary)}/wk rate${statusLabel}`;
 }
 
 function MarketFocusWorkspace({
@@ -191,7 +191,7 @@ export function MarketScreen({
   const selectedFreeAgentFinance = selectedFreeAgent ? getRosterFinanceValueForWrestler(selectedFreeAgent) : undefined;
   const selectedExternalOffer = selectedFreeAgent ? getExternalMarketOffer(selectedFreeAgent, game.seasonNumber, game.currentWeek, selectedContractWeeks) : undefined;
   const selectedFreeAgentCost = selectedExternalOffer?.weeklyAsk ?? selectedFreeAgentFinance?.weeklyHireRateUsd ?? 0;
-  const projectedPayroll = snapshot.payroll;
+  const weeklyPayroll = snapshot.payroll;
   const selectedFreeAgentOverall =
     selectedFreeAgentFinance?.gameOverall ??
     (selectedFreeAgent ? Math.round((selectedFreeAgent.popularity + selectedFreeAgent.ringSkill + selectedFreeAgent.promoSkill + selectedFreeAgent.momentum) / 4) : 0);
@@ -306,7 +306,7 @@ export function MarketScreen({
           <div className="market-mandate-metrics">
             <Metric label="Owner Trust" value={`${office.ownerTrust}`} />
             <Metric label="Reputation" value={`${office.brandReputation}`} />
-            <Metric label="Payroll" value={formatMoney(snapshot.payroll)} detail={`${snapshot.expiringContracts} expiring`} />
+            <Metric label="Weekly Payroll" value={formatMoney(snapshot.payroll)} detail="No recurring roster payroll" />
             <Metric label="Slots" value={`${game.wrestlers.length}/${snapshot.rosterLimit}`} />
           </div>
         </section>
@@ -439,7 +439,7 @@ export function MarketScreen({
                   <>
                     <Metric label="Weekly Ask" value={formatMoney(selectedFreeAgentCost)} detail={`${selectedContractWeeks} week file`} />
                     <Metric label="Due Now" value={formatMoney(selectedExternalOffer?.dueNow ?? 0)} detail="No refund if released" />
-                    <Metric label="Current Payroll" value={formatMoney(projectedPayroll)} detail={`${snapshot.expiringContracts} expiring`} />
+                    <Metric label="Weekly Payroll" value={formatMoney(weeklyPayroll)} detail="Roster rights are prepaid" />
                     <Metric label="Roster Slots" value={`${game.wrestlers.length}/${snapshot.rosterLimit}`} detail={rosterIsFull ? "Roster full" : `${snapshot.rosterLimit - game.wrestlers.length} open`} />
                   </>
                 }
@@ -490,7 +490,7 @@ export function MarketScreen({
                 decisionBody={
                   contractNegotiating
                     ? renewalDisabledReason ||
-                      `Set extension weeks to move the weekly rate and due-now total on this roster deal.`
+                      `Set extension weeks to move the rate basis and due-now total on this roster deal.`
                     : renewalDisabledReason ||
                       `Roster renewals hold steady pricing. Open Negotiate to adjust extension weeks before filing.`
                 }
@@ -518,9 +518,9 @@ export function MarketScreen({
                 eyebrow="Under Contract"
                 metrics={
                   <>
-                    <Metric label="Weekly Rate" value={formatMoney(selectedContract?.weeklySalary ?? 0)} detail={contractRead(game, selectedOutgoing.id)} />
+                    <Metric label="Rate Basis" value={formatMoney(selectedContract?.weeklySalary ?? 0)} detail={contractRead(game, selectedOutgoing.id)} />
                     <Metric label="Due Now" value={formatMoney(selectedRenewalOffer?.dueNow ?? 0)} detail={`${selectedRenewalWeeks} week extension`} />
-                    <Metric label="Current Payroll" value={formatMoney(projectedPayroll)} detail={`${snapshot.expiringContracts} expiring`} />
+                    <Metric label="Weekly Payroll" value={formatMoney(weeklyPayroll)} detail="Roster rights are prepaid" />
                     <Metric label="Roster Slots" value={`${game.wrestlers.length}/${snapshot.rosterLimit}`} detail={releaseGuardActive ? "Minimum roster guard active" : "Release opens a slot"} />
                   </>
                 }

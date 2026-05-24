@@ -47,7 +47,7 @@ function getLegacyFinanceRevenue(report: FinanceReport) {
 }
 
 function getLegacyFinanceExpenses(report: FinanceReport) {
-  return report.talentCost + report.productionCost;
+  return (report.talentCost ?? 0) + report.productionCost;
 }
 
 export function getFinanceGrossRevenue(report: FinanceReport) {
@@ -72,13 +72,13 @@ export function getFinanceExpenseBreakdown(report: FinanceReport) {
   return report.expenseBreakdown?.length
     ? report.expenseBreakdown
     : [
-        { id: "talentCost", label: "Talent Cost", amount: report.talentCost },
+        { id: "talentCost", label: "Legacy Talent Cost", amount: report.talentCost ?? 0 },
         { id: "productionCost", label: "Production Cost", amount: report.productionCost },
       ];
 }
 
 export function getFinanceReportModelLabel(report: FinanceReport) {
-  return report.modelVersion ? "Legacy-Compatible v2" : "Legacy Report";
+  return report.modelVersion === "show-production-finance-v3" ? "Show Production v3" : report.modelVersion ? "Legacy-Compatible v2" : "Legacy Report";
 }
 
 export function getVenueMarketContextReadout(report: FinanceReport | undefined, seasonReports: FinanceReport[]) {

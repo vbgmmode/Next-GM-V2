@@ -354,7 +354,7 @@
   display: grid;
   gap: 12px;
   min-height: 0;
-  overflow: visible;
+  overflow: hidden;
   padding: 14px;
 }
 
@@ -463,7 +463,7 @@
   height: auto;
   min-height: 0;
   min-width: 0;
-  overflow: visible;
+  overflow: hidden;
   padding: 10px;
   text-align: left;
   transition: border-color 120ms ease, background 120ms ease;
@@ -471,7 +471,9 @@
 }
 
 .social-mail-row:not(.is-expanded) {
-  min-height: 72px;
+  max-height: 84px;
+  min-height: 78px;
+  overflow: hidden;
 }
 
 .social-mail-row:focus-visible {
@@ -498,11 +500,12 @@
   align-items: start;
   background: rgba(8, 10, 16, 0.96);
   border-color: rgba(var(--dashboard-dynasty-accent-rgb), 0.34);
-  gap: 8px;
+  gap: 10px;
   grid-template-columns: 44px minmax(0, 1fr);
   height: auto;
-  min-height: 0;
-  padding: 9px 10px 10px;
+  min-height: 158px;
+  overflow: hidden;
+  padding: 10px 12px 20px;
 }
 
 .social-mail-list:has(.social-mail-row.is-expanded) .social-mail-row:not(.is-expanded) {
@@ -514,17 +517,17 @@
 }
 
 .social-mail-row.is-expanded .social-mail-copy {
-  gap: 4px;
+  gap: 6px;
 }
 
 .social-mail-row.is-expanded .social-mail-head strong {
-  font-size: 0.72rem;
-  line-height: 1;
+  font-size: 0.76rem;
+  line-height: 1.05;
 }
 
 .social-mail-row.is-expanded .social-mail-subject em {
-  font-size: 0.6rem;
-  line-height: 1.1;
+  font-size: 0.64rem;
+  line-height: 1.15;
 }
 
 .social-mail-row.tone-urgent {
@@ -555,7 +558,7 @@
   gap: 6px;
   height: auto;
   min-width: 0;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .social-mail-head {
@@ -620,11 +623,13 @@
 }
 
 .social-mail-row:not(.is-expanded) .social-mail-preview {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  display: block;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  max-width: 100%;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .social-mail-row.is-expanded .social-mail-preview {
@@ -634,10 +639,10 @@
 .social-mail-body {
   color: #e4eaf3;
   font-family: var(--font-ui);
-  font-size: 0.71rem;
+  font-size: clamp(0.62rem, 0.68vw, 0.72rem);
   font-weight: 600;
-  letter-spacing: 0.01em;
-  line-height: 1.38;
+  letter-spacing: 0;
+  line-height: 1.34;
   margin: 0;
   overflow-wrap: anywhere;
   text-transform: none;
@@ -647,7 +652,7 @@
 .social-mail-meta {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: grid;
-  gap: 2px;
+  gap: 3px;
   margin-top: 0;
   padding-top: 6px;
 }
@@ -659,16 +664,18 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   line-height: 1.2;
+  overflow-wrap: anywhere;
   text-transform: uppercase;
 }
 
 .social-mail-meta p {
   color: #8f99ad;
   font-family: var(--font-ui);
-  font-size: 0.58rem;
+  font-size: 0.56rem;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.28;
   margin: 0;
+  overflow-wrap: anywhere;
   text-transform: none;
 }
 

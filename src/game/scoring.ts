@@ -1365,6 +1365,10 @@ function resolveTagTitleMatch(segment: Segment, championship: Championship, wres
 }
 
 function getSegmentWinner(segment: Segment, wrestlers: Wrestler[]) {
+  if (segment.winnerId && segment.participantIds.includes(segment.winnerId)) {
+    return wrestlers.find((wrestler) => wrestler.id === segment.winnerId);
+  }
+
   if (segment.segmentCatalogId === "M020") {
     return getTagMatchWinner(segment, wrestlers);
   }

@@ -224,7 +224,7 @@ function getLegacyFinanceRevenue(report: FinanceReport) {
 
 
 function getLegacyFinanceExpenses(report: FinanceReport) {
-  return report.talentCost + report.productionCost;
+  return (report.talentCost ?? 0) + report.productionCost;
 }
 
 

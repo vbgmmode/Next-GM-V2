@@ -1,11 +1,7 @@
-import { getRosterFinanceValueForWrestler } from "./financeCatalog";
-import { getActivePlayerPayroll, getMarketTransactionCostsForWeek } from "./market";
-import type { FinanceReport, GameState, ShowResult, Wrestler } from "./types";
+import { getSegmentBookingCost } from "./financeCatalog";
+import type { FinanceReport, GameState, SegmentResult, ShowResult, ShowType, Wrestler } from "./types";
 
-type TalentCostProfile = {
-  missingFinanceRows: number;
-  showTalentCost: number;
-};
+export const bookedFinishCostUsd = 10000;
 
 function getUniqueBookedWrestlers(result: ShowResult, wrestlers: Wrestler[]) {
   const ids = [...new Set(result.segmentResults.flatMap((segment) => segment.participantIds))];
@@ -34,35 +30,6 @@ function getAverageScore(wrestlers: Wrestler[], score: (wrestler: Wrestler) => n
   return wrestlers.reduce((sum, wrestler) => sum + score(wrestler), 0) / wrestlers.length;
 }
 
-function getTalentCostFallback(wrestler: Wrestler) {
-  const roleFallbacks: Record<string, number> = {
-    MainEvent: 9500,
-    UpperCard: 7000,
-    Midcard: 4500,
-    Prospect: 2500,
-    Enhancement: 1200,
-  };
-
-  return roleFallbacks[wrestler.roleTier ?? ""] ?? clamp(wrestler.popularity * 80, 2000, 8000);
-}
-
-function getTalentCostProfile(bookedWrestlers: Wrestler[], isPle: boolean): TalentCostProfile {
-  return bookedWrestlers.reduce<TalentCostProfile>(
-    (profile, wrestler) => {
-      const financeRow = getRosterFinanceValueForWrestler(wrestler);
-      const appearanceCost = financeRow
-        ? financeRow.appearanceFeeUsd + financeRow.weeklyHireRateUsd * (isPle ? 0.45 : 0.12)
-        : getTalentCostFallback(wrestler);
-
-      return {
-        missingFinanceRows: profile.missingFinanceRows + (financeRow ? 0 : 1),
-        showTalentCost: profile.showTalentCost + appearanceCost * (isPle ? 1.25 : 1),
-      };
-    },
-    { missingFinanceRows: 0, showTalentCost: 0 },
-  );
-}
-
 export function getFinancePressureLabel(money: number, latestProfitLoss = 0) {
   if (money < 100000 || latestProfitLoss < -75000) {
     return "Critical";
@@ -79,6 +46,56 @@ export function getFinancePressureLabel(money: number, latestProfitLoss = 0) {
   return "Stable";
 }
 
+export function getSegmentProductionCostForShow(segment: Pick<SegmentResult, "segmentCatalogId" | "type">, showType: ShowType) {
+  if (!segment.segmentCatalogId) {
+    return undefined;
+  }
+
+  const costRow = getSegmentBookingCost(segment.segmentCatalogId);
+
+  if (!costRow) {
+    return undefined;
+  }
+
+  return showType === "ple" ? costRow.plePpvBookingCostUsd : costRow.weeklyTvBookingCostUsd;
+}
+
+function getShowProductionCostProfile(result: ShowResult, game: GameState) {
+  const plannedSegmentsById = new Map(game.currentShow.map((segment) => [segment.id, segment]));
+  const missingSegmentCostIds: string[] = [];
+  const segmentProductionCost = result.segmentResults.reduce((total, segment) => {
+    const cost = getSegmentProductionCostForShow(segment, result.showType);
+
+    if (cost === undefined) {
+      missingSegmentCostIds.push(segment.segmentCatalogId ?? `${segment.type}:missing-catalog`);
+      return total;
+    }
+
+    return total + cost;
+  }, 0);
+  const bookedFinishCost = result.segmentResults.reduce((total, segment) => {
+    const plannedSegment = plannedSegmentsById.get(segment.segmentId);
+    const manualWinnerId = plannedSegment?.winnerId;
+
+    if (segment.type !== "Match" || !manualWinnerId || !segment.participantIds.includes(manualWinnerId)) {
+      return total;
+    }
+
+    return total + bookedFinishCostUsd;
+  }, 0);
+  const baseShowProductionCost = result.showType === "ple" ? 240000 : 65000;
+  const overrunCost =
+    result.broadcastOverrunLevel === "major" ? 16000 : result.broadcastOverrunLevel === "moderate" ? 8000 : result.broadcastOverrunLevel === "minor" ? 2500 : 0;
+
+  return {
+    baseShowProductionCost,
+    bookedFinishCost,
+    missingSegmentCostIds: [...new Set(missingSegmentCostIds)],
+    overrunCost,
+    segmentProductionCost,
+  };
+}
+
 export function generateFinanceReport(result: ShowResult, game: GameState): FinanceReport {
   const bookedWrestlers = getUniqueBookedWrestlers(result, game.wrestlers);
   const averageDraw = getAverageScore(bookedWrestlers, (wrestler) => wrestler.popularity * 0.5 + wrestler.momentum * 0.25 + Math.max(wrestler.ringSkill, wrestler.promoSkill) * 0.25, 55);
@@ -93,12 +110,8 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
   const scoreFactor = clamp((result.totalScore - 50) / 50, 0, 1);
   const overrunRevenueDrag =
     result.broadcastOverrunLevel === "major" ? 0.09 : result.broadcastOverrunLevel === "moderate" ? 0.05 : result.broadcastOverrunLevel === "minor" ? 0.02 : 0;
-  const overrunProductionCost =
-    result.broadcastOverrunLevel === "major" ? 16000 : result.broadcastOverrunLevel === "moderate" ? 8000 : result.broadcastOverrunLevel === "minor" ? 2500 : 0;
   const revenueMultiplier = 1 - overrunRevenueDrag;
-  const talentCostProfile = getTalentCostProfile(bookedWrestlers, isPle);
-  const payrollCost = getActivePlayerPayroll(game);
-  const transactionCosts = getMarketTransactionCostsForWeek(game, result.seasonNumber, result.week);
+  const productionCostProfile = getShowProductionCostProfile(result, game);
 
   const attendance = roundMoney(
     clamp(
@@ -117,16 +130,14 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
   const ticketRevenue = roundMoney(attendance * averageTicketPrice);
   const merchRevenue = roundMoney(attendance * merchPerHead);
   const mediaRevenue = roundMoney(((isPle ? 120000 : 62000) + result.totalScore * (isPle ? 550 : 240) + averageDraw * (isPle ? 150 : 85) + titleMatches * (isPle ? 10000 : 3500)) * revenueMultiplier);
-  const talentCost = roundMoney(talentCostProfile.showTalentCost + segmentCount * (isPle ? 2500 : 1200) + payrollCost + transactionCosts);
   const productionCost = roundMoney(
-    (isPle ? 240000 : 65000) +
-      runtimeMinutes * (isPle ? 500 : 250) +
-      segmentCount * (isPle ? 6000 : 3500) +
-      titleMatches * (isPle ? 10000 : 3000) +
-      overrunProductionCost,
+    productionCostProfile.baseShowProductionCost +
+      productionCostProfile.segmentProductionCost +
+      productionCostProfile.bookedFinishCost +
+      productionCostProfile.overrunCost,
   );
   const revenue = ticketRevenue + merchRevenue + mediaRevenue;
-  const expenses = talentCost + productionCost;
+  const expenses = productionCost;
   const profitLoss = revenue - expenses;
   const endingMoney = roundMoney(game.money + profitLoss);
   const notes = [
@@ -139,16 +150,16 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
       : "No title-match premium was attached to this card.",
   ];
 
-  if (talentCostProfile.missingFinanceRows) {
-    notes.push(`${talentCostProfile.missingFinanceRows} booked ${talentCostProfile.missingFinanceRows === 1 ? "talent used" : "talents used"} a conservative cost fallback because catalog finance data was missing.`);
+  if (productionCostProfile.segmentProductionCost > 0) {
+    notes.push(`Segment production booked ${productionCostProfile.segmentProductionCost.toLocaleString()} in catalog costs for the resolved card.`);
   }
 
-  if (payrollCost > 0) {
-    notes.push(`Weekly roster payroll added ${payrollCost.toLocaleString()} to the talent ledger.`);
+  if (productionCostProfile.bookedFinishCost > 0) {
+    notes.push(`Manually booked finishes added ${productionCostProfile.bookedFinishCost.toLocaleString()} in production handling.`);
   }
 
-  if (transactionCosts > 0) {
-    notes.push(`Market transactions booked this week added ${transactionCosts.toLocaleString()} in signing, release, or trade costs.`);
+  if (productionCostProfile.missingSegmentCostIds.length) {
+    notes.push("Some production lines used standard office handling because segment cost mapping needs a catalog pass.");
   }
 
   if (profitLoss < 0) {
@@ -174,24 +185,27 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
     ticketRevenue,
     merchRevenue,
     mediaRevenue,
-    talentCost,
     productionCost,
     profitLoss,
     endingMoney,
     notes,
-    modelVersion: "post-show-finance-v2",
+    modelVersion: "show-production-finance-v3",
     grossRevenue: revenue,
     totalExpenses: expenses,
+    baseShowProductionCost: productionCostProfile.baseShowProductionCost,
+    segmentProductionCost: productionCostProfile.segmentProductionCost,
+    bookedFinishCost: productionCostProfile.bookedFinishCost,
+    overrunCost: productionCostProfile.overrunCost,
     revenueBreakdown: [
       { id: "ticketRevenue", label: "Ticket Revenue", amount: ticketRevenue },
       { id: "merchRevenue", label: "Merch Revenue", amount: merchRevenue },
       { id: "mediaRevenue", label: "Media Revenue", amount: mediaRevenue },
     ],
     expenseBreakdown: [
-      { id: "talentCost", label: "Talent Cost", amount: talentCost },
-      { id: "payrollCost", label: "Payroll Included", amount: payrollCost },
-      { id: "transactionCost", label: "Market Transactions", amount: transactionCosts },
-      { id: "productionCost", label: "Production Cost", amount: productionCost },
+      { id: "baseShowProductionCost", label: "Base Production", amount: productionCostProfile.baseShowProductionCost },
+      { id: "segmentProductionCost", label: "Segment Production", amount: productionCostProfile.segmentProductionCost },
+      { id: "bookedFinishCost", label: "Booked Finish", amount: productionCostProfile.bookedFinishCost },
+      { id: "overrunCost", label: "Overrun", amount: productionCostProfile.overrunCost },
     ],
   };
 }

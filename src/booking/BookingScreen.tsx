@@ -232,6 +232,7 @@ export function BookingScreen({
                 onSetSegmentChampionship={onSetSegmentChampionship}
                 onSetSegmentStipulation={onSetSegmentStipulation}
                 onSetSegmentRivalry={(rivalryId) => setComposerRivalry(selectedSegment, rivalryId)}
+                onSetManualWinner={(winnerId) => onUpdateSegment(selectedSegment.id, { winnerId })}
                 onUpdateParticipants={(participantIds) => onUpdateSegment(selectedSegment.id, { participantIds })}
                 rivalries={game.rivalries}
                 segment={selectedSegment}
