@@ -4,6 +4,7 @@ import { resolvePendingRivalryEndsOnAdvance } from "./rivalryEnd";
 import { createSeasonCalendar, draftPool } from "./seed";
 import { advanceCpuRivalWeek } from "./cpuRivalLoop";
 import { advanceCpuMarket, advancePlayerContracts, ensureWeeklyMarketBoard, evaluateOfficeMandate, retainContractedPlayerRoster } from "./market";
+import { applyChampionPassiveCarry } from "./titleStatFallout";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 const weeklyFatigueRecovery = 3;
@@ -37,11 +38,14 @@ export function advanceGameWeek(game: GameState): GameState {
       const wasBookedThisWeek = (wrestler.lastBookedWeek ?? 0) === game.currentWeek;
       const momentumDecay = !wasBookedThisWeek ? 4 : wrestler.momentum >= 92 ? 2 : 0;
 
-      return {
-        ...wrestler,
-        fatigue: clamp(wrestler.fatigue - weeklyFatigueRecovery),
-        momentum: clamp(wrestler.momentum - momentumDecay),
-      };
+      return applyChampionPassiveCarry(
+        {
+          ...wrestler,
+          fatigue: clamp(wrestler.fatigue - weeklyFatigueRecovery),
+          momentum: clamp(wrestler.momentum - momentumDecay),
+        },
+        game,
+      );
     }),
     rivalries: pendingEndResolution.rivalries.map((rivalry) => {
       const wasAdvancedThisWeek = rivalry.lastAdvancedWeek >= game.currentWeek;

@@ -22,6 +22,7 @@ import { resolveWrestlerAlignment } from "./wrestlerAlignment";
 import { getRosterFinanceValueForWrestler } from "./financeCatalog";
 import { allocateCpuDraftRosters } from "./cpuRivalLoop";
 import { createDefaultMarketState, ensureWeeklyMarketBoard, getCpuBudgetDefault } from "./market";
+import { createDefaultSocialInboxState } from "./socialInboxActions";
 
 type SeedWrestler = Omit<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek"> &
   Partial<Pick<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek">>;
@@ -468,6 +469,7 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
     marketState: createDefaultMarketState(startingRoster),
     seasonArchives: [],
     injuryRecoveryNotes: [],
+    socialInbox: createDefaultSocialInboxState(),
     currentShow: [],
     showHistory: [],
   };

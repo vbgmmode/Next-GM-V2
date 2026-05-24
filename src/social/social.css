@@ -502,10 +502,9 @@
   border-color: rgba(var(--dashboard-dynasty-accent-rgb), 0.34);
   gap: 10px;
   grid-template-columns: 44px minmax(0, 1fr);
-  height: auto;
-  min-height: 158px;
+  min-height: 172px;
   overflow: hidden;
-  padding: 10px 12px 20px;
+  padding: 10px 12px 12px;
 }
 
 .social-mail-list:has(.social-mail-row.is-expanded) .social-mail-row:not(.is-expanded) {
@@ -518,6 +517,7 @@
 
 .social-mail-row.is-expanded .social-mail-copy {
   gap: 6px;
+  overflow: hidden;
 }
 
 .social-mail-row.is-expanded .social-mail-head strong {
@@ -644,9 +644,12 @@
   letter-spacing: 0;
   line-height: 1.34;
   margin: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
   text-transform: none;
   white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .social-mail-meta {
@@ -675,8 +678,10 @@
   font-weight: 600;
   line-height: 1.28;
   margin: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
   text-transform: none;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .social-mail-detail {
@@ -691,6 +696,51 @@
   padding-top: 8px;
   text-transform: none;
   white-space: normal;
+}
+
+.social-mail-action-row {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  min-width: 0;
+}
+
+.social-mail-action {
+  background: linear-gradient(135deg, rgba(240, 190, 98, 0.95), rgba(182, 49, 49, 0.9));
+  border: 1px solid rgba(255, 231, 169, 0.42);
+  color: #130d08;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  min-height: 1.75rem;
+  padding: 0.34rem 0.62rem;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.social-mail-action:disabled {
+  background: rgba(247, 231, 186, 0.12);
+  border-color: rgba(247, 231, 186, 0.18);
+  color: rgba(248, 241, 221, 0.62);
+  cursor: default;
+}
+
+.social-mail-action-row small {
+  color: #8f99ad;
+  flex: 1 1 auto;
+  font-family: var(--font-ui);
+  font-size: 0.56rem;
+  font-weight: 650;
+  line-height: 1.25;
+  min-width: 0;
+  overflow: hidden;
+  text-transform: none;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .social-jab-list {

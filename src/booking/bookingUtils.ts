@@ -6,6 +6,7 @@ import {
 } from "../game/matchFormatCatalog";
 import { getStipulationById, getStipulationsForSegment, type StipulationCatalogOption } from "../game/stipulationCatalog";
 import { getWrestlerDivisionGroup, hasIntergenderMatchParticipants, isValidSegment } from "../game/scoring";
+import { getProtectedRestWrestlerIds } from "../game/socialInboxActions";
 import { getChampionshipDivisionGroup, wrestlerFitsChampionshipDivision } from "../game/titleCatalog";
 import type { Championship, GameState, Rivalry, RivalryStructure, Segment, SegmentResult, SegmentType, Wrestler } from "../game/types";
 
@@ -311,8 +312,9 @@ export function getTagMatchResultWinnerLabel(segment: SegmentResult, wrestlers: 
   return `${winningSide} winner: ${winner.name}`;
 }
 
-export function getSegmentValidationWarning(segment: Segment, wrestlers: Wrestler[] = []) {
-  if (isValidSegment(segment, wrestlers)) {
+export function getSegmentValidationWarning(segment: Segment, wrestlers: Wrestler[] = [], unavailableWrestlerIds: ReadonlySet<string> | string[] = []) {
+  const unavailableIds = Array.isArray(unavailableWrestlerIds) ? new Set(unavailableWrestlerIds) : unavailableWrestlerIds;
+  if (isValidSegment(segment, wrestlers, unavailableIds)) {
     return "";
   }
 
@@ -324,6 +326,11 @@ export function getSegmentValidationWarning(segment: Segment, wrestlers: Wrestle
   const unavailable = getSegmentParticipants(segment, wrestlers).find((wrestler) => wrestler.injuryStatus === "major");
   if (unavailable) {
     return `${unavailable.name} is unavailable with a major injury.`;
+  }
+
+  const protectedRest = getSegmentParticipants(segment, wrestlers).find((wrestler) => unavailableIds.has(wrestler.id));
+  if (protectedRest) {
+    return `${protectedRest.name} has approved rest this week.`;
   }
 
   if (hasIntergenderMatchParticipants(segment, wrestlers)) {
@@ -466,7 +473,7 @@ export function getBookingSegmentBoardFlags(segment: Segment, game: GameState) {
     flags.push("Open Challenge");
   }
 
-  if (!isValidSegment(segment, game.wrestlers)) {
+  if (!isValidSegment(segment, game.wrestlers, getProtectedRestWrestlerIds(game))) {
     flags.push("Needs Fix");
   }
 

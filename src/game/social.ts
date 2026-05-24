@@ -1,6 +1,7 @@
 import type { GameState, SegmentResult, ShowResult, SocialCategory, SocialPost, SocialTone, Wrestler } from "./types";
 import { getRatingsBattleSnapshot } from "./cpuRivalLoop";
 import { getRivalMarketEvents } from "./market";
+import { buildStipulationSocialPostDraft } from "./socialFeedPolicy";
 
 type SocialPostDraft = Omit<SocialPost, "id" | "weekNumber" | "seasonNumber" | "showName"> & {
   priority: number;
@@ -292,6 +293,18 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
       relatedWrestlerIds: result.segmentResults.find((segment) => segment.overrunAffected)?.participantIds ?? [],
     });
   }
+
+  result.segmentResults
+    .filter((segment) => segment.stipulationId)
+    .sort((left, right) => right.score - left.score || left.segmentId.localeCompare(right.segmentId))
+    .slice(0, 1)
+    .forEach((segment) => {
+      const stipulationDraft = buildStipulationSocialPostDraft(result, segment);
+
+      if (stipulationDraft) {
+        posts.push(stipulationDraft);
+      }
+    });
 
   [...titleChangeSegments, ...titleDefenseSegments]
     .slice(0, 2)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { segmentCatalogOptions } from "./matchFormatCatalog";
-import { bookedFinishCostUsd, generateFinanceReport, getSegmentProductionCostForShow } from "./finance";
+import { bookedFinishCostUsd, generateFinanceReport, getSegmentProductionCostForShow, getSegmentStipulationProductionCostForShow } from "./finance";
 import { getSegmentBookingCost, rosterDraftAndContractValues } from "./financeCatalog";
 import { createNewGame } from "./seed";
 import type { GameState, Segment, SegmentResult, ShowResult, ShowType } from "./types";
@@ -41,6 +41,7 @@ function createSegmentResult(segment: Segment, game: GameState, score = 72): Seg
     momentumChanges: Object.fromEntries(segment.participantIds.map((id) => [id, 0])),
     fatigueChanges: Object.fromEntries(segment.participantIds.map((id) => [id, 0])),
     segmentCatalogId: segment.segmentCatalogId,
+    stipulationId: segment.stipulationId,
     winnerId: segment.type === "Match" ? segment.participantIds[0] : undefined,
   };
 }
@@ -196,6 +197,22 @@ describe("show production finance", () => {
     expect(tvReport.segmentProductionCost).toBe(expectedTvSegmentProduction);
     expect(pleReport.segmentProductionCost).toBe(expectedPleSegmentProduction);
     expect(pleReport.segmentProductionCost).toBeGreaterThan(tvReport.segmentProductionCost ?? 0);
+  });
+
+  it("charges stipulation production as a separate resolved expense line", () => {
+    const { game, result, segments } = createFinanceGame("tv", false);
+    const [match] = segments;
+    const currentShow = [{ ...match, stipulationId: "steel_cage" }, segments[1]];
+    const stipulationResult = {
+      ...result,
+      segmentResults: currentShow.map((segment, index) => createSegmentResult(segment, { ...game, currentShow }, 73 + index)),
+    };
+    const expectedStipulationCost = getSegmentStipulationProductionCostForShow({ stipulationId: "steel_cage" }, "tv");
+    const report = generateFinanceReport(stipulationResult, { ...game, currentShow });
+
+    expect(report.stipulationProductionCost).toBe(expectedStipulationCost);
+    expect(report.productionCost).toBe(65000 + (report.segmentProductionCost ?? 0) + expectedStipulationCost);
+    expect(report.expenseBreakdown?.map((item) => item.id)).toContain("stipulationProductionCost");
   });
 
   it("charges booked finish only for manually selected match winners", () => {

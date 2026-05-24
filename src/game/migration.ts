@@ -52,6 +52,7 @@ import { getSegmentTypeDefaults } from "./matchFormatCatalog";
 import { applyChampionshipCatalogDefaults } from "./titleCatalog";
 import { applyRivalryCatalogDefaults } from "./rivalryCatalog";
 import { getStipulationsForSegment } from "./stipulationCatalog";
+import { normalizeSocialInboxState } from "./socialInboxActions";
 
 export type GameScreen = Exclude<Screen, "title" | "setup">;
 export type ProfileReturnScreen = Extract<GameScreen, "roster" | "booking" | "dashboard">;
@@ -671,6 +672,7 @@ function normalizeShowHistory(showHistory: unknown): ShowResult[] {
             overuseWarnings: Array.isArray(fallout.overuseWarnings) ? fallout.overuseWarnings : [],
             underuseWarnings: Array.isArray(fallout.underuseWarnings) ? fallout.underuseWarnings : [],
             injuryNotes: Array.isArray(fallout.injuryNotes) ? fallout.injuryNotes : [],
+            titleStatNotes: Array.isArray(fallout.titleStatNotes) ? fallout.titleStatNotes : [],
           }
         : undefined,
     } as ShowResult;
@@ -706,7 +708,7 @@ function normalizeCurrentShow(currentShow: unknown): Segment[] {
     const defaults = getSegmentTypeDefaults(type);
     let candidateFormatId = segment.segmentCatalogId ?? defaults.segmentCatalogId;
     let migratedStipulationId =
-      segment.stipulationId === "no_disqualification" ? "extreme_rules" : segment.stipulationId;
+      segment.stipulationId === "no_disqualification" ? "no_dq" : segment.stipulationId;
 
     if (candidateFormatId === "M019") {
       candidateFormatId = "M001";
@@ -823,6 +825,7 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
       marketState: normalizeMarketState(savedGame.marketState, wrestlers),
       seasonArchives: normalizeSeasonArchives((savedGame as { seasonArchives?: unknown }).seasonArchives),
       injuryRecoveryNotes: Array.isArray(savedGame.injuryRecoveryNotes) ? savedGame.injuryRecoveryNotes : [],
+      socialInbox: normalizeSocialInboxState((savedGame as { socialInbox?: unknown }).socialInbox, wrestlers),
       currentShow: normalizeCurrentShow(savedGame.currentShow),
       showHistory,
     },

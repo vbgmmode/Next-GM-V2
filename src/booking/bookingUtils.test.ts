@@ -187,6 +187,33 @@ describe("booking title eligibility", () => {
     });
   });
 
+  it.each([
+    ["triple threat", "Mens", 3, createTripleThreatTitleSegment],
+    ["fatal 4-way", "Womens", 4, createFatal4WayTitleSegment],
+  ] as const)("resolves a vacant %s singles title match at show-run time", (_label, division, count, createSegment) => {
+    const wrestlers = sameDivisionWrestlers(division, count);
+    const title = createSinglesTitle(division);
+    const segment = createSegment(wrestlers, title.id);
+    const game = {
+      ...createNewGame({ draftedWrestlers: wrestlers }),
+      wrestlers,
+      championships: [title],
+      currentShow: [segment],
+    };
+
+    expect(canSegmentAttachChampionship(segment, title, wrestlers)).toBe(true);
+
+    const { game: resolvedGame, result } = runShow(game);
+
+    expect(resolvedGame.championships[0].championIds).toEqual([wrestlers[1].id]);
+    expect(result.titleHistoryEvents[0]).toMatchObject({
+      championshipId: title.id,
+      eventType: "title_change",
+      championIds: [wrestlers[1].id],
+      previousChampionIds: [],
+    });
+  });
+
   it("resolves a vacant TBS title match at show-run time", () => {
     const wrestlers = sameDivisionWrestlers("Womens", 2);
     const tbsTitle = createDefaultChampionships(wrestlers, "AEW").find((championship) => championship.name === "TBS Championship");

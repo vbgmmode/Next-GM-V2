@@ -9,6 +9,7 @@ import { getRosterPressureTags } from "./rosterContextReads";
 import { draftPool } from "./seed";
 import { resolveWrestlerAlignment } from "./wrestlerAlignment";
 import { getCurrentCalendarWeek, getShowGrade, isValidSegment } from "./scoring";
+import { getProtectedRestWrestlerIds } from "./socialInboxActions";
 import type { GameState, Segment, ShowResult, Wrestler } from "./types";
 
 export type DashboardMoraleLevel = "happy" | "neutral" | "angry";
@@ -255,7 +256,8 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
   const weeklyPressure = getWeeklyDecisionPressureSnapshot(game, result);
   const ratingsBattle = getRatingsBattleSnapshot(game, result);
   const lastShow = game.showHistory[game.showHistory.length - 1];
-  const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers));
+  const protectedRestIds = getProtectedRestWrestlerIds(game);
+  const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers, protectedRestIds));
   const hasWeekReview = Boolean(result && result.week === game.currentWeek);
   const rosterTags = game.wrestlers.flatMap((wrestler) => getRosterPressureTags(wrestler, game.currentWeek));
   const unavailableCount = rosterTags.filter((tag) => tag === "Unavailable").length;
@@ -451,7 +453,7 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
       index: index + 1,
       match: segmentLabel(game, segment),
       stipulation: segment.championshipId ? "Title scene" : segment.type,
-      valid: isValidSegment(segment, game.wrestlers),
+      valid: isValidSegment(segment, game.wrestlers, protectedRestIds),
     })),
   };
 }

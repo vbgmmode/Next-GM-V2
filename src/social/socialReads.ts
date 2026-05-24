@@ -1,6 +1,7 @@
 import { getRatingsBattleSnapshot } from "../game/cpuRivalLoop";
 import { getRosterPressureTags, getWeeksSinceLastBooked } from "../game/rosterContextReads";
 import { getBestSegment, getShowGrade } from "../game/scoring";
+import { getSuperstarMailAction } from "../game/socialInboxActions";
 import type { GameState, RivalBrandWeeklyResult, Rivalry, SegmentResult, ShowResult, SocialCategory, SocialPost, Wrestler } from "../game/types";
 import type {
   IwcMoodSummary,
@@ -270,6 +271,7 @@ function finalizeSuperstarMail(
 ): SuperstarMailCandidate {
   return {
     ...item,
+    action: getSuperstarMailAction(item.askLabel),
     body: buildMailBody(item.id, item.preview, bodyExtensions),
   };
 }

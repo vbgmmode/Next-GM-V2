@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { DashboardDynastyPortrait } from "../components/dashboardDynasty";
-import { bookedFinishCostUsd, getSegmentProductionCostForShow } from "../game/finance";
+import { bookedFinishCostUsd, getSegmentProductionCostForShow, getSegmentStipulationProductionCostForShow } from "../game/finance";
 import { formatMoney } from "../game/formatters";
 import { getCatalogOptionsForType, getSegmentCatalogOption, getSegmentParticipantRange, type SegmentCatalogOption } from "../game/matchFormatCatalog";
 import { getStipulationById } from "../game/stipulationCatalog";
 import { hasIntergenderMatchParticipants } from "../game/scoring";
+import { isWrestlerProtectedRest } from "../game/socialInboxActions";
 import type { Championship, GameState, Rivalry, Segment, Wrestler } from "../game/types";
 import { BookingOverlay } from "./BookingOverlay";
 import type { BookingComposerView } from "./buildBookingModel";
@@ -199,8 +200,9 @@ export function IntegratedSegmentComposer({
   const formatLabel = getSelectedCatalogLabel(segment);
   const currentShowType = game.calendar.find((week) => week.weekNumber === game.currentWeek)?.showType ?? "tv";
   const segmentProductionCost = getSegmentProductionCostForShow(segment, currentShowType) ?? 0;
+  const stipulationProductionCost = getSegmentStipulationProductionCostForShow(segment, currentShowType);
   const bookedFinishCost = segment.type === "Match" && segment.winnerId ? bookedFinishCostUsd : 0;
-  const plannedSegmentCost = segmentProductionCost + bookedFinishCost;
+  const plannedSegmentCost = segmentProductionCost + stipulationProductionCost + bookedFinishCost;
   const currentShowTypeLabel = currentShowType === "ple" ? "PLE" : "TV";
   const showTitleBadge = segment.type === "Match" || segment.type === "Contract Signing" || segment.type === "Open Challenge";
   const showRivalryBadge = segment.type !== "Open Challenge";
@@ -239,7 +241,7 @@ export function IntegratedSegmentComposer({
 
   function assignTalent(wrestlerId: string, slotIndex: number) {
     const wrestler = wrestlers.find((item) => item.id === wrestlerId);
-    if (!wrestler || wrestler.injuryStatus === "major" || wouldCreateIntergenderMatch(segment, wrestler, wrestlers)) {
+    if (!wrestler || wrestler.injuryStatus === "major" || isWrestlerProtectedRest(game, wrestlerId) || wouldCreateIntergenderMatch(segment, wrestler, wrestlers)) {
       return;
     }
 
@@ -282,6 +284,7 @@ export function IntegratedSegmentComposer({
       canSegmentAttachRivalry(segment, rivalry, wrestlers) &&
       !isRivalryIntergenderBlocked(rivalry, wrestlers) &&
       rivalry.participantIds.every((id) => wrestlers.some((wrestler) => wrestler.id === id && wrestler.injuryStatus !== "major")) &&
+      !rivalry.participantIds.some((id) => isWrestlerProtectedRest(game, id)) &&
       !hasIntergenderMatchParticipants({ ...segment, participantIds: rivalry.participantIds }, wrestlers);
 
     if (canPrefill && rivalry) {
@@ -344,6 +347,7 @@ export function IntegratedSegmentComposer({
             <strong>{formatMoney(plannedSegmentCost)}</strong>
             <em>
               Base {formatMoney(segmentProductionCost)}
+              {stipulationProductionCost ? ` + stipulation ${formatMoney(stipulationProductionCost)}` : ""}
               {bookedFinishCost ? ` + booked finish ${formatMoney(bookedFinishCost)}` : ""}
             </em>
           </div>
@@ -427,6 +431,7 @@ export function IntegratedSegmentComposer({
           <strong>{formatMoney(plannedSegmentCost)}</strong>
           <small>
             Production {formatMoney(segmentProductionCost)}
+            {stipulationProductionCost ? ` + Stip ${formatMoney(stipulationProductionCost)}` : ""}
             {bookedFinishCost ? ` + Finish ${formatMoney(bookedFinishCost)}` : ""}
           </small>
         </div>
@@ -436,7 +441,7 @@ export function IntegratedSegmentComposer({
         <BookingOverlay ariaLabel="Talent picker" onClose={closeOverlay} title="Assign Talent" wide>
           <div className="booking-picker-list">
             {pickerRows.map((wrestler) => {
-              const disabled = wrestler.injuryStatus === "major" || wouldCreateIntergenderMatch(segment, wrestler, wrestlers);
+              const disabled = wrestler.injuryStatus === "major" || isWrestlerProtectedRest(game, wrestler.id) || wouldCreateIntergenderMatch(segment, wrestler, wrestlers);
               const inRivalry = activeRivalryParticipantIds.has(wrestler.id);
               const hints = getTalentPickerHints(segment, wrestler, game, bookedCounts[wrestler.id] ?? 0);
               return (
@@ -598,6 +603,7 @@ export function IntegratedSegmentComposer({
           <div className="booking-action-stack">
             <button className={`booking-btn booking-btn-secondary ${!segment.stipulationId ? "is-active" : ""}`.trim()} onClick={() => { onSetSegmentStipulation(segment.id, ""); closeOverlay(); }} type="button">
               Standard Match
+              <small>No specialty production surcharge</small>
             </button>
             {availableStipulations.map((option) => (
               <button
@@ -610,7 +616,9 @@ export function IntegratedSegmentComposer({
                 type="button"
               >
                 {option.label}
-                <small>{option.riskContext}</small>
+                <small>
+                  {option.riskContext} · {currentShowTypeLabel} +{formatMoney(getSegmentStipulationProductionCostForShow({ stipulationId: option.id }, currentShowType))}
+                </small>
               </button>
             ))}
           </div>

@@ -110,6 +110,21 @@ function buildRosterFalloutGroups(game: GameState, result: ShowResult): WeekRevi
     });
   }
 
+  if (fallout?.titleStatNotes?.length) {
+    groups.push({
+      id: "title-stats",
+      label: "Championship Fallout",
+      lines: fallout.titleStatNotes.map((item) => {
+        const statParts = [
+          item.momentumChange !== 0 ? `${item.momentumChange > 0 ? "+" : ""}${item.momentumChange} momentum` : "",
+          item.popularityChange !== 0 ? `${item.popularityChange > 0 ? "+" : ""}${item.popularityChange} popularity` : "",
+        ].filter(Boolean);
+
+        return statParts.length ? `${item.wrestlerName}: ${statParts.join(", ")}. ${item.note}` : item.note;
+      }),
+    });
+  }
+
   if (injuryRiskWrestlers.length) {
     groups.push({
       id: "injury-risk",

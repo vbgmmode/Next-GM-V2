@@ -16,6 +16,7 @@ import {
   DashboardDynastyStatValue,
 } from "./components/dashboardDynasty";
 import { buildDashboardViewModel } from "./game/dashboardViewModel";
+import { getPrestigeMainEventAnchorSnapshot } from "./game/championshipPrestigeReads";
 import {
   getDefaultDashboardRosterSortDirection,
   sortDashboardRosterRows,
@@ -128,7 +129,13 @@ import {
   isValidSegment,
   runShow,
 } from "./game/scoring";
-import { getChampionshipArtworkSrc, getChampionshipDivisionGroup, getTitleCatalogBrand, wrestlerFitsChampionshipDivision } from "./game/titleCatalog";
+import { getChampionshipArtworkSrc, getTitleCatalogBrand, wrestlerFitsChampionshipDivision } from "./game/titleCatalog";
+import {
+  acceptSocialInboxRest,
+  acceptSocialInboxTvTime,
+  getProtectedRestWrestlerIds,
+  isWrestlerProtectedRest,
+} from "./game/socialInboxActions";
 import type {
   CalendarWeek,
   AffiliationKind,
@@ -185,10 +192,16 @@ import "./screens/RivalriesScreen.css";
 import "./screens/WeekReviewScreen.css";
 import "./screens/SetupScreen.css";
 import { BookingScreen } from "./booking";
+import {
+  canSegmentAttachChampionship,
+  canSegmentContestChampionship,
+  isSinglesChampionship,
+} from "./booking/bookingUtils";
 import { RosterScreen, WrestlerProfileScreen } from "./roster";
 import { getWrestlerValueProfile } from "./roster/rosterValueReads";
 import type { WrestlerValueProfile } from "./roster/rosterTypes";
 import { SocialScreen, formatSocialCategory } from "./social";
+import type { SuperstarMailItem } from "./social/socialTypes";
 
 type RosterSort = "popularity" | "momentum" | "fatigue" | "morale";
 type RosterFilter = "all" | "mens" | "womens" | "champions" | "injured" | "hot" | "tired" | "morale" | "underused";
@@ -1148,7 +1161,7 @@ function getBookingSegmentBoardFlags(segment: Segment, game: GameState) {
     flags.push("Open Challenge");
   }
 
-  if (!isValidSegment(segment, game.wrestlers)) {
+  if (!isValidSegment(segment, game.wrestlers, getProtectedRestWrestlerIds(game))) {
     flags.push("Needs Fix");
   }
 
@@ -1249,9 +1262,42 @@ function getPleReadinessSnapshot(game: GameState, validShowSegments: Segment[], 
   const mainEventParticipants = mainEvent ? getSegmentParticipants(mainEvent, game.wrestlers) : [];
   const mainEventHasAnchor = Boolean(
     mainEvent &&
-      isValidSegment(mainEvent, game.wrestlers) &&
+      isValidSegment(mainEvent, game.wrestlers, getProtectedRestWrestlerIds(game)) &&
       (mainEvent.championshipId || mainEvent.rivalryId || mainEventParticipants.some(isMajorEventStar)),
   );
+  const prestigeAnchor = getPrestigeMainEventAnchorSnapshot(game, validShowSegments);
+  const mainEventAnchorStatus =
+    prestigeAnchor.isSeasonFinalePle
+      ? prestigeAnchor.status === "anchored"
+        ? "Top belt closes the finale"
+        : prestigeAnchor.status === "wrong_closer"
+          ? "Wrong belt in closing slot"
+          : prestigeAnchor.status === "anchor_missing"
+            ? "Top belt missing from card"
+            : "No closing slot yet"
+      : mainEventHasAnchor
+        ? "Closing slot has stakes"
+        : mainEvent
+          ? "Closing slot is light"
+          : "No closing slot yet";
+  const mainEventAnchorDetail =
+    prestigeAnchor.isSeasonFinalePle
+      ? prestigeAnchor.detail
+      : mainEvent
+        ? `${mainEvent.segmentDisplayName ?? mainEvent.type} closes the rundown${mainEventParticipants.length ? ` with ${getSegmentParticipantsLabel(mainEvent, game.wrestlers)}` : ""}.`
+        : "Add a valid final segment before the PLE goes live.";
+  const mainEventAnchorTone =
+    prestigeAnchor.isSeasonFinalePle
+      ? prestigeAnchor.status === "anchored"
+        ? "ready"
+        : prestigeAnchor.status === "wrong_closer"
+          ? "watch"
+          : "build"
+      : mainEventHasAnchor
+        ? "ready"
+        : mainEvent
+          ? "watch"
+          : "build";
   const items: PleReadinessItem[] = [
     {
       id: "event-block",
@@ -1281,12 +1327,10 @@ function getPleReadinessSnapshot(game: GameState, validShowSegments: Segment[], 
     },
     {
       id: "main-event-anchor",
-      label: "Main Event Anchor",
-      status: mainEventHasAnchor ? "Closing slot has stakes" : mainEvent ? "Closing slot is light" : "No closing slot yet",
-      detail: mainEvent
-        ? `${mainEvent.segmentDisplayName ?? mainEvent.type} closes the rundown${mainEventParticipants.length ? ` with ${getSegmentParticipantsLabel(mainEvent, game.wrestlers)}` : ""}.`
-        : "Add a valid final segment before the PLE goes live.",
-      tone: mainEventHasAnchor ? "ready" : mainEvent ? "watch" : "build",
+      label: prestigeAnchor.isSeasonFinalePle ? "Prestige Main Event" : "Main Event Anchor",
+      status: mainEventAnchorStatus,
+      detail: mainEventAnchorDetail,
+      tone: mainEventAnchorTone,
     },
     {
       id: "star-power",
@@ -1738,108 +1782,8 @@ function getWrestlerNames(ids: string[], wrestlers: Wrestler[]) {
   return ids.map((id) => wrestlers.find((wrestler) => wrestler.id === id)?.name ?? "Unknown").join(" / ");
 }
 
-function isSinglesChampionship(championship: Championship) {
-  return championship.eligibleMatchScope !== "tag_team" && championship.division !== "Tag Team" && championship.championIds.length === 1;
-}
-
 function isTagChampionship(championship: Championship) {
   return championship.eligibleMatchScope === "tag_team" || championship.division === "Tag Team";
-}
-
-function doSegmentParticipantsFitChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[]) {
-  const titleDivision = getChampionshipDivisionGroup(championship);
-
-  if (!titleDivision) {
-    return true;
-  }
-
-  return segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship));
-}
-
-function isSinglesTitleContestShape(segment: Segment) {
-  if (segment.segmentCatalogId === "M002") {
-    return segment.participantIds.length === 3;
-  }
-
-  if (segment.segmentCatalogId === "M003") {
-    return segment.participantIds.length === 4;
-  }
-
-  return segment.participantIds.length === 2;
-}
-
-function getTagTitleSides(segment: Segment, championship: Championship) {
-  if (segment.type !== "Match" || segment.segmentCatalogId !== "M020" || segment.participantIds.length !== 4 || championship.championIds.length !== 2) {
-    return undefined;
-  }
-
-  const teamAIds = segment.participantIds.slice(0, 2);
-  const teamBIds = segment.participantIds.slice(2, 4);
-  const championIds = new Set(championship.championIds);
-  const teamAHasChampions = teamAIds.every((id) => championIds.has(id));
-  const teamBHasChampions = teamBIds.every((id) => championIds.has(id));
-
-  if (teamAHasChampions === teamBHasChampions) {
-    return undefined;
-  }
-
-  return {
-    championSideIds: teamAHasChampions ? teamAIds : teamBIds,
-    challengerSideIds: teamAHasChampions ? teamBIds : teamAIds,
-  };
-}
-
-function canSegmentContestVacantTagChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[] = []) {
-  return (
-    segment.type === "Match" &&
-    segment.segmentCatalogId === "M020" &&
-    segment.participantIds.length === 4 &&
-    new Set(segment.participantIds).size === 4 &&
-    championship.championIds.length === 0 &&
-    isValidSegment(segment, wrestlers) &&
-    doSegmentParticipantsFitChampionship(segment, championship, wrestlers)
-  );
-}
-
-function canSegmentContestChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[] = []) {
-  if (isTagChampionship(championship)) {
-    return Boolean((isValidSegment(segment, wrestlers) && getTagTitleSides(segment, championship)) || canSegmentContestVacantTagChampionship(segment, championship, wrestlers));
-  }
-
-  return (
-    segment.type === "Match" &&
-    isValidSegment(segment, wrestlers) &&
-    isSinglesTitleContestShape(segment) &&
-    isSinglesChampionship(championship) &&
-    segment.participantIds.includes(championship.championIds[0]) &&
-    doSegmentParticipantsFitChampionship(segment, championship, wrestlers)
-  );
-}
-
-function canSegmentAttachChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[] = []) {
-  if (canSegmentContestChampionship(segment, championship, wrestlers)) {
-    return true;
-  }
-
-  if (segment.type === "Contract Signing") {
-    return (
-      isValidSegment(segment, wrestlers) &&
-      isSinglesChampionship(championship) &&
-      segment.participantIds.includes(championship.championIds[0]) &&
-      doSegmentParticipantsFitChampionship(segment, championship, wrestlers)
-    );
-  }
-
-  if (segment.type === "Open Challenge") {
-    return (
-      isValidSegment(segment, wrestlers) &&
-      isSinglesChampionship(championship) &&
-      championship.championIds.includes(segment.participantIds[0]) &&
-      doSegmentParticipantsFitChampionship(segment, championship, wrestlers)
-    );
-  }
-
-  return false;
 }
 
 function buildSanctionedTitleMatchSegment(game: GameState, sourceSegment: Segment, championshipId: string) {
@@ -1869,7 +1813,7 @@ function buildSanctionedTitleMatchSegment(game: GameState, sourceSegment: Segmen
     participantMax: option.maxParticipants,
   });
   const getAttachedCandidate = (candidate: Segment) => {
-    if (!isValidSegment(candidate, game.wrestlers) || !canSegmentAttachChampionship(candidate, championship, game.wrestlers)) {
+    if (!isValidSegment(candidate, game.wrestlers, getProtectedRestWrestlerIds(game)) || !canSegmentAttachChampionship(candidate, championship, game.wrestlers)) {
       return undefined;
     }
 
@@ -4323,6 +4267,32 @@ function App() {
     });
   }
 
+  function handleSuperstarMailAction(item: SuperstarMailItem) {
+    if (!item.action) {
+      return;
+    }
+
+    setGame((current) => {
+      if (!current) {
+        return current;
+      }
+
+      if (item.action?.type === "rest") {
+        const updatedGame = acceptSocialInboxRest(current, item);
+        persistGameSnapshot(updatedGame, "social");
+        return updatedGame;
+      }
+
+      const { game: updatedGame, segmentId } = acceptSocialInboxTvTime(current, item);
+      persistGameSnapshot(updatedGame, "booking");
+      setBookingFocusSegmentId(segmentId);
+      setProfileWrestlerId(undefined);
+      setProfileReturnScreen("booking");
+      setScreen("booking");
+      return updatedGame;
+    });
+  }
+
   function getRivalryBookingCandidateOptions(rivalry: Rivalry, current: GameState) {
     const structure = getRivalryStructure(rivalry);
     const timingSnapshot = getRivalryTimingSnapshot(rivalry, current);
@@ -4370,7 +4340,7 @@ function App() {
 
     const participants = rivalry.participantIds.map((id) => current.wrestlers.find((wrestler) => wrestler.id === id));
 
-    if (participants.some((wrestler) => !wrestler || wrestler.injuryStatus === "major")) {
+    if (participants.some((wrestler) => !wrestler || wrestler.injuryStatus === "major" || isWrestlerProtectedRest(current, wrestler.id))) {
       return undefined;
     }
 
@@ -4387,7 +4357,7 @@ function App() {
         participantMax: option.maxParticipants,
       };
 
-      if (!isValidSegment(candidate, current.wrestlers) || !canSegmentAttachRivalry(candidate, rivalry, current.wrestlers)) {
+      if (!isValidSegment(candidate, current.wrestlers, getProtectedRestWrestlerIds(current)) || !canSegmentAttachRivalry(candidate, rivalry, current.wrestlers)) {
         continue;
       }
 
@@ -4396,7 +4366,7 @@ function App() {
         : undefined;
       const segment = championship ? { ...candidate, championshipId: championship.id } : candidate;
 
-      if (isValidSegment(segment, current.wrestlers) && canSegmentAttachRivalry(segment, rivalry, current.wrestlers)) {
+      if (isValidSegment(segment, current.wrestlers, getProtectedRestWrestlerIds(current)) && canSegmentAttachRivalry(segment, rivalry, current.wrestlers)) {
         return segment;
       }
     }
@@ -4470,10 +4440,16 @@ function App() {
         return current;
       }
 
+      if (championship.championIds.some((id) => isWrestlerProtectedRest(current, id))) {
+        return current;
+      }
+
       const isTagTitle = isTagChampionship(championship);
       const option = getCatalogOptionById(isTagTitle ? "M020" : "M001") ?? getDefaultCatalogOption("Match")!;
       const scene = getTitleDivisionScene(championship, current.wrestlers, current.rivalries, current.currentWeek, current.championships);
-      const contenderPool = scene.eligibleRoster.length ? scene.eligibleRoster : scene.topContenders;
+      const contenderPool = (scene.eligibleRoster.length ? scene.eligibleRoster : scene.topContenders).filter(
+        (wrestler) => !isWrestlerProtectedRest(current, wrestler.id),
+      );
       const contenderCount = isTagTitle ? (championship.championIds.length ? 2 : 4) : (championship.championIds.length ? 1 : 2);
       const challengerIds = contenderPool.slice(0, contenderCount).map((wrestler) => wrestler.id);
       const participantIds = [...championship.championIds, ...challengerIds];
@@ -4862,7 +4838,7 @@ function App() {
           const isSelected = segment.participantIds.includes(wrestlerId);
           const wrestler = current.wrestlers.find((talent) => talent.id === wrestlerId);
 
-          if (!isSelected && wrestler?.injuryStatus === "major") {
+          if (!isSelected && (wrestler?.injuryStatus === "major" || isWrestlerProtectedRest(current, wrestlerId))) {
             return segment;
           }
 
@@ -5275,7 +5251,7 @@ function App() {
   }
 
   if (screen === "social") {
-    return <SocialScreen game={game} latestResult={latestResult} onNavigate={navigateTo} />;
+    return <SocialScreen game={game} latestResult={latestResult} onNavigate={navigateTo} onSuperstarMailAction={handleSuperstarMailAction} />;
   }
 
   if (screen === "finance") {

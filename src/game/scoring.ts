@@ -21,6 +21,9 @@ import { generateCpuWeeklyResults } from "./cpuRivalLoop";
 import { draftPool } from "./seed";
 import { getSegmentValidationRange } from "./matchFormatCatalog";
 import { getChampionshipDivisionGroup, wrestlerFitsChampionshipDivision } from "./titleCatalog";
+import { applyTitleEventStatFallout, applyTitleSceneStatFallout } from "./titleStatFallout";
+import { getStipulationById } from "./stipulationCatalog";
+import { getProtectedRestWrestlerIds, resolveSocialInboxRequestsAfterShow } from "./socialInboxActions";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
@@ -158,9 +161,12 @@ const SEGMENT_EXECUTION_FALLBACKS: Record<
 
 type BroadcastOverrunLevel = NonNullable<ShowResult["broadcastOverrunLevel"]>;
 
-export function isValidSegment(segment: Segment, wrestlers: Wrestler[] = []) {
-  const hasMajorInjury = segment.participantIds.some((id) => wrestlers.find((wrestler) => wrestler.id === id)?.injuryStatus === "major");
-  if (hasMajorInjury) {
+export function isValidSegment(segment: Segment, wrestlers: Wrestler[] = [], unavailableWrestlerIds: ReadonlySet<string> | string[] = []) {
+  const unavailableIds = Array.isArray(unavailableWrestlerIds) ? new Set(unavailableWrestlerIds) : unavailableWrestlerIds;
+  const hasUnavailableWrestler = segment.participantIds.some(
+    (id) => unavailableIds.has(id) || wrestlers.find((wrestler) => wrestler.id === id)?.injuryStatus === "major",
+  );
+  if (hasUnavailableWrestler) {
     return false;
   }
 
@@ -250,7 +256,8 @@ export function getCurrentCalendarWeek(game: GameState): CalendarWeek {
 }
 
 export function runShow(game: GameState): { game: GameState; result: ShowResult } {
-  const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers));
+  const protectedRestIds = getProtectedRestWrestlerIds(game);
+  const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers, protectedRestIds));
   const calendarWeek = getCurrentCalendarWeek(game);
   const isPle = calendarWeek.showType === "ple";
   const segmentExecutions = validSegments.map((segment, index) => resolveSegmentRuntime(segment, game, index));
@@ -288,9 +295,15 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
       broadcastOverrunLevel && overrunAffectedSegmentIds.has(segment.id)
         ? getBroadcastOverrunSegmentPenalty(broadcastOverrunLevel, resolvedSegment, game.wrestlers)
         : 0;
+    const stipulation = getStipulationById(resolvedSegment.stipulationId);
     const score = isNoContest
       ? 0
-      : clamp(scoreSegment(resolvedSegment, game.wrestlers, updatedChampionships, updatedRivalries) + (isPle ? SHOW_BALANCE.pleScoreBonus : 0) - overrunSegmentPenalty);
+      : clamp(
+          scoreSegment(resolvedSegment, game.wrestlers, updatedChampionships, updatedRivalries) +
+            (stipulation?.scoreBonus ?? 0) +
+            (isPle ? SHOW_BALANCE.pleScoreBonus : 0) -
+            overrunSegmentPenalty,
+        );
     const momentumGain = isNoContest ? 0 : getSegmentMomentumGain(score, isPle);
     const momentumChanges: Record<string, number> = {};
     const fatigueChanges: Record<string, number> = {};
@@ -314,6 +327,7 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
     resolvedSegment.participantIds.forEach((id) => {
       const fatigueGain =
         (isNoContest ? 1 : getSegmentFatigueGain(resolvedSegment, execution.actualDurationMinutes, id, game.wrestlers, participantUseCounts[id] ?? 0)) +
+        (isNoContest ? 0 : (stipulation?.fatigueBonus ?? 0)) +
         (isPle && !isNoContest ? SHOW_BALANCE.pleFatigueBonus : 0);
       momentumChanges[id] = momentumGain;
       fatigueChanges[id] = fatigueGain;
@@ -399,16 +413,41 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
   };
 
   const updatedWrestlers = game.wrestlers.map((wrestler) =>
-    updateWrestlerPressure(wrestler, game.currentWeek, momentumTotals, fatigueTotals, lockerRoomFallout, getDifficultyRules(game.difficulty)),
+    updateWrestlerPressure(
+      wrestler,
+      game.currentWeek,
+      momentumTotals,
+      fatigueTotals,
+      lockerRoomFallout,
+      getDifficultyRules(game.difficulty),
+      protectedRestIds,
+    ),
   );
   const injuryNotes = evaluateInjuries(result, updatedWrestlers, game);
   lockerRoomFallout.injuryNotes = injuryNotes;
   const injuredWrestlers = applyInjuryFallout(updatedWrestlers, injuryNotes, game.currentWeek);
+  const titleEventFallout = applyTitleEventStatFallout(
+    injuredWrestlers,
+    titleHistoryEvents,
+    segmentResults,
+    updatedChampionships,
+  );
+  const titleSceneFallout = applyTitleSceneStatFallout(titleEventFallout.wrestlers, segmentResults, updatedChampionships);
+  lockerRoomFallout.titleStatNotes = [...titleEventFallout.notes, ...titleSceneFallout.notes];
+  const wrestlersWithTitleStats = titleSceneFallout.wrestlers;
+  const gameWithSocialInboxResolution = resolveSocialInboxRequestsAfterShow(
+    {
+      ...game,
+      wrestlers: wrestlersWithTitleStats,
+    },
+    result,
+  );
   const financeReport = generateFinanceReport(result, game);
   const gameBeforeCpuSocial = {
     ...game,
     money: financeReport.endingMoney,
-    wrestlers: injuredWrestlers,
+    wrestlers: gameWithSocialInboxResolution.wrestlers,
+    socialInbox: gameWithSocialInboxResolution.socialInbox,
     championships: updatedChampionships,
     rivalries: updatedRivalries,
     championshipHistory: [...(game.championshipHistory ?? []), ...titleHistoryEvents],
@@ -557,8 +596,10 @@ function updateWrestlerPressure(
   fatigueTotals: Record<string, number>,
   fallout: LockerRoomFallout,
   rules: DifficultyRules,
+  protectedRestIds: ReadonlySet<string>,
 ) {
   const isBooked = Object.prototype.hasOwnProperty.call(momentumTotals, wrestler.id) || Object.prototype.hasOwnProperty.call(fatigueTotals, wrestler.id);
+  const isProtectedRest = protectedRestIds.has(wrestler.id);
   const previousLastBookedWeek = wrestler.lastBookedWeek ?? 0;
   const previousAppearances = wrestler.appearancesThisSeason ?? 0;
   const previousConsecutiveWeeks = wrestler.consecutiveWeeksBooked ?? 0;
@@ -568,8 +609,12 @@ function updateWrestlerPressure(
   const wasHighlyFatigued = wrestler.fatigue >= FALLOUT_BALANCE.highFatigue;
   const wasSeverelyFatigued = wrestler.fatigue >= FALLOUT_BALANCE.severeFatigue;
   // Normal TV time is a small morale positive; pressure penalties only bite after repeated usage or long absences.
-  let moraleChange = isBooked ? FALLOUT_BALANCE.bookedMoraleGain : 0;
+  let moraleChange = isBooked ? FALLOUT_BALANCE.bookedMoraleGain : isProtectedRest ? 2 : 0;
   let underusedBoostNote = "";
+
+  if (!isBooked && isProtectedRest) {
+    underusedBoostNote = `${wrestler.name} got the protected rest week the office approved, so the room read the absence as care instead of neglect.`;
+  }
 
   if (isBooked && wasUnderused) {
     moraleChange += FALLOUT_BALANCE.underusedReturnMoraleGain;
@@ -595,7 +640,7 @@ function updateWrestlerPressure(
     });
   }
 
-  if (!isBooked && wasUnderused) {
+  if (!isBooked && wasUnderused && !isProtectedRest) {
     const underusePenalty = Math.max(1, Math.round(FALLOUT_BALANCE.underuseMoralePenalty * rules.playerPressure.moralePenaltyMultiplier));
     moraleChange -= underusePenalty;
     fallout.underuseWarnings.push({
@@ -824,11 +869,13 @@ function selectOpenChallengeOpponent(segment: Segment, game: GameState, segmentI
   const issuerId = segment.participantIds[0];
   const issuer = game.wrestlers.find((wrestler) => wrestler.id === issuerId);
   const issuerDivision = getWrestlerDivisionGroup(issuer);
+  const protectedRestIds = getProtectedRestWrestlerIds(game);
   const eligible = game.wrestlers.filter((wrestler) => {
     const opponentDivision = getWrestlerDivisionGroup(wrestler);
 
     return (
       wrestler.id !== issuerId &&
+      !protectedRestIds.has(wrestler.id) &&
       isWrestlerAvailable(wrestler) &&
       (!issuerDivision || !opponentDivision || opponentDivision === issuerDivision)
     );
@@ -1002,6 +1049,7 @@ function resolveRivalrySegment(segment: Segment, rivalries: Rivalry[], score: nu
   const repeatedBeat = rivalry.lastAdvancedWeek === context.weekNumber;
   const wasAlreadyThin = rivalry.freshness <= 35;
   const isPlePayoffLevel = isPle && score >= 85;
+  const stipulation = getStipulationById(segment.stipulationId);
   // Rivalry movement should be visible after each beat, but freshness prevents one story from maxing out instantly.
   const scoreHeatDelta =
     score >= 95
@@ -1016,6 +1064,7 @@ function resolveRivalrySegment(segment: Segment, rivalries: Rivalry[], score: nu
   const heatDelta =
     scoreHeatDelta +
     getRivalrySegmentTypeBonus(segment) +
+    (stipulation?.rivalryHeatBonus ?? 0) +
     (isPle ? RIVALRY_BALANCE.pleHeatBonus : 0) +
     (isPlePayoffLevel ? RIVALRY_BALANCE.plePayoffHeatBonus : 0) +
     (isTitleStakes ? RIVALRY_BALANCE.titleStakesBonus : 0);

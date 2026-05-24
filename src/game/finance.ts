@@ -1,4 +1,5 @@
 import { getSegmentBookingCost } from "./financeCatalog";
+import { getStipulationCostForShow } from "./stipulationCatalog";
 import type { FinanceReport, GameState, SegmentResult, ShowResult, ShowType, Wrestler } from "./types";
 
 export const bookedFinishCostUsd = 10000;
@@ -60,6 +61,10 @@ export function getSegmentProductionCostForShow(segment: Pick<SegmentResult, "se
   return showType === "ple" ? costRow.plePpvBookingCostUsd : costRow.weeklyTvBookingCostUsd;
 }
 
+export function getSegmentStipulationProductionCostForShow(segment: Pick<SegmentResult, "stipulationId">, showType: ShowType) {
+  return getStipulationCostForShow(segment.stipulationId, showType);
+}
+
 function getShowProductionCostProfile(result: ShowResult, game: GameState) {
   const plannedSegmentsById = new Map(game.currentShow.map((segment) => [segment.id, segment]));
   const missingSegmentCostIds: string[] = [];
@@ -83,6 +88,10 @@ function getShowProductionCostProfile(result: ShowResult, game: GameState) {
 
     return total + bookedFinishCostUsd;
   }, 0);
+  const stipulationProductionCost = result.segmentResults.reduce(
+    (total, segment) => total + getSegmentStipulationProductionCostForShow(segment, result.showType),
+    0,
+  );
   const baseShowProductionCost = result.showType === "ple" ? 240000 : 65000;
   const overrunCost =
     result.broadcastOverrunLevel === "major" ? 16000 : result.broadcastOverrunLevel === "moderate" ? 8000 : result.broadcastOverrunLevel === "minor" ? 2500 : 0;
@@ -93,6 +102,7 @@ function getShowProductionCostProfile(result: ShowResult, game: GameState) {
     missingSegmentCostIds: [...new Set(missingSegmentCostIds)],
     overrunCost,
     segmentProductionCost,
+    stipulationProductionCost,
   };
 }
 
@@ -129,6 +139,7 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
   const productionCost = roundMoney(
     productionCostProfile.baseShowProductionCost +
       productionCostProfile.segmentProductionCost +
+      productionCostProfile.stipulationProductionCost +
       productionCostProfile.bookedFinishCost +
       productionCostProfile.overrunCost,
   );
@@ -148,6 +159,10 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
 
   if (productionCostProfile.segmentProductionCost > 0) {
     notes.push(`Segment production booked ${productionCostProfile.segmentProductionCost.toLocaleString()} in catalog costs for the resolved card.`);
+  }
+
+  if (productionCostProfile.stipulationProductionCost > 0) {
+    notes.push(`Match stipulations added ${productionCostProfile.stipulationProductionCost.toLocaleString()} in specialty production costs.`);
   }
 
   if (productionCostProfile.bookedFinishCost > 0) {
@@ -190,6 +205,7 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
     totalExpenses: expenses,
     baseShowProductionCost: productionCostProfile.baseShowProductionCost,
     segmentProductionCost: productionCostProfile.segmentProductionCost,
+    stipulationProductionCost: productionCostProfile.stipulationProductionCost,
     bookedFinishCost: productionCostProfile.bookedFinishCost,
     overrunCost: productionCostProfile.overrunCost,
     revenueBreakdown: [
@@ -200,6 +216,9 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
     expenseBreakdown: [
       { id: "baseShowProductionCost", label: "Base Production", amount: productionCostProfile.baseShowProductionCost },
       { id: "segmentProductionCost", label: "Segment Production", amount: productionCostProfile.segmentProductionCost },
+      ...(productionCostProfile.stipulationProductionCost > 0
+        ? [{ id: "stipulationProductionCost", label: "Stipulation Production", amount: productionCostProfile.stipulationProductionCost }]
+        : []),
       { id: "bookedFinishCost", label: "Booked Finish", amount: productionCostProfile.bookedFinishCost },
       { id: "overrunCost", label: "Overrun", amount: productionCostProfile.overrunCost },
     ],

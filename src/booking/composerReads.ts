@@ -1,5 +1,6 @@
 import { getSegmentCatalogOption, getSegmentParticipantRange } from "../game/matchFormatCatalog";
 import { getInjuryStatusLabel } from "../game/rosterContextReads";
+import { isWrestlerProtectedRest } from "../game/socialInboxActions";
 import type { Championship, GameState, Rivalry, Segment, Wrestler } from "../game/types";
 import {
   canSegmentAttachChampionship,
@@ -92,6 +93,10 @@ export function getTalentPickerHints(segment: Segment, wrestler: Wrestler, game:
 
   if (wrestler.injuryStatus === "major") {
     hints.push("Major injury unavailable");
+  }
+
+  if (isWrestlerProtectedRest(game, wrestler.id)) {
+    hints.push("Approved rest");
   }
 
   if (!checked && wouldCreateIntergenderMatch(segment, wrestler, game.wrestlers)) {

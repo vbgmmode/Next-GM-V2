@@ -1,5 +1,5 @@
 import type { GameScreen } from "../game/migration";
-import type { GameState, ShowResult, SocialPost } from "../game/types";
+import type { GameState, ShowResult, SocialInboxActionType, SocialPost } from "../game/types";
 
 export type SocialTimelineTab = "all" | "iwc" | "superstars";
 
@@ -31,6 +31,11 @@ export type SuperstarMailItem = {
   body: string;
   askLabel: string;
   tone: SuperstarMailTone;
+  action?: {
+    type: SocialInboxActionType;
+    label: string;
+    detail: string;
+  };
 };
 
 export type SuperstarMailSnapshot = {
@@ -76,6 +81,7 @@ export type WrestlerJabFeedSnapshot = {
 export type SocialScreenProps = {
   game: GameState;
   latestResult?: ShowResult;
+  onSuperstarMailAction?: (item: SuperstarMailItem) => void;
   onNavigate: (screen: GameScreen) => void;
 };
 

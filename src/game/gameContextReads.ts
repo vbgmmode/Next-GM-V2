@@ -7,6 +7,7 @@ import {
   getWeeksSinceLastBooked,
 } from "./rosterContextReads";
 import { getBestSegment, getCurrentCalendarWeek, getShowGrade, getWrestlerDivisionGroup, isValidSegment } from "./scoring";
+import { getProtectedRestWrestlerIds } from "./socialInboxActions";
 import {
   formatChampionshipEventType,
   formatRivalryEventType,
@@ -17,6 +18,7 @@ import {
   getRivalryHistoryAgeWeeks,
   hasPlePayoff,
 } from "./storyContextReads";
+import { getPrestigeMainEventAnchorSnapshot, getPrestigeMainEventAnchorSnapshotFromResult } from "./championshipPrestigeReads";
 import { getChampionshipDivisionGroup, wrestlerFitsChampionshipDivision } from "./titleCatalog";
 import type {
   CalendarWeek,
@@ -1102,7 +1104,8 @@ export function getLivingWorldPressureSnapshot(game: GameState, result?: ShowRes
   const topUnderused = getTopUnderusedWrestler(game.wrestlers, game.currentWeek);
   const focusRivalry = getRivalryTimingSnapshots(game)[0];
   const focusTitle = getChampionshipPressureSnapshots(game)[0];
-  const cardReady = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers)).length >= 2;
+  const protectedRestIds = getProtectedRestWrestlerIds(game);
+  const cardReady = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers, protectedRestIds)).length >= 2;
   const pleClock =
     currentShow.showType === "ple"
       ? `${currentShow.showName} is tonight's major-event checkpoint.`
@@ -1254,6 +1257,10 @@ export function getWeekReviewHandoffSnapshot(game: GameState, result: ShowResult
   const titlePressure = getChampionshipPressureSnapshots(game).filter(({ snapshot }) => snapshot.primary.tone === "watch" || snapshot.primary.tone === "build").slice(0, 2);
   const titleEvents = result.titleHistoryEvents ?? [];
   const rivalryEvents = result.rivalryHistoryEvents ?? [];
+  const prestigeFinaleAnchor =
+    result.week === 12 && result.showType === "ple"
+      ? getPrestigeMainEventAnchorSnapshotFromResult(game, result.segmentResults ?? [])
+      : undefined;
   const financePressure = getFinancePressureLabel(game.money, financeReport?.profitLoss ?? 0);
   const roadRead = nextWeek
     ? nextWeek.showType === "ple"
@@ -1304,11 +1311,20 @@ export function getWeekReviewHandoffSnapshot(game: GameState, result: ShowResult
       id: "title-office",
       label: "Title Office",
       value: titleEvents.length ? `${titleEvents.length} logged` : titlePressure.length ? `${titlePressure.length} flagged` : "Stable",
-      detail: titleEvents.length
-        ? titleEvents.slice(0, 2).map((event) => `${formatChampionshipEventType(event.eventType)}: ${event.championshipName}`).join(" / ")
-        : titlePressure.length
-          ? titlePressure.map(({ championship, snapshot }) => `${championship.name}: ${snapshot.primary.label}`).join(" / ")
-          : "No title event or title-office pressure is leading the next handoff.",
+      detail: [
+        titleEvents.length
+          ? titleEvents.slice(0, 2).map((event) => `${formatChampionshipEventType(event.eventType)}: ${event.championshipName}`).join(" / ")
+          : titlePressure.length
+            ? titlePressure.map(({ championship, snapshot }) => `${championship.name}: ${snapshot.primary.label}`).join(" / ")
+            : "No title event or title-office pressure is leading the next handoff.",
+        prestigeFinaleAnchor && prestigeFinaleAnchor.status !== "anchored" && prestigeFinaleAnchor.status !== "not_applicable"
+          ? `Season finale card shape: ${prestigeFinaleAnchor.detail}`
+          : prestigeFinaleAnchor?.status === "anchored"
+            ? `Season finale closed with ${prestigeFinaleAnchor.anchorChampionship?.name ?? "the top belt"} as the prestige anchor.`
+            : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
       tone: titleEvents.some((event) => event.eventType === "title_change") ? "strong" : titlePressure.length ? "watch" : "steady",
     },
     {
@@ -1405,7 +1421,10 @@ export function getWeekReviewOfficeSnapshot(game: GameState, result: ShowResult,
 }
 
 
-export function getPleBuildPressureSnapshot(game: GameState, validShowSegments: Segment[] = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers))): PleBuildPressureSnapshot {
+export function getPleBuildPressureSnapshot(
+  game: GameState,
+  validShowSegments: Segment[] = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers, getProtectedRestWrestlerIds(game))),
+): PleBuildPressureSnapshot {
   const calendarWeek = getCurrentCalendarWeek(game);
   const nextPle = getNextPle(game.calendar, game.currentWeek);
   const weeksUntilPle = getWeeksUntilPle(nextPle, game.currentWeek);
@@ -1465,6 +1484,7 @@ export function getPleBuildPressureSnapshot(game: GameState, validShowSegments: 
       ? "Current stories, title scenes, and availability are close enough to the PLE window to deserve a GM desk read."
       : "Road-to-PLE context stays in the background until timing, title pressure, rivalry pressure, or roster availability makes it worth surfacing.";
 
+  const prestigeAnchor = getPrestigeMainEventAnchorSnapshot(game, validShowSegments);
   const items: PleBuildPressureItem[] = [
     {
       id: "phase",
@@ -1522,6 +1542,22 @@ export function getPleBuildPressureSnapshot(game: GameState, validShowSegments: 
       tone: availabilityConcerns.length ? "watch" : "steady",
     },
   ];
+
+  if (prestigeAnchor.isSeasonFinalePle) {
+    items.push({
+      id: "prestige-anchor",
+      label: "Prestige Anchor",
+      value:
+        prestigeAnchor.status === "anchored"
+          ? "Top belt closes"
+          : prestigeAnchor.status === "wrong_closer"
+            ? "Wrong closer"
+            : "Top belt missing",
+      detail: prestigeAnchor.detail,
+      tone:
+        prestigeAnchor.status === "anchored" ? "ready" : prestigeAnchor.status === "wrong_closer" ? "watch" : "build",
+    });
+  }
 
   return {
     phaseLabel,
@@ -1779,6 +1815,28 @@ export function buildPostShowCauseLedger(game: GameState, result: ShowResult, fi
           ? `${result.biggestFatigueIncrease.name} took the heaviest physical tax from the finished card.`
           : `${result.biggestFatigueIncrease.name} took the biggest fatigue hit from the finished card.`,
       tone: result.biggestFatigueIncrease.amount >= 12 ? "watch" : "steady",
+    });
+  }
+  if (fallout?.titleStatNotes?.length) {
+    fallout.titleStatNotes.forEach((titleStatNote, index) => {
+      const momentumText =
+        titleStatNote.momentumChange !== 0
+          ? `${titleStatNote.momentumChange > 0 ? "+" : ""}${titleStatNote.momentumChange} momentum`
+          : "";
+      const popularityText =
+        titleStatNote.popularityChange !== 0
+          ? `${titleStatNote.popularityChange > 0 ? "+" : ""}${titleStatNote.popularityChange} popularity`
+          : "";
+      const statText = [momentumText, popularityText].filter(Boolean).join(" and ");
+
+      rosterItems.push({
+        id: `title-stat-${titleStatNote.wrestlerId}-${index}`,
+        label: "Championship Fallout",
+        detail: statText
+          ? `${titleStatNote.wrestlerName} picked up ${statText} from the resolved title scene. ${titleStatNote.note}`
+          : titleStatNote.note,
+        tone: titleStatNote.momentumChange + titleStatNote.popularityChange >= 0 ? "strong" : "watch",
+      });
     });
   }
   const falloutCount =

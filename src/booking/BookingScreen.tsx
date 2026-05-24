@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DynastyManagementShell, type DynastyManagementCta } from "../components/DynastyManagementShell";
 import { getDefaultCatalogOption, getSegmentParticipantRange, type SegmentCatalogOption } from "../game/matchFormatCatalog";
 import { hasIntergenderMatchParticipants, isValidSegment } from "../game/scoring";
+import { getProtectedRestWrestlerIds } from "../game/socialInboxActions";
 import { getStipulationsForSegment } from "../game/stipulationCatalog";
 import type { Segment, SegmentType } from "../game/types";
 import { BookingComposerStage } from "./BookingComposerStage";
@@ -48,7 +49,8 @@ export function BookingScreen({
   const [typePickerOpen, setTypePickerOpen] = useState(false);
   const [segmentTypePickerOpen, setSegmentTypePickerOpen] = useState(false);
   const smartRundownVariantRef = useRef(0);
-  const validShowSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers));
+  const protectedRestIds = getProtectedRestWrestlerIds(game);
+  const validShowSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers, protectedRestIds));
   const validSegments = validShowSegments.length;
   const invalidSegments = game.currentShow.length - validSegments;
   const validRuntimeMinutes = validShowSegments.reduce((total, segment) => total + getSegmentDurationMinutes(segment), 0);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookedFinishCostUsd, getSegmentProductionCostForShow } from "../game/finance";
+import { bookedFinishCostUsd, getSegmentProductionCostForShow, getSegmentStipulationProductionCostForShow } from "../game/finance";
 import { createNewGame } from "../game/seed";
 import type { GameState, Segment } from "../game/types";
 import { buildBookingModel } from "./buildBookingModel";
@@ -18,6 +18,7 @@ function createCostedBookingGame(): GameState {
       durationMinutes: 12,
       participantMin: 2,
       participantMax: 2,
+      stipulationId: "table_match",
     },
     {
       id: "booking-cost-promo",
@@ -42,6 +43,7 @@ describe("buildBookingModel production costs", () => {
     const game = createCostedBookingGame();
     const model = buildBookingModel(game, "booking-cost-match");
     const expectedSegmentCost = game.currentShow.reduce((sum, segment) => sum + (getSegmentProductionCostForShow(segment, "tv") ?? 0), 0);
+    const expectedStipulationCost = game.currentShow.reduce((sum, segment) => sum + getSegmentStipulationProductionCostForShow(segment, "tv"), 0);
 
     expect(model.segments).toHaveLength(2);
     model.segments.forEach((row) => {
@@ -50,7 +52,8 @@ describe("buildBookingModel production costs", () => {
       expect(row.plannedCostLabel).toContain("$");
     });
     expect(model.production.segmentCost).toBe(expectedSegmentCost);
+    expect(model.production.stipulationCost).toBe(expectedStipulationCost);
     expect(model.production.bookedFinishCost).toBe(bookedFinishCostUsd);
-    expect(model.production.totalCost).toBe(expectedSegmentCost + bookedFinishCostUsd);
+    expect(model.production.totalCost).toBe(expectedSegmentCost + expectedStipulationCost + bookedFinishCostUsd);
   });
 });

@@ -509,6 +509,7 @@ export type FinanceReport = {
   totalExpenses?: number;
   baseShowProductionCost?: number;
   segmentProductionCost?: number;
+  stipulationProductionCost?: number;
   bookedFinishCost?: number;
   overrunCost?: number;
   revenueBreakdown?: FinanceReportBreakdownItem[];
@@ -606,12 +607,47 @@ export type InjuryRecoveryNote = {
   note: string;
 };
 
+export type SocialInboxActionType = "rest" | "tv_time";
+
+export type SocialInboxRequestStatus = "accepted" | "fulfilled" | "broken";
+
+export type SocialInboxRequest = {
+  id: string;
+  mailId: string;
+  wrestlerId: string;
+  wrestlerName: string;
+  actionType: SocialInboxActionType;
+  askLabel: string;
+  createdSeasonNumber: number;
+  createdWeekNumber: number;
+  deadlineSeasonNumber: number;
+  deadlineWeekNumber: number;
+  status: SocialInboxRequestStatus;
+  segmentId?: string;
+  resolvedSeasonNumber?: number;
+  resolvedWeekNumber?: number;
+  note?: string;
+};
+
+export type SocialInboxState = {
+  requests: SocialInboxRequest[];
+};
+
+export type TitleStatFalloutNote = {
+  wrestlerId: string;
+  wrestlerName: string;
+  momentumChange: number;
+  popularityChange: number;
+  note: string;
+};
+
 export type LockerRoomFallout = {
   moraleDrops: LockerRoomFalloutItem[];
   moraleBoosts: LockerRoomFalloutItem[];
   overuseWarnings: LockerRoomFalloutItem[];
   underuseWarnings: LockerRoomFalloutItem[];
   injuryNotes: InjuryFalloutItem[];
+  titleStatNotes?: TitleStatFalloutNote[];
 };
 
 export type ShowResult = {
@@ -670,6 +706,7 @@ export type GameState = {
   marketState: MarketState;
   seasonArchives: SeasonArchiveSummary[];
   injuryRecoveryNotes: InjuryRecoveryNote[];
+  socialInbox: SocialInboxState;
   currentShow: Segment[];
   showHistory: ShowResult[];
 };

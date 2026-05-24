@@ -2,6 +2,7 @@ import { SuperstarPortrait } from "../components/SuperstarPortrait";
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import type { ReactNode } from "react";
 import type { GameState, Wrestler } from "../game/types";
+import { getActiveSocialInboxRequest } from "../game/socialInboxActions";
 import { getSuperstarMailSnapshot } from "./socialReads";
 import type { SuperstarMailItem } from "./socialTypes";
 
@@ -30,14 +31,18 @@ function SocialTrendCard({ children, title }: { children: ReactNode; title: stri
 
 function SuperstarMailRow({
   expanded,
+  game,
   item,
   onSelect,
+  onSuperstarMailAction,
   read,
   wrestler,
 }: {
+  game: GameState;
   expanded: boolean;
   item: SuperstarMailItem;
   onSelect: () => void;
+  onSuperstarMailAction?: (item: SuperstarMailItem) => void;
   read: boolean;
   wrestler?: Wrestler;
 }) {
@@ -49,6 +54,8 @@ function SuperstarMailRow({
   };
 
   const mailDetail = getSuperstarMailDetail(wrestler);
+  const activeRequest = getActiveSocialInboxRequest(game, item.id, item.wrestlerId);
+  const actionDisabled = Boolean(activeRequest);
 
   return (
     <article
@@ -76,6 +83,22 @@ function SuperstarMailRow({
               <span>{mailDetail.stats}</span>
               <p>{mailDetail.disclaimer}</p>
             </div>
+            {item.action ? (
+              <div className="social-mail-action-row">
+                <button
+                  className="social-mail-action"
+                  disabled={actionDisabled}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onSuperstarMailAction?.(item);
+                  }}
+                  type="button"
+                >
+                  {actionDisabled ? "Accepted" : item.action.label}
+                </button>
+                <small>{actionDisabled ? "Request is active on the GM desk." : item.action.detail}</small>
+              </div>
+            ) : null}
           </>
         ) : (
           <p className="social-mail-preview">{item.preview}</p>
@@ -85,7 +108,13 @@ function SuperstarMailRow({
   );
 }
 
-export function SocialTrendsPanel({ game }: { game: GameState }) {
+export function SocialTrendsPanel({
+  game,
+  onSuperstarMailAction,
+}: {
+  game: GameState;
+  onSuperstarMailAction?: (item: SuperstarMailItem) => void;
+}) {
   const mailSnapshot = getSuperstarMailSnapshot(game, 6);
   const mailIds = useMemo(() => mailSnapshot?.items.map((item) => item.id) ?? [], [mailSnapshot]);
   const [expandedMailId, setExpandedMailId] = useState<string | null>(null);
@@ -127,10 +156,12 @@ export function SocialTrendsPanel({ game }: { game: GameState }) {
           <div className="social-mail-list" aria-label="Superstar inbox">
             {mailSnapshot.items.map((item) => (
               <SuperstarMailRow
+                game={game}
                 expanded={expandedMailId === item.id}
                 item={item}
                 key={item.id}
                 onSelect={() => handleMailSelect(item.id)}
+                onSuperstarMailAction={onSuperstarMailAction}
                 read={readMailIds.has(item.id)}
                 wrestler={game.wrestlers.find((wrestler) => wrestler.id === item.wrestlerId)}
               />

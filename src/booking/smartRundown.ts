@@ -1,6 +1,9 @@
 import { getCatalogOptionById, getDefaultCatalogOption } from "../game/matchFormatCatalog";
 import { getStipulationsForSegment } from "../game/stipulationCatalog";
-import { isValidSegment } from "../game/scoring";
+import { deriveRivalryStage } from "../game/rivalryCatalog";
+import { getCurrentCalendarWeek, isValidSegment } from "../game/scoring";
+import { getSegmentPrestigeWeight, isSeasonFinalePleWeek } from "../game/championshipPrestigeReads";
+import { getProtectedRestWrestlerIds } from "../game/socialInboxActions";
 import type { GameState, Rivalry, Segment, Wrestler } from "../game/types";
 import {
   canSegmentAttachRivalry,
@@ -184,12 +187,38 @@ function getSmartRivalryMatchOptionId(rivalry: Rivalry) {
   return "M001";
 }
 
-function getSmartRivalryStipulationId(rivalry: Rivalry) {
+function getSmartRivalryStipulationId(game: GameState, rivalry: Rivalry) {
   if (getRivalryStructure(rivalry) !== "singles") {
     return undefined;
   }
 
-  return rivalry.heat >= 65 ? "extreme_rules" : undefined;
+  const calendarWeek = getCurrentCalendarWeek(game);
+  const stage = deriveRivalryStage(rivalry, {
+    isGoHome: calendarWeek.isGoHome,
+    isPle: calendarWeek.showType === "ple",
+  });
+
+  if (calendarWeek.showType === "ple" && rivalry.heat >= 78) {
+    return rivalry.heat >= 88 ? "tlc_match" : "ladder_match";
+  }
+
+  if (stage.id === "blowoff" || rivalry.heat >= 82) {
+    return rivalry.heat >= 88 ? "last_man_standing" : "steel_cage";
+  }
+
+  if ((stage.id === "go_home" || rivalry.heat >= 75) && rivalry.stakes === "respect") {
+    return "iron_man";
+  }
+
+  if (rivalry.heat >= 75) {
+    return "steel_cage";
+  }
+
+  if (rivalry.heat >= 65) {
+    return rivalry.stakes === "respect" ? "submission_match" : "street_fight";
+  }
+
+  return undefined;
 }
 
 function getSmartStoryOptionId(rivalry: Rivalry | undefined, variantSeed: number) {
@@ -204,8 +233,9 @@ function getSmartStoryOptionId(rivalry: Rivalry | undefined, variantSeed: number
 function canUseRivalryMatch(game: GameState, rivalry: Rivalry, participantIds: string[]) {
   const optionId = getSmartRivalryMatchOptionId(rivalry);
   const segment = buildSmartSegment(game, optionId, participantIds, 24, 0, rivalry.id);
+  const protectedRestIds = getProtectedRestWrestlerIds(game);
 
-  return canSegmentAttachRivalry(segment, rivalry, game.wrestlers) && isValidSegment(segment, game.wrestlers);
+  return canSegmentAttachRivalry(segment, rivalry, game.wrestlers) && isValidSegment(segment, game.wrestlers, protectedRestIds);
 }
 
 function buildSmartSegment(
@@ -240,7 +270,7 @@ function buildSmartSegment(
     const rivalry = game.rivalries.find((item) => item.id === rivalryId);
 
     if (rivalry) {
-      const stipulationId = getSmartRivalryStipulationId(rivalry);
+      const stipulationId = getSmartRivalryStipulationId(game, rivalry);
 
       if (stipulationId && getStipulationsForSegment(segment).some((stipulation) => stipulation.id === stipulationId)) {
         segment = {
@@ -256,7 +286,8 @@ function buildSmartSegment(
 }
 
 export function buildSmartRundown(game: GameState, variantSeed = 0): SmartRundownResult {
-  const available = game.wrestlers.filter(isSmartRundownAvailable);
+  const protectedRestIds = getProtectedRestWrestlerIds(game);
+  const available = game.wrestlers.filter((wrestler) => isSmartRundownAvailable(wrestler) && !protectedRestIds.has(wrestler.id));
   const notes = new Set<string>();
   const segments: Segment[] = [];
   const usage: Record<string, number> = {};
@@ -273,7 +304,7 @@ export function buildSmartRundown(game: GameState, variantSeed = 0): SmartRundow
     }
 
     const segment = buildSmartSegment(game, optionId, participantIds, durationMinutes, segments.length, rivalryId);
-    if (!isValidSegment(segment, game.wrestlers)) {
+    if (!isValidSegment(segment, game.wrestlers, protectedRestIds)) {
       return false;
     }
 
@@ -407,6 +438,9 @@ export function buildSmartRundown(game: GameState, variantSeed = 0): SmartRundow
     break;
   }
 
+  const calendarWeek = getCurrentCalendarWeek(game);
+  const seasonFinalePle = isSeasonFinalePleWeek(calendarWeek.weekNumber, calendarWeek.showType);
+
   const mainEventCandidate = segments
     .map((segment, index) => ({
       index,
@@ -417,18 +451,23 @@ export function buildSmartRundown(game: GameState, variantSeed = 0): SmartRundow
           return sum + (wrestler ? wrestler.popularity + wrestler.momentum - wrestler.fatigue * 0.2 : 0);
         }, 0) +
         (segment.rivalryId ? 40 : 0) +
-        (segment.type === "Match" ? 20 : 0),
+        (segment.type === "Match" ? 20 : 0) +
+        (seasonFinalePle ? getSegmentPrestigeWeight(segment, game) : 0),
     }))
     .sort((a, b) => b.score - a.score)[0];
 
   if (mainEventCandidate && mainEventCandidate.index !== segments.length - 1) {
     const [mainEvent] = segments.splice(mainEventCandidate.index, 1);
     segments.push(mainEvent);
-    notes.add("Moved the strongest visible rivalry/star-power segment into the closing slot.");
+    notes.add(
+      seasonFinalePle
+        ? "Moved the highest-prestige title match into the closing slot for the season finale."
+        : "Moved the strongest visible rivalry/star-power segment into the closing slot.",
+    );
   }
 
   const runtime = segments.reduce((total, segment) => total + getSegmentDurationMinutes(segment), 0);
-  const readiness = getShowReadiness(segments.length, segments.filter((segment) => !isValidSegment(segment, game.wrestlers)).length, runtime);
+  const readiness = getShowReadiness(segments.length, segments.filter((segment) => !isValidSegment(segment, game.wrestlers, protectedRestIds)).length, runtime);
 
   if (!readiness.canRun) {
     return {
@@ -465,7 +504,8 @@ export function buildSmartRundown(game: GameState, variantSeed = 0): SmartRundow
 }
 
 export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] = game.currentShow, variantSeed = 0): SmartRundownResult {
-  const available = game.wrestlers.filter(isSmartRundownAvailable);
+  const protectedRestIds = getProtectedRestWrestlerIds(game);
+  const available = game.wrestlers.filter((wrestler) => isSmartRundownAvailable(wrestler) && !protectedRestIds.has(wrestler.id));
   const usage: Record<string, number> = {};
   const usedPairs = new Set<string>();
 
@@ -520,7 +560,7 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
       const storyParticipantIds = rivalryParticipantIds.slice(0, option?.maxParticipants ?? rivalryParticipantIds.length);
       const promoSegment = buildSmartSegment(game, storyOptionId, storyParticipantIds, 14, currentShow.length, rivalry.id);
 
-      if (isValidSegment(promoSegment, game.wrestlers)) {
+      if (isValidSegment(promoSegment, game.wrestlers, protectedRestIds)) {
         return {
           notes: [`Featured ${rivalry.name} in a talk segment.`],
           segments: [promoSegment],
@@ -535,7 +575,7 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
     if (pair.length === 2) {
       const segment = buildSmartSegment(game, "M001", pair.map((wrestler) => wrestler.id), 28, currentShow.length);
 
-      if (isValidSegment(segment, game.wrestlers)) {
+      if (isValidSegment(segment, game.wrestlers, protectedRestIds)) {
         return {
           notes: ["Built a match around popularity, momentum, and manageable fatigue."],
           segments: [segment],
@@ -550,7 +590,7 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
     if (promoTalent) {
       const segment = buildSmartSegment(game, "P001", [promoTalent.id], 16, currentShow.length);
 
-      if (isValidSegment(segment, game.wrestlers)) {
+      if (isValidSegment(segment, game.wrestlers, protectedRestIds)) {
         return {
           notes: ["Showcased a strong talker with visible popularity or momentum."],
           segments: [segment],
@@ -566,7 +606,7 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
     if (rivalry && rivalryParticipants.length >= 2 && !hasSmartPairOnCard(rivalryParticipants, usedPairs)) {
       const segment = buildSmartSegment(game, "A046", rivalryParticipants.slice(0, 4), 14, currentShow.length, rivalry.id);
 
-      if (isValidSegment(segment, game.wrestlers)) {
+      if (isValidSegment(segment, game.wrestlers, protectedRestIds)) {
         return {
           notes: ["Added backstage texture for the active rivalry."],
           segments: [segment],
@@ -577,7 +617,7 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
     if (storyTalent) {
       const segment = buildSmartSegment(game, "A001", [storyTalent.id], 14, currentShow.length);
 
-      if (isValidSegment(segment, game.wrestlers)) {
+      if (isValidSegment(segment, game.wrestlers, protectedRestIds)) {
         return {
           notes: ["Added backstage texture to break up the card."],
           segments: [segment],
@@ -591,7 +631,7 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
   if (pair.length === 2) {
     const segment = buildSmartSegment(game, "M001", pair.map((wrestler) => wrestler.id), 24, currentShow.length);
 
-    if (isValidSegment(segment, game.wrestlers)) {
+    if (isValidSegment(segment, game.wrestlers, protectedRestIds)) {
       return {
         notes: ["Added another match beat to the rundown."],
         segments: [segment],
@@ -604,7 +644,7 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
   if (talker) {
     const segment = buildSmartSegment(game, "P002", [talker.id], 12, currentShow.length);
 
-    if (isValidSegment(segment, game.wrestlers)) {
+    if (isValidSegment(segment, game.wrestlers, protectedRestIds)) {
       return {
         notes: ["Used short hype time to add one more TV beat."],
         segments: [segment],

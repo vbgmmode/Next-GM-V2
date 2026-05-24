@@ -11,7 +11,7 @@ const TAB_OPTIONS: { id: SocialTimelineTab; label: string }[] = [
   { id: "superstars", label: "Superstars" },
 ];
 
-export function SocialScreen({ game, latestResult, onNavigate }: SocialScreenProps) {
+export function SocialScreen({ game, latestResult, onNavigate, onSuperstarMailAction }: SocialScreenProps) {
   const [tab, setTab] = useState<SocialTimelineTab>("all");
   const fanPosts = useMemo(() => getFanFeedPosts(game), [game.socialPosts]);
   const jabFeed = useMemo(() => getWrestlerJabFeed(game, 10), [game]);
@@ -105,10 +105,10 @@ export function SocialScreen({ game, latestResult, onNavigate }: SocialScreenPro
             </div>
           </section>
 
-          <SocialTrendsPanel game={game} />
+          <SocialTrendsPanel game={game} onSuperstarMailAction={onSuperstarMailAction} />
         </div>
       </section>
     </DynastyManagementShell>
   );
 }
-
+
