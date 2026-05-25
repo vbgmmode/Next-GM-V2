@@ -198,6 +198,7 @@ import "./screens/SetupScreen.css";
 import { BookingScreen } from "./booking";
 import {
   canSegmentAttachChampionship,
+  canSegmentAttachRivalry,
   canSegmentContestChampionship,
   isSinglesChampionship,
   pickParticipantIdCombinations,
@@ -3062,31 +3063,6 @@ function getRivalryTitleRelevance(rivalry: Rivalry, championships: Championship[
   }
 
   return undefined;
-}
-
-function canSegmentAttachRivalry(segment: Segment, rivalry: Rivalry, wrestlers: Wrestler[] = []) {
-  if (segment.type === "Open Challenge" || isRivalryIntergenderBlocked(rivalry, wrestlers)) {
-    return false;
-  }
-
-  const structure = getRivalryStructure(rivalry);
-  const range = getSegmentParticipantRange(segment);
-  const hasOverlap = !segment.participantIds.length || segment.participantIds.some((id) => rivalry.participantIds.includes(id));
-
-  if (!hasOverlap) {
-    return false;
-  }
-
-  if (structure === "singles") {
-    return range.max >= 2;
-  }
-
-  if (structure === "tag_team") {
-    return (segment.type === "Match" && segment.segmentCatalogId === "M020") || (segment.type !== "Match" && range.max >= 4);
-  }
-
-  const option = getSegmentCatalogOption(segment);
-  return range.max >= 3 && (segment.type !== "Contract Signing" || Boolean(option?.rivalryRelevant));
 }
 
 function getRivalryParticipants(rivalry: Rivalry, wrestlers: Wrestler[]) {

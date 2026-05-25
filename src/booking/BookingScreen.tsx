@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DynastyManagementShell, type DynastyManagementCta } from "../components/DynastyManagementShell";
 import { getDefaultCatalogOption, getSegmentParticipantRange, type SegmentCatalogOption } from "../game/matchFormatCatalog";
-import { hasIntergenderMatchParticipants, isValidSegment } from "../game/scoring";
+import { isValidSegment } from "../game/scoring";
 import { getProtectedRestWrestlerIds } from "../game/socialInboxActions";
 import { getStipulationsForSegment } from "../game/stipulationCatalog";
 import type { Segment, SegmentType } from "../game/types";
@@ -16,10 +16,8 @@ import { IntegratedSegmentComposer } from "./IntegratedSegmentComposer";
 import { buildBookingModel } from "./buildBookingModel";
 import type { BookingScreenProps } from "./bookingTypes";
 import {
-  canSegmentAttachRivalry,
   getSegmentDurationMinutes,
   getShowReadiness,
-  isRivalryIntergenderBlocked,
   maxBookingSegments,
   trimParticipantsForCatalogOption,
 } from "./bookingUtils";
@@ -129,7 +127,7 @@ export function BookingScreen({
       Boolean(segment.rivalryId) &&
       game.rivalries.some(
         (rivalry) =>
-          rivalry.id === segment.rivalryId && rivalry.participantIds.every((participantId) => participantIds.includes(participantId)),
+          rivalry.id === segment.rivalryId && participantIds.some((participantId) => rivalry.participantIds.includes(participantId)),
       );
 
     onUpdateSegment(segment.id, {
@@ -148,23 +146,6 @@ export function BookingScreen({
   }
 
   function setComposerRivalry(segment: Segment, rivalryId: string) {
-    const rivalry = game.rivalries.find((activeRivalry) => activeRivalry.id === rivalryId);
-    const range = getSegmentParticipantRange(segment);
-    const participantsFit = rivalry ? rivalry.participantIds.length >= range.min && rivalry.participantIds.length <= range.max : false;
-    const canPrefill =
-      rivalry &&
-      segment.type !== "Open Challenge" &&
-      participantsFit &&
-      canSegmentAttachRivalry(segment, rivalry, game.wrestlers) &&
-      !isRivalryIntergenderBlocked(rivalry, game.wrestlers) &&
-      rivalry.participantIds.every((id) => game.wrestlers.some((wrestler) => wrestler.id === id && wrestler.injuryStatus !== "major")) &&
-      !hasIntergenderMatchParticipants({ ...segment, participantIds: rivalry.participantIds }, game.wrestlers);
-
-    if (canPrefill && rivalry) {
-      onUpdateSegment(segment.id, { rivalryId, participantIds: [...rivalry.participantIds] });
-      return;
-    }
-
     onSetSegmentRivalry(segment.id, rivalryId);
   }
 

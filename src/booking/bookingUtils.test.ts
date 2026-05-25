@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultChampionships, createNewGame, draftPool } from "../game/seed";
 import { runShow } from "../game/scoring";
-import type { Championship, Segment, Wrestler } from "../game/types";
-import { canSegmentAttachChampionship, getSinglesTitleContestParticipantCount, resolveSinglesTitleMatchCatalogOption } from "./bookingUtils";
+import type { Championship, Rivalry, Segment, Wrestler } from "../game/types";
+import { canSegmentAttachChampionship, canSegmentAttachRivalry, getSinglesTitleContestParticipantCount, resolveSinglesTitleMatchCatalogOption } from "./bookingUtils";
 import { getBuildableChampionships } from "./composerReads";
 
 function sameDivisionWrestlers(division: "Mens" | "Womens", count = 3) {
@@ -317,5 +317,56 @@ describe("booking title eligibility", () => {
       championIds: [wrestlers[2].id, wrestlers[3].id],
       previousChampionIds: [],
     });
+  });
+});
+
+describe("booking rivalry attachment", () => {
+  function createTagRivalry(wrestlers: Wrestler[]): Rivalry {
+    return {
+      id: "tag-rivalry",
+      name: `${wrestlers[0].name} / ${wrestlers[1].name} vs ${wrestlers[2].name} / ${wrestlers[3].name}`,
+      participantIds: wrestlers.map((wrestler) => wrestler.id),
+      structure: "tag_team",
+      heat: 72,
+      freshness: 68,
+      stakes: "personal",
+      status: "rising",
+      lastAdvancedWeek: 0,
+      weeksActive: 2,
+    };
+  }
+
+  it("allows tag rivalries on mixed tag teams when at least one feud member is booked", () => {
+    const wrestlers = sameDivisionWrestlers("Mens", 6);
+    const rivalry = createTagRivalry(wrestlers.slice(0, 4));
+    const segment: Segment = {
+      id: "mixed-tag",
+      type: "Match",
+      participantIds: [wrestlers[0].id, wrestlers[1].id, wrestlers[4].id, wrestlers[5].id],
+      segmentCatalogId: "M020",
+      segmentDisplayName: "Tag Team Match",
+      durationMinutes: 12,
+      participantMin: 4,
+      participantMax: 4,
+    };
+
+    expect(canSegmentAttachRivalry(segment, rivalry, wrestlers)).toBe(true);
+  });
+
+  it("rejects rivalry attachment when no feud members are on the segment", () => {
+    const wrestlers = sameDivisionWrestlers("Mens", 8);
+    const rivalry = createTagRivalry(wrestlers.slice(0, 4));
+    const segment: Segment = {
+      id: "no-overlap-tag",
+      type: "Match",
+      participantIds: wrestlers.slice(4, 8).map((wrestler) => wrestler.id),
+      segmentCatalogId: "M020",
+      segmentDisplayName: "Tag Team Match",
+      durationMinutes: 12,
+      participantMin: 4,
+      participantMax: 4,
+    };
+
+    expect(canSegmentAttachRivalry(segment, rivalry, wrestlers)).toBe(false);
   });
 });

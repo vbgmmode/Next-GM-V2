@@ -880,7 +880,7 @@ export function canSegmentAttachRivalry(segment: Segment, rivalry: Rivalry, wres
   }
 
   if (structure === "tag_team") {
-    return (segment.type === "Match" && segment.segmentCatalogId === "M020") || (segment.type !== "Match" && range.max >= 4);
+    return range.max >= 2;
   }
 
   const option = getSegmentCatalogOption(segment);
