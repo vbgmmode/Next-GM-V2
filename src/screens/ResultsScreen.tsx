@@ -94,6 +94,46 @@ function SegmentBroadcastCard({
   const teamAWon = teamA.some((participant) => participant.role === "team-winner");
   const showBadge = read.badge !== "Spot" && read.badge !== read.type;
 
+  function renderParticipant(participant: SegmentParticipantRead) {
+    return (
+      <ParticipantSlot
+        key={participant.id}
+        participant={participant}
+        wrestler={wrestlers.find((wrestler) => wrestler.id === participant.id)}
+      />
+    );
+  }
+
+  function renderFaceoffStage() {
+    if (read.isNoContest) {
+      return <div className="rs-faceoff-line">{read.participants.map(renderParticipant)}</div>;
+    }
+
+    if (isTagMatch) {
+      return (
+        <div className="rs-faceoff-grid">
+          <TeamBlock label="Team A" participants={teamA} wrestlers={wrestlers} won={teamAWon} />
+          <div className="rs-faceoff-divider">VS</div>
+          <TeamBlock label="Team B" participants={teamB} wrestlers={wrestlers} won={!teamAWon} />
+        </div>
+      );
+    }
+
+    if (read.isCompetitive) {
+      return (
+        <div className="rs-faceoff-grid rs-faceoff-grid-singles">
+          <ParticipantSlot participant={winners[0] ?? read.participants[0]} wrestler={wrestlers.find((w) => w.id === (winners[0]?.id ?? read.participants[0]?.id))} />
+          <div className="rs-faceoff-divider">DEF</div>
+          <div className="rs-faceoff-side">
+            {(losers.length ? losers : read.participants.slice(1)).map(renderParticipant)}
+          </div>
+        </div>
+      );
+    }
+
+    return <div className="rs-faceoff-line">{read.participants.map(renderParticipant)}</div>;
+  }
+
   return (
     <article
       className={`rs-segment-card tone-${read.scoreTone}${read.isCompetitive ? " is-competitive" : ""}${read.isNoContest ? " is-no-contest" : ""}${read.isTitleMatch ? " is-title" : ""}${focused ? " is-focused" : ""}`}
@@ -112,60 +152,10 @@ function SegmentBroadcastCard({
       </header>
 
       <div className="rs-segment-card-body">
-        {read.isCompetitive ? (
-          <div className="rs-faceoff">
-            {read.isNoContest ? (
-              <>
-                <p className="rs-faceoff-headline">No Contest</p>
-                <div className="rs-faceoff-line">
-                  {read.participants.map((participant) => (
-                    <ParticipantSlot
-                      key={participant.id}
-                      participant={participant}
-                      wrestler={wrestlers.find((wrestler) => wrestler.id === participant.id)}
-                    />
-                  ))}
-                </div>
-              </>
-            ) : isTagMatch ? (
-              <>
-                <p className="rs-faceoff-headline">{read.headline}</p>
-                <div className="rs-faceoff-grid">
-                  <TeamBlock label="Team A" participants={teamA} wrestlers={wrestlers} won={teamAWon} />
-                  <div className="rs-faceoff-divider">VS</div>
-                  <TeamBlock label="Team B" participants={teamB} wrestlers={wrestlers} won={!teamAWon} />
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="rs-faceoff-headline">{read.headline}</p>
-                <div className="rs-faceoff-grid rs-faceoff-grid-singles">
-                  <ParticipantSlot participant={winners[0] ?? read.participants[0]} wrestler={wrestlers.find((w) => w.id === (winners[0]?.id ?? read.participants[0]?.id))} />
-                  <div className="rs-faceoff-divider">DEF</div>
-                  <div className="rs-faceoff-side">
-                    {(losers.length ? losers : read.participants.slice(1)).map((participant) => (
-                      <ParticipantSlot
-                        key={participant.id}
-                        participant={participant}
-                        wrestler={wrestlers.find((wrestler) => wrestler.id === participant.id)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="rs-spotlight-row">
-            {read.participants.map((participant) => (
-              <ParticipantSlot
-                key={participant.id}
-                participant={participant}
-                wrestler={wrestlers.find((wrestler) => wrestler.id === participant.id)}
-              />
-            ))}
-          </div>
-        )}
+        <div className="rs-faceoff">
+          <p className="rs-faceoff-headline">{read.headline}</p>
+          {renderFaceoffStage()}
+        </div>
 
         {(read.recapNote || read.stipulation || read.titleNote || read.rivalryNote) && (
           <div className="rs-segment-notes">

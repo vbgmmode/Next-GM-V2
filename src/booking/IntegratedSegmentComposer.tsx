@@ -100,8 +100,44 @@ function TalentSlotButton({
     >
       {teamLabel ? <span className="booking-stage-slot-team">{teamLabel}</span> : null}
       {wrestler ? <DashboardDynastyPortrait size="lg" wrestler={wrestler} /> : <span className="booking-stage-slot-empty">+ Talent</span>}
-      {wrestler ? null : <span className="booking-stage-slot-label">Open Slot</span>}
     </button>
+  );
+}
+
+function TagTeamSide({
+  onSlotClick,
+  slots,
+  teamLabel,
+  wrestlers,
+}: {
+  onSlotClick: (slot: StageSlot) => void;
+  slots: StageSlot[];
+  teamLabel: string;
+  wrestlers: Wrestler[];
+}) {
+  const hasTalent = slots.some((slot) => Boolean(slot.wrestlerId));
+
+  return (
+    <div className={`booking-stage-slot booking-stage-team ${hasTalent ? "is-filled" : "is-empty"}`.trim()}>
+      <span className="booking-stage-slot-team">{teamLabel}</span>
+      <div className="booking-stage-team-members">
+        {slots.map((slot) => {
+          const wrestler = wrestlerById(wrestlers, slot.wrestlerId);
+
+          return (
+            <button
+              aria-label={wrestler ? `${wrestler.name} slot` : "Open talent slot"}
+              className={`booking-stage-team-member ${wrestler ? "is-filled" : "is-empty"}`.trim()}
+              key={`${slot.index}-${slot.locked ? "locked" : "open"}`}
+              onClick={() => onSlotClick(slot)}
+              type="button"
+            >
+              {wrestler ? <DashboardDynastyPortrait size="lg" wrestler={wrestler} /> : <span className="booking-stage-slot-empty">+ Talent</span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -138,9 +174,9 @@ function StageSlots({
   if (layout.kind === "vs-tag") {
     return (
       <div className="booking-stage-matchup is-tag">
-        <div className="booking-stage-side">{layout.slots.slice(0, 2).map(renderSlot)}</div>
+        <TagTeamSide onSlotClick={onSlotClick} slots={layout.slots.slice(0, 2)} teamLabel="Team A" wrestlers={wrestlers} />
         <span className="booking-stage-vs">VS</span>
-        <div className="booking-stage-side">{layout.slots.slice(2, 4).map(renderSlot)}</div>
+        <TagTeamSide onSlotClick={onSlotClick} slots={layout.slots.slice(2, 4)} teamLabel="Team B" wrestlers={wrestlers} />
       </div>
     );
   }
@@ -343,34 +379,49 @@ export function IntegratedSegmentComposer({
 
         <div className="booking-hero-badges">
           <div className="booking-hero-cost-ledger" aria-label={`Planned segment cost ${formatMoney(plannedSegmentCost)}`}>
-            <span>{currentShowTypeLabel} Segment Cost</span>
+            <span>Segment Cost</span>
             <strong>{formatMoney(plannedSegmentCost)}</strong>
-            <em>
-              Base {formatMoney(segmentProductionCost)}
-              {stipulationProductionCost ? ` + stipulation ${formatMoney(stipulationProductionCost)}` : ""}
-              {bookedFinishCost ? ` + booked finish ${formatMoney(bookedFinishCost)}` : ""}
-            </em>
           </div>
           {showTitleBadge ? (
-            <button className={`booking-hero-badge ${segment.championshipId ? "has-value" : ""}`.trim()} onClick={() => openOverlay({ type: "title" })} type="button">
+            <button
+              className={`booking-hero-badge ${segment.championshipId ? "has-value" : ""}`.trim()}
+              onClick={() => openOverlay({ type: "title" })}
+              title={selectedChampionship?.name ?? "Attach title"}
+              type="button"
+            >
               <span>Title</span>
               <strong>{selectedChampionship?.name ?? "Attach title"}</strong>
             </button>
           ) : null}
           {showRivalryBadge ? (
-            <button className={`booking-hero-badge ${segment.rivalryId ? "has-value" : ""}`.trim()} onClick={() => openOverlay({ type: "rivalry" })} type="button">
+            <button
+              className={`booking-hero-badge ${segment.rivalryId ? "has-value" : ""}`.trim()}
+              onClick={() => openOverlay({ type: "rivalry" })}
+              title={selectedRivalry?.name ?? "Attach rivalry"}
+              type="button"
+            >
               <span>Rivalry</span>
               <strong>{selectedRivalry?.name ?? "Attach rivalry"}</strong>
             </button>
           ) : null}
           {showStipulationBadge ? (
-            <button className={`booking-hero-badge ${segment.stipulationId ? "has-value" : ""}`.trim()} onClick={() => openOverlay({ type: "stipulation" })} type="button">
+            <button
+              className={`booking-hero-badge ${segment.stipulationId ? "has-value" : ""}`.trim()}
+              onClick={() => openOverlay({ type: "stipulation" })}
+              title={selectedStipulation?.label ?? "Standard match"}
+              type="button"
+            >
               <span>Stipulation</span>
               <strong>{selectedStipulation?.label ?? "Standard match"}</strong>
             </button>
           ) : null}
           {showFinishBadge ? (
-            <button className={`booking-hero-badge ${segment.winnerId ? "has-value" : ""}`.trim()} onClick={() => openOverlay({ type: "finish" })} type="button">
+            <button
+              className={`booking-hero-badge ${segment.winnerId ? "has-value" : ""}`.trim()}
+              onClick={() => openOverlay({ type: "finish" })}
+              title={selectedWinner ? selectedWinner.name : "Let match resolve"}
+              type="button"
+            >
               <span>Finish</span>
               <strong>{selectedWinner ? selectedWinner.name : "Let match resolve"}</strong>
             </button>
@@ -438,7 +489,7 @@ export function IntegratedSegmentComposer({
       </div>
 
       {overlay.type === "talent" ? (
-        <BookingOverlay ariaLabel="Talent picker" onClose={closeOverlay} title="Assign Talent" wide>
+        <BookingOverlay ariaLabel="Talent picker" onClose={closeOverlay} scrollable title="Assign Talent" wide>
           <div className="booking-picker-list">
             {pickerRows.map((wrestler) => {
               const disabled = wrestler.injuryStatus === "major" || isWrestlerProtectedRest(game, wrestler.id) || wouldCreateIntergenderMatch(segment, wrestler, wrestlers);

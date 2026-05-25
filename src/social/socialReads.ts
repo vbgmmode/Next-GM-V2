@@ -1,6 +1,6 @@
 import { getRatingsBattleSnapshot } from "../game/cpuRivalLoop";
 import { getRosterPressureTags, getWeeksSinceLastBooked } from "../game/rosterContextReads";
-import { getBestSegment, getShowGrade } from "../game/scoring";
+import { getBestSegment } from "../game/scoring";
 import { getSuperstarMailAction } from "../game/socialInboxActions";
 import type { GameState, RivalBrandWeeklyResult, Rivalry, SegmentResult, ShowResult, SocialCategory, SocialPost, Wrestler } from "../game/types";
 import type {
@@ -15,6 +15,22 @@ import type {
   WrestlerJabItem,
   WrestlerJabTone,
 } from "./socialTypes";
+
+function getShowCrowdRead(totalScore: number) {
+  if (totalScore >= 90) {
+    return "Electric";
+  }
+
+  if (totalScore >= 78) {
+    return "Strong";
+  }
+
+  if (totalScore >= 65) {
+    return "Mixed";
+  }
+
+  return "Cold";
+}
 
 function getDominantEntry<T extends string>(values: T[]) {
   const counts = values.reduce<Map<T, number>>((map, value) => map.set(value, (map.get(value) ?? 0) + 1), new Map<T, number>());
@@ -172,7 +188,7 @@ export function getIwcMoodSummary(game: GameState): IwcMoodSummary | undefined {
           ? `${bestSegment.participantNames.join(" / ")} gave the feed its cleanest reference point.`
           : "The feed is talking about the show more than one person.";
   const showDetail = result
-    ? `${result.showName} closed at ${result.totalScore} (${getShowGrade(result.totalScore)}), with ${bestSegment?.participantNames.join(" / ") ?? "the card"} as the strongest resolved beat.`
+    ? `${result.showName} landed with ${getShowCrowdRead(result.totalScore).toLowerCase()} crowd energy, with ${bestSegment?.participantNames.join(" / ") ?? "the card"} as the strongest resolved beat.`
     : `${latestPost.showName} has resolved posts, but no matching show result was found in history.`;
 
   return {
@@ -204,7 +220,7 @@ export function getIwcMoodSummary(game: GameState): IwcMoodSummary | undefined {
       {
         id: "receipt",
         label: "Resolved Receipt",
-        value: result ? `${result.totalScore} ${getShowGrade(result.totalScore)}` : "Posts Only",
+        value: result ? getShowCrowdRead(result.totalScore) : "Posts Only",
         detail: showDetail,
       },
     ],
@@ -378,7 +394,7 @@ function buildRivalMainTopic(brandName: string, result: RivalBrandWeeklyResult, 
     `did ${brandName} really just run ${matchup} and call it a W? ${tag}`,
     `${matchup} has ${brandName} trending for the wrong reasons ${tag}`,
     `${brandName} twitter thinks it won the week again ${tag}`,
-    `${result.showName} got a ${result.grade} and the quote tweets are war ${tag}`,
+    `${result.showName} got the quote tweets going to war ${tag}`,
   ]);
 }
 
@@ -417,9 +433,9 @@ function buildRivalDeskTopic(brandName: string, result: RivalBrandWeeklyResult, 
   const tag = getBrandTag(brandName);
 
   return pickLine(seed, [
-    `${brandName} posted ${result.score} and the mentions are still mad ${tag}`,
-    `${result.grade} show twitter is coping in real time ${tag}`,
-    `${result.showName} receipt got cooked in the quotes ${tag}`,
+    `${brandName} show twitter is still coping in the quotes ${tag}`,
+    `${result.showName} receipt got cooked in the mentions ${tag}`,
+    `${brandName} thinks it won the week again ${tag}`,
   ]);
 }
 
@@ -533,7 +549,7 @@ function buildCrossBrandTopics(game: GameState, result?: ShowResult) {
       label: clampTopicLabel(
         pickLine(`cross-universe-${result.id}`, [
           `${bestNames} trending like they paid for bots #WrestlingTwitter`,
-          `week ${result.week} receipt got ${result.totalScore} and the quotes are nasty`,
+          `week ${result.week} receipt has the quotes looking nasty`,
           `every brand thinks it won the week lol #WrestlingTwitter`,
         ]),
       ),
