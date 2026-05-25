@@ -4,6 +4,7 @@ import { deriveRivalryStage } from "../game/rivalryCatalog";
 import { getCurrentCalendarWeek, isValidSegment } from "../game/scoring";
 import { getSegmentPrestigeWeight, isSeasonFinalePleWeek } from "../game/championshipPrestigeReads";
 import { getProtectedRestWrestlerIds } from "../game/socialInboxActions";
+import { createUniqueDomainId } from "../game/domainIds";
 import type { GameState, Rivalry, Segment, Wrestler } from "../game/types";
 import {
   canSegmentAttachRivalry,
@@ -248,7 +249,7 @@ function buildSmartSegment(
 ) {
   const option = getCatalogOptionById(optionId) ?? getDefaultCatalogOption("Match")!;
   let segment: Segment = {
-    id: `smart-${Date.now()}-${index}`,
+    id: createUniqueDomainId("smart-segment", [game.seasonNumber, game.currentWeek, index + 1, option.id, ...participantIds], game.currentShow.map((item) => item.id)),
     type: option.family,
     participantIds,
     segmentCatalogId: option.id,

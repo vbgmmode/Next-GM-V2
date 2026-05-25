@@ -133,6 +133,8 @@ Pre-show UI must not show predicted grades, fan reaction, social buzz, finance f
 
 Consequences belong after the player acts. Results, Week Review, Social, Finance, Rivalries, Championships, and Season Review may reveal resolved fallout only after the relevant show or week has been simulated.
 
+Manual Book Finish controls are player-authored booking intent, not predictions. They should not expose Open Challenge opponents, predicted grades, fan reaction, social buzz, finance fallout, rivalry movement, injury outcomes, or hidden simulation details before Run Show.
+
 ## Screen Personality Rules
 
 Routine management screens should feel tactical, readable, and repeatable.

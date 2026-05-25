@@ -78,6 +78,7 @@ The game currently supports:
 - Save Migration Hardening v1 with centralized defaults for older localStorage saves
 - Dashboard with Living World Pressure / Office Pulse as the primary weekly pressure surface
 - Booking with Match, Promo, Backstage Angle, Contract Signing, and Open Challenge segments
+- Book Finish creative control with free optional manual winners per match, default simulated winners, tag-side winner selection for tag matches, and Open Challenge pre-show finish control limited to simulate or issuer wins without revealing the hidden opponent
 - Booking Balance Pass v1 with distinct segment scoring, lighter normal fatigue gain, deterministic Open Challenge risk, and tuned rivalry/fallout movement
 - Segment validation and minimum-card requirements
 - Deterministic Open Challenge opponent reveal at show-run time
@@ -110,7 +111,7 @@ The game currently supports:
 - Mid-Career Draft between Season Review and Start Next Season
 - Start Next Season
 - Social/IWC with existing post feed, filters, and read-only resolved-state IWC mood summary
-- Finance & Brand Pressure with active payroll and market transaction costs, GM Office Pressure derived from current money, latest finance report, season finance history, best/worst business weeks, and closed-report cost context, with finance summary metrics under nav and expandable support panels for talent value, latest report, season reads, and finance history
+- Finance & Brand Pressure with active contract/market pressure, GM Office Pressure derived from current money, latest finance report, season finance history, best/worst business weeks, and closed-report show cost context, with finance summary metrics under nav and expandable support panels for talent value, latest report, season reads, and finance history
 - FinanceReport legacy-compatible v2 optional fields for future detailed revenue and expense categories
 - Read-only gameplay context helpers extracted into src/game/gameContextReads.ts for recent derived UI snapshots while React screen components remain in src/App.tsx
 
@@ -153,6 +154,7 @@ The loop must remain playable after every change.
 ## Product Principles
 - Player agency first.
 - The player is the final decision-maker.
+- Book Finish is free creative control: simulated winners remain the default, manual winners use the same consequence math as simulated winners, and manual finish selection should not add production cost, credibility penalties, special IWC language, or post-show result labels by default.
 - Consequences come after action.
 - Do not show predicted grades, fan reaction, finance fallout, title outcomes, rivalry movement, or social reaction before the show runs.
 - Open Challenge opponents are not revealed before the show runs.
@@ -165,6 +167,7 @@ The loop must remain playable after every change.
 - Booking can show context and warnings, but not predicted fallout.
 - Pre-show surfaces may show current risks, availability, fatigue, morale risk, title/rivalry context, finance state, PLE timing, and card readiness.
 - Pre-show surfaces must not show predicted grades, fan reaction, social buzz, finance fallout, title outcomes, rivalry movement, morale changes, injury outcomes, or Open Challenge opponent identity.
+- A manually booked finish is player-authored intent, not a predicted outcome; Open Challenge finish controls must not reveal the hidden opponent before Run Show.
 - Results should focus on broadcast recap.
 - Results operational fallout should remain quieter support below the broadcast recap, not a second headline recap.
 - Week Review should connect consequences before advancing.
@@ -325,7 +328,7 @@ Finance Readiness Rules:
 - Unlimited budget bypasses draft affordability.
 - FinanceReport supports optional legacy-compatible v2 fields: modelVersion, grossRevenue, totalExpenses, revenueBreakdown, and expenseBreakdown.
 - Existing saves and legacy finance reports must remain compatible.
-- Current weekly finance formulas include active payroll and same-week market transaction costs; larger formula rewrites still require an explicit ticket.
+- Current closed-show finance reports use resolved show economics: attendance, ticket revenue, merch revenue, media revenue, base production, segment production, stipulation production, and overrun cost. Contract/payroll and market transaction pressure remains active through market/office systems, but should not be folded into the closed-show report unless a future accepted ticket explicitly asks for that formula change.
 - Sponsorships, segment booking costs, finance projections, complex accounting, and weekly formula v2 remain out of scope unless explicitly requested.
 
 Save Compatibility Rules:

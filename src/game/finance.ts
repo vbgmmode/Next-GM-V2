@@ -3,7 +3,7 @@ import { formatAttendance, formatNumber } from "./formatters";
 import { getStipulationCostForShow } from "./stipulationCatalog";
 import type { FinanceReport, GameState, SegmentResult, ShowResult, ShowType, Wrestler } from "./types";
 
-export const bookedFinishCostUsd = 10000;
+export const bookedFinishCostUsd = 0;
 
 function getUniqueBookedWrestlers(result: ShowResult, wrestlers: Wrestler[]) {
   const ids = [...new Set(result.segmentResults.flatMap((segment) => segment.participantIds))];
@@ -71,7 +71,7 @@ export function getSegmentStipulationProductionCostForShow(segment: Pick<Segment
 }
 
 export function getBookedFinishProductionCostForShow(segment: Pick<SegmentResult, "stipulationId" | "type"> & { winnerId?: string }) {
-  return segment.type === "Match" && segment.winnerId ? bookedFinishCostUsd : 0;
+  return 0;
 }
 
 function getShowProductionCostProfile(result: ShowResult, game: GameState) {
@@ -178,10 +178,6 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
     notes.push(`Match stipulations added ${formatNumber(productionCostProfile.stipulationProductionCost)} in specialty production costs.`);
   }
 
-  if (productionCostProfile.bookedFinishCost > 0) {
-    notes.push(`Manually booked finishes added ${formatNumber(productionCostProfile.bookedFinishCost)} in production handling.`);
-  }
-
   if (productionCostProfile.missingSegmentCostIds.length) {
     notes.push("Some production lines used standard office handling because segment cost mapping needs a catalog pass.");
   }
@@ -200,6 +196,7 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
 
   return {
     id: `${result.id}-finance`,
+    resultId: result.id,
     seasonNumber: result.seasonNumber,
     weekNumber: result.week,
     showName: result.showName,
@@ -232,7 +229,7 @@ export function generateFinanceReport(result: ShowResult, game: GameState): Fina
       ...(productionCostProfile.stipulationProductionCost > 0
         ? [{ id: "stipulationProductionCost", label: "Stipulation Production", amount: productionCostProfile.stipulationProductionCost }]
         : []),
-      { id: "bookedFinishCost", label: "Booked Finish", amount: productionCostProfile.bookedFinishCost },
+      ...(productionCostProfile.bookedFinishCost > 0 ? [{ id: "bookedFinishCost", label: "Booked Finish", amount: productionCostProfile.bookedFinishCost }] : []),
       { id: "overrunCost", label: "Overrun", amount: productionCostProfile.overrunCost },
     ],
   };

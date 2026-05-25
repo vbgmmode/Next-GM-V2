@@ -16,7 +16,54 @@ If paths differ on the user's machine, resolve sibling worktrees from the active
 
 There is **no cloud prod**. Promoting means: commit sandbox → merge to `main` → pull in prod worktree → verify on port **5176**.
 
-## Default promote flow (recommended)
+## Promotion modes
+
+Before committing, pushing, opening a PR, or merging, the LLM must inspect the sandbox diff and recommend one mode. State the recommended mode and why in plain language. If the user already named a mode, follow it, but still report any risks before acting.
+
+| Mode | Use when | Behavior |
+|------|----------|----------|
+| **Full Sandbox Promote** | The user intentionally wants everything tested in sandbox to become prod. This is the default for "deploy sandbox", "ship it all", or "promote sandbox" when the diff is product-focused. | Verify sandbox, stage all intended sandbox changes, commit, push, PR + squash merge, pull prod, verify on `5176`. |
+| **Curated Product Promote** | The sandbox contains app improvements plus local workflow artifacts, generated reports, scratch files, or unrelated docs. | Classify the diff, stage only approved product/runtime/docs files, commit, push, PR + squash merge, pull prod, verify on `5176`. |
+| **Fast Local Promote** | The user explicitly wants a local promote without GitHub. | Commit sandbox locally, merge the feature branch into the prod worktree, keep prod port `5176`, verify locally. |
+| **Review Only / Decision Gate** | The user asks whether to promote, compare sandbox to prod, or assess readiness. | Do not commit or merge. Compare sandbox vs prod, run requested checks, and give a go/no-go recommendation. |
+
+Mode recommendation rules:
+
+- Recommend **Full Sandbox Promote** when the diff is mostly `src/**`, tests, `data/**`, accepted docs, and expected config changes.
+- Recommend **Curated Product Promote** when the diff includes `.agents/**`, `.cursor/**`, PDFs, reports, scratch artifacts, local-only workflow files, or unrelated planning docs mixed with product code.
+- Recommend **Fast Local Promote** only when the user explicitly asks to avoid GitHub/PR flow.
+- Recommend **Review Only / Decision Gate** when the user says not to change anything, asks "should I", or asks for a comparison.
+- If sandbox is behind `origin/main`, say so and recommend rebasing or merging current `origin/main` before promotion unless the user explicitly accepts the risk.
+
+## Diff classification
+
+Before staging files, classify changed files and show the inclusion plan when there are any "Ask" or "Usually exclude" files.
+
+| File class | Full Sandbox Promote default | Curated Product Promote default |
+|------------|------------------------------|---------------------------------|
+| `src/**` app/runtime code | Include | Include if related to the sandbox pass |
+| `src/**/*.test.*`, test fixtures, QA harnesses | Include | Include if they cover included app changes |
+| `data/**` game data | Include | Include if intentional product data |
+| `docs/ui/**`, accepted product docs, `AGENTS.md` | Include | Include if related |
+| `package.json`, `package-lock.json` | Include and run install/checks as needed | Include only if dependency changes are intentional |
+| `.agents/**` | Ask before including | Usually exclude unless the user wants repo-owned agent workflow changes |
+| `.cursor/**`, `skills-lock.json`, local editor/tool state | Ask before including | Usually exclude |
+| PDFs, generated reports, audit exports | Ask before including | Usually exclude or move to a separate docs/artifact PR |
+| Prompt drafts and planning docs under `docs/codex-prompts/**` | Ask before including | Usually exclude unless explicitly accepted |
+| `vite.config.ts` | Include only with port strategy awareness | Include only with port strategy awareness |
+
+## Preflight gate
+
+Run this before any promote mode that commits or merges:
+
+1. `git status --short --branch`
+2. `git fetch origin --prune`
+3. Compare sandbox with prod: `git log --oneline --left-right --cherry-pick origin/main...HEAD --decorate`
+4. Summarize changed file classes with `git diff --name-status origin/main..HEAD`
+5. Recommend a promotion mode and explain why
+6. If acting immediately, proceed only if the user's request already authorizes that mode; otherwise ask for confirmation
+
+## Full Sandbox Promote flow
 
 Use **squash merge via PR** unless the user explicitly asks for a local-only merge.
 
@@ -42,6 +89,8 @@ git push -u origin HEAD
 ```
 
 Use the current feature branch name (do not assume a fixed branch name).
+
+If the preflight found "Ask" file classes, do not use `git add -A` until the user confirms those files should be included. For Curated Product Promote, stage explicit paths instead of `git add -A`.
 
 ### 3. Open and merge PR
 
@@ -117,7 +166,27 @@ npm run dev
 
 Sandbox should stay on port **4000**.
 
-## Fast local path (no PR)
+## Curated Product Promote flow
+
+Use this when the sandbox app innovations should ship, but local artifacts should stay out of prod.
+
+1. Run the preflight gate and classify files.
+2. Tell the user the exact include/exclude groups.
+3. Stage explicit approved paths. Prefer pathspecs or individual files over `git add -A`.
+4. Commit with a why-focused message.
+5. Push and open a PR as in Full Sandbox Promote.
+6. Pull prod and verify on `http://localhost:5176/`.
+
+Example staging shape:
+
+```bash
+git add src data docs/ui AGENTS.md package.json package-lock.json
+git status --short
+```
+
+Adjust the path list to the actual accepted diff. Do not stage `.agents/**`, PDFs, `.cursor/**`, `skills-lock.json`, or prompt drafts unless the user explicitly approves them.
+
+## Fast Local Promote flow (no PR)
 
 Only when the user explicitly wants a local promote without GitHub:
 
@@ -148,10 +217,12 @@ Prefer PR + squash for anything the user may want to review or revert.
 
 When done, report:
 
+- Recommended mode used and why
 - PR URL (if used) and merge method
 - Prod commit hash after pull
 - Verification run (`tsc`, `build`, URLs checked)
 - Whether sandbox was repointed to `main` or left on the feature branch
+- Included/excluded file classes if the promote was curated
 - Any known limitation (e.g. prod ahead of origin, localStorage not shared)
 
 ## Out of scope

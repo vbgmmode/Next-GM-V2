@@ -4,6 +4,7 @@ import { getDefaultCatalogOption, getSegmentParticipantRange, type SegmentCatalo
 import { isValidSegment } from "../game/scoring";
 import { getProtectedRestWrestlerIds } from "../game/socialInboxActions";
 import { getStipulationsForSegment } from "../game/stipulationCatalog";
+import { createUniqueDomainId } from "../game/domainIds";
 import type { Segment, SegmentType } from "../game/types";
 import { BookingComposerStage } from "./BookingComposerStage";
 import { BookingContextRail } from "./BookingContextRail";
@@ -88,7 +89,7 @@ export function BookingScreen({
       return;
     }
 
-    const segmentId = `segment-${Date.now()}-${game.currentShow.length}`;
+    const segmentId = createUniqueDomainId("segment", [game.seasonNumber, game.currentWeek, game.currentShow.length + 1, type], game.currentShow.map((segment) => segment.id));
     onAddSegment(type, segmentId);
     setSelectedSegmentId(segmentId);
     setPendingClearCard(false);
