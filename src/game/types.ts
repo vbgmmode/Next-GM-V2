@@ -366,6 +366,23 @@ export type MatchRatings = {
   clutch: number;
 };
 
+export type MatchOutcomeModel = "legacy" | "deepRatings";
+
+export type MatchOutcomeInternalAudit = {
+  model: MatchOutcomeModel;
+  eligible: boolean;
+  fallbackReason?: string;
+  selectedWinnerId?: string;
+  competitorAId?: string;
+  competitorBId?: string;
+  competitorAEffectivePower?: number;
+  competitorBEffectivePower?: number;
+  competitorAWinProbability?: number;
+  competitorBWinProbability?: number;
+  deterministicRoll?: number;
+  seed?: string;
+};
+
 export type WrestlerMatchRecordLine = {
   wins: number;
   losses: number;
@@ -631,6 +648,7 @@ export type SegmentResult = {
   segmentCatalogId?: string;
   stipulationId?: string;
   winnerId?: string;
+  internalOutcomeAudit?: MatchOutcomeInternalAudit;
   titleNote?: string;
   rivalryNote?: string;
   recapNote?: string;

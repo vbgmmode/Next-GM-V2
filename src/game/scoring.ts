@@ -5,6 +5,8 @@ import type {
   GameState,
   InjuryFalloutItem,
   LockerRoomFallout,
+  MatchOutcomeInternalAudit,
+  MatchOutcomeModel,
   Rivalry,
   RivalryHistoryEvent,
   RivalryStatus,
@@ -29,6 +31,11 @@ import { SENTIMENT_NEUTRAL } from "./constants";
 import { getSharedInjuryRiskScore } from "./injury";
 import { createSegmentResult } from "./segmentModel";
 import { commitResolvedShow } from "./showResolutionCommit";
+import { resolveMatchOutcomePreview } from "./matchRatings";
+
+export type RunShowOptions = {
+  matchOutcomeModel?: MatchOutcomeModel;
+};
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
@@ -261,7 +268,8 @@ export function getCurrentCalendarWeek(game: GameState): CalendarWeek {
   );
 }
 
-export function runShow(game: GameState): { game: GameState; result: ShowResult } {
+export function runShow(game: GameState, options: RunShowOptions = {}): { game: GameState; result: ShowResult } {
+  const matchOutcomeModel = options.matchOutcomeModel ?? "legacy";
   const protectedRestIds = getProtectedRestWrestlerIds(game);
   const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers, protectedRestIds));
   const calendarWeek = getCurrentCalendarWeek(game);
@@ -295,8 +303,16 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
     const execution = segmentExecutions[index];
     const openChallengeResolution =
       segment.type === "Open Challenge" ? resolveOpenChallenge(segment, game, index, resolvedBookedIds) : undefined;
-    const resolvedSegment = openChallengeResolution?.segment ?? segment;
+    const segmentAfterOpenChallenge = openChallengeResolution?.segment ?? segment;
     const isNoContest = Boolean(openChallengeResolution?.isNoContest);
+    const outcomeResolution = resolveSegmentWinnerSelection(segmentAfterOpenChallenge, game, {
+      segmentIndex: index,
+      segmentCount: validSegments.length,
+      showType: calendarWeek.showType,
+      matchOutcomeModel,
+      isNoContest,
+    });
+    const resolvedSegment = outcomeResolution.segment;
     const overrunSegmentPenalty =
       broadcastOverrunLevel && overrunAffectedSegmentIds.has(segment.id)
         ? getBroadcastOverrunSegmentPenalty(broadcastOverrunLevel, resolvedSegment, game.wrestlers)
@@ -384,6 +400,7 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
         momentumChanges,
         fatigueChanges,
         winnerId,
+        internalOutcomeAudit: outcomeResolution.audit,
         titleNote,
         rivalryNote,
         recapNote: getSegmentRecap(resolvedSegment, game.wrestlers, score, isPle, winnerId, openChallengeResolution?.isNoContest),
@@ -1560,6 +1577,117 @@ function resolveTagTitleMatch(segment: Segment, championship: Championship, wres
       note,
     } satisfies ChampionshipHistoryEvent,
   };
+}
+
+type SegmentWinnerSelectionContext = {
+  segmentIndex: number;
+  segmentCount: number;
+  showType: CalendarWeek["showType"];
+  matchOutcomeModel: MatchOutcomeModel;
+  isNoContest: boolean;
+};
+
+function getCardPosition(index: number, total: number) {
+  if (index === 0) {
+    return "opener";
+  }
+
+  return index === total - 1 ? "main_event" : "midcard";
+}
+
+function legacyWinnerAudit(segment: Segment, wrestlers: Wrestler[], fallbackReason: string): MatchOutcomeInternalAudit {
+  return {
+    model: "legacy",
+    eligible: false,
+    fallbackReason,
+    selectedWinnerId: getSegmentWinner(segment, wrestlers)?.id,
+  };
+}
+
+function resolveSegmentWinnerSelection(
+  segment: Segment,
+  game: GameState,
+  context: SegmentWinnerSelectionContext,
+): { segment: Segment; audit: MatchOutcomeInternalAudit } {
+  if (context.isNoContest) {
+    return { segment, audit: legacyWinnerAudit(segment, game.wrestlers, "noContest") };
+  }
+
+  if (segment.winnerId && segment.participantIds.includes(segment.winnerId)) {
+    return { segment, audit: legacyWinnerAudit(segment, game.wrestlers, "manualWinner") };
+  }
+
+  if (context.matchOutcomeModel !== "deepRatings") {
+    return { segment, audit: legacyWinnerAudit(segment, game.wrestlers, "modelLegacy") };
+  }
+
+  if (segment.type !== "Match") {
+    return { segment, audit: legacyWinnerAudit(segment, game.wrestlers, "unsupportedSegmentType") };
+  }
+
+  if (segment.segmentCatalogId === "M020" || segment.participantIds.length !== 2) {
+    return { segment, audit: legacyWinnerAudit(segment, game.wrestlers, "tagOrMultiPersonUnsupported") };
+  }
+
+  const competitors = segment.participantIds.map((id) => game.wrestlers.find((wrestler) => wrestler.id === id));
+
+  if (!competitors.every((wrestler): wrestler is Wrestler => Boolean(wrestler))) {
+    return { segment, audit: legacyWinnerAudit(segment, game.wrestlers, "missingCompetitorData") };
+  }
+
+  const [competitorA, competitorB] = competitors;
+  const seed = [
+    "deep-ratings",
+    game.seasonNumber,
+    game.currentWeek,
+    segment.id,
+    context.segmentIndex,
+    competitorA.id,
+    competitorB.id,
+    segment.segmentCatalogId ?? "match",
+    segment.stipulationId ?? "standard",
+  ].join("-");
+
+  try {
+    const preview = resolveMatchOutcomePreview(competitorA, competitorB, {
+      type: segment.type,
+      segmentCatalogId: segment.segmentCatalogId,
+      stipulationId: segment.stipulationId,
+      championshipId: segment.championshipId,
+      rivalryId: segment.rivalryId,
+      showType: context.showType,
+      cardPosition: getCardPosition(context.segmentIndex, context.segmentCount),
+      isTitleMatch: Boolean(segment.championshipId),
+      isRivalryMatch: Boolean(segment.rivalryId),
+      seed,
+    });
+
+    if (!segment.participantIds.includes(preview.winnerId)) {
+      return { segment, audit: legacyWinnerAudit(segment, game.wrestlers, "invalidDeepRatingsWinner") };
+    }
+
+    return {
+      segment: {
+        ...segment,
+        winnerId: preview.winnerId,
+      },
+      audit: {
+        model: "deepRatings",
+        eligible: true,
+        selectedWinnerId: preview.winnerId,
+        competitorAId: competitorA.id,
+        competitorBId: competitorB.id,
+        competitorAEffectivePower: preview.competitorAPower,
+        competitorBEffectivePower: preview.competitorBPower,
+        competitorAWinProbability: preview.competitorAWinProbability,
+        competitorBWinProbability: preview.competitorBWinProbability,
+        deterministicRoll: preview.roll,
+        seed: preview.seed,
+      },
+    };
+  } catch {
+    return { segment, audit: legacyWinnerAudit(segment, game.wrestlers, "deepRatingsError") };
+  }
 }
 
 function getSegmentWinner(segment: Segment, wrestlers: Wrestler[]) {
