@@ -350,6 +350,22 @@ export type PressureLabel = "Stable" | "Tight" | "Critical" | "Surging";
 
 export type InjuryStatus = "healthy" | "minor" | "major";
 
+export type MatchRatings = {
+  technical: number;
+  submission: number;
+  power: number;
+  aerial: number;
+  brawling: number;
+  hardcore: number;
+  stamina: number;
+  resilience: number;
+  psychology: number;
+  selling: number;
+  timing: number;
+  explosiveness: number;
+  clutch: number;
+};
+
 export type WrestlerMatchRecordLine = {
   wins: number;
   losses: number;
@@ -387,6 +403,7 @@ export type Wrestler = {
   trust?: number;
   ringSkill: number;
   promoSkill: number;
+  matchRatings?: MatchRatings;
   record?: WrestlerMatchRecord;
   appearancesThisSeason?: number;
   lastBookedWeek?: number;
