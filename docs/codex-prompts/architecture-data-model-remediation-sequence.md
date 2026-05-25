@@ -14,30 +14,14 @@ Already installed / available:
 - `brooks-health`: occasional broad scorecard only.
 - `react-best-practices`: narrow localStorage/schema-versioning guidance.
 - `handoff`: end-of-chat summary for the next session.
+- `project-skill-audit`: repo-local skill audit. Installed under `.agents/skills/project-skill-audit`.
+- `review-and-simplify-changes`: post-diff simplification review. Installed under `.agents/skills/review-and-simplify-changes`; prefer `review-only` unless cleanup is explicitly approved.
+- `bug-hunt-swarm`: read-only multi-agent bug tracing. Installed under `.agents/skills/bug-hunt-swarm`.
 
-Recommended to install or inspect before the sequence:
-- `project-skill-audit`: audit whether a repo-local Next GM architecture skill should exist.
-- `review-and-simplify-changes`: reduce accidental complexity after each implementation slice.
-- `bug-hunt-swarm`: adversarial bug tracing after high-risk state/persistence changes.
-- `codebase-migrate`: inspect first; use only for broad structural migrations.
-- `adversarial-review`: inspect/select source first; use for hostile review of plans before implementation.
-- `codex-code-review`: inspect/select source first; overlaps with `brooks-review`.
-
-Install commands to run only after approval:
-
-```bash
-npx add-skill https://github.com/Dimillian/Skills/tree/main/project-skill-audit
-npx add-skill https://github.com/Dimillian/Skills/tree/main/review-and-simplify-changes
-npx add-skill https://github.com/Dimillian/Skills/tree/main/bug-hunt-swarm
-```
-
-Inspect before installing:
-
-```bash
-python3 /Users/vbahmad/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
-  --repo ComposioHQ/awesome-codex-skills \
-  --path codebase-migrate
-```
+Installed but restricted:
+- `codebase-migrate`: installed under `.agents/skills/codebase-migrate`; use only with explicit approval for broad structural migrations. Installer flagged this as high risk.
+- `adversarial-review`: installed under `.agents/skills/adversarial-review`; do not rely on it as-is without inspection. Installer flagged high/critical risk, and its workflow expects external cross-model CLIs.
+- `codex-code-review`: installed under `.agents/skills/codex-code-review`; likely less compatible with this Codex setup than `brooks-review`. Prefer `brooks-review`.
 
 ## Operating Rules For Every Chat
 
@@ -61,16 +45,45 @@ Use the handoff skill. Focus the next session on: <next slice name>. Include com
 
 Update this checklist manually if a chat is allowed to edit docs. If not, copy the updated checklist into the `handoff` output.
 
-- [ ] 1. Game State / Save Version / Migration Registry
-- [ ] 2. Stable ID / Reference Strategy
-- [ ] 3. Unified Durable Event Ledger
-- [ ] 4. Player Brand / CPU Brand Normalization
-- [ ] 5. Booking Segment / SegmentResult Discriminated Unions
-- [ ] 6. Result Reference Graph
-- [ ] 7. Domain Mutation Extraction From `App.tsx`
-- [ ] 8. Read Model / Selector Deduplication
-- [ ] 9. Finance/Social/History Cause Linking
+- [x] 1. Game State / Save Version / Migration Registry
+- [x] 2. Stable ID / Reference Strategy
+- [x] 3. Unified Durable Event Ledger
+- [x] 4. Player Brand / CPU Brand Normalization
+- [x] 5. Booking Segment / SegmentResult Discriminated Unions
+- [x] 6. Result Reference Graph
+- [ ] 7. Domain Mutation Extraction From `App.tsx` - partial; rivalry mutation extraction exists in working tree, but `App.tsx` still owns many booking/title/rivalry mutations.
+- [x] 8. Read Model / Selector Deduplication - partial but acceptable for this pass; title/championship reads have tests in `src/game/gameContextReads.test.ts`.
+- [ ] 9. Finance/Social/History Cause Linking - partial; social posts have `resultId`/`eventId`, but finance/history references are not fully cause-linked yet.
 - [ ] 10. Database-Ready Normalized Schema Planning
+
+## Current Status Audit - 2026-05-25
+
+This status is based on a focused `brooks-audit` pass and current repo inspection. Treat it as the source of truth before starting Chat 10.
+
+Verified completed foundations:
+- Save versioning exists through `CURRENT_SAVE_VERSION = 2`, `SavedGameState.saveVersion`, and `migrateSavedGameState` in `src/game/migration.ts`.
+- Stable gameplay ID helpers exist in `src/game/domainIds.ts`, and the main gameplay creation paths use `createUniqueDomainId`.
+- Durable event ledger exists in `src/game/eventLedger.ts`. `runShow` writes `show_resolved` events through `createShowResolvedEvent`.
+- Player/CPU brand identity has a shared `BrandIdentity` mirror through `src/game/brandIdentity.ts` and `GameState.playerBrand` / `RivalBrandState.brandIdentity`.
+- Booking segment/result discriminated read models exist in `src/game/segmentModel.ts`, and `runShow` now creates segment results through `createSegmentResult`.
+- Social posts now carry durable references: `SocialPost.resultId`, `SocialPost.eventId`, and optional `SocialPost.segmentId`.
+
+Partial / still risky:
+- `App.tsx` remains the main mutation hotspot. It still owns booking card edits, title assignment/revocation, rivalry booking helpers, show-run orchestration, and several persistence/screen side effects.
+- `src/game/rivalryMutations.ts` exists in the working tree as a pure rivalry creation extraction, with `src/game/rivalryMutations.test.ts`, but this does not complete the broader domain mutation extraction slice by itself.
+- `src/game/gameContextReads.test.ts` exists for title/championship selector behavior, but read-model duplication still remains between `src/game/gameContextReads.ts`, `src/screens/*Reads.ts`, and older helpers in `App.tsx`.
+- Finance reports are still primarily linked by deterministic report ID convention and week/result lookup. They do not yet carry an explicit `resultId` or `eventId` field.
+- Championship and rivalry history events still have their own IDs and are linked from the show event payload, but individual history records do not yet carry a direct `eventId`.
+- The event ledger is still narrow. It records `show_resolved` only, not segment-level, finance-level, title-level, rivalry-level, office-level, or CPU-level events.
+
+Latest validation from the quick audit:
+- `npm test -- --run src/game/rivalryMutations.test.ts src/game/gameContextReads.test.ts src/game/eventLedger.test.ts src/game/socialFeedPolicy.test.ts src/game/segmentModel.test.ts` passed.
+- The last broader checks observed in-session were `npm exec tsc -- --noEmit` and `npm run build`, both passing with the existing Vite large chunk warning.
+
+Recommended next move:
+- Do not start a database implementation.
+- Before Chat 10, either finish a narrow `App.tsx` domain extraction slice or explicitly mark step 7 as partial in the handoff.
+- If proceeding directly to Chat 10, make the audit answer distinguish “foundation exists” from “database-ready.” The data model is improved but still not database-ready.
 
 ## Chat 1: Game State / Save Version / Migration Registry
 
