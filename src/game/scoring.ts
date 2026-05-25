@@ -34,7 +34,17 @@ import { SENTIMENT_NEUTRAL } from "./constants";
 import { getSharedInjuryRiskScore } from "./injury";
 import { createSegmentResult } from "./segmentModel";
 import { commitResolvedShow } from "./showResolutionCommit";
-import { applyMatchRatingProgression, ensureMatchRatings, type MatchRatingKey, matchRatingKeys, resolveMatchOutcomePreview } from "./matchRatings";
+import {
+  applyMatchRatingProgression,
+  calculateEffectiveMatchPower,
+  calculateMatchupWinProbability,
+  ensureMatchRatings,
+  type EffectiveMatchPowerBreakdown,
+  type EffectiveMatchPowerContext,
+  type MatchRatingKey,
+  matchRatingKeys,
+  resolveMatchOutcomePreview,
+} from "./matchRatings";
 
 export type RunShowOptions = {
   matchOutcomeModel?: MatchOutcomeModel;
@@ -1683,7 +1693,15 @@ function applySegmentMatchRatingsProgression(
     return skipped("unsupportedSegmentType");
   }
 
-  if (segment.segmentCatalogId === "M020" || segment.participantIds.length !== 2) {
+  if (segment.segmentCatalogId === "M020") {
+    return applyTagMatchRatingsProgression(segment, wrestlersById, context) ?? skipped(getNonSinglesProgressionSkipReason(segment));
+  }
+
+  if (isStandardMultiPersonDeepRatingsSegment(segment)) {
+    return applyMultiPersonMatchRatingsProgression(segment, wrestlersById, context) ?? skipped(getNonSinglesProgressionSkipReason(segment));
+  }
+
+  if (segment.participantIds.length !== 2) {
     return skipped("tagOrMultiPersonUnsupported");
   }
 
@@ -1721,6 +1739,119 @@ function applySegmentMatchRatingsProgression(
         [loser.id]: loserProgression.actualDeltas,
       },
       context: getProgressionAuditContext(segment, context, loserId, [winner, loser]),
+      ...(clampEvents.length ? { clampEvents } : {}),
+    },
+  };
+}
+
+function getNonSinglesProgressionSkipReason(segment: SegmentResult) {
+  if (segment.internalOutcomeAudit?.fallbackReason === "manualWinner") {
+    return "manualNonSinglesFallDataUnavailable";
+  }
+
+  if (segment.internalOutcomeAudit?.fallbackReason) {
+    return segment.internalOutcomeAudit.fallbackReason;
+  }
+
+  if (segment.internalOutcomeAudit?.eligible && !segment.internalOutcomeAudit.fallTakerId) {
+    return "missingFallData";
+  }
+
+  return "tagOrMultiPersonUnsupported";
+}
+
+function applyTagMatchRatingsProgression(
+  segment: SegmentResult,
+  wrestlersById: Map<string, Wrestler>,
+  context: SegmentProgressionContext,
+): SegmentResult | undefined {
+  const audit = segment.internalOutcomeAudit;
+
+  if (!audit?.eligible || audit.outcomeStructure !== "tag") {
+    return undefined;
+  }
+
+  const winningIds = audit.winningTeamParticipantIds ?? [];
+  const losingIds = audit.losingTeamParticipantIds ?? [];
+  const fallWinnerId = audit.fallWinnerId ?? segment.winnerId;
+  const fallTakerId = audit.fallTakerId;
+
+  if (winningIds.length !== 2 || losingIds.length !== 2 || !fallWinnerId || !fallTakerId || !winningIds.includes(fallWinnerId) || !losingIds.includes(fallTakerId)) {
+    return undefined;
+  }
+
+  const protectedLoserIds = losingIds.filter((id) => id !== fallTakerId);
+  const roleById = new Map<string, MatchRatingProgressionRole>();
+  winningIds.forEach((id) => roleById.set(id, id === fallWinnerId ? "fallWinner" : "winner"));
+  roleById.set(fallTakerId, "fallTaker");
+  protectedLoserIds.forEach((id) => roleById.set(id, "protectedLoser"));
+
+  return applyNonSinglesProgression(segment, wrestlersById, context, roleById, fallTakerId);
+}
+
+function applyMultiPersonMatchRatingsProgression(
+  segment: SegmentResult,
+  wrestlersById: Map<string, Wrestler>,
+  context: SegmentProgressionContext,
+): SegmentResult | undefined {
+  const audit = segment.internalOutcomeAudit;
+  const winnerId = audit?.winnerId ?? segment.winnerId;
+  const fallTakerId = audit?.fallTakerId;
+
+  if (!audit?.eligible || audit.outcomeStructure !== "multiPerson" || !winnerId || !fallTakerId || winnerId === fallTakerId) {
+    return undefined;
+  }
+
+  if (!segment.participantIds.includes(winnerId) || !segment.participantIds.includes(fallTakerId)) {
+    return undefined;
+  }
+
+  const roleById = new Map<string, MatchRatingProgressionRole>();
+  roleById.set(winnerId, "winner");
+  roleById.set(fallTakerId, "fallTaker");
+  segment.participantIds
+    .filter((id) => id !== winnerId && id !== fallTakerId)
+    .forEach((id) => roleById.set(id, "protectedLoser"));
+
+  return applyNonSinglesProgression(segment, wrestlersById, context, roleById, fallTakerId);
+}
+
+function applyNonSinglesProgression(
+  segment: SegmentResult,
+  wrestlersById: Map<string, Wrestler>,
+  context: SegmentProgressionContext,
+  roleById: Map<string, MatchRatingProgressionRole>,
+  loserId?: string,
+): SegmentResult | undefined {
+  const entries = [...roleById.entries()]
+    .map(([id, role]) => {
+      const wrestler = wrestlersById.get(id);
+      return wrestler ? { wrestler, role } : undefined;
+    })
+    .filter((entry): entry is { wrestler: Wrestler; role: MatchRatingProgressionRole } => Boolean(entry));
+
+  if (entries.length !== roleById.size) {
+    return undefined;
+  }
+
+  const progressions = entries.map(({ wrestler, role }) => ({
+    role,
+    progression: progressWrestlerMatchRatings(wrestler, segment, role),
+  }));
+  const clampEvents = progressions.flatMap(({ progression }) => progression.clampEvents ?? []);
+
+  progressions.forEach(({ progression }) => {
+    wrestlersById.set(progression.wrestler.id, progression.wrestler);
+  });
+
+  return {
+    ...segment,
+    internalMatchRatingsProgressionAudit: {
+      enabled: true,
+      eligible: true,
+      wrestlerIdsAffected: entries.map(({ wrestler }) => wrestler.id),
+      deltas: Object.fromEntries(progressions.map(({ progression }) => [progression.wrestler.id, progression.actualDeltas])),
+      context: getProgressionAuditContext(segment, context, loserId, entries.map(({ wrestler }) => wrestler)),
       ...(clampEvents.length ? { clampEvents } : {}),
     },
   };
@@ -1770,10 +1901,12 @@ function getExpectedWinnerId(audit?: MatchOutcomeInternalAudit) {
   return competitorAWinProbability >= competitorBWinProbability ? audit.competitorAId : audit.competitorBId;
 }
 
+type MatchRatingProgressionRole = "winner" | "loser" | "fallWinner" | "fallTaker" | "protectedLoser";
+
 function progressWrestlerMatchRatings(
   wrestler: Wrestler,
   segment: SegmentResult,
-  role: "winner" | "loser",
+  role: MatchRatingProgressionRole,
 ): { wrestler: Wrestler; actualDeltas: Partial<MatchRatings>; clampEvents?: NonNullable<MatchRatingsProgressionAudit["clampEvents"]> } {
   const before = ensureMatchRatings(wrestler);
   const requestedDeltas = getMatchRatingProgressionDeltas(wrestler, segment, role);
@@ -1796,23 +1929,24 @@ function progressWrestlerMatchRatings(
 function getMatchRatingProgressionDeltas(
   wrestler: Wrestler,
   segment: SegmentResult,
-  role: "winner" | "loser",
+  role: MatchRatingProgressionRole,
 ): Partial<Record<MatchRatingKey, number>> {
   const profile = getMatchRatingProgressionProfile(segment.stipulationId);
+  const outcomeRole = role === "loser" || role === "fallTaker" || role === "protectedLoser" ? "loser" : "winner";
   const qualityMultiplier =
     segment.score >= 85
-      ? role === "winner"
+      ? outcomeRole === "winner"
         ? 1
         : 0.7
       : segment.score >= 70
-        ? role === "winner"
+        ? outcomeRole === "winner"
           ? 0.65
           : 0.35
         : segment.score < 55
-          ? role === "winner"
+          ? outcomeRole === "winner"
             ? -0.1
             : -0.45
-          : role === "winner"
+          : outcomeRole === "winner"
             ? 0.2
             : -0.15;
   const deltas = scaleProgressionProfile(profile, qualityMultiplier);
@@ -1820,26 +1954,26 @@ function getMatchRatingProgressionDeltas(
     deltas[key] = (deltas[key] ?? 0) + amount;
   };
 
-  if (role === "winner") {
+  if (outcomeRole === "winner") {
     add("clutch", segment.championshipId || segment.rivalryId ? 0.45 : 0.25);
     add("psychology", segment.rivalryId ? 0.25 : 0.1);
   }
 
-  if (role === "loser" && segment.score >= 80) {
+  if (outcomeRole === "loser" && segment.score >= 80) {
     add("selling", 0.45);
     add("resilience", 0.35);
     add("timing", 0.25);
   }
 
-  if (role === "loser" && segment.score < 55) {
+  if (outcomeRole === "loser" && segment.score < 55) {
     add("timing", -0.35);
     add("psychology", -0.25);
   }
 
   if (segment.internalOutcomeAudit?.eligible) {
     const expectedWinnerId = getExpectedWinnerId(segment.internalOutcomeAudit);
-    const isUpsetWinner = role === "winner" && expectedWinnerId && segment.winnerId !== expectedWinnerId;
-    const isExpectedWinner = role === "winner" && expectedWinnerId && segment.winnerId === expectedWinnerId;
+    const isUpsetWinner = outcomeRole === "winner" && expectedWinnerId && segment.winnerId !== expectedWinnerId;
+    const isExpectedWinner = outcomeRole === "winner" && expectedWinnerId && segment.winnerId === expectedWinnerId;
 
     if (isUpsetWinner) {
       add("clutch", 0.45);
@@ -1847,6 +1981,28 @@ function getMatchRatingProgressionDeltas(
     } else if (isExpectedWinner) {
       add("clutch", 0.1);
     }
+  }
+
+  if (role === "fallWinner") {
+    add("clutch", 0.35);
+    add("timing", 0.2);
+    add("psychology", 0.15);
+  }
+
+  if (role === "fallTaker") {
+    add("clutch", -0.85);
+    add("resilience", -0.65);
+    add("timing", -0.55);
+  }
+
+  if (role === "protectedLoser") {
+    matchRatingKeys.forEach((key) => {
+      if (deltas[key] !== undefined) {
+        deltas[key] *= 0.45;
+      }
+    });
+    add("selling", segment.score >= 80 ? 0.2 : 0.05);
+    add("resilience", segment.score >= 80 ? 0.15 : 0);
   }
 
   if (wrestler.fatigue >= 80) {
@@ -1988,9 +2144,294 @@ function getCardPosition(index: number, total: number) {
 function legacyWinnerAudit(segment: Segment, wrestlers: Wrestler[], fallbackReason: string): MatchOutcomeInternalAudit {
   return {
     model: "legacy",
+    outcomeModel: "legacy",
     eligible: false,
     fallbackReason,
     selectedWinnerId: getSegmentWinner(segment, wrestlers)?.id,
+  };
+}
+
+function seededOutcomeRoll(seed: string) {
+  return (hashString(seed) % 1000000) / 1000000;
+}
+
+function getOutcomePowerContext(segment: Segment, context: SegmentWinnerSelectionContext): EffectiveMatchPowerContext {
+  return {
+    type: segment.type,
+    segmentCatalogId: segment.segmentCatalogId,
+    stipulationId: segment.stipulationId,
+    championshipId: segment.championshipId,
+    rivalryId: segment.rivalryId,
+    showType: context.showType,
+    cardPosition: getCardPosition(context.segmentIndex, context.segmentCount),
+    isTitleMatch: Boolean(segment.championshipId),
+    isRivalryMatch: Boolean(segment.rivalryId),
+  };
+}
+
+function isSafeStandardTagSegment(segment: Pick<Segment | SegmentResult, "type" | "segmentCatalogId" | "participantIds">) {
+  return segment.type === "Match" && segment.segmentCatalogId === "M020" && segment.participantIds.length === 4 && new Set(segment.participantIds).size === 4;
+}
+
+function isStandardMultiPersonDeepRatingsSegment(segment: Pick<Segment | SegmentResult, "type" | "segmentCatalogId" | "participantIds">) {
+  return (
+    segment.type === "Match" &&
+    ((segment.segmentCatalogId === "M002" && segment.participantIds.length === 3) ||
+      (segment.segmentCatalogId === "M003" && segment.participantIds.length === 4)) &&
+    new Set(segment.participantIds).size === segment.participantIds.length
+  );
+}
+
+function getWrestlersByIds(ids: string[], wrestlers: Wrestler[]) {
+  return ids.map((id) => wrestlers.find((wrestler) => wrestler.id === id));
+}
+
+function allWrestlersPresent(wrestlers: Array<Wrestler | undefined>): wrestlers is Wrestler[] {
+  return wrestlers.every((wrestler): wrestler is Wrestler => Boolean(wrestler));
+}
+
+function roundAuditNumber(value: number) {
+  return Math.round(value * 10000) / 10000;
+}
+
+function getMemberPowerMap(power: EffectiveMatchPowerBreakdown) {
+  return Object.fromEntries(power.members.map((member) => [member.wrestlerId, roundAuditNumber(member.effectivePower)]));
+}
+
+function weightedDeterministicPick<T>(items: T[], weightFor: (item: T) => number, seed: string): { item: T; roll: number } | undefined {
+  if (!items.length) {
+    return undefined;
+  }
+
+  const weights = items.map((item) => Math.max(0.01, weightFor(item)));
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  const roll = seededOutcomeRoll(seed);
+  let threshold = roll * totalWeight;
+
+  for (let index = 0; index < items.length; index += 1) {
+    threshold -= weights[index];
+
+    if (threshold <= 0) {
+      return { item: items[index], roll };
+    }
+  }
+
+  return { item: items[items.length - 1], roll };
+}
+
+function getFallTakerWeight(wrestler: Wrestler, context: EffectiveMatchPowerContext) {
+  const ratings = ensureMatchRatings(wrestler);
+  const effectivePower = calculateEffectiveMatchPower(wrestler, context).effectivePower;
+  const injuryPenalty = wrestler.injuryStatus === "major" ? 28 : wrestler.injuryStatus === "minor" ? 14 : 0;
+  return (
+    (100 - ratings.resilience) * 1.15 +
+    (100 - ratings.stamina) * 0.9 +
+    (100 - ratings.clutch) * 0.65 +
+    (100 - wrestler.morale) * 0.35 +
+    (100 - wrestler.momentum) * 0.25 +
+    wrestler.fatigue * 0.55 +
+    Math.max(0, 70 - effectivePower) * 0.35 +
+    injuryPenalty +
+    1
+  );
+}
+
+function getFallWinnerWeight(wrestler: Wrestler, context: EffectiveMatchPowerContext) {
+  const ratings = ensureMatchRatings(wrestler);
+  const effectivePower = calculateEffectiveMatchPower(wrestler, context).effectivePower;
+  const injuryPenalty = wrestler.injuryStatus === "major" ? -24 : wrestler.injuryStatus === "minor" ? -10 : 0;
+  return (
+    ratings.clutch * 1.2 +
+    ratings.timing * 0.45 +
+    ratings.psychology * 0.35 +
+    effectivePower * 0.45 +
+    wrestler.momentum * 0.25 +
+    wrestler.morale * 0.2 +
+    (100 - wrestler.fatigue) * 0.2 +
+    injuryPenalty +
+    1
+  );
+}
+
+function resolveTagDeepRatingsOutcome(
+  segment: Segment,
+  game: GameState,
+  context: SegmentWinnerSelectionContext,
+): { segment: Segment; audit: MatchOutcomeInternalAudit } | undefined {
+  if (!isSafeStandardTagSegment(segment)) {
+    return undefined;
+  }
+
+  const teams = getTagMatchTeams(segment);
+
+  if (!teams) {
+    return undefined;
+  }
+
+  const teamA = getWrestlersByIds(teams.teamAIds, game.wrestlers);
+  const teamB = getWrestlersByIds(teams.teamBIds, game.wrestlers);
+
+  if (!allWrestlersPresent(teamA) || !allWrestlersPresent(teamB)) {
+    return undefined;
+  }
+
+  const powerContext = getOutcomePowerContext(segment, context);
+  const teamAPower = calculateEffectiveMatchPower(teamA, powerContext);
+  const teamBPower = calculateEffectiveMatchPower(teamB, powerContext);
+  const probability = calculateMatchupWinProbability(teamAPower, teamBPower);
+  const seed = [
+    "deep-ratings-tag",
+    game.seasonNumber,
+    game.currentWeek,
+    segment.id,
+    context.segmentIndex,
+    teams.teamAIds.join("+"),
+    teams.teamBIds.join("+"),
+    segment.segmentCatalogId ?? "match",
+    segment.stipulationId ?? "standard",
+  ].join("-");
+  const roll = seededOutcomeRoll(seed);
+  const teamAWins = roll < probability.competitorAWinProbability;
+  const winningTeam = teamAWins ? teamA : teamB;
+  const losingTeam = teamAWins ? teamB : teamA;
+  const winningTeamParticipantIds = winningTeam.map((wrestler) => wrestler.id);
+  const losingTeamParticipantIds = losingTeam.map((wrestler) => wrestler.id);
+  const fallWinner = weightedDeterministicPick(winningTeam, (wrestler) => getFallWinnerWeight(wrestler, powerContext), `${seed}-fall-winner`)?.item;
+  const fallTaker = weightedDeterministicPick(losingTeam, (wrestler) => getFallTakerWeight(wrestler, powerContext), `${seed}-fall-taker`)?.item;
+
+  if (!fallWinner || !fallTaker) {
+    return undefined;
+  }
+
+  const protectedParticipantIds = losingTeamParticipantIds.filter((id) => id !== fallTaker.id);
+
+  return {
+    segment: {
+      ...segment,
+      winnerId: fallWinner.id,
+    },
+    audit: {
+      model: "deepRatings",
+      outcomeModel: "deepRatings",
+      outcomeStructure: "tag",
+      eligible: true,
+      selectedWinnerId: fallWinner.id,
+      selectedWinningSide: teamAWins ? "teamA" : "teamB",
+      winningTeamParticipantIds,
+      losingTeamParticipantIds,
+      fallWinnerId: fallWinner.id,
+      fallTakerId: fallTaker.id,
+      protectedParticipantIds,
+      teamPowerBreakdown: [
+        {
+          side: "teamA",
+          participantIds: teams.teamAIds,
+          effectivePower: roundAuditNumber(teamAPower.effectivePower),
+          memberEffectivePowers: getMemberPowerMap(teamAPower),
+        },
+        {
+          side: "teamB",
+          participantIds: teams.teamBIds,
+          effectivePower: roundAuditNumber(teamBPower.effectivePower),
+          memberEffectivePowers: getMemberPowerMap(teamBPower),
+        },
+      ],
+      teamWinProbabilityBreakdown: [
+        {
+          side: "teamA",
+          participantIds: teams.teamAIds,
+          winProbability: roundAuditNumber(probability.competitorAWinProbability),
+        },
+        {
+          side: "teamB",
+          participantIds: teams.teamBIds,
+          winProbability: roundAuditNumber(probability.competitorBWinProbability),
+        },
+      ],
+      competitorAId: teamAPower.competitorId,
+      competitorBId: teamBPower.competitorId,
+      competitorAEffectivePower: teamAPower.effectivePower,
+      competitorBEffectivePower: teamBPower.effectivePower,
+      competitorAWinProbability: probability.competitorAWinProbability,
+      competitorBWinProbability: probability.competitorBWinProbability,
+      deterministicRoll: roll,
+      seed,
+    },
+  };
+}
+
+function resolveMultiPersonDeepRatingsOutcome(
+  segment: Segment,
+  game: GameState,
+  context: SegmentWinnerSelectionContext,
+): { segment: Segment; audit: MatchOutcomeInternalAudit } | undefined {
+  if (!isStandardMultiPersonDeepRatingsSegment(segment)) {
+    return undefined;
+  }
+
+  const competitors = getWrestlersByIds(segment.participantIds, game.wrestlers);
+
+  if (!allWrestlersPresent(competitors)) {
+    return undefined;
+  }
+
+  const powerContext = getOutcomePowerContext(segment, context);
+  const participantPowers = competitors.map((wrestler) => ({
+    wrestler,
+    power: calculateEffectiveMatchPower(wrestler, powerContext),
+  }));
+  const seed = [
+    "deep-ratings-multi",
+    game.seasonNumber,
+    game.currentWeek,
+    segment.id,
+    context.segmentIndex,
+    segment.participantIds.join("+"),
+    segment.segmentCatalogId ?? "match",
+    segment.stipulationId ?? "standard",
+  ].join("-");
+  const winnerPick = weightedDeterministicPick(participantPowers, ({ power }) => power.effectivePower, seed);
+  const winner = winnerPick?.item.wrestler;
+
+  if (!winner || winnerPick === undefined) {
+    return undefined;
+  }
+
+  const nonWinners = competitors.filter((wrestler) => wrestler.id !== winner.id);
+  const fallTaker = weightedDeterministicPick(nonWinners, (wrestler) => getFallTakerWeight(wrestler, powerContext), `${seed}-fall-taker`)?.item;
+
+  if (!fallTaker) {
+    return undefined;
+  }
+
+  const totalPower = participantPowers.reduce((sum, entry) => sum + Math.max(0.01, entry.power.effectivePower), 0);
+  const protectedParticipantIds = nonWinners.filter((wrestler) => wrestler.id !== fallTaker.id).map((wrestler) => wrestler.id);
+
+  return {
+    segment: {
+      ...segment,
+      winnerId: winner.id,
+    },
+    audit: {
+      model: "deepRatings",
+      outcomeModel: "deepRatings",
+      outcomeStructure: "multiPerson",
+      eligible: true,
+      selectedWinnerId: winner.id,
+      winnerId: winner.id,
+      fallTakerId: fallTaker.id,
+      protectedParticipantIds,
+      participantPowerBreakdown: participantPowers.map(({ wrestler, power }) => ({
+        participantId: wrestler.id,
+        effectivePower: roundAuditNumber(power.effectivePower),
+      })),
+      participantWinProbabilityBreakdown: participantPowers.map(({ wrestler, power }) => ({
+        participantId: wrestler.id,
+        winProbability: roundAuditNumber(Math.max(0.01, power.effectivePower) / totalPower),
+      })),
+      deterministicRoll: winnerPick.roll,
+      seed,
+    },
   };
 }
 
@@ -2015,7 +2456,17 @@ function resolveSegmentWinnerSelection(
     return { segment, audit: legacyWinnerAudit(segment, game.wrestlers, "unsupportedSegmentType") };
   }
 
-  if (segment.segmentCatalogId === "M020" || segment.participantIds.length !== 2) {
+  if (segment.segmentCatalogId === "M020") {
+    const tagOutcome = resolveTagDeepRatingsOutcome(segment, game, context);
+    return tagOutcome ?? { segment, audit: legacyWinnerAudit(segment, game.wrestlers, "tagOrMultiPersonUnsupported") };
+  }
+
+  if (isStandardMultiPersonDeepRatingsSegment(segment)) {
+    const multiOutcome = resolveMultiPersonDeepRatingsOutcome(segment, game, context);
+    return multiOutcome ?? { segment, audit: legacyWinnerAudit(segment, game.wrestlers, "tagOrMultiPersonUnsupported") };
+  }
+
+  if (segment.participantIds.length !== 2) {
     return { segment, audit: legacyWinnerAudit(segment, game.wrestlers, "tagOrMultiPersonUnsupported") };
   }
 
@@ -2063,6 +2514,8 @@ function resolveSegmentWinnerSelection(
       },
       audit: {
         model: "deepRatings",
+        outcomeModel: "deepRatings",
+        outcomeStructure: "singles",
         eligible: true,
         selectedWinnerId: preview.winnerId,
         competitorAId: competitorA.id,
@@ -2100,6 +2553,7 @@ function getTagMatchTeams(segment: Segment) {
     return undefined;
   }
 
+  // M020 stores sides by booking order: [Team A 1, Team A 2, Team B 1, Team B 2].
   return {
     teamAIds: [segment.participantIds[0], segment.participantIds[1]],
     teamBIds: [segment.participantIds[2], segment.participantIds[3]],

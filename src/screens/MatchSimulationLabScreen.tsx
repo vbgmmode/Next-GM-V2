@@ -1,0 +1,277 @@
+import { useMemo, useState } from "react";
+import {
+  matchSimulationLabStructures,
+  runMatchSimulationLab,
+  type MatchSimulationLabDistributionRow,
+  type MatchSimulationLabStructure,
+} from "../game/matchSimulationLab";
+import { stipulationCatalog } from "../game/stipulationCatalog";
+import type { GameState, MatchOutcomeModel, MatchRatingsProgressionMode } from "../game/types";
+import "./MatchSimulationLabScreen.css";
+
+type MatchSimulationLabScreenProps = {
+  game: GameState;
+};
+
+const structureLabels: Record<MatchSimulationLabStructure, string> = {
+  singles: "Singles",
+  tag_2v2: "2v2 Tag",
+  three_way: "3-Way",
+  four_way: "4-Way",
+};
+
+const structureParticipantCount: Record<MatchSimulationLabStructure, number> = {
+  singles: 2,
+  tag_2v2: 4,
+  three_way: 3,
+  four_way: 4,
+};
+
+function formatPercent(value?: number) {
+  return typeof value === "number" ? `${(value * 100).toFixed(1)}%` : "n/a";
+}
+
+function formatNumber(value?: number) {
+  return typeof value === "number" ? value.toFixed(2) : "n/a";
+}
+
+function getDefaultParticipantIds(roster: GameState["wrestlers"]) {
+  const mens = roster.filter((wrestler) => wrestler.division === "Mens").slice(0, 4);
+  const womens = roster.filter((wrestler) => wrestler.division === "Womens").slice(0, 4);
+  const defaultGroup = mens.length >= 4 ? mens : womens.length >= 4 ? womens : roster.slice(0, 4);
+
+  return defaultGroup.map((wrestler) => wrestler.id);
+}
+
+function distributionRows(rows: MatchSimulationLabDistributionRow[]) {
+  if (!rows.length) {
+    return <p className="match-sim-lab-empty">No resolved distribution for this run.</p>;
+  }
+
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>Entity</th>
+          <th>Count</th>
+          <th>Actual</th>
+          <th>Expected</th>
+          <th>Delta</th>
+          <th>Power</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.id}>
+            <td>{row.label}</td>
+            <td>{row.count}</td>
+            <td>{formatPercent(row.actualProbability)}</td>
+            <td>{formatPercent(row.expectedProbability)}</td>
+            <td>{formatPercent(row.deltaFromExpected)}</td>
+            <td>{formatNumber(row.averageEffectivePower)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+export function MatchSimulationLabScreen({ game }: MatchSimulationLabScreenProps) {
+  const roster = useMemo(() => game.wrestlers.filter((wrestler) => wrestler.injuryStatus !== "major").slice(0, 80), [game.wrestlers]);
+  const [matchStructure, setMatchStructure] = useState<MatchSimulationLabStructure>("singles");
+  const [participantIds, setParticipantIds] = useState<string[]>(() => getDefaultParticipantIds(roster));
+  const [stipulationId, setStipulationId] = useState("");
+  const [iterations, setIterations] = useState(1000);
+  const [model, setModel] = useState<MatchOutcomeModel>("deepRatings");
+  const [progression, setProgression] = useState<MatchRatingsProgressionMode>("disabled");
+  const [baseSeed, setBaseSeed] = useState("dev-lab");
+  const requiredParticipantCount = structureParticipantCount[matchStructure];
+  const selectedParticipantIds = participantIds.slice(0, requiredParticipantCount);
+  const result = useMemo(
+    () =>
+      runMatchSimulationLab({
+        game,
+        participantIds: selectedParticipantIds,
+        matchStructure,
+        stipulationId: stipulationId || undefined,
+        iterations,
+        baseSeed,
+        model,
+        progression,
+      }),
+    [baseSeed, game, iterations, matchStructure, model, participantIds, progression, selectedParticipantIds, stipulationId],
+  );
+
+  function updateParticipant(index: number, wrestlerId: string) {
+    setParticipantIds((current) => {
+      const next = [...current];
+      next[index] = wrestlerId;
+      return next;
+    });
+  }
+
+  function updateStructure(nextStructure: MatchSimulationLabStructure) {
+    setMatchStructure(nextStructure);
+    setParticipantIds((current) => {
+      const next = [...current];
+      getDefaultParticipantIds(roster).forEach((id, index) => {
+        next[index] = next[index] ?? id;
+      });
+      return next;
+    });
+  }
+
+  return (
+    <main className="match-sim-lab">
+      <header className="match-sim-lab-header">
+        <div>
+          <p>Dev only</p>
+          <h1>Match Simulation Lab</h1>
+        </div>
+        <div className="match-sim-lab-run-meta">
+          <span>{result.successfulIterations}/{result.iterations} resolved</span>
+          <span>{result.fallbackCounts.total} fallbacks</span>
+          <span>{formatPercent(result.upsetRate)} upsets</span>
+        </div>
+      </header>
+
+      <section className="match-sim-lab-controls" aria-label="Simulation controls">
+        <label>
+          Structure
+          <select value={matchStructure} onChange={(event) => updateStructure(event.target.value as MatchSimulationLabStructure)}>
+            {matchSimulationLabStructures.map((structure) => (
+              <option key={structure} value={structure}>
+                {structureLabels[structure]}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          Stipulation
+          <select value={stipulationId} onChange={(event) => setStipulationId(event.target.value)}>
+            <option value="">Standard</option>
+            {stipulationCatalog.map((stipulation) => (
+              <option key={stipulation.id} value={stipulation.id}>
+                {stipulation.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          Iterations
+          <input min={1} max={5000} type="number" value={iterations} onChange={(event) => setIterations(Number(event.target.value))} />
+        </label>
+
+        <label>
+          Model
+          <select value={model} onChange={(event) => setModel(event.target.value as MatchOutcomeModel)}>
+            <option value="deepRatings">Deep Ratings</option>
+            <option value="legacy">Legacy</option>
+          </select>
+        </label>
+
+        <label>
+          Progression
+          <select value={progression} onChange={(event) => setProgression(event.target.value as MatchRatingsProgressionMode)}>
+            <option value="disabled">Disabled</option>
+            <option value="enabled">Enabled in cloned runs</option>
+          </select>
+        </label>
+
+        <label>
+          Base seed
+          <input value={baseSeed} onChange={(event) => setBaseSeed(event.target.value)} />
+        </label>
+      </section>
+
+      <section className="match-sim-lab-participants" aria-label="Participant controls">
+        {Array.from({ length: requiredParticipantCount }, (_, index) => (
+          <label key={`${matchStructure}-${index}`}>
+            {matchStructure === "tag_2v2" ? `Slot ${index + 1}${index < 2 ? " Team A" : " Team B"}` : `Participant ${index + 1}`}
+            <select value={selectedParticipantIds[index] ?? ""} onChange={(event) => updateParticipant(index, event.target.value)}>
+              {roster.map((wrestler) => (
+                <option key={wrestler.id} value={wrestler.id}>
+                  {wrestler.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
+      </section>
+
+      <section className="match-sim-lab-grid">
+        <article>
+          <h2>Winner Distribution</h2>
+          {distributionRows(result.winnerDistribution)}
+        </article>
+
+        <article>
+          <h2>Fall Takers</h2>
+          {distributionRows(result.fallTakerDistribution)}
+        </article>
+
+        <article>
+          <h2>Protected Participants</h2>
+          {distributionRows(result.protectedParticipantDistribution)}
+        </article>
+
+        <article>
+          <h2>Effective Power</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Entity</th>
+                <th>Participants</th>
+                <th>Power</th>
+                <th>Expected</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.teamBreakdown.map((entry) => (
+                <tr key={entry.id}>
+                  <td>{entry.label}</td>
+                  <td>{entry.participantIds.map((id) => roster.find((wrestler) => wrestler.id === id)?.name ?? id).join(" / ")}</td>
+                  <td>{formatNumber(entry.averageEffectivePower)}</td>
+                  <td>{formatPercent(entry.expectedProbability)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </article>
+
+        <article>
+          <h2>Warnings</h2>
+          {result.warnings.length ? (
+            <ul>
+              {result.warnings.map((warning) => (
+                <li key={`${warning.code}-${warning.message}`}>{warning.message}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="match-sim-lab-empty">No tuning warnings for this run.</p>
+          )}
+        </article>
+
+        <article>
+          <h2>Fallback Reasons</h2>
+          {Object.keys(result.fallbackCounts.reasons).length ? (
+            <table>
+              <tbody>
+                {Object.entries(result.fallbackCounts.reasons).map(([reason, count]) => (
+                  <tr key={reason}>
+                    <td>{reason}</td>
+                    <td>{count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="match-sim-lab-empty">No fallbacks recorded.</p>
+          )}
+        </article>
+      </section>
+    </main>
+  );
+}

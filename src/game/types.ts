@@ -372,15 +372,43 @@ export type MatchRatingsProgressionMode = "disabled" | "enabled";
 
 export type MatchOutcomeInternalAudit = {
   model: MatchOutcomeModel;
+  outcomeModel?: MatchOutcomeModel;
+  outcomeStructure?: "singles" | "tag" | "multiPerson";
   eligible: boolean;
   fallbackReason?: string;
   selectedWinnerId?: string;
+  winnerId?: string;
+  selectedWinningSide?: "teamA" | "teamB";
   competitorAId?: string;
   competitorBId?: string;
   competitorAEffectivePower?: number;
   competitorBEffectivePower?: number;
   competitorAWinProbability?: number;
   competitorBWinProbability?: number;
+  winningTeamParticipantIds?: string[];
+  losingTeamParticipantIds?: string[];
+  fallWinnerId?: string;
+  fallTakerId?: string;
+  protectedParticipantIds?: string[];
+  teamPowerBreakdown?: Array<{
+    side: "teamA" | "teamB";
+    participantIds: string[];
+    effectivePower: number;
+    memberEffectivePowers: Record<string, number>;
+  }>;
+  teamWinProbabilityBreakdown?: Array<{
+    side: "teamA" | "teamB";
+    participantIds: string[];
+    winProbability: number;
+  }>;
+  participantPowerBreakdown?: Array<{
+    participantId: string;
+    effectivePower: number;
+  }>;
+  participantWinProbabilityBreakdown?: Array<{
+    participantId: string;
+    winProbability: number;
+  }>;
   deterministicRoll?: number;
   seed?: string;
 };

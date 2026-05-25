@@ -145,6 +145,32 @@ function deepRatingsMatch(wrestlers: Wrestler[], overrides: Partial<Segment> = {
   };
 }
 
+function tagMatch(wrestlers: Wrestler[], overrides: Partial<Segment> = {}): Segment {
+  return deepRatingsMatch(wrestlers, {
+    id: "deep-ratings-tag",
+    participantIds: wrestlers.slice(0, 4).map((wrestler) => wrestler.id),
+    segmentCatalogId: "M020",
+    segmentDisplayName: "2v2 Tag Match",
+    durationMinutes: 14,
+    participantMin: 4,
+    participantMax: 4,
+    ...overrides,
+  });
+}
+
+function multiPersonMatch(wrestlers: Wrestler[], participantCount: 3 | 4, overrides: Partial<Segment> = {}): Segment {
+  return deepRatingsMatch(wrestlers, {
+    id: `deep-ratings-${participantCount}-way`,
+    participantIds: wrestlers.slice(0, participantCount).map((wrestler) => wrestler.id),
+    segmentCatalogId: participantCount === 3 ? "M002" : "M003",
+    segmentDisplayName: participantCount === 3 ? "Triple Threat" : "Fatal 4-Way",
+    durationMinutes: participantCount === 3 ? 13 : 14,
+    participantMin: participantCount,
+    participantMax: participantCount,
+    ...overrides,
+  });
+}
+
 function progressionFixture(overrides: Partial<Wrestler> = {}) {
   const [first, second, third, fourth] = sameDivisionWrestlers(4);
   const winner = {
@@ -178,6 +204,79 @@ function progressionFixture(overrides: Partial<Wrestler> = {}) {
     loser,
     supportA: { ...third, id: "progression-support-a", name: "Progression Support A", matchRatings: explicitRatings() },
     supportB: { ...fourth, id: "progression-support-b", name: "Progression Support B", matchRatings: explicitRatings() },
+  };
+}
+
+function nonSinglesDeepRatingsFixture() {
+  const [first, second, third, fourth] = sameDivisionWrestlers(4);
+  const strongRatings = explicitRatings({
+    technical: 92,
+    submission: 88,
+    power: 91,
+    aerial: 86,
+    brawling: 90,
+    hardcore: 84,
+    stamina: 92,
+    resilience: 90,
+    psychology: 88,
+    selling: 82,
+    timing: 91,
+    explosiveness: 89,
+    clutch: 93,
+  });
+  const weakRatings = explicitRatings({
+    technical: 18,
+    submission: 18,
+    power: 20,
+    aerial: 18,
+    brawling: 22,
+    hardcore: 18,
+    stamina: 25,
+    resilience: 20,
+    psychology: 18,
+    selling: 24,
+    timing: 20,
+    explosiveness: 18,
+    clutch: 16,
+  });
+
+  return {
+    strongA: {
+      ...first,
+      id: "strong-a",
+      name: "Strong A",
+      momentum: 82,
+      morale: 84,
+      fatigue: 6,
+      matchRatings: strongRatings,
+    },
+    strongB: {
+      ...second,
+      id: "strong-b",
+      name: "Strong B",
+      momentum: 78,
+      morale: 82,
+      fatigue: 8,
+      matchRatings: explicitRatings({ ...strongRatings, clutch: 86 }),
+    },
+    weakA: {
+      ...third,
+      id: "weak-a",
+      name: "Weak A",
+      momentum: 35,
+      morale: 38,
+      fatigue: 70,
+      matchRatings: weakRatings,
+    },
+    weakB: {
+      ...fourth,
+      id: "weak-b",
+      name: "Weak B",
+      momentum: 34,
+      morale: 36,
+      fatigue: 72,
+      matchRatings: explicitRatings({ ...weakRatings, resilience: 12, stamina: 15, clutch: 10 }),
+    },
   };
 }
 
@@ -454,34 +553,109 @@ describe("runShow deep ratings winner selection", () => {
     });
   });
 
-  it("falls back to legacy selection for tag matches", () => {
-    const { ratingsStrong, legacyStrong, supportA, supportB } = deepRatingsFixture();
-    const wrestlers = [ratingsStrong, legacyStrong, supportA, supportB];
-    const game = {
-      ...createNewGame({ draftedWrestlers: wrestlers }),
-      wrestlers,
-      championships: [],
-      rivalries: [],
-      currentShow: [deepRatingsMatch(wrestlers, {
-        id: "tag-fallback",
-        participantIds: wrestlers.map((wrestler) => wrestler.id),
-        segmentCatalogId: "M020",
-        segmentDisplayName: "2v2 Tag Match",
-        durationMinutes: 14,
-        participantMin: 4,
-        participantMax: 4,
-      })],
-    };
+  it("uses deep ratings for eligible playable 2v2 tag matches", () => {
+    const { strongA, strongB, weakA, weakB } = nonSinglesDeepRatingsFixture();
+    const wrestlers = [strongA, strongB, weakA, weakB];
+    const game = gameForSegments(wrestlers, [tagMatch(wrestlers)]);
 
-    const legacyResult = runShow(game, { matchOutcomeModel: "legacy" }).result.segmentResults[0];
-    const result = runShow(game, { matchOutcomeModel: "deepRatings" }).result.segmentResults[0];
+    const first = runShow(game, createPlayableRunShowOptions()).result.segmentResults[0];
+    const second = runShow(game, createPlayableRunShowOptions()).result.segmentResults[0];
+
+    expect([strongA.id, strongB.id]).toContain(first.winnerId);
+    expect(second.winnerId).toBe(first.winnerId);
+    expect(second.internalOutcomeAudit?.deterministicRoll).toBe(first.internalOutcomeAudit?.deterministicRoll);
+    expect(first.internalOutcomeAudit).toMatchObject({
+      model: "deepRatings",
+      outcomeStructure: "tag",
+      eligible: true,
+      winningTeamParticipantIds: [strongA.id, strongB.id],
+      losingTeamParticipantIds: [weakA.id, weakB.id],
+    });
+    expect(first.internalOutcomeAudit?.teamWinProbabilityBreakdown?.[0].winProbability).toBeGreaterThan(
+      first.internalOutcomeAudit?.teamWinProbabilityBreakdown?.[1].winProbability ?? 0,
+    );
+    expect(first.internalOutcomeAudit?.teamWinProbabilityBreakdown?.[1].winProbability).toBeGreaterThan(0);
+    expect(first.internalOutcomeAudit?.fallWinnerId).toBe(first.winnerId);
+    expect([strongA.id, strongB.id]).toContain(first.internalOutcomeAudit?.fallWinnerId);
+    expect([weakA.id, weakB.id]).toContain(first.internalOutcomeAudit?.fallTakerId);
+    expect(first.internalOutcomeAudit?.protectedParticipantIds).toEqual(
+      [weakA.id, weakB.id].filter((id) => id !== first.internalOutcomeAudit?.fallTakerId),
+    );
+  });
+
+  it("keeps manual tag winners protected and legacy tag calls legacy", () => {
+    const { strongA, strongB, weakA, weakB } = nonSinglesDeepRatingsFixture();
+    const wrestlers = [strongA, strongB, weakA, weakB];
+    const manualWinnerId = weakA.id;
+    const manualGame = gameForSegments(wrestlers, [tagMatch(wrestlers, { winnerId: manualWinnerId })]);
+    const legacyGame = gameForSegments(wrestlers, [tagMatch(wrestlers)]);
+
+    const manualResult = runShow(manualGame, createPlayableRunShowOptions()).result.segmentResults[0];
+    const legacyResult = runShow(legacyGame).result.segmentResults[0];
+
+    expect(manualResult.winnerId).toBe(manualWinnerId);
+    expect(manualResult.internalOutcomeAudit).toMatchObject({
+      model: "legacy",
+      eligible: false,
+      fallbackReason: "manualWinner",
+      selectedWinnerId: manualWinnerId,
+    });
+    expect(legacyResult.internalOutcomeAudit).toMatchObject({
+      model: "legacy",
+      eligible: false,
+      fallbackReason: "modelLegacy",
+    });
+  });
+
+  it("uses deep ratings for standard 3-way and 4-way multi-person matches", () => {
+    const { strongA, strongB, weakA, weakB } = nonSinglesDeepRatingsFixture();
+    const wrestlers = [strongA, weakA, weakB, strongB];
+    const threeWayGame = gameForSegments(wrestlers, [multiPersonMatch(wrestlers, 3)]);
+    const fourWayGame = gameForSegments(wrestlers, [multiPersonMatch(wrestlers, 4)]);
+
+    const threeWay = runShow(threeWayGame, createPlayableRunShowOptions()).result.segmentResults[0];
+    const threeWayLegacy = runShow(threeWayGame).result.segmentResults[0];
+    const fourWayFirst = runShow(fourWayGame, createPlayableRunShowOptions()).result.segmentResults[0];
+    const fourWaySecond = runShow(fourWayGame, createPlayableRunShowOptions()).result.segmentResults[0];
+
+    expect(threeWay.internalOutcomeAudit?.outcomeStructure).toBe("multiPerson");
+    expect(threeWayLegacy.internalOutcomeAudit).toMatchObject({
+      model: "legacy",
+      eligible: false,
+      fallbackReason: "modelLegacy",
+    });
+    expect(fourWayFirst.internalOutcomeAudit?.outcomeStructure).toBe("multiPerson");
+    expect(fourWaySecond.winnerId).toBe(fourWayFirst.winnerId);
+    expect(fourWaySecond.internalOutcomeAudit?.deterministicRoll).toBe(fourWayFirst.internalOutcomeAudit?.deterministicRoll);
+    const threeWayProbabilities = threeWay.internalOutcomeAudit?.participantWinProbabilityBreakdown ?? [];
+    const strongProbability = threeWayProbabilities.find((entry) => entry.participantId === strongA.id)?.winProbability ?? 0;
+    const underdogProbability = threeWayProbabilities.find((entry) => entry.participantId === weakA.id)?.winProbability ?? 0;
+    expect(strongProbability).toBe(Math.max(...threeWayProbabilities.map((entry) => entry.winProbability)));
+    expect(underdogProbability).toBeGreaterThan(0);
+    expect(threeWay.internalOutcomeAudit?.fallTakerId).not.toBe(threeWay.winnerId);
+    expect(threeWay.participantIds.filter((id) => id !== threeWay.winnerId)).toContain(threeWay.internalOutcomeAudit?.fallTakerId);
+    expect(threeWay.internalOutcomeAudit?.protectedParticipantIds).toEqual(
+      threeWay.participantIds.filter((id) => id !== threeWay.winnerId && id !== threeWay.internalOutcomeAudit?.fallTakerId),
+    );
+  });
+
+  it("falls back safely for unsupported multi-person formats", () => {
+    const { strongA, strongB, weakA, weakB } = nonSinglesDeepRatingsFixture();
+    const wrestlers = [strongA, weakA, weakB, strongB];
+    const game = gameForSegments(wrestlers, [multiPersonMatch(wrestlers, 4, {
+      id: "unsupported-specialty-multi",
+      segmentCatalogId: "M999",
+      segmentDisplayName: "Unsupported Specialty Multi",
+    })]);
+
+    const result = runShow(game, createPlayableRunShowOptions()).result.segmentResults[0];
+    const legacyResult = runShow(game).result.segmentResults[0];
 
     expect(result.winnerId).toBe(legacyResult.winnerId);
     expect(result.internalOutcomeAudit).toMatchObject({
       model: "legacy",
       eligible: false,
       fallbackReason: "tagOrMultiPersonUnsupported",
-      selectedWinnerId: legacyResult.winnerId,
     });
   });
 
@@ -725,20 +899,70 @@ describe("runShow deep ratings progression", () => {
     assertRatingsBounded(matchRatingsFor(resolved.game.wrestlers, loser.id));
   });
 
-  it("skips tag and multi-person progression with an internal reason", () => {
-    const { winner, loser, supportA, supportB } = progressionFixture();
-    const wrestlers = [winner, loser, supportA, supportB];
-    const game = gameForSegments(wrestlers, [deepRatingsMatch(wrestlers, {
-      id: "tag-progression-skip",
-      participantIds: wrestlers.map((wrestler) => wrestler.id),
-      segmentCatalogId: "M020",
-      segmentDisplayName: "2v2 Tag Match",
-      durationMinutes: 14,
-      participantMin: 4,
-      participantMax: 4,
+  it("progresses eligible tag outcomes with protected-partner fallout", () => {
+    const { strongA, strongB, weakA, weakB } = nonSinglesDeepRatingsFixture();
+    const wrestlers = [strongA, strongB, weakA, weakB];
+    const game = gameForSegments(wrestlers, [tagMatch(wrestlers)]);
+
+    const first = runShow(game, createPlayableRunShowOptions());
+    const second = runShow(game, createPlayableRunShowOptions());
+    const result = first.result.segmentResults[0];
+    const audit = result.internalMatchRatingsProgressionAudit;
+    const fallWinnerId = result.internalOutcomeAudit?.fallWinnerId;
+    const fallTakerId = result.internalOutcomeAudit?.fallTakerId;
+    const protectedLoserId = result.internalOutcomeAudit?.protectedParticipantIds?.[0];
+
+    expect(audit).toMatchObject({
+      enabled: true,
+      eligible: true,
+    });
+    expect([...(audit?.wrestlerIdsAffected ?? [])].sort()).toEqual([strongA.id, strongB.id, weakA.id, weakB.id].sort());
+    expect(fallWinnerId).toBeDefined();
+    expect(fallTakerId).toBeDefined();
+    expect(protectedLoserId).toBeDefined();
+    expect(matchRatingsFor(first.game.wrestlers, fallWinnerId!).clutch).toBeGreaterThan(
+      wrestlers.find((wrestler) => wrestler.id === fallWinnerId)?.matchRatings?.clutch ?? 0,
+    );
+    expect((audit?.deltas[fallTakerId!]?.clutch ?? 0)).toBeLessThan(audit?.deltas[protectedLoserId!]?.clutch ?? 0);
+    expect(second.result.segmentResults[0].internalMatchRatingsProgressionAudit?.deltas).toEqual(audit?.deltas);
+  });
+
+  it("progresses eligible multi-person outcomes with protected-loser fallout", () => {
+    const { strongA, strongB, weakA, weakB } = nonSinglesDeepRatingsFixture();
+    const wrestlers = [strongA, weakA, weakB, strongB];
+    const game = gameForSegments(wrestlers, [multiPersonMatch(wrestlers, 4)]);
+
+    const resolved = runShow(game, createPlayableRunShowOptions());
+    const result = resolved.result.segmentResults[0];
+    const audit = result.internalMatchRatingsProgressionAudit;
+    const winnerId = result.winnerId;
+    const fallTakerId = result.internalOutcomeAudit?.fallTakerId;
+    const protectedLoserId = result.internalOutcomeAudit?.protectedParticipantIds?.[0];
+
+    expect(audit).toMatchObject({
+      enabled: true,
+      eligible: true,
+    });
+    expect(winnerId).toBeDefined();
+    expect(fallTakerId).toBeDefined();
+    expect(protectedLoserId).toBeDefined();
+    expect(matchRatingsFor(resolved.game.wrestlers, winnerId!).timing).toBeGreaterThan(
+      wrestlers.find((wrestler) => wrestler.id === winnerId)?.matchRatings?.timing ?? 0,
+    );
+    expect((audit?.deltas[fallTakerId!]?.clutch ?? 0)).toBeLessThan(audit?.deltas[protectedLoserId!]?.clutch ?? 0);
+    result.participantIds.forEach((id) => assertRatingsBounded(matchRatingsFor(resolved.game.wrestlers, id)));
+  });
+
+  it("skips unsupported non-singles progression with an internal reason", () => {
+    const { strongA, strongB, weakA, weakB } = nonSinglesDeepRatingsFixture();
+    const wrestlers = [strongA, weakA, weakB, strongB];
+    const game = gameForSegments(wrestlers, [multiPersonMatch(wrestlers, 4, {
+      id: "unsupported-progression-multi",
+      segmentCatalogId: "M999",
+      segmentDisplayName: "Unsupported Specialty Multi",
     })]);
 
-    const resolved = runShow(game, { matchOutcomeModel: "deepRatings", matchRatingsProgression: "enabled" });
+    const resolved = runShow(game, createPlayableRunShowOptions());
 
     expect(resolved.result.segmentResults[0].internalMatchRatingsProgressionAudit).toMatchObject({
       enabled: true,
@@ -746,7 +970,7 @@ describe("runShow deep ratings progression", () => {
       reason: "tagOrMultiPersonUnsupported",
       wrestlerIdsAffected: [],
     });
-    expect(matchRatingsFor(resolved.game.wrestlers, winner.id)).toEqual(winner.matchRatings);
+    expect(matchRatingsFor(resolved.game.wrestlers, strongA.id)).toEqual(strongA.matchRatings);
   });
 
   it("weights submission progression toward submission and technical ratings", () => {

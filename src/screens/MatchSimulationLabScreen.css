@@ -1,0 +1,128 @@
+.match-sim-lab {
+  min-height: 100vh;
+  padding: 24px;
+  color: #e8edf4;
+  background: #101318;
+}
+
+.match-sim-lab-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid rgba(232, 237, 244, 0.18);
+  padding-bottom: 16px;
+}
+
+.match-sim-lab-header p,
+.match-sim-lab-empty {
+  margin: 0;
+  color: #9aa5b5;
+}
+
+.match-sim-lab-header h1,
+.match-sim-lab h2 {
+  margin: 0;
+}
+
+.match-sim-lab-run-meta,
+.match-sim-lab-controls,
+.match-sim-lab-participants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.match-sim-lab-run-meta span {
+  border: 1px solid rgba(232, 237, 244, 0.18);
+  padding: 7px 9px;
+  color: #cfd7e3;
+  font-size: 0.82rem;
+}
+
+.match-sim-lab label {
+  display: grid;
+  gap: 5px;
+  min-width: 160px;
+  color: #aeb7c4;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.match-sim-lab select,
+.match-sim-lab input {
+  min-height: 36px;
+  border: 1px solid rgba(232, 237, 244, 0.2);
+  border-radius: 4px;
+  padding: 0 10px;
+  color: #f5f8fc;
+  background: #171c24;
+}
+
+.match-sim-lab-participants {
+  margin: 14px 0 18px;
+}
+
+.match-sim-lab-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 14px;
+}
+
+.match-sim-lab article {
+  min-width: 0;
+  border: 1px solid rgba(232, 237, 244, 0.14);
+  padding: 14px;
+  background: #141922;
+}
+
+.match-sim-lab article h2 {
+  margin-bottom: 10px;
+  color: #f7d36d;
+  font-size: 0.95rem;
+}
+
+.match-sim-lab table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.match-sim-lab th,
+.match-sim-lab td {
+  border-bottom: 1px solid rgba(232, 237, 244, 0.1);
+  padding: 7px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.match-sim-lab th {
+  color: #9aa5b5;
+  font-weight: 600;
+}
+
+.match-sim-lab td {
+  color: #e8edf4;
+}
+
+.match-sim-lab ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #e8edf4;
+}
+
+@media (max-width: 760px) {
+  .match-sim-lab {
+    padding: 16px;
+  }
+
+  .match-sim-lab-header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .match-sim-lab-grid {
+    grid-template-columns: 1fr;
+  }
+}

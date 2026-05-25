@@ -170,6 +170,7 @@ import type { StoredSaveRecord, StoredSaveSummary } from "./gameStorage";
 import { CalendarScreen } from "./screens/CalendarScreen";
 import { FinanceScreen } from "./screens/FinanceScreen";
 import { MarketScreen } from "./screens/MarketScreen";
+import { MatchSimulationLabScreen } from "./screens/MatchSimulationLabScreen";
 import { ResultsScreen } from "./screens/ResultsScreen";
 import { WeekReviewScreen } from "./screens/WeekReviewScreen";
 import { RivalriesScreen, type RivalryCreateInput } from "./screens/RivalriesScreen";
@@ -196,6 +197,7 @@ import { assignChampionshipInGame, revokeChampionshipInGame } from "./game/champ
 import "./screens/CalendarScreen.css";
 import "./screens/ChampionshipsScreen.css";
 import "./screens/FinanceScreen.css";
+import "./screens/MatchSimulationLabScreen.css";
 import "./screens/ResultsScreen.css";
 import "./screens/RivalriesScreen.css";
 import "./screens/WeekReviewScreen.css";
@@ -3360,6 +3362,16 @@ function loadCareerSaves() {
   return loadSaveSummaries().map(normalizeCareerSummary);
 }
 
+function isDevMatchSimulationLabRequested() {
+  const env = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env;
+
+  if (!env?.DEV) {
+    return false;
+  }
+
+  return new URLSearchParams(window.location.search).get("dev") === "match-simulation-lab";
+}
+
 function getMostRecentCareer(careerSaves: CareerSave[]) {
   return careerSaves[0] ?? null;
 }
@@ -3383,6 +3395,8 @@ function App() {
   const latestResult = game?.showHistory[game.showHistory.length - 1];
   const hasCurrentWeekReview = latestResult ? latestResult.week === game?.currentWeek : false;
   const recentCareer = getMostRecentCareer(careerSaves);
+  const isMatchSimulationLab = isDevMatchSimulationLabRequested();
+  const matchSimulationLabGame = useMemo(() => game ?? createNewGame({ draftedWrestlers: draftPool.slice(0, 12) }), [game]);
 
   useEffect(() => syncAppViewportHeight(), []);
 
@@ -4250,6 +4264,10 @@ function App() {
       persistGameSnapshot(updatedGame, "rivalries");
       return updatedGame;
     });
+  }
+
+  if (isMatchSimulationLab) {
+    return <MatchSimulationLabScreen game={matchSimulationLabGame} />;
   }
 
   if (screen === "setup") {
