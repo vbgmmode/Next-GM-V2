@@ -198,8 +198,11 @@ import "./screens/SetupScreen.css";
 import { BookingScreen } from "./booking";
 import {
   canSegmentAttachChampionship,
+  canSegmentAttachRivalry,
   canSegmentContestChampionship,
   isSinglesChampionship,
+  pickParticipantIdCombinations,
+  resolveSinglesTitleMatchCatalogOption,
 } from "./booking/bookingUtils";
 import { RosterScreen, WrestlerProfileScreen } from "./roster";
 import { getWrestlerValueProfile } from "./roster/rosterValueReads";
@@ -1791,7 +1794,7 @@ function buildSanctionedTitleMatchSegment(game: GameState, sourceSegment: Segmen
   }
 
   const isTagTitle = isTagChampionship(championship);
-  const option = getCatalogOptionById(isTagTitle ? "M020" : "M001") ?? getDefaultCatalogOption("Match");
+  const option = resolveSinglesTitleMatchCatalogOption(sourceSegment, isTagTitle);
 
   if (!option) {
     return undefined;
@@ -1820,24 +1823,33 @@ function buildSanctionedTitleMatchSegment(game: GameState, sourceSegment: Segmen
   const challengerPool = scene.eligibleRoster.length ? scene.eligibleRoster : scene.topContenders;
 
   if (!isTagTitle) {
-    if (championship.championIds.length === 0) {
-      for (let firstIndex = 0; firstIndex < challengerPool.length; firstIndex += 1) {
-        for (let secondIndex = firstIndex + 1; secondIndex < challengerPool.length; secondIndex += 1) {
-          const candidate = makeCandidate([challengerPool[firstIndex].id, challengerPool[secondIndex].id]);
-          const attachedCandidate = getAttachedCandidate(candidate);
+    const participantCount = option.maxParticipants;
+    const poolIds = challengerPool.map((wrestler) => wrestler.id);
 
-          if (attachedCandidate) {
-            return attachedCandidate;
-          }
+    if (sourceSegment.participantIds.length === participantCount) {
+      const attachedSourceCandidate = getAttachedCandidate(makeCandidate(sourceSegment.participantIds));
+
+      if (attachedSourceCandidate) {
+        return attachedSourceCandidate;
+      }
+    }
+
+    if (championship.championIds.length === 0) {
+      for (const participantIds of pickParticipantIdCombinations(poolIds, participantCount)) {
+        const attachedCandidate = getAttachedCandidate(makeCandidate(participantIds));
+
+        if (attachedCandidate) {
+          return attachedCandidate;
         }
       }
 
       return undefined;
     }
 
-    for (const contender of challengerPool) {
-      const candidate = makeCandidate([...championship.championIds, contender.id]);
-      const attachedCandidate = getAttachedCandidate(candidate);
+    const championId = championship.championIds[0];
+
+    for (const challengerIds of pickParticipantIdCombinations(poolIds, participantCount - 1)) {
+      const attachedCandidate = getAttachedCandidate(makeCandidate([championId, ...challengerIds]));
 
       if (attachedCandidate) {
         return attachedCandidate;
@@ -3051,31 +3063,6 @@ function getRivalryTitleRelevance(rivalry: Rivalry, championships: Championship[
   }
 
   return undefined;
-}
-
-function canSegmentAttachRivalry(segment: Segment, rivalry: Rivalry, wrestlers: Wrestler[] = []) {
-  if (segment.type === "Open Challenge" || isRivalryIntergenderBlocked(rivalry, wrestlers)) {
-    return false;
-  }
-
-  const structure = getRivalryStructure(rivalry);
-  const range = getSegmentParticipantRange(segment);
-  const hasOverlap = !segment.participantIds.length || segment.participantIds.some((id) => rivalry.participantIds.includes(id));
-
-  if (!hasOverlap) {
-    return false;
-  }
-
-  if (structure === "singles") {
-    return range.max >= 2;
-  }
-
-  if (structure === "tag_team") {
-    return (segment.type === "Match" && segment.segmentCatalogId === "M020") || (segment.type !== "Match" && range.max >= 4);
-  }
-
-  const option = getSegmentCatalogOption(segment);
-  return range.max >= 3 && (segment.type !== "Contract Signing" || Boolean(option?.rivalryRelevant));
 }
 
 function getRivalryParticipants(rivalry: Rivalry, wrestlers: Wrestler[]) {

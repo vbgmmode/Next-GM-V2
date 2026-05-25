@@ -6,6 +6,7 @@ import {
   canSegmentAttachChampionship,
   canSegmentAttachRivalry,
   getBookingWrestlerRiskReads,
+  isVacantSinglesChampionship,
   wouldCreateIntergenderMatch,
 } from "./bookingUtils";
 
@@ -189,7 +190,14 @@ export function getBuildableChampionships(segment: Segment, championships: Champ
   if (segment.type !== "Match") {
     return [];
   }
-  return championships.filter((championship) => championship.championIds.length || championship.eligibleMatchScope === "singles" || championship.eligibleMatchScope === "tag_team");
+
+  return championships.filter((championship) => {
+    if (championship.eligibleMatchScope === "tag_team" || championship.division === "Tag Team") {
+      return true;
+    }
+
+    return championship.championIds.length > 0 || isVacantSinglesChampionship(championship);
+  });
 }
 
 export function getSelectedCatalogLabel(segment: Segment) {

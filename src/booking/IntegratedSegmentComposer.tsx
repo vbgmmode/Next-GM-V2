@@ -4,7 +4,6 @@ import { bookedFinishCostUsd, getBookedFinishProductionCostForShow, getSegmentPr
 import { formatMoney } from "../game/formatters";
 import { getCatalogOptionsForType, getSegmentCatalogOption, getSegmentParticipantRange, type SegmentCatalogOption } from "../game/matchFormatCatalog";
 import { getStipulationById } from "../game/stipulationCatalog";
-import { hasIntergenderMatchParticipants } from "../game/scoring";
 import { isWrestlerProtectedRest } from "../game/socialInboxActions";
 import type { Championship, GameState, Rivalry, Segment, Wrestler } from "../game/types";
 import { BookingOverlay } from "./BookingOverlay";
@@ -25,11 +24,9 @@ import {
   type StageSlot,
 } from "./composerReads";
 import {
-  canSegmentAttachRivalry,
   getSegmentDurationMinutes,
   getStipulationsForSegmentId,
   getWrestlerNames,
-  isRivalryIntergenderBlocked,
   wouldCreateIntergenderMatch,
 } from "./bookingUtils";
 
@@ -244,14 +241,18 @@ export function IntegratedSegmentComposer({
   const showRivalryBadge = segment.type !== "Open Challenge";
   const showStipulationBadge = segment.type === "Match";
   const showFinishBadge = segment.type === "Match" && segment.participantIds.length > 0;
-  const titleEligibleMatchOption = useMemo(
-    () => catalogOptions.find((option) => option.championshipAllowed && option.minParticipants === 2 && option.maxParticipants === 2),
-    [catalogOptions],
-  );
+  const titleEligibleMatchOption = useMemo(() => {
+    if (selectedOption.championshipAllowed && selectedOption.currentTitleEligible) {
+      return selectedOption;
+    }
+
+    return catalogOptions.find((option) => option.championshipAllowed && option.currentTitleEligible);
+  }, [catalogOptions, selectedOption]);
   const needsTitleEligibleFormat =
     segment.type === "Match" &&
     !selectedOption.currentTitleEligible &&
     Boolean(titleEligibleMatchOption && segment.segmentCatalogId !== titleEligibleMatchOption.id);
+  const titleParticipantGap = Math.max(0, range.min - segment.participantIds.length);
 
   function openOverlay(next: OverlayState) {
     setStageMenuOpen(false);
@@ -305,28 +306,6 @@ export function IntegratedSegmentComposer({
   }
 
   function setComposerRivalry(rivalryId: string) {
-    if (!rivalryId) {
-      onSetSegmentRivalry("");
-      closeOverlay();
-      return;
-    }
-
-    const rivalry = rivalries.find((item) => item.id === rivalryId);
-    const participantsFit = rivalry ? rivalry.participantIds.length >= range.min && rivalry.participantIds.length <= range.max : false;
-    const canPrefill =
-      rivalry &&
-      segment.type !== "Open Challenge" &&
-      participantsFit &&
-      canSegmentAttachRivalry(segment, rivalry, wrestlers) &&
-      !isRivalryIntergenderBlocked(rivalry, wrestlers) &&
-      rivalry.participantIds.every((id) => wrestlers.some((wrestler) => wrestler.id === id && wrestler.injuryStatus !== "major")) &&
-      !rivalry.participantIds.some((id) => isWrestlerProtectedRest(game, id)) &&
-      !hasIntergenderMatchParticipants({ ...segment, participantIds: rivalry.participantIds }, wrestlers);
-
-    if (canPrefill && rivalry) {
-      onUpdateParticipants([...rivalry.participantIds]);
-    }
-
     onSetSegmentRivalry(rivalryId);
     closeOverlay();
   }
@@ -616,7 +595,11 @@ export function IntegratedSegmentComposer({
               </button>
             ))}
             {!eligibleChampionships.length && !buildableChampionships.length && !selectedChampionship ? (
-              <p className="booking-overlay-note">No eligible titles for current participants.</p>
+              <p className="booking-overlay-note">
+                {titleParticipantGap > 0 && selectedOption.currentTitleEligible
+                  ? `Add ${titleParticipantGap} more participant${titleParticipantGap === 1 ? "" : "s"} to unlock title booking on this ${formatLabel.toLowerCase()}.`
+                  : "No eligible titles for current participants."}
+              </p>
             ) : null}
           </div>
         </BookingOverlay>
