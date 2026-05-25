@@ -30,7 +30,8 @@ import {
   MAX_SAVE_SLOTS,
   createSaveRecord,
   deleteSaveRecord,
-  loadSaveRecords,
+  loadSaveRecord,
+  loadSaveSummaries,
   renameSaveRecord,
   updateSaveRecord,
 } from "./gameStorage";
@@ -164,7 +165,7 @@ import type {
   WrestlerAffiliation,
 } from "./game/types";
 import type { GameScreen, ProfileReturnScreen, SavedGameState } from "./game/migration";
-import type { StoredSaveRecord } from "./gameStorage";
+import type { StoredSaveRecord, StoredSaveSummary } from "./gameStorage";
 import { CalendarScreen } from "./screens/CalendarScreen";
 import { FinanceScreen } from "./screens/FinanceScreen";
 import { MarketScreen } from "./screens/MarketScreen";
@@ -247,7 +248,7 @@ type CareerSave = {
   name: string;
   createdAt: string;
   lastPlayedAt: string;
-  state: SavedGameState;
+  state?: SavedGameState;
   preview: CareerPreview;
 };
 
@@ -3318,21 +3319,44 @@ function normalizeCareerSave(record: StoredSaveRecord): CareerSave | null {
   };
 }
 
+function isGameScreenPreview(value: string): value is GameScreen {
+  return (
+    value === "dashboard" ||
+    value === "booking" ||
+    value === "roster" ||
+    value === "market" ||
+    value === "profile" ||
+    value === "championships" ||
+    value === "rivalries" ||
+    value === "calendar" ||
+    value === "social" ||
+    value === "finance" ||
+    value === "results" ||
+    value === "weekReview" ||
+    value === "seasonReview" ||
+    value === "offseasonDraft"
+  );
+}
+
+function normalizeCareerSummary(summary: StoredSaveSummary): CareerSave {
+  return {
+    id: summary.id,
+    name: summary.name,
+    createdAt: summary.createdAt,
+    lastPlayedAt: summary.lastPlayedAt,
+    preview: {
+      brandName: summary.preview.brandName,
+      gmName: summary.preview.gmName,
+      money: summary.preview.money,
+      screen: isGameScreenPreview(summary.preview.screen) ? summary.preview.screen : "dashboard",
+      seasonNumber: summary.preview.seasonNumber,
+      week: summary.preview.week,
+    },
+  };
+}
+
 function loadCareerSaves() {
-  const careerSaves: CareerSave[] = [];
-
-  loadSaveRecords().forEach((record) => {
-    const careerSave = normalizeCareerSave(record);
-
-    if (careerSave) {
-      careerSaves.push(careerSave);
-      return;
-    }
-
-    deleteSaveRecord(record.id);
-  });
-
-  return careerSaves;
+  return loadSaveSummaries().map(normalizeCareerSummary);
 }
 
 function getMostRecentCareer(careerSaves: CareerSave[]) {
@@ -3444,15 +3468,24 @@ function App() {
   }
 
   function loadCareer(careerSave: CareerSave) {
-    updateSaveRecord(careerSave.id, careerSave.state);
+    const hydratedRecord = careerSave.state ? undefined : loadSaveRecord(careerSave.id);
+    const hydratedCareerSave = careerSave.state ? careerSave : hydratedRecord ? normalizeCareerSave(hydratedRecord) : null;
+
+    if (!hydratedCareerSave?.state) {
+      deleteSaveRecord(careerSave.id);
+      refreshCareerSaves();
+      return;
+    }
+
+    updateSaveRecord(hydratedCareerSave.id, hydratedCareerSave.state);
     refreshCareerSaves();
-    setActiveSaveId(careerSave.id);
-    setSavedGame(careerSave.state);
-    setGame(careerSave.state.game);
-    setProfileWrestlerId(careerSave.state.profileWrestlerId);
-    setProfileReturnScreen(careerSave.state.profileReturnScreen ?? "roster");
+    setActiveSaveId(hydratedCareerSave.id);
+    setSavedGame(hydratedCareerSave.state);
+    setGame(hydratedCareerSave.state.game);
+    setProfileWrestlerId(hydratedCareerSave.state.profileWrestlerId);
+    setProfileReturnScreen(hydratedCareerSave.state.profileReturnScreen ?? "roster");
     setTitleMode("home");
-    setScreen(careerSave.state.screen);
+    setScreen(hydratedCareerSave.state.screen);
   }
 
   function continueGame() {
