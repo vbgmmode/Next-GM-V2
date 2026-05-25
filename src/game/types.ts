@@ -368,6 +368,8 @@ export type MatchRatings = {
 
 export type MatchOutcomeModel = "legacy" | "deepRatings";
 
+export type MatchRatingsProgressionMode = "disabled" | "enabled";
+
 export type MatchOutcomeInternalAudit = {
   model: MatchOutcomeModel;
   eligible: boolean;
@@ -381,6 +383,33 @@ export type MatchOutcomeInternalAudit = {
   competitorBWinProbability?: number;
   deterministicRoll?: number;
   seed?: string;
+};
+
+export type MatchRatingsProgressionAudit = {
+  enabled: boolean;
+  eligible: boolean;
+  reason?: string;
+  wrestlerIdsAffected: string[];
+  deltas: Record<string, Partial<MatchRatings>>;
+  context: {
+    winnerId?: string;
+    loserId?: string;
+    score: number;
+    stipulationId?: string;
+    matchOutcomeModel: MatchOutcomeModel;
+    cardPosition?: "opener" | "midcard" | "main_event";
+    titleMatch: boolean;
+    rivalryMatch: boolean;
+    expectedWinnerId?: string;
+    upsetWin?: boolean;
+    highFatigueIds?: string[];
+    injuryLimitedIds?: string[];
+  };
+  clampEvents?: Array<{
+    wrestlerId: string;
+    rating: keyof MatchRatings;
+    boundary: 0 | 100;
+  }>;
 };
 
 export type WrestlerMatchRecordLine = {
@@ -649,6 +678,7 @@ export type SegmentResult = {
   stipulationId?: string;
   winnerId?: string;
   internalOutcomeAudit?: MatchOutcomeInternalAudit;
+  internalMatchRatingsProgressionAudit?: MatchRatingsProgressionAudit;
   titleNote?: string;
   rivalryNote?: string;
   recapNote?: string;

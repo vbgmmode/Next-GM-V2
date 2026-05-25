@@ -51,6 +51,7 @@ type SegmentResultReadBase = Pick<
   | "rivalryNote"
   | "recapNote"
   | "internalOutcomeAudit"
+  | "internalMatchRatingsProgressionAudit"
 >;
 
 export type MatchSegmentResult = SegmentResultReadBase & {
@@ -98,6 +99,7 @@ export type CreateSegmentResultInput = {
   fatigueChanges: Record<string, number>;
   winnerId?: string;
   internalOutcomeAudit?: SegmentResult["internalOutcomeAudit"];
+  internalMatchRatingsProgressionAudit?: SegmentResult["internalMatchRatingsProgressionAudit"];
   titleNote?: string;
   rivalryNote?: string;
   recapNote?: string;
@@ -137,6 +139,7 @@ function baseSegmentResultRead(result: SegmentResult): SegmentResultReadBase {
     rivalryNote: result.rivalryNote,
     recapNote: result.recapNote,
     internalOutcomeAudit: result.internalOutcomeAudit,
+    internalMatchRatingsProgressionAudit: result.internalMatchRatingsProgressionAudit,
   };
 }
 
@@ -246,6 +249,7 @@ export function createSegmentResult(input: CreateSegmentResultInput): SegmentRes
     stipulationId: input.segment.stipulationId,
     winnerId: input.winnerId,
     internalOutcomeAudit: input.internalOutcomeAudit,
+    internalMatchRatingsProgressionAudit: input.internalMatchRatingsProgressionAudit,
     titleNote: input.titleNote,
     rivalryNote: input.rivalryNote,
     recapNote: input.recapNote,
