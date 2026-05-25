@@ -16,7 +16,7 @@ import {
 } from "./market";
 import { migrateSavedGameState } from "./migration";
 import { createNewGame, draftPool } from "./seed";
-import type { GameState, MarketContract, Segment } from "./types";
+import type { GameState, MarketContract, Segment, Wrestler } from "./types";
 
 function withPlayerReferencePressure(game: GameState, wrestlerId: string): GameState {
   const otherWrestlerId = game.wrestlers.find((wrestler) => wrestler.id !== wrestlerId)?.id ?? game.wrestlers[0].id;
@@ -267,6 +267,35 @@ describe("market ownership invariants", () => {
       paymentModel: "prepaid",
       releasePenalty: 0,
     });
+  });
+
+  it("hydrates match ratings when signing from an arbitrary draft pool", () => {
+    const rawDraftPool = draftPool.map((wrestler) => {
+      const { matchRatings, ...withoutRatings } = wrestler;
+      void matchRatings;
+      return withoutRatings as Wrestler;
+    });
+    const baseGame = createNewGame();
+    const game = Array.from({ length: 12 }, (_, index) => index + 1)
+      .map((week) =>
+        ensureWeeklyMarketBoard(
+          {
+            ...baseGame,
+            currentWeek: week,
+            marketState: { ...baseGame.marketState, weeklyBoard: undefined },
+          },
+          rawDraftPool,
+        ),
+      )
+      .find((candidate) => candidate.marketState.weeklyBoard?.entries.some((entry) => entry.status === "available")) as GameState | undefined;
+    const availableEntry = game?.marketState.weeklyBoard?.entries.find((entry) => entry.status === "available");
+
+    expect(game).toBeDefined();
+    expect(availableEntry).toBeDefined();
+
+    const updatedGame = signPlayerFreeAgent(game!, availableEntry!.wrestlerId, rawDraftPool, 3);
+
+    expect(updatedGame.wrestlers.find((wrestler) => wrestler.id === availableEntry!.wrestlerId)?.matchRatings).toBeDefined();
   });
 
   it("builds tag and faction bundle offers from available board members with a 20% package discount", () => {

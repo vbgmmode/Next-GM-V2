@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { advanceGameWeek } from "./advanceWeek";
 import { PLE_COUNT, SEASON_WEEK_COUNT } from "./constants";
-import { isValidSegment, runShow } from "./scoring";
+import { createPlayableRunShowOptions, isValidSegment, runShow } from "./scoring";
 import { createNewGame, draftPool } from "./seed";
 import type { Segment, Wrestler } from "./types";
 
@@ -37,7 +37,6 @@ describe("playable loop smoke", () => {
         durationMinutes: 30,
         participantMin: 2,
         participantMax: 2,
-        winnerId: opener.id,
       },
       {
         id: "smoke-promo",
@@ -59,13 +58,25 @@ describe("playable loop smoke", () => {
     expect(game.calendar.filter((week) => week.showType === "ple")).toHaveLength(PLE_COUNT);
     expect(currentShow.every((segment) => isValidSegment(segment, game.wrestlers))).toBe(true);
 
-    const resolved = runShow(game);
+    const openerRatingsBefore = opener.matchRatings;
+    const opponentRatingsBefore = opponent.matchRatings;
+    const resolved = runShow(game, createPlayableRunShowOptions());
+    const matchResult = resolved.result.segmentResults[0];
 
     expect(resolved.result.segmentResults).toHaveLength(2);
+    expect(matchResult.winnerId).toBeDefined();
+    expect(matchResult.internalOutcomeAudit).toMatchObject({ model: "deepRatings", eligible: true });
+    expect(matchResult.internalMatchRatingsProgressionAudit).toMatchObject({ enabled: true, eligible: true });
     expect(resolved.game.showHistory.at(-1)?.id).toBe(resolved.result.id);
     expect(resolved.game.financeReports.length).toBeGreaterThan(0);
     expect(resolved.game.socialPosts.length).toBeGreaterThan(0);
     expect(resolved.game.marketState.playerContracts.length).toBeGreaterThan(0);
+    expect(resolved.game.wrestlers.find((wrestler) => wrestler.id === opener.id)?.matchRatings).toBeDefined();
+    expect(resolved.game.wrestlers.find((wrestler) => wrestler.id === opponent.id)?.matchRatings).toBeDefined();
+    expect(matchResult.internalMatchRatingsProgressionAudit?.deltas[opener.id]).not.toEqual({});
+    expect(matchResult.internalMatchRatingsProgressionAudit?.deltas[opponent.id]).not.toEqual({});
+    expect(resolved.game.wrestlers.find((wrestler) => wrestler.id === opener.id)?.matchRatings).not.toEqual(openerRatingsBefore);
+    expect(resolved.game.wrestlers.find((wrestler) => wrestler.id === opponent.id)?.matchRatings).not.toEqual(opponentRatingsBefore);
 
     const advanced = advanceGameWeek(resolved.game);
 

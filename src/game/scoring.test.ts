@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createNewGame, draftPool } from "./seed";
-import { runShow } from "./scoring";
+import { createLegacyRunShowOptions, createPlayableRunShowOptions, runShow } from "./scoring";
 import type { Championship, MatchRatings, Rivalry, Segment, Wrestler } from "./types";
 
 function sameDivisionWrestlers(count: number) {
@@ -211,6 +211,84 @@ function manualProgressionMatch(winner: Wrestler, loser: Wrestler, overrides: Pa
   });
 }
 
+describe("runShow simulation defaults", () => {
+  it("keeps direct runShow compatibility on legacy winner selection with progression disabled", () => {
+    const { ratingsStrong, legacyStrong } = deepRatingsFixture();
+    const wrestlers = [ratingsStrong, legacyStrong];
+    const game = gameForSegments(wrestlers, [deepRatingsMatch(wrestlers)]);
+
+    const resolved = runShow(game);
+
+    expect(resolved.result.segmentResults[0]).toMatchObject({
+      winnerId: legacyStrong.id,
+      internalOutcomeAudit: {
+        model: "legacy",
+        eligible: false,
+        fallbackReason: "modelLegacy",
+      },
+    });
+    expect(resolved.result.segmentResults[0].internalMatchRatingsProgressionAudit).toBeUndefined();
+    expect(matchRatingsFor(resolved.game.wrestlers, ratingsStrong.id)).toEqual(ratingsStrong.matchRatings);
+    expect(matchRatingsFor(resolved.game.wrestlers, legacyStrong.id)).toEqual(legacyStrong.matchRatings);
+  });
+
+  it("exposes explicit legacy options with progression disabled", () => {
+    const { ratingsStrong, legacyStrong } = deepRatingsFixture();
+    const wrestlers = [ratingsStrong, legacyStrong];
+    const game = gameForSegments(wrestlers, [deepRatingsMatch(wrestlers)]);
+
+    const options = createLegacyRunShowOptions();
+    const resolved = runShow(game, options);
+
+    expect(options).toEqual({
+      matchOutcomeModel: "legacy",
+      matchRatingsProgression: "disabled",
+    });
+    expect(resolved.result.segmentResults[0].winnerId).toBe(legacyStrong.id);
+    expect(resolved.result.segmentResults[0].internalMatchRatingsProgressionAudit).toBeUndefined();
+    expect(matchRatingsFor(resolved.game.wrestlers, ratingsStrong.id)).toEqual(ratingsStrong.matchRatings);
+    expect(matchRatingsFor(resolved.game.wrestlers, legacyStrong.id)).toEqual(legacyStrong.matchRatings);
+  });
+
+  it("exposes playable defaults with deep-ratings winner selection and progression enabled", () => {
+    const { ratingsStrong, legacyStrong } = deepRatingsFixture();
+    const wrestlers = [ratingsStrong, legacyStrong];
+    const game = gameForSegments(wrestlers, [deepRatingsMatch(wrestlers)]);
+
+    const options = createPlayableRunShowOptions();
+    const resolved = runShow(game, options);
+    const result = resolved.result.segmentResults[0];
+
+    expect(options).toEqual({
+      matchOutcomeModel: "deepRatings",
+      matchRatingsProgression: "enabled",
+    });
+    expect(result.winnerId).toBe(ratingsStrong.id);
+    expect(result.internalOutcomeAudit).toMatchObject({
+      model: "deepRatings",
+      eligible: true,
+      selectedWinnerId: ratingsStrong.id,
+    });
+    expect(result.internalMatchRatingsProgressionAudit).toMatchObject({
+      enabled: true,
+      eligible: true,
+      wrestlerIdsAffected: [ratingsStrong.id, legacyStrong.id],
+    });
+    expect(result.internalMatchRatingsProgressionAudit?.clampEvents?.length).toBeGreaterThan(0);
+  });
+
+  it("returns fresh option objects so callers cannot mutate shared simulation defaults", () => {
+    const playable = createPlayableRunShowOptions();
+    playable.matchOutcomeModel = "legacy";
+    playable.matchRatingsProgression = "disabled";
+
+    expect(createPlayableRunShowOptions()).toEqual({
+      matchOutcomeModel: "deepRatings",
+      matchRatingsProgression: "enabled",
+    });
+  });
+});
+
 describe("runShow rivalry sparks", () => {
   it("starts a singles rivalry when a non-rivalry match gets a strong crowd score", () => {
     const wrestlers = sameDivisionWrestlers(2);
@@ -325,9 +403,13 @@ describe("runShow deep ratings winner selection", () => {
       currentShow: [deepRatingsMatch(wrestlers, { winnerId: legacyStrong.id })],
     };
 
+    const legacyResult = runShow(game, createLegacyRunShowOptions()).result.segmentResults[0];
     const result = runShow(game, { matchOutcomeModel: "deepRatings" }).result.segmentResults[0];
 
+    expect(legacyResult.winnerId).toBe(legacyStrong.id);
     expect(result.winnerId).toBe(legacyStrong.id);
+    expect(result.winnerId).toBe(legacyResult.winnerId);
+    expect(result.score).toBe(legacyResult.score);
     expect(result.internalOutcomeAudit).toMatchObject({
       model: "legacy",
       eligible: false,
@@ -356,9 +438,13 @@ describe("runShow deep ratings winner selection", () => {
       } satisfies Segment],
     };
 
+    const legacyResult = runShow(game, createLegacyRunShowOptions()).result.segmentResults[0];
     const result = runShow(game, { matchOutcomeModel: "deepRatings" }).result.segmentResults[0];
 
     expect(result.type).toBe("Open Challenge");
+    expect(result.resolvedOpponentId).toBe(legacyResult.resolvedOpponentId);
+    expect(result.winnerId).toBe(legacyResult.winnerId);
+    expect(result.participantIds).toEqual(legacyResult.participantIds);
     expect(result.resolvedOpponentId).toBe(legacyStrong.id);
     expect(result.participantIds).toEqual([ratingsStrong.id, legacyStrong.id]);
     expect(result.internalOutcomeAudit).toMatchObject({
@@ -760,6 +846,8 @@ describe("runShow deep ratings progression", () => {
       profitLoss: baseFinance?.profitLoss,
     });
     expect(withProgression.game.socialPosts.map((post) => post.category)).toEqual(withoutProgression.game.socialPosts.map((post) => post.category));
+    expect(JSON.stringify(withProgression.game.socialPosts)).not.toContain("internalOutcomeAudit");
+    expect(JSON.stringify(withProgression.game.socialPosts)).not.toContain("internalMatchRatingsProgressionAudit");
     expect(withProgression.result.titleHistoryEvents).toEqual(withoutProgression.result.titleHistoryEvents);
     expect(withProgression.result.rivalryHistoryEvents).toEqual(withoutProgression.result.rivalryHistoryEvents);
   });

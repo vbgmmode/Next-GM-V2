@@ -124,6 +124,7 @@ import {
   getWrestlerDivisionGroup,
   hasIntergenderMatchParticipants,
   isValidSegment,
+  createPlayableRunShowOptions,
   runShow,
 } from "./game/scoring";
 import { getChampionshipArtworkSrc, getTitleCatalogBrand, wrestlerFitsChampionshipDivision } from "./game/titleCatalog";
@@ -4036,7 +4037,7 @@ function App() {
       return;
     }
 
-    const resolvedShow = runShow(game);
+    const resolvedShow = runShow(game, createPlayableRunShowOptions());
     persistGameSnapshot(resolvedShow.game, "results");
     setGame(resolvedShow.game);
     setScreen("results");

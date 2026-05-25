@@ -41,6 +41,33 @@ export type RunShowOptions = {
   matchRatingsProgression?: MatchRatingsProgressionMode;
 };
 
+type ResolvedRunShowOptions = Required<RunShowOptions>;
+
+const LEGACY_RUN_SHOW_OPTIONS: ResolvedRunShowOptions = {
+  matchOutcomeModel: "legacy",
+  matchRatingsProgression: "disabled",
+};
+
+const PLAYABLE_RUN_SHOW_OPTIONS: ResolvedRunShowOptions = {
+  matchOutcomeModel: "deepRatings",
+  matchRatingsProgression: "enabled",
+};
+
+export function createLegacyRunShowOptions(): ResolvedRunShowOptions {
+  return { ...LEGACY_RUN_SHOW_OPTIONS };
+}
+
+export function createPlayableRunShowOptions(): ResolvedRunShowOptions {
+  return { ...PLAYABLE_RUN_SHOW_OPTIONS };
+}
+
+function resolveRunShowOptions(options: RunShowOptions): ResolvedRunShowOptions {
+  return {
+    ...LEGACY_RUN_SHOW_OPTIONS,
+    ...options,
+  };
+}
+
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
 const SEGMENT_SCORE_PROFILES: Record<
@@ -273,8 +300,7 @@ export function getCurrentCalendarWeek(game: GameState): CalendarWeek {
 }
 
 export function runShow(game: GameState, options: RunShowOptions = {}): { game: GameState; result: ShowResult } {
-  const matchOutcomeModel = options.matchOutcomeModel ?? "legacy";
-  const matchRatingsProgression = options.matchRatingsProgression ?? "disabled";
+  const { matchOutcomeModel, matchRatingsProgression } = resolveRunShowOptions(options);
   const protectedRestIds = getProtectedRestWrestlerIds(game);
   const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers, protectedRestIds));
   const calendarWeek = getCurrentCalendarWeek(game);

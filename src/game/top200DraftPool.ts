@@ -1,5 +1,6 @@
 import top200RosterCandidatesRaw from "../../data/rosters/top_200_draft_pool.generated.json";
 import type { Wrestler } from "./types";
+import { ensureMatchRatings } from "./matchRatings";
 
 const sourceBrandDraftCaps: Record<string, number> = {
   AEW: 35,
@@ -176,4 +177,7 @@ function applyMaddenLikeStatDistribution(wrestlers: Wrestler[]): Wrestler[] {
   });
 }
 
-export const top200DraftPool: Wrestler[] = applyMaddenLikeStatDistribution(applySourceBrandDraftCaps(top200RosterCandidates));
+export const top200DraftPool: Wrestler[] = applyMaddenLikeStatDistribution(applySourceBrandDraftCaps(top200RosterCandidates)).map((wrestler) => ({
+  ...wrestler,
+  matchRatings: ensureMatchRatings(wrestler),
+}));
