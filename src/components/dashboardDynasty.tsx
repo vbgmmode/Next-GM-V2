@@ -46,13 +46,33 @@ export function DashboardDynastyAlert({ alert }: { alert: DashboardAlert }) {
   );
 }
 
+export function getRivalryHeatTier(value: number): "cool" | "warming" | "hot" {
+  if (value >= 75) {
+    return "hot";
+  }
+
+  if (value >= 51) {
+    return "warming";
+  }
+
+  return "cool";
+}
+
+export function getRivalryHeatBlockCount(value: number): number {
+  const normalized = Math.max(0, Math.min(100, Math.round(value)));
+
+  return Math.min(10, Math.max(0, Math.round(normalized / 10)));
+}
+
 export function DashboardDynastyIntensityMeter({ value }: { value: number }) {
-  const activeBlocks = Math.max(0, Math.min(10, Math.round(value / 10)));
+  const normalized = Math.max(0, Math.min(100, Math.round(value)));
+  const activeBlocks = getRivalryHeatBlockCount(normalized);
+  const tier = getRivalryHeatTier(normalized);
 
   return (
-    <div className="dashboard-dynasty-led-meter" aria-label={`Intensity ${value}`}>
+    <div className={`dashboard-dynasty-led-meter is-${tier}`} aria-label={`Intensity ${normalized}`}>
       {Array.from({ length: 10 }, (_, index) => (
-        <span className={index < activeBlocks ? "is-hot" : ""} key={index} />
+        <span className={index < activeBlocks ? "is-lit" : ""} key={index} />
       ))}
     </div>
   );

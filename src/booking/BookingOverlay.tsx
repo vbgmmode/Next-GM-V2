@@ -5,17 +5,18 @@ type Props = {
   children: ReactNode;
   footer?: ReactNode;
   onClose: () => void;
+  scrollable?: boolean;
   title: string;
   wide?: boolean;
 };
 
-export function BookingOverlay({ ariaLabel, children, footer, onClose, title, wide }: Props) {
+export function BookingOverlay({ ariaLabel, children, footer, onClose, scrollable = false, title, wide }: Props) {
   return (
     <div className="booking-overlay-root" role="presentation">
       <button aria-label="Close overlay" className="booking-overlay-scrim" onClick={onClose} type="button" />
       <section
         aria-label={ariaLabel}
-        className={`booking-overlay-panel ${wide ? "is-wide" : ""} ${footer ? "has-footer" : ""}`.trim()}
+        className={`booking-overlay-panel ${wide ? "is-wide" : ""} ${footer ? "has-footer" : ""} ${scrollable ? "is-scrollable" : ""}`.trim()}
         onClick={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}
         role="dialog"

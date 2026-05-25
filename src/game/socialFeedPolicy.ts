@@ -49,8 +49,8 @@ export function buildStipulationSocialPostDraft(result: ShowResult, segment: Seg
       tone: "angry",
       priority: basePriority + 18,
       text: pickLine(`${result.id}-stipulation-weak-${segment.segmentId}`, [
-        `${participantLabel} got ${stipulation.label} production and only hit ${segment.score}. That is premium money for a segment the timeline is already clipping sideways.`,
-        `${stipulation.label} should feel like escalation. ${participantLabel} landing at ${segment.score} has fans asking why the office paid for the chaos.`,
+        `${participantLabel} got ${stipulation.label} production and the spot still felt flat. That is premium money for a segment the timeline is already clipping sideways.`,
+        `${stipulation.label} should feel like escalation. ${participantLabel} landing soft has fans asking why the office paid for the chaos.`,
       ]),
       relatedWrestlerIds: segment.participantIds,
       relatedRivalryIds: segment.rivalryId ? [segment.rivalryId] : [],
@@ -65,8 +65,8 @@ export function buildStipulationSocialPostDraft(result: ShowResult, segment: Seg
       tone: "skeptical",
       priority: basePriority + 12,
       text: pickLine(`${result.id}-stipulation-fatigue-${segment.segmentId}`, [
-        `${participantLabel} took the ${stipulation.label} route and the body-load discourse got loud fast. +${largestFatigueGain} fatigue is not invisible.`,
-        `${stipulation.label} gave ${participantLabel} a bigger spotlight, but the workload receipt is sitting right there at +${largestFatigueGain} fatigue.`,
+        `${participantLabel} took the ${stipulation.label} route and the body-load discourse got loud fast. They looked spent by the end.`,
+        `${stipulation.label} gave ${participantLabel} a bigger spotlight, but the workload receipt is sitting right there in the post-show clips.`,
       ]),
       relatedWrestlerIds: segment.participantIds,
       relatedRivalryIds: segment.rivalryId ? [segment.rivalryId] : [],
@@ -81,8 +81,8 @@ export function buildStipulationSocialPostDraft(result: ShowResult, segment: Seg
       tone: segment.score >= 90 ? "chaotic" : "impressed",
       priority: basePriority + 20,
       text: pickLine(`${result.id}-stipulation-hit-${segment.segmentId}`, [
-        `${participantLabel} made ${stipulation.label} feel worth the specialty production bill. A ${segment.score} in that spot is exactly how the feed starts rewriting the whole night.`,
-        `${stipulation.label} gave ${participantLabel} the kind of replay hook fans turn into a week-long argument. ${segment.score} is a real receipt.`,
+        `${participantLabel} made ${stipulation.label} feel worth the specialty production bill. That spot is exactly how the feed starts rewriting the whole night.`,
+        `${stipulation.label} gave ${participantLabel} the kind of replay hook fans turn into a week-long argument.`,
       ]),
       relatedWrestlerIds: segment.participantIds,
       relatedRivalryIds: segment.rivalryId ? [segment.rivalryId] : [],

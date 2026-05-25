@@ -508,6 +508,12 @@ function getWrestlerStarScore(wrestler: Wrestler) {
   return wrestler.popularity + wrestler.momentum;
 }
 
+function hasActiveRivalryParticipant(rivalries: Rivalry[], participantIds: string[]) {
+  const activeParticipantIds = getActiveRivalryParticipantIds(rivalries);
+
+  return participantIds.some((id) => activeParticipantIds.has(id));
+}
+
 function buildSinglesFeudSuggestions(game: GameState) {
   const wrestlers = game.wrestlers.filter((wrestler) => wrestler.injuryStatus !== "major");
   const suggestions: ScoredFeudSuggestion[] = [];
@@ -518,7 +524,11 @@ function buildSinglesFeudSuggestions(game: GameState) {
       const second = wrestlers[secondIndex];
       const participantIds = [first.id, second.id];
 
-      if (!canWrestlersShareMatch([first, second]) || hasDuplicateRivalry(game.rivalries, "singles", participantIds)) {
+      if (
+        !canWrestlersShareMatch([first, second]) ||
+        hasDuplicateRivalry(game.rivalries, "singles", participantIds) ||
+        hasActiveRivalryParticipant(game.rivalries, participantIds)
+      ) {
         continue;
       }
 
@@ -618,7 +628,11 @@ function buildTagFeudSuggestions(game: GameState) {
       const participants = [...teamA, ...teamB];
       const participantIds = participants.map((wrestler) => wrestler.id);
 
-      if (!canWrestlersShareMatch(participants) || hasDuplicateRivalry(game.rivalries, "tag_team", participantIds)) {
+      if (
+        !canWrestlersShareMatch(participants) ||
+        hasDuplicateRivalry(game.rivalries, "tag_team", participantIds) ||
+        hasActiveRivalryParticipant(game.rivalries, participantIds)
+      ) {
         continue;
       }
 

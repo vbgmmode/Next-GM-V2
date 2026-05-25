@@ -379,7 +379,7 @@ When relevant, also smoke-test:
 When sharing a local app URL:
 - Start the dev server in a persistent session, not a short-lived detached process.
 - Verify the URL returns the app HTML before reporting it.
-- Provide a URL the user can open directly, such as http://localhost:5174/.
+- Provide a URL the user can open directly: sandbox `http://localhost:4000/`, prod worktree `http://localhost:5176/` (fixed in each folder's `vite.config.ts`).
 - If a previously shared URL fails, restart the server cleanly and re-verify before sending a replacement link.
 
 ## Completion Report Format
