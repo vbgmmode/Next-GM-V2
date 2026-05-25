@@ -55,11 +55,15 @@ import { applyRivalryCatalogDefaults } from "./rivalryCatalog";
 import { getStipulationsForSegment } from "./stipulationCatalog";
 import { normalizeSocialInboxState } from "./socialInboxActions";
 import { DRAFT_CONTRACT_WEEKS, SENTIMENT_NEUTRAL } from "./constants";
+import { createStableDomainId, normalizeOptionalId } from "./domainIds";
 
 export type GameScreen = Exclude<Screen, "title" | "setup">;
 export type ProfileReturnScreen = Extract<GameScreen, "roster" | "booking" | "dashboard">;
+export const CURRENT_SAVE_VERSION = 1;
+export type SaveVersion = typeof CURRENT_SAVE_VERSION;
 
 export type SavedGameState = {
+  saveVersion: SaveVersion;
   game: GameState;
   screen: GameScreen;
   profileReturnScreen?: ProfileReturnScreen;
@@ -84,6 +88,7 @@ const savedGameScreens: GameScreen[] = [
 ];
 
 type SavedGameCandidate = {
+  saveVersion?: unknown;
   game: Partial<GameState>;
   screen?: unknown;
   profileReturnScreen?: unknown;
@@ -737,7 +742,7 @@ function normalizeCurrentShow(currentShow: unknown): Segment[] {
       : formatDefaults;
 
     return {
-      id: segment.id ?? `migrated-segment-${index}`,
+      id: normalizeOptionalId(segment.id) ?? createStableDomainId("migrated-segment", [index + 1]),
       type,
       participantIds: Array.isArray(segment.participantIds) ? segment.participantIds : [],
       championshipId: segment.championshipId,
@@ -758,6 +763,11 @@ function normalizeCurrentShow(currentShow: unknown): Segment[] {
 
 export function migrateSavedGameState(value: unknown): SavedGameState | null {
   if (!isSavedGameCandidate(value)) {
+    return null;
+  }
+
+  if (typeof value.saveVersion === "number" && value.saveVersion > CURRENT_SAVE_VERSION) {
+    console.warn(`Saved career version ${value.saveVersion} is newer than this app supports.`);
     return null;
   }
 
@@ -807,6 +817,7 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
   });
 
   return {
+    saveVersion: CURRENT_SAVE_VERSION,
     game: {
       seasonNumber: savedGame.seasonNumber ?? 1,
       seasonStartingMoney,

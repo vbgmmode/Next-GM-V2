@@ -404,6 +404,10 @@ Finance:
 - Put dense finance support details behind expandable panels when the screen would otherwise become a report list.
 - Finance copy should stay current or retrospective. Do not introduce forecasts, predicted business outcomes, budgets, payroll, sponsorships, ownership objectives, or accounting systems unless an active ticket explicitly asks for them.
 
+Booking:
+
+- Book Finish should read as free creative control, not a paid production decision. Keep simulated finishes as the default, use tag-side labels for tag matches, and never reveal an Open Challenge opponent before Run Show.
+
 Season Review:
 
 - Should feel like a season-ending broadcast package and executive review.

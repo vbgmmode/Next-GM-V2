@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookedFinishCostUsd, getSegmentProductionCostForShow, getSegmentStipulationProductionCostForShow } from "../game/finance";
+import { getSegmentProductionCostForShow, getSegmentStipulationProductionCostForShow } from "../game/finance";
 import { createNewGame } from "../game/seed";
 import type { GameState, Segment } from "../game/types";
 import { buildBookingModel } from "./buildBookingModel";
@@ -54,7 +54,7 @@ describe("buildBookingModel production costs", () => {
     expect(model.segments.find((row) => row.id === "booking-cost-promo")?.segmentProductionCost).toBeGreaterThan(0);
     expect(model.production.segmentCost).toBe(expectedSegmentCost);
     expect(model.production.stipulationCost).toBe(expectedStipulationCost);
-    expect(model.production.bookedFinishCost).toBe(bookedFinishCostUsd);
-    expect(model.production.totalCost).toBe(expectedSegmentCost + expectedStipulationCost + bookedFinishCostUsd);
+    expect(model.production.bookedFinishCost).toBe(0);
+    expect(model.production.totalCost).toBe(expectedSegmentCost + expectedStipulationCost);
   });
 });

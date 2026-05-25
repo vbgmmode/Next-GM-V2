@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { segmentCatalogOptions } from "./matchFormatCatalog";
-import {
-  bookedFinishCostUsd,
-  generateFinanceReport,
-  getBookedFinishProductionCostForShow,
-  getSegmentProductionCostForShow,
-  getSegmentStipulationProductionCostForShow,
-} from "./finance";
+import { generateFinanceReport, getBookedFinishProductionCostForShow, getSegmentProductionCostForShow, getSegmentStipulationProductionCostForShow } from "./finance";
 import { getSegmentBookingCost, rosterDraftAndContractValues } from "./financeCatalog";
 import { createNewGame } from "./seed";
 import type { GameState, Segment, SegmentResult, SegmentType, ShowResult, ShowType } from "./types";
@@ -175,10 +169,10 @@ describe("show production finance", () => {
     });
   });
 
-  it("keeps no-stipulation match base production free while charging booked finishes", () => {
+  it("keeps no-stipulation match base production and booked finishes free", () => {
     expect(getSegmentProductionCostForShow({ segmentCatalogId: "M001", type: "Match" }, "tv")).toBe(0);
     expect(getSegmentProductionCostForShow({ segmentCatalogId: "M007", type: "Match" }, "ple")).toBe(0);
-    expect(getBookedFinishProductionCostForShow({ type: "Match", winnerId: "winner" })).toBe(bookedFinishCostUsd);
+    expect(getBookedFinishProductionCostForShow({ type: "Match", winnerId: "winner" })).toBe(0);
     expect(getSegmentProductionCostForShow({ segmentCatalogId: "P001", type: "Promo" }, "tv")).toBeGreaterThan(0);
   });
 
@@ -189,7 +183,7 @@ describe("show production finance", () => {
     expect(getTvCardCost(["M003", "M007", "P002", "A002", "P008"], 1)).toBeLessThanOrEqual(120000);
   });
 
-  it("caps premium spectacle costs while keeping booked finish flat", () => {
+  it("caps premium spectacle costs while keeping booked finish free", () => {
     const rumble = getSegmentBookingCost("M065");
     const chamber = getSegmentBookingCost("M056");
 
@@ -197,8 +191,8 @@ describe("show production finance", () => {
     expect(rumble?.plePpvBookingCostUsd).toBeLessThanOrEqual(425000);
     expect(chamber?.weeklyTvBookingCostUsd).toBeLessThanOrEqual(275000);
     expect(chamber?.plePpvBookingCostUsd).toBeLessThanOrEqual(425000);
-    expect(getTvCardCost(["M001"], 1) - getTvCardCost(["M001"], 0)).toBe(bookedFinishCostUsd);
-    expect(getTvCardCost(["M001"], 1, true) - getTvCardCost(["M001"], 0, true)).toBe(bookedFinishCostUsd);
+    expect(getTvCardCost(["M001"], 1) - getTvCardCost(["M001"], 0)).toBe(0);
+    expect(getTvCardCost(["M001"], 1, true) - getTvCardCost(["M001"], 0, true)).toBe(0);
   });
 
   it("generates v3 reports from production costs without weekly payroll or wrestler expenses", () => {
@@ -211,11 +205,11 @@ describe("show production finance", () => {
     expect(report.talentCost).toBeUndefined();
     expect(report.baseShowProductionCost).toBe(65000);
     expect(report.segmentProductionCost).toBe(expectedSegmentProduction);
-    expect(report.bookedFinishCost).toBe(bookedFinishCostUsd);
+    expect(report.bookedFinishCost).toBe(0);
     expect(report.overrunCost).toBe(0);
-    expect(report.productionCost).toBe(65000 + expectedSegmentProduction + bookedFinishCostUsd);
+    expect(report.productionCost).toBe(65000 + expectedSegmentProduction);
     expect(report.totalExpenses).toBe(report.productionCost);
-    expect(report.expenseBreakdown?.map((item) => item.id)).toEqual(["baseShowProductionCost", "segmentProductionCost", "bookedFinishCost", "overrunCost"]);
+    expect(report.expenseBreakdown?.map((item) => item.id)).toEqual(["baseShowProductionCost", "segmentProductionCost", "overrunCost"]);
   });
 
   it("uses TV versus PLE segment production costs from the finance catalog", () => {
@@ -248,11 +242,11 @@ describe("show production finance", () => {
     expect(report.expenseBreakdown?.map((item) => item.id)).toContain("stipulationProductionCost");
   });
 
-  it("charges booked finish only for manually selected match winners", () => {
+  it("keeps booked finish free for manually selected match winners", () => {
     const manual = createFinanceGame("tv", true);
     const automatic = createFinanceGame("tv", false);
 
-    expect(generateFinanceReport(manual.result, manual.game).bookedFinishCost).toBe(bookedFinishCostUsd);
+    expect(generateFinanceReport(manual.result, manual.game).bookedFinishCost).toBe(0);
     expect(generateFinanceReport(automatic.result, automatic.game).bookedFinishCost).toBe(0);
   });
 });
