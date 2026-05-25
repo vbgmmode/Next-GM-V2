@@ -159,16 +159,16 @@ export type WeekReviewOfficeSnapshot = {
 };
 
 
-type TitleScenePressureTone = "hot" | "steady" | "watch" | "build";
+export type TitleScenePressureTone = "hot" | "steady" | "watch" | "build";
 
-type TitleScenePressureDiagnostic = {
+export type TitleScenePressureDiagnostic = {
   id: string;
   label: string;
   detail: string;
   tone: TitleScenePressureTone;
 };
 
-type TitleScenePressureSnapshot = {
+export type TitleScenePressureSnapshot = {
   primary: TitleScenePressureDiagnostic;
   diagnostics: TitleScenePressureDiagnostic[];
   divisionHealth: string;
@@ -364,7 +364,7 @@ function canSegmentContestChampionship(segment: Segment, championship: Champions
 }
 
 
-function getTitleSceneTalentScore(wrestler: Wrestler, championship: Championship, rivalries: Rivalry[] = []) {
+export function getTitleSceneTalentScore(wrestler: Wrestler, championship: Championship, rivalries: Rivalry[] = []) {
   const championIds = new Set(championship.championIds);
   const titleRivalryBonus = rivalries.some(
     (rivalry) => rivalry.stakes === "title" && rivalry.participantIds.includes(wrestler.id) && rivalry.participantIds.some((id) => championIds.has(id)),
@@ -559,7 +559,7 @@ function getTagDivisionHealthDiagnostics(championship: Championship, game: GameS
 }
 
 
-function getTitleScenePressureSnapshot(championship: Championship, game: GameState): TitleScenePressureSnapshot {
+export function getTitleScenePressureSnapshot(championship: Championship, game: GameState): TitleScenePressureSnapshot {
   const scene = getTitleDivisionScene(championship, game.wrestlers, game.rivalries, game.currentWeek, game.championships);
   const recentHistory = getChampionshipHistory(game, championship.id, 1);
   const latestTitleEvent = recentHistory[0];
@@ -718,7 +718,7 @@ function getTitleScenePressureRank(tone: TitleScenePressureTone) {
 }
 
 
-function getChampionshipPressureSnapshots(game: GameState) {
+export function getChampionshipPressureSnapshots(game: GameState) {
   return game.championships
     .map((championship) => ({
       championship,

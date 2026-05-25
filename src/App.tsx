@@ -76,11 +76,17 @@ import { CURRENT_SAVE_VERSION, migrateSavedGameState } from "./game/migration";
 import { createUniqueDomainId } from "./game/domainIds";
 import { getWrestlerIdentityContext } from "./game/wrestlerIdentityContext";
 import {
+  getChampionshipPressureSnapshots,
   getLivingWorldPressureSnapshot,
   getPleBuildPressureSnapshot,
+  getTitleDivisionScene,
+  getTitleSceneTalentScore,
   getWeeklyDecisionPressureSnapshot,
   type LivingWorldPressureSnapshot,
   type PleBuildPressureSnapshot,
+  type TitleScenePressureDiagnostic,
+  type TitleScenePressureSnapshot,
+  type TitleScenePressureTone,
   type WeeklyDecisionPressureSnapshot,
 } from "./game/gameContextReads";
 import {
@@ -102,9 +108,7 @@ import {
   hasPlePayoff,
 } from "./game/storyContextReads";
 import {
-  applyRivalryCatalogDefaults,
   deriveRivalryStage,
-  getDefaultStorylineIdForStakes,
   getRivalryGMRead,
   getRivalryRelationship,
   getRivalryStoryline,
@@ -119,7 +123,6 @@ import {
   getBestSegment,
   getCurrentCalendarWeek,
   getResultChange,
-  getRivalryStatus,
   getShowGrade,
   getWrestlerDivisionGroup,
   hasIntergenderMatchParticipants,
@@ -149,7 +152,6 @@ import type {
   Rivalry,
   RivalryHistoryEvent,
   RivalryStructure,
-  RivalryStakes,
   RivalGMAssignment,
   Screen,
   Segment,
@@ -181,6 +183,7 @@ import {
   getWorstProfitReport,
 } from "./screens/financeScreenReads";
 import { scheduleRivalryEndInGame } from "./game/rivalryEnd";
+import { createRivalryInGame, getRivalryStructureParticipantRange, hasDuplicateRivalry } from "./game/rivalryMutations";
 import "./screens/CalendarScreen.css";
 import "./screens/ChampionshipsScreen.css";
 import "./screens/FinanceScreen.css";
@@ -313,26 +316,6 @@ type PleReadinessSnapshot = {
 
 
 
-
-type TitleScenePressureTone = "hot" | "steady" | "watch" | "build";
-
-type TitleScenePressureDiagnostic = {
-  id: string;
-  label: string;
-  detail: string;
-  tone: TitleScenePressureTone;
-};
-
-type TitleScenePressureSnapshot = {
-  primary: TitleScenePressureDiagnostic;
-  diagnostics: TitleScenePressureDiagnostic[];
-  divisionHealth: string;
-  producerRead: string;
-  defenseWindow: number;
-  reignLength: number;
-  weeksSinceLastTitleEvent: number;
-  titleRivalries: Rivalry[];
-};
 
 type TitleSceneTalentRead = {
   wrestler: Wrestler;
@@ -1549,51 +1532,6 @@ function getTopContenders(championship: Championship, wrestlers: Wrestler[], lim
   return getTitleDivisionScene(championship, wrestlers).topContenders.slice(0, limit);
 }
 
-function getTitleSceneTalentScore(wrestler: Wrestler, championship: Championship, rivalries: Rivalry[] = []) {
-  const championIds = new Set(championship.championIds);
-  const titleRivalryBonus = rivalries.some(
-    (rivalry) => rivalry.stakes === "title" && rivalry.participantIds.includes(wrestler.id) && rivalry.participantIds.some((id) => championIds.has(id)),
-  )
-    ? 18
-    : 0;
-
-  return wrestler.popularity + wrestler.momentum + titleRivalryBonus;
-}
-
-function getTitleDivisionScene(championship: Championship, wrestlers: Wrestler[], rivalries: Rivalry[] = [], currentWeek = 1, championships: Championship[] = []) {
-  const championIds = new Set(championship.championIds);
-  const otherChampionIds = new Set(
-    championships.filter((title) => title.id !== championship.id).flatMap((title) => title.championIds),
-  );
-  const champions = championship.championIds.map((id) => wrestlers.find((wrestler) => wrestler.id === id)).filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
-  const manualContenders = (championship.contenderIds ?? [])
-    .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
-    .filter((wrestler): wrestler is Wrestler => Boolean(wrestler && !championIds.has(wrestler.id) && wrestlerFitsChampionshipDivision(wrestler, championship)));
-  const manualContenderIds = new Set(manualContenders.map((wrestler) => wrestler.id));
-  const eligibleRoster = wrestlers
-    .filter((wrestler) => !championIds.has(wrestler.id))
-    .filter((wrestler) => !otherChampionIds.has(wrestler.id))
-    .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship))
-    .sort((a, b) => getTitleSceneTalentScore(b, championship, rivalries) - getTitleSceneTalentScore(a, championship, rivalries));
-  const derivedTopContenders = eligibleRoster.filter((wrestler) => !manualContenderIds.has(wrestler.id)).slice(0, Math.max(0, 3 - manualContenders.length));
-  const topContenders = championship.contenderIds ? manualContenders : [...manualContenders, ...derivedTopContenders].slice(0, 3);
-  const topContenderIds = new Set(topContenders.map((wrestler) => wrestler.id));
-  const risingContenders = eligibleRoster
-    .filter((wrestler) => !topContenderIds.has(wrestler.id))
-    .filter((wrestler) => wrestler.momentum >= 80 || getWeeksSinceLastBooked(wrestler, currentWeek) >= 2)
-    .sort((a, b) => b.momentum - a.momentum || b.popularity - a.popularity)
-    .slice(0, 3);
-  const outsideDivision = wrestlers.filter((wrestler) => !championIds.has(wrestler.id) && !wrestlerFitsChampionshipDivision(wrestler, championship));
-
-  return {
-    champions,
-    topContenders,
-    risingContenders,
-    eligibleRoster,
-    outsideDivision,
-  };
-}
-
 function getTagDivisionHealthDiagnostics(championship: Championship, game: GameState): TitleScenePressureDiagnostic[] {
   if (!isTagChampionship(championship)) {
     return [];
@@ -1936,35 +1874,6 @@ function getTitleScenePressureSnapshot(championship: Championship, game: GameSta
     weeksSinceLastTitleEvent,
     titleRivalries,
   };
-}
-
-function getTitleScenePressureRank(tone: TitleScenePressureTone) {
-  if (tone === "build") {
-    return 4;
-  }
-
-  if (tone === "watch") {
-    return 3;
-  }
-
-  if (tone === "hot") {
-    return 2;
-  }
-
-  return 1;
-}
-
-function getChampionshipPressureSnapshots(game: GameState) {
-  return game.championships
-    .map((championship) => ({
-      championship,
-      snapshot: getTitleScenePressureSnapshot(championship, game),
-    }))
-    .sort(
-      (a, b) =>
-        getTitleScenePressureRank(b.snapshot.primary.tone) - getTitleScenePressureRank(a.snapshot.primary.tone) ||
-        b.championship.prestige - a.championship.prestige,
-    );
 }
 
 function getTitleSceneTalentRead(wrestler: Wrestler, game: GameState, currentChampionshipId: string): TitleSceneTalentRead {
@@ -2733,18 +2642,6 @@ function formatRivalryStructure(structure: RivalryStructure) {
   }
 }
 
-function getRivalryStructureParticipantRange(structure: RivalryStructure) {
-  if (structure === "tag_team") {
-    return { min: 4, max: 4 };
-  }
-
-  if (structure === "multi_person") {
-    return { min: 3, max: 3 };
-  }
-
-  return { min: 2, max: 2 };
-}
-
 function getDefaultRivalryComposerParticipantIds(wrestlers: Wrestler[]) {
   const compatibleGroup = wrestlers.find((wrestler, index) => wrestlers.slice(index + 1).some((candidate) => canWrestlersShareMatch([wrestler, candidate])));
   const compatiblePeers = compatibleGroup ? wrestlers.filter((wrestler) => canWrestlersShareMatch([compatibleGroup, wrestler])) : wrestlers;
@@ -2814,16 +2711,6 @@ function buildTagTeamChallengerRows(
   }
 
   return rows;
-}
-
-function getRivalryStructureKey(structure: RivalryStructure, participantIds: string[]) {
-  if (structure === "tag_team" && participantIds.length === 4) {
-    const firstSide = participantIds.slice(0, 2).sort().join("+");
-    const secondSide = participantIds.slice(2, 4).sort().join("+");
-    return [firstSide, secondSide].sort().join("|");
-  }
-
-  return [...participantIds].sort().join("|");
 }
 
 function formatRivalryParticipantsForStructure(rivalry: Rivalry, wrestlers: Wrestler[]) {
@@ -2905,23 +2792,6 @@ function getHottestRivalry(rivalries: Rivalry[]) {
 
 function getCoolingRivalry(rivalries: Rivalry[]) {
   return rivalries.find((rivalry) => rivalry.status === "stale") ?? rivalries.find((rivalry) => rivalry.status === "cooling");
-}
-
-function hasDuplicateRivalry(rivalries: Rivalry[], structure: RivalryStructure, participantIds: string[]) {
-  const key = getRivalryStructureKey(structure, participantIds);
-  return rivalries.some((rivalry) => getRivalryStructureKey(getRivalryStructure(rivalry), rivalry.participantIds) === key);
-}
-
-function formatRivalryStakes(stakes: RivalryStakes) {
-  return stakes.charAt(0).toUpperCase() + stakes.slice(1);
-}
-
-function getInitialRivalryHeat(wrestlers: Wrestler[]) {
-  if (!wrestlers.length) {
-    return 50;
-  }
-
-  return Math.round(wrestlers.reduce((total, wrestler) => total + wrestler.popularity + wrestler.momentum, 0) / (wrestlers.length * 2));
 }
 
 function getShowTypeLabel(showType: ShowType) {
@@ -4534,61 +4404,7 @@ function App() {
         return current;
       }
 
-      const participants = selectedIds
-        .map((id) => current.wrestlers.find((wrestler) => wrestler.id === id))
-        .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
-      const range = getRivalryStructureParticipantRange(structure);
-
-      if (participants.length !== selectedIds.length || selectedIds.length < range.min || selectedIds.length > range.max) {
-        return current;
-      }
-
-      if (!canWrestlersShareMatch(participants)) {
-        return current;
-      }
-
-      const heat = getInitialRivalryHeat(participants);
-      const rivalryId = createUniqueDomainId("rivalry", [current.seasonNumber, current.currentWeek, structure, stakes, ...selectedIds], current.rivalries.map((rivalry) => rivalry.id));
-      const selectedStorylineId = storylineId ?? getDefaultStorylineIdForStakes(stakes);
-      const storyline = getRivalryStoryline({ stakes, storylineId: selectedStorylineId });
-      const rivalryName =
-        structure === "tag_team" && selectedIds.length === 4
-          ? `${getWrestlerNames(selectedIds.slice(0, 2), current.wrestlers)} vs ${getWrestlerNames(selectedIds.slice(2, 4), current.wrestlers)}`
-          : structure === "multi_person"
-            ? `${getWrestlerNames(selectedIds, current.wrestlers)} collision`
-            : `${participants[0].name} vs ${participants[1].name}`;
-      const rivalry = applyRivalryCatalogDefaults({
-        id: rivalryId,
-        name: rivalryName,
-        participantIds: selectedIds,
-        structure,
-        storylineId: storyline.id,
-        relationshipTag: storyline.relationshipTag,
-        heat,
-        freshness: 80,
-        weeksActive: 1,
-        lastAdvancedWeek: 0,
-        status: getRivalryStatus(heat, 80),
-        stakes,
-      } satisfies Rivalry);
-      const startEvent: RivalryHistoryEvent = {
-        id: `s${current.seasonNumber}-w${current.currentWeek}-${rivalryId}-started`,
-        rivalryId,
-        rivalryName: rivalry.name,
-        participantIds: [...rivalry.participantIds],
-        weekNumber: current.currentWeek,
-        seasonNumber: current.seasonNumber,
-        eventType: "started",
-        note: `${rivalry.name} started with ${formatRivalryStakes(stakes).toLowerCase()} stakes.`,
-        heat: rivalry.heat,
-        freshness: rivalry.freshness,
-        status: rivalry.status,
-      };
-      const updatedGame = {
-        ...current,
-        rivalries: [...current.rivalries, rivalry],
-        rivalryHistory: [...(current.rivalryHistory ?? []), startEvent],
-      };
+      const updatedGame = createRivalryInGame(current, { participantIds: selectedIds, structure, stakes, storylineId });
 
       persistGameSnapshot(updatedGame, "rivalries");
       return updatedGame;
