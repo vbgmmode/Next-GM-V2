@@ -95,6 +95,25 @@ describe("match simulation lab", () => {
     expect(first.winnerDistribution).toHaveLength(2);
   });
 
+  it("keeps the default 1,000-run dev-lab singles seed output stable", () => {
+    const game = gameWithRoster();
+    const result = runMatchSimulationLab({
+      game,
+      participantIds: game.wrestlers.slice(0, 2).map((wrestler) => wrestler.id),
+      matchStructure: "singles",
+      iterations: 1000,
+      baseSeed: "dev-lab",
+      model: "deepRatings",
+    });
+
+    expect(result.successfulIterations).toBe(1000);
+    expect(result.fallbackCounts.total).toBe(0);
+    expect(result.winnerDistribution.map((row) => ({ id: row.id, count: row.count, actualProbability: row.actualProbability }))).toEqual([
+      { id: "lab-b", count: 503, actualProbability: 0.503 },
+      { id: "lab-a", count: 497, actualProbability: 0.497 },
+    ]);
+  });
+
   it("keeps actual singles probability roughly aligned to effective-power expectation", () => {
     const game = gameWithRoster();
     const result = runMatchSimulationLab({
