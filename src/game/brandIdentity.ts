@@ -20,7 +20,7 @@ export function createPlayerBrandIdentity(brandName: string, brandStyle: BrandSt
   };
 }
 
-export function createCpuBrandIdentity(id: string, brandKey: PrototypeBrand, brandName = brandKey): BrandIdentity {
+export function createCpuBrandIdentity(id: string, brandKey: PrototypeBrand, brandName: string = brandKey): BrandIdentity {
   return {
     id,
     ownerType: "cpu",

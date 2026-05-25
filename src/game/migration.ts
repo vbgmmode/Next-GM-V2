@@ -21,6 +21,7 @@ import type {
   MarketCooldown,
   OfficeMandateState,
   OfficeMandateStatus,
+  PrototypeBrand,
   WeeklyMarketBoard,
   SegmentType,
   RivalBrandState,
@@ -182,14 +183,12 @@ function normalizePlayerBrandIdentity(value: unknown, brandName: string, brandSt
   };
 }
 
-function normalizeCpuBrandIdentity(value: unknown, id: string, brandKey: RivalBrandState["brandKey"], brandName: string): BrandIdentity {
+function normalizeCpuBrandIdentity(value: unknown, id: string, brandKey: PrototypeBrand, brandName: string): BrandIdentity {
   const fallback = createCpuBrandIdentity(id, brandKey, brandName);
 
   if (!value || typeof value !== "object") {
     return fallback;
   }
-
-  const candidate = value as Partial<BrandIdentity>;
 
   return {
     id,

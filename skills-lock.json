@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "skills": {
+    "adversarial-review": {
+      "source": "poteto/noodle",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/adversarial-review/SKILL.md",
+      "computedHash": "f6c911a45bf080b6c7dcf274b0e22a93d7730ec0efebf2a58934c5be0cd8ac4e"
+    },
+    "bug-hunt-swarm": {
+      "source": "Dimillian/Skills",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "bug-hunt-swarm/SKILL.md",
+      "computedHash": "7a4b4e7fd6590e9ee4d8b8540cf214aeb1d9d875c23a0382cd0f61980b89169f"
+    },
+    "codebase-migrate": {
+      "source": "ComposioHQ/awesome-codex-skills",
+      "ref": "master",
+      "sourceType": "github",
+      "skillPath": "codebase-migrate/SKILL.md",
+      "computedHash": "f0385a217be6173a1292d1be360bb00c9430bf4dbc93bab9c4afca19c469ca64"
+    },
+    "codex-code-review": {
+      "source": "sd0xdev/sd0x-dev-flow",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "skills/codex-code-review/SKILL.md",
+      "computedHash": "e0711bdb09bd4941ae6b792d3da116153b7293b519efb361ad27e78a77fe199c"
+    },
+    "project-skill-audit": {
+      "source": "Dimillian/Skills",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "project-skill-audit/SKILL.md",
+      "computedHash": "29d50ebe7302acf46580a42df68739b192a7e8ab913c3125f9c65350ffe7c29d"
+    },
+    "review-and-simplify-changes": {
+      "source": "Dimillian/Skills",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "review-and-simplify-changes/SKILL.md",
+      "computedHash": "eadd2aaf9e6526e7ff807b0ee1eeb20a4f317f6b2a9111cfea39e288c1d5a696"
+    }
+  }
+}

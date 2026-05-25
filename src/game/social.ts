@@ -139,6 +139,7 @@ function getPostPriority(post: SocialPostDraft, index: number) {
 
 function makePost(
   result: ShowResult,
+  eventId: string | undefined,
   index: number,
   category: SocialCategory,
   author: string,
@@ -147,12 +148,16 @@ function makePost(
   relatedWrestlerIds: string[],
   relatedRivalryIds: string[] = [],
   relatedChampionshipIds: string[] = [],
+  segmentId?: string,
 ): SocialPost {
   return {
     id: `${result.id}-social-${index}`,
     weekNumber: result.week,
     seasonNumber: result.seasonNumber,
     showName: result.showName,
+    resultId: result.id,
+    eventId,
+    segmentId,
     category,
     author,
     text,
@@ -164,6 +169,7 @@ function makePost(
 }
 
 export function generateSocialPosts(result: ShowResult, game: GameState): SocialPost[] {
+  const eventId = game.eventLedger.find((event) => event.relatedIds.showResultId === result.id)?.id;
   const bestSegment = result.segmentResults.reduce((best, segment) => (segment.score > best.score ? segment : best), result.segmentResults[0]);
   const weakestSegment = getWeakestSegment(result);
   const momentumWrestler = findWrestlerByName(result.biggestMomentumGain.name, game.wrestlers);
@@ -191,6 +197,7 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
     relatedWrestlerIds: bestSegment.participantIds,
     relatedRivalryIds: getRelatedRivalryIds(bestSegment),
     relatedChampionshipIds: getRelatedChampionshipIds(bestSegment),
+    segmentId: bestSegment.segmentId,
   });
 
   if (ratingsBattle && ratingsBattle.entries.some((entry) => !entry.isPlayer && entry.latestScore !== undefined)) {
@@ -207,6 +214,7 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
         ? `${game.brandName} sits ${playerRankRead} in the ratings race after ${result.showName}. ${nearestRival.brandName} is the rival desk everyone is measuring against now, and the office mandate is watching.`
         : `${game.brandName} sits ${playerRankRead} in the ratings race after ${result.showName}. The CPU desks are active pressure, not a hidden fail state.`,
       relatedWrestlerIds: bestSegment.participantIds,
+      segmentId: bestSegment.segmentId,
     });
   }
 
@@ -234,6 +242,7 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
     relatedWrestlerIds: bestSegment.participantIds,
     relatedRivalryIds: getRelatedRivalryIds(bestSegment),
     relatedChampionshipIds: getRelatedChampionshipIds(bestSegment),
+    segmentId: bestSegment.segmentId,
   });
 
   if (momentumWrestler && result.biggestMomentumGain.amount > 0) {
@@ -280,17 +289,21 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
       relatedWrestlerIds: weakestSegment.participantIds,
       relatedRivalryIds: getRelatedRivalryIds(weakestSegment),
       relatedChampionshipIds: getRelatedChampionshipIds(weakestSegment),
+      segmentId: weakestSegment.segmentId,
     });
   }
 
   if (result.broadcastOverrunNotes?.length) {
+    const overrunSegment = result.segmentResults.find((segment) => segment.overrunAffected);
+
     posts.push({
       category: "analyst_take",
       author: "Gorilla Position Analytics",
       tone: result.broadcastOverrunLevel === "major" ? "angry" : "skeptical",
       priority: result.broadcastOverrunLevel === "major" ? 22 : 10,
       text: result.broadcastOverrunNotes[result.broadcastOverrunNotes.length - 1],
-      relatedWrestlerIds: result.segmentResults.find((segment) => segment.overrunAffected)?.participantIds ?? [],
+      relatedWrestlerIds: overrunSegment?.participantIds ?? [],
+      segmentId: overrunSegment?.segmentId,
     });
   }
 
@@ -323,6 +336,7 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
         ]),
         relatedWrestlerIds: segment.participantIds,
         relatedChampionshipIds: getRelatedChampionshipIds(segment),
+        segmentId: segment.segmentId,
       });
     });
 
@@ -343,6 +357,7 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
         ]),
         relatedWrestlerIds: segment.participantIds,
         relatedRivalryIds: getRelatedRivalryIds(segment),
+        segmentId: segment.segmentId,
       });
     });
 
@@ -360,6 +375,7 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
       relatedWrestlerIds: bestSegment.participantIds,
       relatedRivalryIds: getRelatedRivalryIds(bestSegment),
       relatedChampionshipIds: getRelatedChampionshipIds(bestSegment),
+      segmentId: bestSegment.segmentId,
     });
   }
 
@@ -381,16 +397,18 @@ export function generateSocialPosts(result: ShowResult, game: GameState): Social
     .sort((a, b) => b.score - a.score)
     .slice(0, result.showType === "ple" ? 8 : 7)
     .map(({ post }, index) =>
-    makePost(
-      result,
-      index + 1,
-      post.category,
-      post.author,
-      post.tone,
-      post.text,
-      post.relatedWrestlerIds,
-      post.relatedRivalryIds,
-      post.relatedChampionshipIds,
-    ),
+      makePost(
+        result,
+        eventId,
+        index + 1,
+        post.category,
+        post.author,
+        post.tone,
+        post.text,
+        post.relatedWrestlerIds,
+        post.relatedRivalryIds,
+        post.relatedChampionshipIds,
+        post.segmentId,
+      ),
     );
 }

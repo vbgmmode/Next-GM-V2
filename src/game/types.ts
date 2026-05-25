@@ -500,6 +500,9 @@ export type SocialPost = {
   weekNumber: number;
   seasonNumber: number;
   showName: string;
+  resultId?: string;
+  eventId?: string;
+  segmentId?: string;
   category: SocialCategory;
   author: string;
   text: string;

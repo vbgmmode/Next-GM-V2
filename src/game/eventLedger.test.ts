@@ -85,4 +85,21 @@ describe("durable event ledger", () => {
 
     expect(legacyMigrated?.game.eventLedger).toEqual([]);
   });
+
+  it("links generated social posts to the durable show result and event through migration", () => {
+    const roster = ledgerRoster();
+    const game = {
+      ...createNewGame({ draftedWrestlers: roster }),
+      currentShow: bookedShow(roster),
+    };
+    const resolved = runShow(game);
+    const event = getResolvedShowEvents(resolved.game)[0];
+    const migrated = migrateSavedGameState({ game: resolved.game, screen: "weekReview" });
+    const linkedPosts = migrated!.game.socialPosts.filter((post) => post.resultId === resolved.result.id);
+
+    expect(event).toBeDefined();
+    expect(linkedPosts.length).toBeGreaterThan(0);
+    expect(linkedPosts.every((post) => post.eventId === event.id)).toBe(true);
+    expect(linkedPosts.some((post) => event.relatedIds.segmentIds.includes(post.segmentId ?? ""))).toBe(true);
+  });
 });
