@@ -69,7 +69,7 @@ function createFinaleGame(segments: Segment[], week = SEASON_WEEK_COUNT): GameSt
 }
 
 describe("championshipPrestigeReads", () => {
-  it("detects season finale PLE week only on week 52", () => {
+  it("detects season finale PLE week only on the configured final week", () => {
     expect(isSeasonFinalePleWeek(SEASON_WEEK_COUNT, "ple")).toBe(true);
     expect(isSeasonFinalePleWeek(8, "ple")).toBe(false);
     expect(isSeasonFinalePleWeek(SEASON_WEEK_COUNT, "tv")).toBe(false);

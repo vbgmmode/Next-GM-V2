@@ -24,6 +24,7 @@ import { allocateCpuDraftRosters } from "./cpuRivalLoop";
 import { createDefaultMarketState, ensureWeeklyMarketBoard, getCpuBudgetDefault } from "./market";
 import { createDefaultSocialInboxState } from "./socialInboxActions";
 import { PLE_CYCLE_WEEKS, SEASON_WEEK_COUNT, SENTIMENT_NEUTRAL, STANDARD_BUDGET_AMOUNT, UNLIMITED_BUDGET_AMOUNT } from "./constants";
+import { createCpuBrandIdentity, createPlayerBrandIdentity } from "./brandIdentity";
 
 type SeedWrestler = Omit<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek"> &
   Partial<Pick<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek">>;
@@ -85,31 +86,36 @@ function createStableId(value: string) {
 }
 
 export function createRivalBrandUniverse(rivalGMAssignments: RivalGMAssignment[] = []): RivalBrandState[] {
-  return rivalGMAssignments.map((assignment) => ({
-    id: `rival-brand-${createStableId(assignment.brand)}`,
-    brandKey: assignment.brand,
-    brandName: assignment.brand,
-    assignedGMId: `rival-gm-${createStableId(assignment.gmName)}`,
-    assignedGMName: assignment.gmName,
-    assignedGMStyle: assignment.gmStyle,
-    roleLabel: "Rival Brand",
-    statusLabel: "Assigned / Watching",
-    rosterWrestlerIds: [],
-    rosterState: [],
-    championships: [],
-    rivalries: [],
-    financeReports: [],
-    freeAgentClaims: [],
-    contracts: [],
-    marketTransactions: [],
-    budget: getCpuBudgetDefault(),
-    seasonObjectives: [],
-    activityHistory: [],
-    weeklyResults: [],
-    seasonAverageScore: 0,
-    seasonRank: 0,
-    seasonTrend: "unranked",
-  }));
+  return rivalGMAssignments.map((assignment) => {
+    const id = `rival-brand-${createStableId(assignment.brand)}`;
+
+    return {
+      id,
+      brandIdentity: createCpuBrandIdentity(id, assignment.brand, assignment.brand),
+      brandKey: assignment.brand,
+      brandName: assignment.brand,
+      assignedGMId: `rival-gm-${createStableId(assignment.gmName)}`,
+      assignedGMName: assignment.gmName,
+      assignedGMStyle: assignment.gmStyle,
+      roleLabel: "Rival Brand",
+      statusLabel: "Assigned / Watching",
+      rosterWrestlerIds: [],
+      rosterState: [],
+      championships: [],
+      rivalries: [],
+      financeReports: [],
+      freeAgentClaims: [],
+      contracts: [],
+      marketTransactions: [],
+      budget: getCpuBudgetDefault(),
+      seasonObjectives: [],
+      activityHistory: [],
+      weeklyResults: [],
+      seasonAverageScore: 0,
+      seasonRank: 0,
+      seasonTrend: "unranked",
+    };
+  });
 }
 
 export const defaultCareer: Required<Omit<NewCareerOptions, "draftedWrestlers" | "draftPickGroups" | "draftBundleDiscountUsd">> = {
@@ -474,6 +480,7 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
     currentWeek: 1,
     gmName: career.gmName.trim() || defaultCareer.gmName,
     gmStyle: career.gmStyle,
+    playerBrand: createPlayerBrandIdentity(career.brandName.trim() || defaultCareer.brandName, career.brandStyle),
     brandName: career.brandName.trim() || defaultCareer.brandName,
     brandStyle: career.brandStyle,
     difficulty: career.difficulty,
@@ -495,6 +502,7 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
     seasonArchives: [],
     injuryRecoveryNotes: [],
     socialInbox: createDefaultSocialInboxState(),
+    eventLedger: [],
     currentShow: [],
     showHistory: [],
   };

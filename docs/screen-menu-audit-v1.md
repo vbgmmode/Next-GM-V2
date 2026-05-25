@@ -618,7 +618,7 @@ Move from Week Review to the next dashboard or Season Review.
 
 - Action button on Week Review.
 - New dashboard after week advance.
-- Season Review after Week 12.
+- Season Review after Week 50.
 
 ### Missing Or Thin Data
 

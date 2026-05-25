@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { DashboardDynastyPortrait } from "../components/dashboardDynasty";
-import { bookedFinishCostUsd, getBookedFinishProductionCostForShow, getSegmentProductionCostForShow, getSegmentStipulationProductionCostForShow } from "../game/finance";
+import { getBookedFinishProductionCostForShow, getSegmentProductionCostForShow, getSegmentStipulationProductionCostForShow } from "../game/finance";
 import { formatMoney } from "../game/formatters";
 import { getCatalogOptionsForType, getSegmentCatalogOption, getSegmentParticipantRange, type SegmentCatalogOption } from "../game/matchFormatCatalog";
 import { getStipulationById } from "../game/stipulationCatalog";
@@ -63,6 +63,35 @@ type OverlayState =
 
 function wrestlerById(wrestlers: Wrestler[], id?: string) {
   return id ? wrestlers.find((item) => item.id === id) : undefined;
+}
+
+function getBookedFinishLabel(segment: Segment, wrestlers: Wrestler[]) {
+  if (!segment.winnerId) {
+    return "Let match resolve";
+  }
+
+  if (segment.segmentCatalogId === "M020" && segment.participantIds.length === 4) {
+    return segment.participantIds.slice(0, 2).includes(segment.winnerId) ? "Team A wins" : "Team B wins";
+  }
+
+  return wrestlerById(wrestlers, segment.winnerId)?.name ?? "Let match resolve";
+}
+
+function getTagFinishOptions(segment: Segment, wrestlers: Wrestler[]) {
+  if (segment.segmentCatalogId !== "M020" || segment.participantIds.length !== 4) {
+    return [];
+  }
+
+  const teamAIds = segment.participantIds.slice(0, 2);
+  const teamBIds = segment.participantIds.slice(2, 4);
+
+  return [
+    { id: "team-a", label: "Team A wins", memberIds: teamAIds, winnerId: teamAIds[0] },
+    { id: "team-b", label: "Team B wins", memberIds: teamBIds, winnerId: teamBIds[0] },
+  ].map((option) => ({
+    ...option,
+    detail: getWrestlerNames(option.memberIds, wrestlers),
+  }));
 }
 
 function TalentSlotButton({
@@ -229,7 +258,8 @@ export function IntegratedSegmentComposer({
   const eligibleRivalries = getEligibleRivalries(segment, rivalries, wrestlers);
   const activeRivalryParticipantIds = useMemo(() => getActiveRivalryParticipantIds(rivalries), [rivalries]);
   const selectedRivalry = rivalries.find((rivalry) => rivalry.id === segment.rivalryId);
-  const selectedWinner = wrestlerById(wrestlers, segment.winnerId);
+  const bookedFinishLabel = getBookedFinishLabel(segment, wrestlers);
+  const tagFinishOptions = getTagFinishOptions(segment, wrestlers);
   const formatLabel = getSelectedCatalogLabel(segment);
   const currentShowType = game.calendar.find((week) => week.weekNumber === game.currentWeek)?.showType ?? "tv";
   const segmentProductionCost = getSegmentProductionCostForShow(segment, currentShowType) ?? 0;
@@ -398,11 +428,11 @@ export function IntegratedSegmentComposer({
             <button
               className={`booking-hero-badge ${segment.winnerId ? "has-value" : ""}`.trim()}
               onClick={() => openOverlay({ type: "finish" })}
-              title={selectedWinner ? selectedWinner.name : "Let match resolve"}
+              title={bookedFinishLabel}
               type="button"
             >
               <span>Finish</span>
-              <strong>{selectedWinner ? selectedWinner.name : "Let match resolve"}</strong>
+              <strong>{bookedFinishLabel}</strong>
             </button>
           ) : null}
         </div>
@@ -462,7 +492,6 @@ export function IntegratedSegmentComposer({
           <small>
             Production {formatMoney(segmentProductionCost)}
             {stipulationProductionCost ? ` + Stip ${formatMoney(stipulationProductionCost)}` : ""}
-            {bookedFinishCost ? ` + Finish ${formatMoney(bookedFinishCost)}` : ""}
           </small>
         </div>
       </div>
@@ -662,7 +691,7 @@ export function IntegratedSegmentComposer({
       {overlay.type === "finish" ? (
         <BookingOverlay ariaLabel="Finish picker" onClose={closeOverlay} title="Booked Finish" wide>
           <p className="booking-overlay-note">
-            Plain matches stay free. Choosing a winner adds {formatMoney(bookedFinishCostUsd)} in production handling.
+            Choose a winner when you want creative control, or let the match resolve from the current card context.
           </p>
           <div className="booking-action-stack">
             <button
@@ -675,7 +704,22 @@ export function IntegratedSegmentComposer({
             >
               Let Match Resolve
             </button>
-            {segment.participantIds.map((wrestlerId) => {
+            {tagFinishOptions.length
+              ? tagFinishOptions.map((option) => (
+                  <button
+                    className={`booking-btn booking-btn-secondary ${segment.winnerId && option.memberIds.includes(segment.winnerId) ? "is-active" : ""}`.trim()}
+                    key={option.id}
+                    onClick={() => {
+                      onSetManualWinner(option.winnerId);
+                      closeOverlay();
+                    }}
+                    type="button"
+                  >
+                    {option.label}
+                    <small>{option.detail}</small>
+                  </button>
+                ))
+              : segment.participantIds.map((wrestlerId) => {
               const wrestler = wrestlerById(wrestlers, wrestlerId);
 
               return wrestler ? (
@@ -689,7 +733,7 @@ export function IntegratedSegmentComposer({
                   type="button"
                 >
                   {wrestler.name}
-                  <small>Booked Finish +{formatMoney(bookedFinishCostUsd)}</small>
+                  <small>Booked Finish</small>
                 </button>
               ) : null;
             })}

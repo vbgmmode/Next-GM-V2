@@ -22,6 +22,7 @@ import {
 } from "./storyContextReads";
 import { getPrestigeMainEventAnchorSnapshot, getPrestigeMainEventAnchorSnapshotFromResult } from "./championshipPrestigeReads";
 import { getChampionshipDivisionGroup, wrestlerFitsChampionshipDivision } from "./titleCatalog";
+import { getResolvedShowCauseLinks } from "./causeLinking";
 import type {
   CalendarWeek,
   Championship,
@@ -159,16 +160,16 @@ export type WeekReviewOfficeSnapshot = {
 };
 
 
-type TitleScenePressureTone = "hot" | "steady" | "watch" | "build";
+export type TitleScenePressureTone = "hot" | "steady" | "watch" | "build";
 
-type TitleScenePressureDiagnostic = {
+export type TitleScenePressureDiagnostic = {
   id: string;
   label: string;
   detail: string;
   tone: TitleScenePressureTone;
 };
 
-type TitleScenePressureSnapshot = {
+export type TitleScenePressureSnapshot = {
   primary: TitleScenePressureDiagnostic;
   diagnostics: TitleScenePressureDiagnostic[];
   divisionHealth: string;
@@ -364,7 +365,7 @@ function canSegmentContestChampionship(segment: Segment, championship: Champions
 }
 
 
-function getTitleSceneTalentScore(wrestler: Wrestler, championship: Championship, rivalries: Rivalry[] = []) {
+export function getTitleSceneTalentScore(wrestler: Wrestler, championship: Championship, rivalries: Rivalry[] = []) {
   const championIds = new Set(championship.championIds);
   const titleRivalryBonus = rivalries.some(
     (rivalry) => rivalry.stakes === "title" && rivalry.participantIds.includes(wrestler.id) && rivalry.participantIds.some((id) => championIds.has(id)),
@@ -559,7 +560,7 @@ function getTagDivisionHealthDiagnostics(championship: Championship, game: GameS
 }
 
 
-function getTitleScenePressureSnapshot(championship: Championship, game: GameState): TitleScenePressureSnapshot {
+export function getTitleScenePressureSnapshot(championship: Championship, game: GameState): TitleScenePressureSnapshot {
   const scene = getTitleDivisionScene(championship, game.wrestlers, game.rivalries, game.currentWeek, game.championships);
   const recentHistory = getChampionshipHistory(game, championship.id, 1);
   const latestTitleEvent = recentHistory[0];
@@ -718,7 +719,7 @@ function getTitleScenePressureRank(tone: TitleScenePressureTone) {
 }
 
 
-function getChampionshipPressureSnapshots(game: GameState) {
+export function getChampionshipPressureSnapshots(game: GameState) {
   return game.championships
     .map((championship) => ({
       championship,
@@ -1681,6 +1682,7 @@ export function buildBroadcastFalloutSnapshot(result: ShowResult): BroadcastFall
 
 
 export function buildPostShowCauseLedger(game: GameState, result: ShowResult, financeReport?: FinanceReport): CauseLedgerSection[] {
+  const causeLinks = getResolvedShowCauseLinks(game, result);
   const segmentResults = result.segmentResults ?? [];
   const bestSegment = getSafeBestSegment(result);
   const validSegmentCount = segmentResults.length;
@@ -1688,7 +1690,8 @@ export function buildPostShowCauseLedger(game: GameState, result: ShowResult, fi
   const rivalrySegments = segmentResults.filter((segment) => segment.rivalryNote || segment.rivalryId);
   const affectedOverrunSegments = segmentResults.filter((segment) => segment.overrunAffected);
   const fallout = result.lockerRoomFallout;
-  const socialPosts = game.socialPosts.filter((post) => post.seasonNumber === result.seasonNumber && post.weekNumber === result.week);
+  const resolvedFinanceReport = financeReport ?? causeLinks.financeReport;
+  const socialPosts = causeLinks.socialPosts;
   const strongSegments = segmentResults.filter((segment) => segment.score >= 85);
   const coldSegments = segmentResults.filter((segment) => segment.score < 60);
   const sections: CauseLedgerSection[] = [];
@@ -1854,19 +1857,19 @@ export function buildPostShowCauseLedger(game: GameState, result: ShowResult, fi
   }
 
   const businessItems: CauseLedgerItem[] = [];
-  if (financeReport) {
+  if (resolvedFinanceReport) {
     businessItems.push({
       id: "finance-close",
       label: "Brand Office",
-      detail: `${financeReport.showName} closed at ${formatMoney(financeReport.profitLoss)} on ${formatMoney(getFinanceGrossRevenue(financeReport))} revenue and ${formatMoney(getFinanceTotalExpenses(financeReport))} costs.`,
-      tone: financeReport.profitLoss >= 0 ? "strong" : "watch",
+      detail: `${resolvedFinanceReport.showName} closed at ${formatMoney(resolvedFinanceReport.profitLoss)} on ${formatMoney(getFinanceGrossRevenue(resolvedFinanceReport))} revenue and ${formatMoney(getFinanceTotalExpenses(resolvedFinanceReport))} costs.`,
+      tone: resolvedFinanceReport.profitLoss >= 0 ? "strong" : "watch",
     });
-    if (financeReport.notes.length) {
+    if (resolvedFinanceReport.notes.length) {
       businessItems.push({
         id: "finance-note",
         label: "Business Cause",
-        detail: financeReport.notes[0],
-        tone: financeReport.profitLoss >= 0 ? "steady" : "watch",
+        detail: resolvedFinanceReport.notes[0],
+        tone: resolvedFinanceReport.profitLoss >= 0 ? "steady" : "watch",
       });
     }
   }

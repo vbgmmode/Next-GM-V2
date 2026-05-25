@@ -1,5 +1,6 @@
 import { getDefaultCatalogOption } from "./matchFormatCatalog";
 import { SEASON_WEEK_COUNT } from "./constants";
+import { createUniqueDomainId } from "./domainIds";
 import type { GameState, Segment, ShowResult, SocialInboxActionType, SocialInboxRequest, SocialInboxState, Wrestler } from "./types";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
@@ -188,7 +189,7 @@ export function acceptSocialInboxRest(game: GameState, item: MailActionInput): G
 
 export function acceptSocialInboxTvTime(game: GameState, item: MailActionInput): { game: GameState; segmentId: string } {
   const option = getDefaultCatalogOption("Promo");
-  const segmentId = `social-tv-segment-${Date.now()}-${game.currentShow.length}`;
+  const segmentId = createUniqueDomainId("social-tv-segment", [game.seasonNumber, game.currentWeek, game.currentShow.length + 1, item.wrestlerId], game.currentShow.map((segment) => segment.id));
   const segment: Segment = {
     id: segmentId,
     type: "Promo",

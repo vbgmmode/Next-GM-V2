@@ -59,9 +59,9 @@ export function WeekReviewScreen({
 
   const weekReviewCta: DynastyManagementCta = {
     eyebrow: "Calendar Action",
-    label: model.week >= 12 ? "Season Review" : "Advance Week",
+    label: model.advanceLabel,
     onClick: onAdvanceWeek,
-    tone: model.week >= 12 ? "brand" : "positive",
+    tone: model.advanceLabel === "Season Review" ? "brand" : "positive",
   };
 
   return (

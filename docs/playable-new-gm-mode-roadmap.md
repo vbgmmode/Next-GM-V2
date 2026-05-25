@@ -12,7 +12,7 @@ As of this roadmap, the game supports the solo weekly loop:
 
 Title -> Setup -> Draft Night -> Draft Review -> Dashboard -> Booking -> Run Show -> Results -> Week Review -> Advance Week -> Season Review -> Start Next Season
 
-The current mode includes localStorage persistence, deterministic show resolution, roster pressure, injuries, title changes, rivalry movement, social posts, finance reports, season archives, deterministic CPU rival brands, limited Rival Intelligence, player/CPU market transactions, tag title support, Rivalries Command Desk support for singles/tag 2v2/multi rivalry structures, and multiple read-only context surfaces.
+The current mode includes localStorage persistence, deterministic show resolution, free optional Book Finish control with simulated winners as the default, roster pressure, injuries, title changes, rivalry movement, social posts, finance reports, season archives, deterministic CPU rival brands, limited Rival Intelligence, player/CPU market transactions, tag title support, Rivalries Command Desk support for singles/tag 2v2/multi rivalry structures, and multiple read-only context surfaces.
 
 ## Near-Term Product Direction
 

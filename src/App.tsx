@@ -36,7 +36,7 @@ import {
 } from "./gameStorage";
 import { advanceGameWeek } from "./game/advanceWeek";
 import { generateExternalAiSocialCommentary } from "./game/aiCommentary";
-import { affiliationCatalog, getRosterAffiliations, getWrestlerAffiliations } from "./game/affiliationCatalog";
+import { getRosterAffiliations, getWrestlerAffiliations } from "./game/affiliationCatalog";
 import { getFinancePressureLabel } from "./game/finance";
 import { getRosterFinanceValueForWrestler } from "./game/financeCatalog";
 import {
@@ -57,9 +57,7 @@ import {
   type CpuResultsFeedSnapshot,
   type RatingsBattleSnapshot,
 } from "./game/cpuRivalLoop";
-import { simulateOpeningDraft } from "./game/openingDraft";
 import { completeMidCareerDraft, getMidCareerDraftBudget, getMidCareerDraftPool } from "./game/midCareerDraft";
-import { getDifficultyRules } from "./game/difficultyRules";
 import {
   bookingSegmentTypes,
   getCatalogOptionById,
@@ -69,19 +67,22 @@ import {
   getSegmentParticipantRange,
   type SegmentCatalogOption,
 } from "./game/matchFormatCatalog";
-import {
-  getStipulationsForSegment,
-  getStipulationById,
-  type StipulationCatalogOption,
-} from "./game/stipulationCatalog";
-import { migrateSavedGameState } from "./game/migration";
+import { getStipulationById } from "./game/stipulationCatalog";
+import { CURRENT_SAVE_VERSION, migrateSavedGameState } from "./game/migration";
+import { createUniqueDomainId } from "./game/domainIds";
 import { getWrestlerIdentityContext } from "./game/wrestlerIdentityContext";
 import {
+  getChampionshipPressureSnapshots,
   getLivingWorldPressureSnapshot,
   getPleBuildPressureSnapshot,
+  getTitleDivisionScene,
+  getTitleSceneTalentScore,
   getWeeklyDecisionPressureSnapshot,
   type LivingWorldPressureSnapshot,
   type PleBuildPressureSnapshot,
+  type TitleScenePressureDiagnostic,
+  type TitleScenePressureSnapshot,
+  type TitleScenePressureTone,
   type WeeklyDecisionPressureSnapshot,
 } from "./game/gameContextReads";
 import {
@@ -103,9 +104,7 @@ import {
   hasPlePayoff,
 } from "./game/storyContextReads";
 import {
-  applyRivalryCatalogDefaults,
   deriveRivalryStage,
-  getDefaultStorylineIdForStakes,
   getRivalryGMRead,
   getRivalryRelationship,
   getRivalryStoryline,
@@ -114,19 +113,12 @@ import {
 import {
   createNewGame,
   createRivalBrandUniverse,
-  createRivalGMAssignments,
-  defaultCareer,
   draftPool,
-  getDraftedRosterValue,
-  getStartingBudgetAmount,
 } from "./game/seed";
-import { brandChairs, getBrandChairByStyle } from "./game/brandChairs";
-import { getGmPersonaByStyle, gmPersonas } from "./game/gmPersonas";
 import {
   getBestSegment,
   getCurrentCalendarWeek,
   getResultChange,
-  getRivalryStatus,
   getShowGrade,
   getWrestlerDivisionGroup,
   hasIntergenderMatchParticipants,
@@ -156,7 +148,6 @@ import type {
   Rivalry,
   RivalryHistoryEvent,
   RivalryStructure,
-  RivalryStakes,
   RivalGMAssignment,
   Screen,
   Segment,
@@ -188,6 +179,18 @@ import {
   getWorstProfitReport,
 } from "./screens/financeScreenReads";
 import { scheduleRivalryEndInGame } from "./game/rivalryEnd";
+import { createRivalryInGame, getRivalryStructureParticipantRange, hasDuplicateRivalry } from "./game/rivalryMutations";
+import {
+  addBookingSegment,
+  removeBookingSegment,
+  replaceCurrentShow as replaceCurrentShowInGame,
+  setSegmentChampionship as setSegmentChampionshipInGame,
+  setSegmentRivalry as setSegmentRivalryInGame,
+  setSegmentStipulation as setSegmentStipulationInGame,
+  toggleSegmentParticipant,
+  updateBookingSegment,
+} from "./game/bookingMutations";
+import { assignChampionshipInGame, revokeChampionshipInGame } from "./game/championshipMutations";
 import "./screens/CalendarScreen.css";
 import "./screens/ChampionshipsScreen.css";
 import "./screens/FinanceScreen.css";
@@ -209,14 +212,25 @@ import { getWrestlerValueProfile } from "./roster/rosterValueReads";
 import type { WrestlerValueProfile } from "./roster/rosterTypes";
 import { SocialScreen, formatSocialCategory } from "./social";
 import type { SuperstarMailItem } from "./social/socialTypes";
+import { buildQaRuntimeHarnessState, getQaHarnessMode } from "./qa/qaHarness";
+import { NewGameSetupScreen } from "./setup/NewGameSetupScreen";
+import {
+  formatDraftGenderReadout,
+  formatProjectedReserve,
+  getDraftFinanceNote,
+  getDraftProspectNameClass,
+  getDraftTag,
+  getRivalUniverseRead,
+  recommendedDraftRosterTarget,
+  tvReadyDraftRosterTarget,
+  getWrestlerOverall,
+  type DraftFinanceReadout,
+} from "./setup/setupReads";
 
 type RosterSort = "popularity" | "momentum" | "fatigue" | "morale";
 type RosterFilter = "all" | "mens" | "womens" | "champions" | "injured" | "hot" | "tired" | "morale" | "underused";
 type RosterStatus = "Hot" | "Tired" | "Frustrated" | "Steady";
 type ProfilePanelId = "stats" | "gmRead" | "contractValue" | "affiliations" | "showHistory" | "championships" | "rivalries" | "social";
-type SetupStep = "contract" | "gm" | "brand" | "rules" | "draft";
-type DraftSort = "rank" | "starPower" | "popularity" | "momentum" | "ringSkill" | "promoSkill" | "fatigue";
-type DraftReservePressure = "Healthy" | "Tight" | "Over Budget";
 type TitleMode = "home" | "load";
 
 type CareerPreview = {
@@ -246,32 +260,9 @@ type WrestlerAppearance = {
   note?: string;
 };
 
-type DraftFinanceReadout = {
-  bundleDiscountUsd: number;
-  grossRosterValue: number;
-  isUnlimitedBudget: boolean;
-  missingFinanceRows: Wrestler[];
-  pressureLabel: DraftReservePressure;
-  projectedReserve: number;
-  recommendedReserveTarget: number;
-  rosterValue: number;
-  startingBudgetAmount: number;
-};
-
 type FreeAgentWatchEntry = {
   profile: WrestlerValueProfile;
   wrestler: Wrestler;
-};
-
-type DraftBundleOffer = {
-  affiliationId: string;
-  affiliationName: string;
-  kind: "tag_team" | "faction";
-  wrestlers: Wrestler[];
-  wrestlerIds: string[];
-  grossValue: number;
-  discountedValue: number;
-  discountAmount: number;
 };
 
 type GMRead = {
@@ -332,26 +323,6 @@ type PleReadinessSnapshot = {
 
 
 
-
-type TitleScenePressureTone = "hot" | "steady" | "watch" | "build";
-
-type TitleScenePressureDiagnostic = {
-  id: string;
-  label: string;
-  detail: string;
-  tone: TitleScenePressureTone;
-};
-
-type TitleScenePressureSnapshot = {
-  primary: TitleScenePressureDiagnostic;
-  diagnostics: TitleScenePressureDiagnostic[];
-  divisionHealth: string;
-  producerRead: string;
-  defenseWindow: number;
-  reignLength: number;
-  weeksSinceLastTitleEvent: number;
-  titleRivalries: Rivalry[];
-};
 
 type TitleSceneTalentRead = {
   wrestler: Wrestler;
@@ -473,36 +444,6 @@ type BrandPulseSnapshot = {
 
 
 
-type QaHarnessMode = "runtime" | "legacy-runtime" | "title-defense-runtime" | "title-change-runtime";
-
-const tvReadyDraftRosterTarget = 12;
-const recommendedDraftRosterTarget = 16;
-
-const draftSortOptions: { label: string; value: DraftSort }[] = [
-  { label: "Top 200 Rank", value: "rank" },
-  { label: "Star Power", value: "starPower" },
-  { label: "Popularity", value: "popularity" },
-  { label: "Momentum", value: "momentum" },
-  { label: "Ring", value: "ringSkill" },
-  { label: "Promo", value: "promoSkill" },
-  { label: "Lowest Fatigue", value: "fatigue" },
-];
-
-const draftBrandFilters = ["All Brands", "Raw", "SmackDown", "NXT", "AEW"];
-const draftRoleTierFilters = ["All Tiers", "MainEvent", "UpperCard", "Midcard", "Prospect", "Enhancement"];
-const draftAvailabilityFilters = ["All Status", "Active", "Injured", "Inactive"];
-const draftArchetypeFilters = ["All Styles", "Brawler", "HighFlyer", "Powerhouse", "RingGeneral", "Showman", "Technician"];
-
-type ChoiceOption<T extends string = string> = {
-  description?: string;
-  label: T;
-};
-
-const brandStyleOptions: ChoiceOption<BrandStyle>[] = brandChairs.map((chair) => ({
-  label: chair.style,
-  description: chair.description,
-}));
-
 function getBroadcastThemeForBrandStyle(brandStyle: BrandStyle) {
   if (brandStyle === "SmackDown") {
     return "blue";
@@ -519,222 +460,11 @@ function getBroadcastThemeForBrandStyle(brandStyle: BrandStyle) {
   return "red";
 }
 
-const difficultyOptions: ChoiceOption<GameDifficulty>[] = [
-  {
-    label: "Easy",
-    description: "More forgiving first-season pressure while you find your GM rhythm.",
-  },
-  {
-    label: "Medium",
-    description: "Balanced GM challenge with enough pressure to make every week matter.",
-  },
-  {
-    label: "Hard",
-    description: "Tighter margins and less room for mistakes once the show goes live.",
-  },
-  {
-    label: "Legendary",
-    description: "Ruthless expectations for players who want pressure immediately.",
-  },
-];
-const setupBudgetModeOptions: ChoiceOption<"Money Based" | "Sandbox">[] = [
-  {
-    label: "Money Based",
-    description: "Default $2M opening war chest. Draft and market moves spend real budget.",
-  },
-  {
-    label: "Sandbox",
-    description: "Unlimited money for fantasy booking and experimentation.",
-  },
-];
-const setupDraftModeOptions: ChoiceOption<"Snake Draft" | "Linear Draft" | "Randomized Each Round" | "Weighted Lottery">[] = [
-  {
-    label: "Snake Draft",
-    description: "Brand order reverses every round. Fairest default for a four-chair league.",
-  },
-  {
-    label: "Linear Draft",
-    description: "Same brand order every round. The first chair keeps the timing edge.",
-  },
-  {
-    label: "Randomized Each Round",
-    description: "Fresh random brand order every round. Chaotic, unpredictable, good for party drafts.",
-  },
-  {
-    label: "Weighted Lottery",
-    description: "Early picks weighted toward weaker chairs. Full season weighting arrives in later saves.",
-  },
-];
-const budgetOptions: ChoiceOption<StartingBudgetTier>[] = [
-  {
-    label: "$2M",
-    description: "Balanced standard war chest for a focused first season.",
-  },
-  {
-    label: "Unlimited",
-    description: "Sandbox-style money for fantasy booking and experimentation.",
-  },
-];
 const showRuntimeTargetMinutes = 120;
 const showRuntimeMinMinutes = 90;
 const showRuntimeOvertimeMinutes = 135;
 const tvRuntimeWarningMinutes = 150;
 const maxBookingSegments = 24;
-const qaHarnessParam = "qa";
-
-const setupDraftModeLabelByMode: Record<DraftMode, (typeof setupDraftModeOptions)[number]["label"]> = {
-  snake: "Snake Draft",
-  linear: "Linear Draft",
-  random: "Randomized Each Round",
-  lottery: "Weighted Lottery",
-};
-
-function getSetupDraftRulesDetail(mode: DraftMode) {
-  const label = setupDraftModeLabelByMode[mode];
-  return setupDraftModeOptions.find((option) => option.label === label)?.description ?? "";
-}
-
-function getSetupDraftModeLabel(mode: DraftMode) {
-  return setupDraftModeLabelByMode[mode];
-}
-
-function selectSetupDraftMode(choice: string): DraftMode {
-  switch (choice) {
-    case "Linear Draft":
-      return "linear";
-    case "Randomized Each Round":
-      return "random";
-    case "Weighted Lottery":
-      return "lottery";
-    default:
-      return "snake";
-  }
-}
-
-function formatBudgetTier(tier: StartingBudgetTier) {
-  return tier === "Unlimited" ? "Unlimited" : tier;
-}
-
-function getSetupBudgetModeLabel(tier: StartingBudgetTier) {
-  return tier === "Unlimited" ? "Sandbox" : "Money Based";
-}
-
-function selectSetupBudgetMode(mode: string) {
-  return mode === "Sandbox" ? "Unlimited" : "$2M";
-}
-
-function formatSetupBudgetHeaderReadout(tier: StartingBudgetTier) {
-  return tier === "Unlimited" ? "Sandbox" : formatMoney(getStartingBudgetAmount("$2M"));
-}
-
-function formatSetupBudgetRulesReadout(tier: StartingBudgetTier, amount: number) {
-  return tier === "Unlimited" ? "Sandbox" : formatStartingBudgetReadout("$2M", getStartingBudgetAmount("$2M"));
-}
-
-function getSetupBudgetRulesDetail(tier: StartingBudgetTier, amount: number) {
-  if (tier === "Unlimited") {
-    return budgetOptions.find((option) => option.label === "Unlimited")?.description ?? "Unlimited sandbox money.";
-  }
-
-  return `$2M default opening war chest. ${budgetOptions.find((option) => option.label === "$2M")?.description ?? ""}`.trim();
-}
-
-function formatStartingBudgetReadout(tier: StartingBudgetTier, amount: number) {
-  return tier === "Unlimited" ? "Unlimited" : formatMoney(amount);
-}
-
-function formatStartingBudgetDetail(tier: StartingBudgetTier, amount: number, description: string) {
-  return tier === "Unlimited" ? `${description} Sandbox reference: ${formatMoney(amount)}.` : `${formatBudgetTier(tier)} opening money. ${description}`;
-}
-
-function getDraftFinanceReadout(wrestlers: Wrestler[], startingBudgetTier: StartingBudgetTier, startingBudgetAmount: number, bundleDiscountUsd = 0): DraftFinanceReadout {
-  const financeRows = wrestlers.map((wrestler) => ({
-    financeRow: getRosterFinanceValueForWrestler(wrestler),
-    wrestler,
-  }));
-  const grossRosterValue = getDraftedRosterValue(wrestlers);
-  const rosterValue = Math.max(0, grossRosterValue - bundleDiscountUsd);
-  const projectedReserve = startingBudgetAmount - rosterValue;
-  const isUnlimitedBudget = startingBudgetTier === "Unlimited";
-  const recommendedReserveTarget = startingBudgetTier === "$2M" ? 450000 : Math.max(250000, Math.round(startingBudgetAmount * 0.15));
-  const pressureLabel: DraftReservePressure = isUnlimitedBudget
-    ? "Healthy"
-    : projectedReserve < 0
-      ? "Over Budget"
-      : projectedReserve < recommendedReserveTarget
-        ? "Tight"
-        : "Healthy";
-
-  return {
-    bundleDiscountUsd,
-    grossRosterValue,
-    isUnlimitedBudget,
-    missingFinanceRows: financeRows.filter(({ financeRow }) => !financeRow).map(({ wrestler }) => wrestler),
-    pressureLabel,
-    projectedReserve,
-    recommendedReserveTarget,
-    rosterValue,
-    startingBudgetAmount,
-  };
-}
-
-function getDraftBundleOffers(availableWrestlers: Wrestler[]): DraftBundleOffer[] {
-  const availableById = new Map(availableWrestlers.map((wrestler) => [wrestler.id, wrestler]));
-
-  return affiliationCatalog
-    .filter((affiliation) => affiliation.kind === "tag_team" || affiliation.kind === "faction")
-    .flatMap((affiliation) => {
-      const eligibleMemberIds = affiliation.memberWrestlerIds.filter((id) => draftPool.some((wrestler) => wrestler.id === id));
-      const wrestlers = eligibleMemberIds
-        .map((id) => availableById.get(id))
-        .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
-
-      if (wrestlers.length < 2 || wrestlers.length !== eligibleMemberIds.length) {
-        return [];
-      }
-
-      const grossValue = getDraftedRosterValue(wrestlers);
-      const discountedValue = Math.round(grossValue * 0.8);
-      const kind: DraftBundleOffer["kind"] = affiliation.kind === "tag_team" ? "tag_team" : "faction";
-
-      return [
-        {
-          affiliationId: affiliation.id,
-          affiliationName: affiliation.name,
-          kind,
-          wrestlers,
-          wrestlerIds: wrestlers.map((wrestler) => wrestler.id),
-          grossValue,
-          discountedValue,
-          discountAmount: grossValue - discountedValue,
-        },
-      ];
-    })
-    .sort((a, b) => b.discountAmount - a.discountAmount || a.affiliationName.localeCompare(b.affiliationName));
-}
-
-function formatProjectedReserve(readout: DraftFinanceReadout) {
-  return readout.isUnlimitedBudget ? "Unlimited" : formatMoney(readout.projectedReserve);
-}
-
-function getDraftFinanceNote(readout: DraftFinanceReadout) {
-  const missingValueNote = readout.missingFinanceRows.length
-    ? ` ${readout.missingFinanceRows.length} roster value${readout.missingFinanceRows.length === 1 ? "" : "s"} pending and excluded from this total.`
-    : "";
-
-  return `Opening reserve after roster value is carried into Week 1. ${tvReadyDraftRosterTarget} wrestlers is TV-ready guidance; ${recommendedDraftRosterTarget} is the healthy roster target. Aim for about ${formatMoney(readout.recommendedReserveTarget)} left for production and market flexibility.${missingValueNote}`;
-}
-
-function getRivalUniverseRead(rivalBrands: RivalBrandState[]) {
-  if (!rivalBrands.length) {
-    return "No rival brand chairs are assigned for this career frame.";
-  }
-
-  const rosterCount = rivalBrands.reduce((sum, brand) => sum + brand.rosterWrestlerIds.length, 0);
-  const activityCount = rivalBrands.reduce((sum, brand) => sum + brand.activityHistory.length, 0);
-
-  return `${rivalBrands.length} rival brand chair${rivalBrands.length === 1 ? "" : "s"} active in the ratings race. ${rosterCount} CPU roster claim${rosterCount === 1 ? "" : "s"} and ${activityCount} activity beat${activityCount === 1 ? "" : "s"} are logged as competitive context.`;
-}
 
 function getBrandPulseRivalLabel(score: number, socialCount: number, profitLoss: number | undefined, index: number) {
   if (score >= 88 && socialCount >= 2) {
@@ -872,10 +602,6 @@ function getSegmentDurationMinutes(segment: Segment) {
   return segment.durationMinutes ?? getSegmentCatalogOption(segment)?.defaultDurationMinutes ?? 8;
 }
 
-function getStipulationsForSegmentId(segment: Segment): StipulationCatalogOption[] {
-  return getStipulationsForSegment(segment);
-}
-
 function getSegmentStipulationLabel(segment: Pick<Segment, "stipulationId" | "type" | "segmentCatalogId">) {
   const stipulation = getStipulationById(segment.stipulationId);
 
@@ -886,19 +612,6 @@ function getResolvedSegmentStipulationLabel(segment: Pick<SegmentResult, "stipul
   const stipulation = getStipulationById(segment.stipulationId);
 
   return stipulation ? stipulation.label : undefined;
-}
-
-function sanitizeSegmentStipulation(segment: Segment) {
-  const allowedStipulations = getStipulationsForSegmentId(segment);
-  if (!segment.stipulationId) {
-    return segment;
-  }
-
-  if (!allowedStipulations.some((option) => option.id === segment.stipulationId)) {
-    return { ...segment, stipulationId: undefined };
-  }
-
-  return segment;
 }
 
 function getSegmentRuntime(segment: Segment) {
@@ -1471,23 +1184,6 @@ function getWrestlerStatus(wrestler: Wrestler): RosterStatus {
   return "Steady";
 }
 
-function getWrestlerOverall(wrestler: Wrestler) {
-  return Math.max(
-    40,
-    Math.min(
-      99,
-      Math.round(
-        wrestler.popularity * 0.24 +
-          wrestler.momentum * 0.22 +
-          wrestler.ringSkill * 0.18 +
-          wrestler.promoSkill * 0.16 +
-          wrestler.morale * 0.12 +
-          (100 - wrestler.fatigue) * 0.08,
-      ),
-    ),
-  );
-}
-
 function getMoraleEmoji(morale: number) {
   if (morale >= 80) return "😄";
   if (morale >= 65) return "🙂";
@@ -1690,82 +1386,6 @@ function getRosterSortLabel(sort: RosterSort) {
   return labels[sort];
 }
 
-function getDraftSortValue(wrestler: Wrestler, sort: DraftSort) {
-  if (sort === "rank") {
-    return -(wrestler.draftRank ?? 999);
-  }
-
-  if (sort === "starPower") {
-    return wrestler.popularity + wrestler.momentum;
-  }
-
-  if (sort === "fatigue") {
-    return -wrestler.fatigue;
-  }
-
-  return wrestler[sort];
-}
-
-function getDraftSearchText(wrestler: Wrestler) {
-  const identity = getWrestlerIdentityContext(wrestler);
-
-  return [
-    wrestler.name,
-    wrestler.sourceBrand,
-    wrestler.sourceAvailability,
-    wrestler.roleTier,
-    identity.role,
-    wrestler.alignment,
-    identity.wrestlingStyle,
-    identity.promoStyle,
-    wrestler.archetype,
-    wrestler.division,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-}
-
-function getDraftTag(value: string | undefined, fallback = "Unlisted") {
-  return value?.trim() || fallback;
-}
-
-function getDraftProspectNameClass(name: string) {
-  const length = name.trim().length;
-
-  if (length > 18) {
-    return "is-xlong";
-  }
-
-  if (length > 14) {
-    return "is-long";
-  }
-
-  return "";
-}
-
-function getDraftRosterGenderCounts(roster: Wrestler[]) {
-  return roster.reduce(
-    (counts, wrestler) => {
-      const group = getWrestlerDivisionGroup(wrestler);
-
-      if (group === "mens") {
-        counts.men += 1;
-      } else if (group === "womens") {
-        counts.women += 1;
-      }
-
-      return counts;
-    },
-    { men: 0, women: 0 },
-  );
-}
-
-function formatDraftGenderReadout(roster: Wrestler[]) {
-  const { men, women } = getDraftRosterGenderCounts(roster);
-  return `${men} men · ${women} women`;
-}
-
 function getDraftValueCounts(wrestlers: Wrestler[], getValue: (wrestler: Wrestler) => string | undefined) {
   return wrestlers.reduce<Record<string, number>>((counts, wrestler) => {
     const value = getDraftTag(getValue(wrestler));
@@ -1900,51 +1520,6 @@ function buildSanctionedTitleMatchSegment(game: GameState, sourceSegment: Segmen
 
 function getTopContenders(championship: Championship, wrestlers: Wrestler[], limit = 3) {
   return getTitleDivisionScene(championship, wrestlers).topContenders.slice(0, limit);
-}
-
-function getTitleSceneTalentScore(wrestler: Wrestler, championship: Championship, rivalries: Rivalry[] = []) {
-  const championIds = new Set(championship.championIds);
-  const titleRivalryBonus = rivalries.some(
-    (rivalry) => rivalry.stakes === "title" && rivalry.participantIds.includes(wrestler.id) && rivalry.participantIds.some((id) => championIds.has(id)),
-  )
-    ? 18
-    : 0;
-
-  return wrestler.popularity + wrestler.momentum + titleRivalryBonus;
-}
-
-function getTitleDivisionScene(championship: Championship, wrestlers: Wrestler[], rivalries: Rivalry[] = [], currentWeek = 1, championships: Championship[] = []) {
-  const championIds = new Set(championship.championIds);
-  const otherChampionIds = new Set(
-    championships.filter((title) => title.id !== championship.id).flatMap((title) => title.championIds),
-  );
-  const champions = championship.championIds.map((id) => wrestlers.find((wrestler) => wrestler.id === id)).filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
-  const manualContenders = (championship.contenderIds ?? [])
-    .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
-    .filter((wrestler): wrestler is Wrestler => Boolean(wrestler && !championIds.has(wrestler.id) && wrestlerFitsChampionshipDivision(wrestler, championship)));
-  const manualContenderIds = new Set(manualContenders.map((wrestler) => wrestler.id));
-  const eligibleRoster = wrestlers
-    .filter((wrestler) => !championIds.has(wrestler.id))
-    .filter((wrestler) => !otherChampionIds.has(wrestler.id))
-    .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship))
-    .sort((a, b) => getTitleSceneTalentScore(b, championship, rivalries) - getTitleSceneTalentScore(a, championship, rivalries));
-  const derivedTopContenders = eligibleRoster.filter((wrestler) => !manualContenderIds.has(wrestler.id)).slice(0, Math.max(0, 3 - manualContenders.length));
-  const topContenders = championship.contenderIds ? manualContenders : [...manualContenders, ...derivedTopContenders].slice(0, 3);
-  const topContenderIds = new Set(topContenders.map((wrestler) => wrestler.id));
-  const risingContenders = eligibleRoster
-    .filter((wrestler) => !topContenderIds.has(wrestler.id))
-    .filter((wrestler) => wrestler.momentum >= 80 || getWeeksSinceLastBooked(wrestler, currentWeek) >= 2)
-    .sort((a, b) => b.momentum - a.momentum || b.popularity - a.popularity)
-    .slice(0, 3);
-  const outsideDivision = wrestlers.filter((wrestler) => !championIds.has(wrestler.id) && !wrestlerFitsChampionshipDivision(wrestler, championship));
-
-  return {
-    champions,
-    topContenders,
-    risingContenders,
-    eligibleRoster,
-    outsideDivision,
-  };
 }
 
 function getTagDivisionHealthDiagnostics(championship: Championship, game: GameState): TitleScenePressureDiagnostic[] {
@@ -2291,35 +1866,6 @@ function getTitleScenePressureSnapshot(championship: Championship, game: GameSta
   };
 }
 
-function getTitleScenePressureRank(tone: TitleScenePressureTone) {
-  if (tone === "build") {
-    return 4;
-  }
-
-  if (tone === "watch") {
-    return 3;
-  }
-
-  if (tone === "hot") {
-    return 2;
-  }
-
-  return 1;
-}
-
-function getChampionshipPressureSnapshots(game: GameState) {
-  return game.championships
-    .map((championship) => ({
-      championship,
-      snapshot: getTitleScenePressureSnapshot(championship, game),
-    }))
-    .sort(
-      (a, b) =>
-        getTitleScenePressureRank(b.snapshot.primary.tone) - getTitleScenePressureRank(a.snapshot.primary.tone) ||
-        b.championship.prestige - a.championship.prestige,
-    );
-}
-
 function getTitleSceneTalentRead(wrestler: Wrestler, game: GameState, currentChampionshipId: string): TitleSceneTalentRead {
   const identity = getWrestlerIdentityContext(wrestler);
   const pressureTags = getRosterPressureTags(wrestler, game.currentWeek);
@@ -2662,7 +2208,10 @@ function getWrestlerRivalryHistory(game: GameState, wrestlerId: string, limit = 
     .slice(0, limit);
 }
 
-function formatHistoryStamp(event: Pick<ChampionshipHistoryEvent | RivalryHistoryEvent, "seasonNumber" | "weekNumber" | "showName" | "showType">) {
+function formatHistoryStamp(
+  event: Pick<ChampionshipHistoryEvent | RivalryHistoryEvent, "seasonNumber" | "weekNumber"> &
+    Partial<Pick<ChampionshipHistoryEvent | RivalryHistoryEvent, "showName" | "showType">>,
+) {
   const showLabel = event.showName ? ` · ${event.showName}${event.showType ? ` (${getShowTypeLabel(event.showType)})` : ""}` : "";
   return `S${event.seasonNumber} W${event.weekNumber}${showLabel}`;
 }
@@ -3086,18 +2635,6 @@ function formatRivalryStructure(structure: RivalryStructure) {
   }
 }
 
-function getRivalryStructureParticipantRange(structure: RivalryStructure) {
-  if (structure === "tag_team") {
-    return { min: 4, max: 4 };
-  }
-
-  if (structure === "multi_person") {
-    return { min: 3, max: 3 };
-  }
-
-  return { min: 2, max: 2 };
-}
-
 function getDefaultRivalryComposerParticipantIds(wrestlers: Wrestler[]) {
   const compatibleGroup = wrestlers.find((wrestler, index) => wrestlers.slice(index + 1).some((candidate) => canWrestlersShareMatch([wrestler, candidate])));
   const compatiblePeers = compatibleGroup ? wrestlers.filter((wrestler) => canWrestlersShareMatch([compatibleGroup, wrestler])) : wrestlers;
@@ -3167,16 +2704,6 @@ function buildTagTeamChallengerRows(
   }
 
   return rows;
-}
-
-function getRivalryStructureKey(structure: RivalryStructure, participantIds: string[]) {
-  if (structure === "tag_team" && participantIds.length === 4) {
-    const firstSide = participantIds.slice(0, 2).sort().join("+");
-    const secondSide = participantIds.slice(2, 4).sort().join("+");
-    return [firstSide, secondSide].sort().join("|");
-  }
-
-  return [...participantIds].sort().join("|");
 }
 
 function formatRivalryParticipantsForStructure(rivalry: Rivalry, wrestlers: Wrestler[]) {
@@ -3258,23 +2785,6 @@ function getHottestRivalry(rivalries: Rivalry[]) {
 
 function getCoolingRivalry(rivalries: Rivalry[]) {
   return rivalries.find((rivalry) => rivalry.status === "stale") ?? rivalries.find((rivalry) => rivalry.status === "cooling");
-}
-
-function hasDuplicateRivalry(rivalries: Rivalry[], structure: RivalryStructure, participantIds: string[]) {
-  const key = getRivalryStructureKey(structure, participantIds);
-  return rivalries.some((rivalry) => getRivalryStructureKey(getRivalryStructure(rivalry), rivalry.participantIds) === key);
-}
-
-function formatRivalryStakes(stakes: RivalryStakes) {
-  return stakes.charAt(0).toUpperCase() + stakes.slice(1);
-}
-
-function getInitialRivalryHeat(wrestlers: Wrestler[]) {
-  if (!wrestlers.length) {
-    return 50;
-  }
-
-  return Math.round(wrestlers.reduce((total, wrestler) => total + wrestler.popularity + wrestler.momentum, 0) / (wrestlers.length * 2));
 }
 
 function getShowTypeLabel(showType: ShowType) {
@@ -3776,7 +3286,7 @@ function buildSavedGameState(
   screen: SavedGameState["screen"],
   profileState?: Pick<SavedGameState, "profileReturnScreen" | "profileWrestlerId">,
 ): SavedGameState {
-  return { game, screen, ...profileState };
+  return { saveVersion: CURRENT_SAVE_VERSION, game, screen, ...profileState };
 }
 
 function buildCareerPreview(state: SavedGameState): CareerPreview {
@@ -3827,186 +3337,6 @@ function loadCareerSaves() {
 
 function getMostRecentCareer(careerSaves: CareerSave[]) {
   return careerSaves[0] ?? null;
-}
-
-function getQaHarnessMode(): QaHarnessMode | null {
-  const env = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env;
-
-  if (!env?.DEV) {
-    return null;
-  }
-
-  const mode = new URLSearchParams(window.location.search).get(qaHarnessParam);
-  return mode === "runtime" || mode === "legacy-runtime" || mode === "title-defense-runtime" || mode === "title-change-runtime" ? mode : null;
-}
-
-function getQaSegmentOption(id: string) {
-  const option = getCatalogOptionById(id);
-
-  if (!option) {
-    throw new Error(`Missing QA segment catalog option: ${id}`);
-  }
-
-  return option;
-}
-
-function createQaSegment(id: string, catalogId: string, participantIds: string[], durationMinutes: number, championshipId?: string): Segment {
-  const option = getQaSegmentOption(catalogId);
-
-  return {
-    id,
-    type: option.family,
-    participantIds,
-    championshipId,
-    segmentCatalogId: option.id,
-    segmentDisplayName: option.label,
-    durationMinutes,
-    participantMin: option.minParticipants,
-    participantMax: option.maxParticipants,
-  };
-}
-
-function tuneQaTitleFixtureWrestler(wrestler: Wrestler, role: "champion-favorite" | "champion-underdog" | "challenger-favorite" | "challenger-underdog") {
-  const favoriteStats = {
-    popularity: 99,
-    momentum: 99,
-    ringSkill: 99,
-    morale: 92,
-    fatigue: 8,
-  };
-  const underdogStats = {
-    popularity: 58,
-    momentum: 45,
-    ringSkill: 52,
-    morale: 58,
-    fatigue: 42,
-  };
-  const stats = role === "champion-favorite" || role === "challenger-favorite" ? favoriteStats : underdogStats;
-
-  return {
-    ...wrestler,
-    ...stats,
-    injuryStatus: "healthy" as const,
-    injuryDescription: undefined,
-    injuryWeeksRemaining: 0,
-    injuryOccurredWeek: undefined,
-  };
-}
-
-function buildQaTitlePayoffHarnessState(mode: "title-defense-runtime" | "title-change-runtime", baseGame: GameState): SavedGameState {
-  const fixtureGame: GameState = {
-    ...baseGame,
-    brandName: mode === "title-defense-runtime" ? "QA Title Defense" : "QA Title Change",
-    championships: baseGame.championships.map((championship) => ({ ...championship, championIds: [...championship.championIds] })),
-    currentShow: [],
-  };
-  const title = fixtureGame.championships.find((championship) => {
-    if (championship.eligibleMatchScope === "tag_team" || championship.division === "Tag Team") {
-      return false;
-    }
-
-    return fixtureGame.wrestlers.filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship)).length >= 2;
-  });
-
-  if (!title) {
-    return buildSavedGameState(fixtureGame, "booking");
-  }
-
-  const eligibleWrestlers = fixtureGame.wrestlers.filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, title));
-  const champion = eligibleWrestlers[0];
-  const challenger = eligibleWrestlers[1];
-  const supportIds = fixtureGame.wrestlers
-    .filter((wrestler) => wrestler.id !== champion.id && wrestler.id !== challenger.id)
-    .slice(0, 3)
-    .map((wrestler) => wrestler.id);
-
-  fixtureGame.wrestlers = fixtureGame.wrestlers.map((wrestler) => {
-    if (wrestler.id === champion.id) {
-      return tuneQaTitleFixtureWrestler(wrestler, mode === "title-defense-runtime" ? "champion-favorite" : "champion-underdog");
-    }
-
-    if (wrestler.id === challenger.id) {
-      return tuneQaTitleFixtureWrestler(wrestler, mode === "title-defense-runtime" ? "challenger-underdog" : "challenger-favorite");
-    }
-
-    return { ...wrestler, injuryStatus: "healthy" as const, injuryWeeksRemaining: 0 };
-  });
-  fixtureGame.championships = fixtureGame.championships.map((championship) =>
-    championship.id === title.id
-      ? {
-          ...championship,
-          championIds: [champion.id],
-          contenderIds: [challenger.id],
-          defenses: mode === "title-defense-runtime" ? 2 : 0,
-          reignStartWeek: 1,
-        }
-      : championship,
-  );
-  fixtureGame.currentShow = [
-    createQaSegment("qa-title-opener", "P001", [supportIds[0] ?? champion.id], 20),
-    createQaSegment("qa-title-feature", "M001", [champion.id, challenger.id], 35, title.id),
-    createQaSegment("qa-title-story", "A001", [supportIds[1] ?? challenger.id], 20),
-    createQaSegment("qa-title-main", "P002", [supportIds[2] ?? champion.id], 20),
-  ];
-
-  return buildSavedGameState(fixtureGame, "booking");
-}
-
-function buildQaRuntimeHarnessState(mode: QaHarnessMode): SavedGameState {
-  const draftedWrestlers = draftPool.slice(0, tvReadyDraftRosterTarget);
-  const game = createNewGame({
-    ...defaultCareer,
-    draftedWrestlers,
-    brandName: "QA Runtime",
-    brandStyle: "Raw",
-    rivalGMAssignments: createRivalGMAssignments("Raw"),
-  });
-
-  if (mode === "title-defense-runtime" || mode === "title-change-runtime") {
-    return buildQaTitlePayoffHarnessState(mode, game);
-  }
-
-  if (mode === "legacy-runtime") {
-    const focusWrestler = game.wrestlers[0];
-    const legacyResult: ShowResult = {
-      id: "qa-legacy-runtime-result",
-      seasonNumber: game.seasonNumber,
-      week: game.currentWeek,
-      brandName: game.brandName,
-      showName: "Legacy Runtime TV",
-      showType: "tv",
-      totalScore: 82,
-      segmentResults: [
-        {
-          segmentId: "qa-legacy-runtime-segment",
-          type: "Promo",
-          participantNames: [focusWrestler.name],
-          participantIds: [focusWrestler.id],
-          score: 82,
-          momentumChanges: { [focusWrestler.id]: 4 },
-          fatigueChanges: { [focusWrestler.id]: 2 },
-          recapNote: `${focusWrestler.name} carried a legacy promo result without runtime fields.`,
-        },
-      ],
-      biggestMomentumGain: { name: focusWrestler.name, amount: 4 },
-      biggestFatigueIncrease: { name: focusWrestler.name, amount: 2 },
-      titleNotes: [],
-      rivalryNotes: [],
-      titleHistoryEvents: [],
-      rivalryHistoryEvents: [],
-      lockerRoomFallout: {
-        moraleDrops: [],
-        moraleBoosts: [],
-        overuseWarnings: [],
-        underuseWarnings: [],
-        injuryNotes: [],
-      },
-    };
-
-    return buildSavedGameState({ ...game, showHistory: [legacyResult] }, "results");
-  }
-
-  return buildSavedGameState(game, "booking");
 }
 
 function App() {
@@ -4226,27 +3556,15 @@ function App() {
 
   function addSegment(type: SegmentType, segmentId?: string) {
     setGame((current) => {
-      if (!current || current.currentShow.length >= maxBookingSegments) {
+      if (!current) {
         return current;
       }
 
-      const catalogOption = getDefaultCatalogOption(type);
-      const updatedGame = {
-        ...current,
-        currentShow: [
-          ...current.currentShow,
-          {
-            id: segmentId ?? `segment-${Date.now()}-${current.currentShow.length}`,
-            type,
-            participantIds: [],
-            segmentCatalogId: catalogOption?.id,
-            segmentDisplayName: catalogOption?.label,
-            durationMinutes: catalogOption?.defaultDurationMinutes,
-            participantMin: catalogOption?.minParticipants,
-            participantMax: catalogOption?.maxParticipants,
-          },
-        ],
-      };
+      const updatedGame = addBookingSegment(current, type, segmentId, maxBookingSegments);
+
+      if (updatedGame === current) {
+        return current;
+      }
 
       persistGameSnapshot(updatedGame, "booking");
       return updatedGame;
@@ -4388,7 +3706,7 @@ function App() {
         return current;
       }
 
-      const segmentId = `rivalry-segment-${Date.now()}-${current.currentShow.length}`;
+      const segmentId = createUniqueDomainId("rivalry-segment", [current.seasonNumber, current.currentWeek, current.currentShow.length + 1, rivalry.id], current.currentShow.map((segment) => segment.id));
       const segment = buildRivalryBookingSegment(current, rivalry, segmentId);
 
       if (!segment) {
@@ -4439,7 +3757,7 @@ function App() {
       const contenderCount = isTagTitle ? (championship.championIds.length ? 2 : 4) : (championship.championIds.length ? 1 : 2);
       const challengerIds = contenderPool.slice(0, contenderCount).map((wrestler) => wrestler.id);
       const participantIds = [...championship.championIds, ...challengerIds];
-      const segmentId = `title-segment-${Date.now()}-${current.currentShow.length}`;
+      const segmentId = createUniqueDomainId("title-segment", [current.seasonNumber, current.currentWeek, current.currentShow.length + 1, championship.id], current.currentShow.map((segment) => segment.id));
       const titleSegment: Segment = {
         id: segmentId,
         type: "Match",
@@ -4503,43 +3821,11 @@ function App() {
         return current;
       }
 
-      const championship = current.championships.find((title) => title.id === championshipId);
+      const updatedGame = revokeChampionshipInGame(current, championshipId);
 
-      if (!championship || !championship.championIds.length) {
+      if (updatedGame === current) {
         return current;
       }
-
-      const calendarWeek = getCurrentCalendarWeek(current);
-      const previousChampionIds = [...championship.championIds];
-      const note = `${getWrestlerNames(previousChampionIds, current.wrestlers)} had the ${championship.name} revoked by the GM office. The title is vacant until the player books a new champion.`;
-      const event: ChampionshipHistoryEvent = {
-        id: `s${current.seasonNumber}-w${current.currentWeek}-${championship.id}-revoked-${Date.now()}`,
-        championshipId: championship.id,
-        championshipName: championship.name,
-        eventType: "revoked",
-        championIds: [],
-        previousChampionIds,
-        weekNumber: current.currentWeek,
-        seasonNumber: current.seasonNumber,
-        showName: calendarWeek.showName,
-        showType: calendarWeek.showType,
-        note,
-      };
-      const updatedGame = {
-        ...current,
-        championships: current.championships.map((title) =>
-          title.id === championshipId
-            ? {
-                ...title,
-                championIds: [],
-                defenses: 0,
-                reignStartWeek: current.currentWeek,
-              }
-            : title,
-        ),
-        championshipHistory: [...(current.championshipHistory ?? []), event],
-        currentShow: current.currentShow.map((segment) => (segment.championshipId === championshipId ? { ...segment, championshipId: undefined } : segment)),
-      };
 
       persistGameSnapshot(updatedGame, "championships");
       return updatedGame;
@@ -4552,59 +3838,11 @@ function App() {
         return current;
       }
 
-      const championship = current.championships.find((title) => title.id === championshipId);
+      const updatedGame = assignChampionshipInGame(current, championshipId, championIds);
 
-      if (!championship || championship.championIds.length) {
+      if (updatedGame === current) {
         return current;
       }
-
-      const isTagTitle = isTagChampionship(championship);
-      const requiredChampionCount = isTagTitle ? 2 : 1;
-      const nextChampionIds = championIds.slice(0, requiredChampionCount);
-
-      if (nextChampionIds.length !== requiredChampionCount) {
-        return current;
-      }
-
-      const nextChampions = nextChampionIds
-        .map((id) => current.wrestlers.find((wrestler) => wrestler.id === id))
-        .filter((wrestler): wrestler is Wrestler => Boolean(wrestler && wrestlerFitsChampionshipDivision(wrestler, championship)));
-
-      if (nextChampions.length !== requiredChampionCount) {
-        return current;
-      }
-
-      const calendarWeek = getCurrentCalendarWeek(current);
-      const championLabel = getWrestlerNames(nextChampionIds, current.wrestlers);
-      const note = `${championLabel} ${nextChampionIds.length === 1 ? "was" : "were"} assigned the vacant ${championship.name} by the GM office.`;
-      const event: ChampionshipHistoryEvent = {
-        id: `s${current.seasonNumber}-w${current.currentWeek}-${championship.id}-assigned-${Date.now()}`,
-        championshipId: championship.id,
-        championshipName: championship.name,
-        eventType: "assigned",
-        championIds: nextChampionIds,
-        previousChampionIds: [],
-        weekNumber: current.currentWeek,
-        seasonNumber: current.seasonNumber,
-        showName: calendarWeek.showName,
-        showType: calendarWeek.showType,
-        note,
-      };
-      const updatedGame = {
-        ...current,
-        championships: current.championships.map((title) =>
-          title.id === championshipId
-            ? {
-                ...title,
-                championIds: nextChampionIds,
-                contenderIds: (title.contenderIds ?? []).filter((id) => !nextChampionIds.includes(id)),
-                defenses: 0,
-                reignStartWeek: current.currentWeek,
-              }
-            : title,
-        ),
-        championshipHistory: [...(current.championshipHistory ?? []), event],
-      };
 
       persistGameSnapshot(updatedGame, "championships");
       return updatedGame;
@@ -4617,45 +3855,11 @@ function App() {
         return current;
       }
 
-      const updatedGame = {
-        ...current,
-        currentShow: current.currentShow.map((segment) => {
-          if (segment.id !== segmentId) {
-            return segment;
-          }
+      const updatedGame = updateBookingSegment(current, segmentId, updates);
 
-          let updatedSegment = { ...segment, ...updates };
-          const range = getSegmentParticipantRange(updatedSegment);
-
-          if (updatedSegment.participantIds.length > range.max) {
-            updatedSegment = { ...updatedSegment, participantIds: updatedSegment.participantIds.slice(0, range.max) };
-          }
-
-          if (updatedSegment.winnerId && (updatedSegment.type !== "Match" || !updatedSegment.participantIds.includes(updatedSegment.winnerId))) {
-            updatedSegment = { ...updatedSegment, winnerId: undefined };
-          }
-
-          const championship = updatedSegment.championshipId
-            ? current.championships.find((title) => title.id === updatedSegment.championshipId)
-            : undefined;
-
-          if (championship && !canSegmentAttachChampionship(updatedSegment, championship, current.wrestlers)) {
-            updatedSegment = { ...updatedSegment, championshipId: undefined };
-          }
-
-          const rivalry = updatedSegment.rivalryId
-            ? current.rivalries.find((activeRivalry) => activeRivalry.id === updatedSegment.rivalryId)
-            : undefined;
-
-          if (rivalry && !canSegmentAttachRivalry(updatedSegment, rivalry, current.wrestlers)) {
-            updatedSegment = { ...updatedSegment, rivalryId: undefined };
-          }
-
-          updatedSegment = sanitizeSegmentStipulation(updatedSegment);
-
-          return updatedSegment;
-        }),
-      };
+      if (updatedGame === current) {
+        return current;
+      }
 
       persistGameSnapshot(updatedGame, "booking");
       return updatedGame;
@@ -4668,7 +3872,7 @@ function App() {
         return current;
       }
 
-      const updatedGame = { ...current, currentShow: segments };
+      const updatedGame = replaceCurrentShowInGame(current, segments);
       persistGameSnapshot(updatedGame, "booking");
       return updatedGame;
     });
@@ -4680,22 +3884,11 @@ function App() {
         return current;
       }
 
-      const updatedGame = {
-        ...current,
-        currentShow: current.currentShow.map((segment) => {
-          if (segment.id !== segmentId) {
-            return segment;
-          }
+      const updatedGame = setSegmentChampionshipInGame(current, segmentId, championshipId);
 
-          const championship = current.championships.find((title) => title.id === championshipId);
-
-          if (!championshipId || !championship || !canSegmentAttachChampionship(segment, championship, current.wrestlers)) {
-            return { ...segment, championshipId: undefined };
-          }
-
-          return { ...segment, championshipId };
-        }),
-      };
+      if (updatedGame === current) {
+        return current;
+      }
 
       persistGameSnapshot(updatedGame, "booking");
       return updatedGame;
@@ -4743,25 +3936,11 @@ function App() {
         return current;
       }
 
-      const updatedGame = {
-        ...current,
-        currentShow: current.currentShow.map((segment) => {
-          if (segment.id !== segmentId) {
-            return segment;
-          }
+      const updatedGame = setSegmentStipulationInGame(current, segmentId, stipulationId);
 
-          if (!stipulationId) {
-            return { ...segment, stipulationId: undefined };
-          }
-
-          const allowed = getStipulationsForSegmentId({ ...segment });
-          if (!allowed.some((option) => option.id === stipulationId)) {
-            return { ...segment, stipulationId: undefined };
-          }
-
-          return { ...segment, stipulationId };
-        }),
-      };
+      if (updatedGame === current) {
+        return current;
+      }
 
       persistGameSnapshot(updatedGame, "booking");
       return updatedGame;
@@ -4774,22 +3953,11 @@ function App() {
         return current;
       }
 
-      const updatedGame = {
-        ...current,
-        currentShow: current.currentShow.map((segment) => {
-          if (segment.id !== segmentId) {
-            return segment;
-          }
+      const updatedGame = setSegmentRivalryInGame(current, segmentId, rivalryId);
 
-          const rivalry = current.rivalries.find((activeRivalry) => activeRivalry.id === rivalryId);
-
-          if (!rivalryId || !rivalry || !canSegmentAttachRivalry(segment, rivalry, current.wrestlers)) {
-            return { ...segment, rivalryId: undefined };
-          }
-
-          return { ...segment, rivalryId };
-        }),
-      };
+      if (updatedGame === current) {
+        return current;
+      }
 
       persistGameSnapshot(updatedGame, "booking");
       return updatedGame;
@@ -4802,7 +3970,12 @@ function App() {
         return current;
       }
 
-      const updatedGame = { ...current, currentShow: current.currentShow.filter((segment) => segment.id !== id) };
+      const updatedGame = removeBookingSegment(current, id);
+
+      if (updatedGame === current) {
+        return current;
+      }
+
       persistGameSnapshot(updatedGame, "booking");
       return updatedGame;
     });
@@ -4814,52 +3987,11 @@ function App() {
         return current;
       }
 
-      const updatedGame = {
-        ...current,
-        currentShow: current.currentShow.map((segment) => {
-          if (segment.id !== segmentId) {
-            return segment;
-          }
+      const updatedGame = toggleSegmentParticipant(current, segmentId, wrestlerId);
 
-          const isSelected = segment.participantIds.includes(wrestlerId);
-          const wrestler = current.wrestlers.find((talent) => talent.id === wrestlerId);
-
-          if (!isSelected && (wrestler?.injuryStatus === "major" || isWrestlerProtectedRest(current, wrestlerId))) {
-            return segment;
-          }
-
-          const participantLimit = getSegmentParticipantRange(segment).max;
-          const participantIds = isSelected
-            ? segment.participantIds.filter((id) => id !== wrestlerId)
-            : segment.participantIds.length < participantLimit
-              ? [...segment.participantIds, wrestlerId]
-              : segment.participantIds;
-
-          let updatedSegment = { ...segment, participantIds };
-
-          if (updatedSegment.winnerId && !participantIds.includes(updatedSegment.winnerId)) {
-            updatedSegment = { ...updatedSegment, winnerId: undefined };
-          }
-
-          const championship = updatedSegment.championshipId
-            ? current.championships.find((title) => title.id === updatedSegment.championshipId)
-            : undefined;
-
-          if (championship && !canSegmentAttachChampionship(updatedSegment, championship, current.wrestlers)) {
-            updatedSegment = { ...updatedSegment, championshipId: undefined };
-          }
-
-          const rivalry = updatedSegment.rivalryId
-            ? current.rivalries.find((activeRivalry) => activeRivalry.id === updatedSegment.rivalryId)
-            : undefined;
-
-          if (rivalry && !canSegmentAttachRivalry(updatedSegment, rivalry, current.wrestlers)) {
-            updatedSegment = { ...updatedSegment, rivalryId: undefined };
-          }
-
-          return updatedSegment;
-        }),
-      };
+      if (updatedGame === current) {
+        return current;
+      }
 
       persistGameSnapshot(updatedGame, "booking");
       return updatedGame;
@@ -5067,61 +4199,7 @@ function App() {
         return current;
       }
 
-      const participants = selectedIds
-        .map((id) => current.wrestlers.find((wrestler) => wrestler.id === id))
-        .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
-      const range = getRivalryStructureParticipantRange(structure);
-
-      if (participants.length !== selectedIds.length || selectedIds.length < range.min || selectedIds.length > range.max) {
-        return current;
-      }
-
-      if (!canWrestlersShareMatch(participants)) {
-        return current;
-      }
-
-      const heat = getInitialRivalryHeat(participants);
-      const rivalryId = `rivalry-${Date.now()}`;
-      const selectedStorylineId = storylineId ?? getDefaultStorylineIdForStakes(stakes);
-      const storyline = getRivalryStoryline({ stakes, storylineId: selectedStorylineId });
-      const rivalryName =
-        structure === "tag_team" && selectedIds.length === 4
-          ? `${getWrestlerNames(selectedIds.slice(0, 2), current.wrestlers)} vs ${getWrestlerNames(selectedIds.slice(2, 4), current.wrestlers)}`
-          : structure === "multi_person"
-            ? `${getWrestlerNames(selectedIds, current.wrestlers)} collision`
-            : `${participants[0].name} vs ${participants[1].name}`;
-      const rivalry = applyRivalryCatalogDefaults({
-        id: rivalryId,
-        name: rivalryName,
-        participantIds: selectedIds,
-        structure,
-        storylineId: storyline.id,
-        relationshipTag: storyline.relationshipTag,
-        heat,
-        freshness: 80,
-        weeksActive: 1,
-        lastAdvancedWeek: 0,
-        status: getRivalryStatus(heat, 80),
-        stakes,
-      } satisfies Rivalry);
-      const startEvent: RivalryHistoryEvent = {
-        id: `s${current.seasonNumber}-w${current.currentWeek}-${rivalryId}-started`,
-        rivalryId,
-        rivalryName: rivalry.name,
-        participantIds: [...rivalry.participantIds],
-        weekNumber: current.currentWeek,
-        seasonNumber: current.seasonNumber,
-        eventType: "started",
-        note: `${rivalry.name} started with ${formatRivalryStakes(stakes).toLowerCase()} stakes.`,
-        heat: rivalry.heat,
-        freshness: rivalry.freshness,
-        status: rivalry.status,
-      };
-      const updatedGame = {
-        ...current,
-        rivalries: [...current.rivalries, rivalry],
-        rivalryHistory: [...(current.rivalryHistory ?? []), startEvent],
-      };
+      const updatedGame = createRivalryInGame(current, { participantIds: selectedIds, structure, stakes, storylineId });
 
       persistGameSnapshot(updatedGame, "rivalries");
       return updatedGame;
@@ -5436,808 +4514,6 @@ function CareerSaveCard({
         </button>
       </div>
     </article>
-  );
-}
-
-function NewGameSetupScreen({
-  onCancel,
-  onStartCareer,
-}: {
-  onCancel: () => void;
-  onStartCareer: (career: {
-    gmName: string;
-    gmStyle: GMStyle;
-    brandName: string;
-    brandStyle: BrandStyle;
-    difficulty: GameDifficulty;
-    startingBudgetTier: StartingBudgetTier;
-    draftMode: DraftMode;
-    rivalGMAssignments: RivalGMAssignment[];
-    draftedWrestlers: Wrestler[];
-    draftPickGroups?: string[][];
-    draftBundleDiscountUsd?: number;
-  }) => void;
-}) {
-  const [step, setStep] = useState<SetupStep>("contract");
-  const [gmName, setGmName] = useState(defaultCareer.gmName);
-  const [gmStyle, setGmStyle] = useState<GMStyle>(defaultCareer.gmStyle);
-  const [brandName, setBrandName] = useState(defaultCareer.brandName);
-  const [brandStyle, setBrandStyle] = useState<BrandStyle>(defaultCareer.brandStyle);
-  const [difficulty, setDifficulty] = useState<GameDifficulty>(defaultCareer.difficulty);
-  const [startingBudgetTier, setStartingBudgetTier] = useState<StartingBudgetTier>(defaultCareer.startingBudgetTier);
-  const [draftMode, setDraftMode] = useState<DraftMode>(defaultCareer.draftMode);
-  const [rivalGMAssignments, setRivalGMAssignments] = useState<RivalGMAssignment[]>(() => createRivalGMAssignments(defaultCareer.brandStyle));
-  const [draftedWrestlers, setDraftedWrestlers] = useState<Wrestler[]>([]);
-  const [draftPickGroups, setDraftPickGroups] = useState<string[][]>([]);
-  const [draftBundleDiscountUsd, setDraftBundleDiscountUsd] = useState(0);
-  const [draftSearch, setDraftSearch] = useState("");
-  const [draftSort, setDraftSort] = useState<DraftSort>("rank");
-  const [draftBrandFilter, setDraftBrandFilter] = useState(draftBrandFilters[0]);
-  const [draftRoleTierFilter, setDraftRoleTierFilter] = useState(draftRoleTierFilters[0]);
-  const [draftAvailabilityFilter, setDraftAvailabilityFilter] = useState(draftAvailabilityFilters[0]);
-  const [draftArchetypeFilter, setDraftArchetypeFilter] = useState(draftArchetypeFilters[0]);
-  const [draftFocusId, setDraftFocusId] = useState<string>();
-  const selectedGmPersona = getGmPersonaByStyle(gmStyle);
-  const selectedBrandChair = getBrandChairByStyle(brandStyle);
-  const selectedDifficulty = difficultyOptions.find((option) => option.label === difficulty) ?? difficultyOptions[1];
-  const selectedDifficultyRules = getDifficultyRules(difficulty);
-  const startingBudgetAmount = getStartingBudgetAmount(startingBudgetTier);
-  const draftFinanceReadout = getDraftFinanceReadout(draftedWrestlers, startingBudgetTier, startingBudgetAmount, draftBundleDiscountUsd);
-  const canPreview = gmName.trim().length > 0 && brandName.trim().length > 0;
-  const signedBrandName = brandName.trim() || defaultCareer.brandName;
-  const signedGmName = gmName.trim() || defaultCareer.gmName;
-  const draftSearchTerm = draftSearch.trim().toLowerCase();
-  const draftSeed = `${brandStyle}-${signedGmName}`;
-  const draftedIds = new Set(draftedWrestlers.map((wrestler) => wrestler.id));
-  const previewRivalBrands = createRivalBrandUniverse(rivalGMAssignments);
-  const openingDraftState = simulateOpeningDraft({
-    draftMode,
-    difficulty,
-    draftSeed,
-    draftPool,
-    playerBrandName: signedBrandName,
-    rivalBrands: previewRivalBrands,
-    playerDraftedWrestlers: draftedWrestlers,
-    playerDraftGroups: draftPickGroups,
-    playerPickTarget: Math.max(tvReadyDraftRosterTarget, draftPickGroups.length + 1),
-  });
-  const cpuClaimedDraftIds = new Set(openingDraftState.cpuClaimedWrestlerIds);
-  const availableDraftCount = openingDraftState.availableCount;
-  const rivalLatestPicks = previewRivalBrands.map((brand) => {
-    const roster = openingDraftState.rostersByChairId[brand.id] ?? [];
-    return {
-      brand,
-      latestPick: roster[roster.length - 1],
-      pickCount: roster.length,
-    };
-  });
-  const rivalLatestPickIds = new Set(
-    rivalLatestPicks.map((entry) => entry.latestPick?.id).filter((id): id is string => Boolean(id)),
-  );
-  const rivalPickHistory = openingDraftState.cpuPicks
-    .slice()
-    .reverse()
-    .filter((event) => !rivalLatestPickIds.has(event.wrestler.id));
-  const upNextPicks = openingDraftState.upcomingPicks.slice(1, 5);
-  const availableWrestlers = draftPool
-    .filter((wrestler) => !draftedIds.has(wrestler.id))
-    .filter((wrestler) => !cpuClaimedDraftIds.has(wrestler.id))
-    .filter((wrestler) => !draftSearchTerm || getDraftSearchText(wrestler).includes(draftSearchTerm))
-    .filter((wrestler) => draftBrandFilter === "All Brands" || wrestler.sourceBrand === draftBrandFilter)
-    .filter((wrestler) => draftRoleTierFilter === "All Tiers" || wrestler.roleTier === draftRoleTierFilter)
-    .filter((wrestler) => draftAvailabilityFilter === "All Status" || wrestler.sourceAvailability === draftAvailabilityFilter)
-    .filter((wrestler) => draftArchetypeFilter === "All Styles" || wrestler.archetype === draftArchetypeFilter)
-    .sort((a, b) => getDraftSortValue(b, draftSort) - getDraftSortValue(a, draftSort));
-  const availableDraftWrestlers = draftPool.filter((wrestler) => !draftedIds.has(wrestler.id) && !cpuClaimedDraftIds.has(wrestler.id));
-  const draftBundleOffers = getDraftBundleOffers(availableDraftWrestlers);
-  const boardLeader = availableWrestlers[0];
-  const focusedDraftWrestler = availableWrestlers.find((wrestler) => wrestler.id === draftFocusId) ?? boardLeader;
-  const focusedDraftBundleOffer = focusedDraftWrestler ? draftBundleOffers.find((offer) => offer.wrestlerIds.includes(focusedDraftWrestler.id)) : undefined;
-  const readinessRemaining = Math.max(0, tvReadyDraftRosterTarget - draftedWrestlers.length);
-  const currentDraftPick = openingDraftState.currentPick;
-  const currentPlayerPickLabel = `${draftedWrestlers.length}/${recommendedDraftRosterTarget} target`;
-  const currentOverallPickLabel = currentDraftPick ? `Pick ${currentDraftPick.overallPick}` : "Locked";
-  const focusedDraftFinance = focusedDraftWrestler ? getRosterFinanceValueForWrestler(focusedDraftWrestler) : undefined;
-  const focusedDraftOverall = focusedDraftWrestler ? getWrestlerOverall(focusedDraftWrestler) : 0;
-  const focusedDraftCost = focusedDraftFinance?.draftValueUsd ?? 0;
-  const focusedDraftExceedsBudget =
-    Boolean(focusedDraftWrestler && focusedDraftFinance) &&
-    !draftFinanceReadout.isUnlimitedBudget &&
-    focusedDraftCost > draftFinanceReadout.projectedReserve;
-  const focusedDraftBundleExceedsBudget =
-    Boolean(focusedDraftBundleOffer) &&
-    !draftFinanceReadout.isUnlimitedBudget &&
-    (focusedDraftBundleOffer?.discountedValue ?? 0) > draftFinanceReadout.projectedReserve;
-  const canDraftFocusedWrestler = Boolean(focusedDraftWrestler && !focusedDraftExceedsBudget);
-  const canEnterWeekOne = canPreview;
-  const draftClockRead =
-    draftedWrestlers.length === 0
-      ? `${signedBrandName} has the first pick.`
-      : readinessRemaining > 0
-        ? `${readinessRemaining} more reaches TV-ready guidance.`
-        : draftedWrestlers.length < recommendedDraftRosterTarget
-          ? `TV-ready. ${recommendedDraftRosterTarget - draftedWrestlers.length} more reaches the healthy roster target.`
-        : currentDraftPick
-          ? `Overall pick ${currentDraftPick.overallPick} is live.`
-          : "Opening board locked.";
-  const draftedRosterNeedRows = [
-    { label: "Roster", count: draftedWrestlers.length, target: recommendedDraftRosterTarget },
-    { label: "Main Event", count: draftedWrestlers.filter((wrestler) => getDraftTag(wrestler.roleTier).includes("Main")).length, target: 2 },
-    { label: "Talkers", count: draftedWrestlers.filter((wrestler) => wrestler.promoSkill >= 82).length, target: 4 },
-    { label: "Workers", count: draftedWrestlers.filter((wrestler) => wrestler.ringSkill >= 82).length, target: 4 },
-    { label: "Women", count: draftedWrestlers.filter((wrestler) => getWrestlerDivisionGroup(wrestler) === "womens").length, target: 4 },
-  ];
-
-  useEffect(() => {
-    if (!availableWrestlers.length) {
-      if (draftFocusId) {
-        setDraftFocusId(undefined);
-      }
-      return;
-    }
-
-    if (!draftFocusId || !availableWrestlers.some((wrestler) => wrestler.id === draftFocusId)) {
-      setDraftFocusId(availableWrestlers[0].id);
-    }
-  }, [availableWrestlers, draftFocusId]);
-
-  function startCareer() {
-    if (!canEnterWeekOne) {
-      return;
-    }
-
-    onStartCareer({
-      gmName: gmName.trim(),
-      gmStyle,
-      brandName: brandName.trim(),
-      brandStyle,
-      difficulty,
-      startingBudgetTier,
-      draftMode,
-      rivalGMAssignments,
-      draftedWrestlers,
-      draftPickGroups,
-      draftBundleDiscountUsd,
-    });
-  }
-
-  function draftWrestler(wrestler: Wrestler) {
-    const financeRow = getRosterFinanceValueForWrestler(wrestler);
-    const draftCost = financeRow?.draftValueUsd ?? 0;
-
-    if (
-      draftedWrestlers.some((drafted) => drafted.id === wrestler.id) ||
-      (financeRow && !draftFinanceReadout.isUnlimitedBudget && draftCost > draftFinanceReadout.projectedReserve)
-    ) {
-      return;
-    }
-
-    setDraftedWrestlers((current) => [...current, wrestler]);
-    setDraftPickGroups((current) => [...current, [wrestler.id]]);
-  }
-
-  function draftFocusedWrestler() {
-    if (!focusedDraftWrestler) {
-      return;
-    }
-
-    draftWrestler(focusedDraftWrestler);
-  }
-
-  function draftBundle(offer: DraftBundleOffer) {
-    const alreadyUnavailable = offer.wrestlers.some((wrestler) => draftedIds.has(wrestler.id) || cpuClaimedDraftIds.has(wrestler.id));
-
-    if (alreadyUnavailable || (!draftFinanceReadout.isUnlimitedBudget && offer.discountedValue > draftFinanceReadout.projectedReserve)) {
-      return;
-    }
-
-    setDraftedWrestlers((current) => [...current, ...offer.wrestlers]);
-    setDraftPickGroups((current) => [...current, offer.wrestlerIds]);
-    setDraftBundleDiscountUsd((current) => current + offer.discountAmount);
-  }
-
-  function resetDraftBoard() {
-    setDraftSearch("");
-    setDraftSort("rank");
-    setDraftBrandFilter(draftBrandFilters[0]);
-    setDraftRoleTierFilter(draftRoleTierFilters[0]);
-    setDraftAvailabilityFilter(draftAvailabilityFilters[0]);
-    setDraftArchetypeFilter(draftArchetypeFilters[0]);
-    setDraftFocusId(undefined);
-  }
-
-  function resetDraftSelections() {
-    setDraftedWrestlers([]);
-    setDraftPickGroups([]);
-    setDraftBundleDiscountUsd(0);
-    setDraftFocusId(undefined);
-  }
-
-  function applyDraftMode(mode: DraftMode) {
-    setDraftMode(mode);
-    resetDraftSelections();
-  }
-
-  function selectBrandStyle(choice: string) {
-    const nextBrandStyle = choice as BrandStyle;
-    const currentBrandStyleLabel = brandStyleOptions.find((option) => option.label === brandStyle)?.label ?? defaultCareer.brandName;
-    const shouldSyncBrandName = !brandName.trim() || brandName.trim() === currentBrandStyleLabel || brandName.trim() === defaultCareer.brandName;
-
-    setBrandStyle(nextBrandStyle);
-    setRivalGMAssignments(createRivalGMAssignments(nextBrandStyle));
-
-    if (shouldSyncBrandName) {
-      setBrandName(choice);
-    }
-  }
-
-  const setupSteps: Array<{ id: SetupStep; label: string; detail: string }> = [
-    { id: "contract", label: "Contract", detail: "Accept the job" },
-    { id: "rules", label: "Rules", detail: "Set pressure" },
-    { id: "gm", label: "GM", detail: "Choose identity" },
-    { id: "brand", label: "Brand", detail: "Take a chair" },
-    { id: "draft", label: "Draft", detail: "Build roster" },
-  ];
-  const activeSetupIndex = setupSteps.findIndex((item) => item.id === step);
-  const brandStepIndex = setupSteps.findIndex((item) => item.id === "brand");
-  const hasReachedBrandStep = activeSetupIndex >= brandStepIndex;
-  const currentStepLabel = setupSteps[activeSetupIndex]?.label ?? "Career";
-  const nextActionLabel =
-    step === "contract"
-      ? "Set Rules"
-      : step === "rules"
-        ? "Choose GM"
-        : step === "gm"
-          ? "Choose Brand"
-          : step === "brand"
-            ? "Draft Night"
-            : step === "draft"
-              ? "Week 1"
-              : "Career";
-  const rivalSummary = previewRivalBrands.map((brand) => `${brand.brandName}: ${brand.assignedGMName}`).join(" / ");
-  const setupBrandLabel = hasReachedBrandStep ? brandName.trim() || "Choose Brand" : "Unassigned";
-  const setupTheme = hasReachedBrandStep ? getBroadcastTheme(brandStyle) : "neutral";
-
-  return (
-    <main
-      className={`dashboard-dynasty-shell setup-dynasty-shell ${hasReachedBrandStep ? `broadcast-theme-${setupTheme}` : "setup-pre-brand"} setup-screen setup-step-${step}`}
-      data-broadcast-theme={setupTheme}
-    >
-      <header className="dashboard-dynasty-header setup-dynasty-header">
-        <section className="dashboard-dynasty-logo-lockup">
-          <span>Next GM</span>
-          <strong className={hasReachedBrandStep ? "" : "setup-pending-label"}>{setupBrandLabel}</strong>
-        </section>
-        <section className="dashboard-dynasty-header-module">
-          <span>Career Start</span>
-          <strong>{currentStepLabel} Desk</strong>
-        </section>
-        <section className="dashboard-dynasty-header-module">
-          <span>Progress</span>
-          <strong>
-            {activeSetupIndex + 1} / {setupSteps.length}
-          </strong>
-        </section>
-        <section className="dashboard-dynasty-header-module">
-          <span>Difficulty</span>
-          <strong>{difficulty}</strong>
-        </section>
-        <section className="dashboard-dynasty-header-module">
-          <span>Opening Budget</span>
-          <strong className="dashboard-dynasty-gold">{formatSetupBudgetHeaderReadout(startingBudgetTier)}</strong>
-        </section>
-        <section className="dashboard-dynasty-next-show setup-dynasty-cta">
-          <span>Next Action</span>
-          <strong>{nextActionLabel}</strong>
-        </section>
-      </header>
-
-      {step === "draft" ? null : (
-        <div className="setup-dynasty-progress" aria-label="Career start progress">
-          {setupSteps.map((item, index) => (
-            <div
-              className={`setup-dynasty-progress-step${step === item.id ? " is-active" : ""}${index < activeSetupIndex ? " is-complete" : ""}`}
-              key={item.id}
-            >
-              <span>Step {index + 1}</span>
-              <strong>{item.label}</strong>
-              <small>{item.detail}</small>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="setup-dynasty-body">
-      <section className="setup-shell">
-        <div className={`setup-layout${step === "draft" ? " draft-war-room-layout" : ""}`}>
-          <div className={`setup-workspace${step === "draft" ? " draft-war-room-workspace" : ""}`}>
-
-        {step === "contract" ? (
-          <div className="setup-panel setup-command-panel">
-            <HeroDecisionPanel
-              actions={
-                <>
-                  <button className="primary-action" onClick={() => setStep("rules")}>
-                    Accept The Job
-                  </button>
-                  <button className="secondary-action" onClick={onCancel}>
-                    Back
-                  </button>
-                </>
-              }
-              eyebrow="Sign The Contract"
-              metrics={
-                <>
-                  <MetricTile detail={`${PLE_COUNT} PLE cycles, every ${PLE_CYCLE_WEEKS} weeks`} label="Season" tone="prestige" value={`${SEASON_WEEK_COUNT} Weeks`} />
-                  <MetricTile detail={`${tvReadyDraftRosterTarget} TV-ready guidance, ${recommendedDraftRosterTarget} healthy roster target`} label="Draft Night" tone="brand" value={`${tvReadyDraftRosterTarget} guide / ${recommendedDraftRosterTarget} target`} />
-                  <MetricTile detail="Four major brands in the GM universe" label="Universe" tone="info" value="4 Brands" />
-                </>
-              }
-              summary="A national broadcast window is open, the roster is restless, and the GM room is filling up. Ownership is hiring you to run a brand over seasons, not just survive one hot night."
-              title="You're Hired"
-            />
-          </div>
-        ) : null}
-
-        {step === "gm" ? (
-          <div className="setup-panel setup-command-panel">
-            <CommandPanel className="setup-gm-desk" eyebrow="Choose GM Identity" title="Who Runs The Room?" tone="brand">
-              <SetupGmPortraitGrid
-                onSelect={(persona) => {
-                  setGmName(persona.name);
-                  setGmStyle(persona.style);
-                }}
-                personas={gmPersonas}
-                selectedStyle={gmStyle}
-              />
-              <div className="setup-gm-footer">
-                <div className="identity-note setup-gm-identity-note">
-                  <p>
-                    <strong>{selectedGmPersona.name}</strong> · {selectedGmPersona.style} — {selectedGmPersona.description}
-                  </p>
-                </div>
-                <div className="title-actions setup-gm-actions">
-                  <button className="secondary-action" onClick={() => setStep("rules")}>
-                    Back
-                  </button>
-                  <button className="primary-action" onClick={() => setStep("brand")}>
-                    Continue
-                  </button>
-                </div>
-              </div>
-            </CommandPanel>
-          </div>
-        ) : null}
-
-        {step === "brand" ? (
-          <div className="setup-panel setup-command-panel">
-            <CommandPanel className="setup-brand-desk" eyebrow="Choose Your Seat" title="Which Brand Chair Is Yours?" tone="brand">
-              <SetupBrandPortraitGrid
-                chairs={brandChairs}
-                onSelect={(chair) => selectBrandStyle(chair.style)}
-                selectedStyle={brandStyle}
-              />
-              <div className="setup-brand-footer">
-                <div className="identity-note setup-brand-identity-note">
-                  <p>
-                    <strong>{selectedBrandChair.style}</strong> — {selectedBrandChair.description}
-                  </p>
-                </div>
-                <div className="title-actions setup-brand-actions">
-                  <button className="secondary-action" onClick={() => setStep("gm")}>
-                    Back
-                  </button>
-                  <button className="primary-action" disabled={!canPreview} onClick={() => setStep("draft")}>
-                    Enter Draft Night
-                  </button>
-                </div>
-              </div>
-            </CommandPanel>
-          </div>
-        ) : null}
-
-        {step === "rules" ? (
-          <div className="setup-panel setup-command-panel">
-            <CommandPanel className="setup-rules-desk" eyebrow="Game Rules" title="Set The Pressure Level" tone="brand">
-              <p className="lede setup-rules-lede">Choose difficulty, budget mode, and draft order before Draft Night.</p>
-              <div className="setup-rules-compact">
-                <section className="setup-rules-difficulty-section">
-                  <p className="eyebrow">Difficulty</p>
-                  <ChoiceGrid
-                    choices={difficultyOptions}
-                    selected={difficulty}
-                    onSelect={(choice) => setDifficulty(choice as GameDifficulty)}
-                    variant="identity"
-                  />
-                </section>
-                <div className="setup-rules-modes-row">
-                  <section className="setup-rules-budget-section">
-                    <p className="eyebrow">Budget Mode</p>
-                    <ChoiceGrid
-                      choices={setupBudgetModeOptions}
-                      selected={getSetupBudgetModeLabel(startingBudgetTier)}
-                      onSelect={(choice) => setStartingBudgetTier(selectSetupBudgetMode(choice))}
-                      variant="identity"
-                    />
-                  </section>
-                  <section className="setup-rules-draft-section">
-                    <p className="eyebrow">Draft Mode</p>
-                    <ChoiceGrid
-                      choices={setupDraftModeOptions}
-                      selected={getSetupDraftModeLabel(draftMode)}
-                      onSelect={(choice) => applyDraftMode(selectSetupDraftMode(choice))}
-                      variant="identity"
-                    />
-                  </section>
-                </div>
-              </div>
-              <div className="identity-note setup-rules-summary">
-                <p className="eyebrow">Selected Rules</p>
-                <strong>
-                  {difficulty} / {formatSetupBudgetRulesReadout(startingBudgetTier, startingBudgetAmount)} / {getSetupDraftModeLabel(draftMode)}
-                </strong>
-                <p>
-                  {selectedDifficulty.description} {selectedDifficultyRules.setupSummary} {getSetupBudgetRulesDetail(startingBudgetTier, startingBudgetAmount)} {getSetupDraftRulesDetail(draftMode)}
-                </p>
-              </div>
-              <div className="title-actions setup-rules-actions">
-                <button className="secondary-action" onClick={() => setStep("contract")}>
-                  Back
-                </button>
-                <button className="primary-action" onClick={() => setStep("gm")}>
-                  Choose GM Identity
-                </button>
-              </div>
-            </CommandPanel>
-          </div>
-        ) : null}
-
-        {step === "draft" ? (
-          <div className="draft-war-room" aria-label="Draft Night war room">
-            <header className="draft-war-room-hud">
-              <div className="draft-night-title">
-                <h1>Draft Night</h1>
-              </div>
-              <div className="draft-feed-banner">
-                <span>Feed</span>
-                <strong>{draftClockRead}</strong>
-              </div>
-              <div className="draft-hud-metric">
-                <span>Budget</span>
-                <strong>{formatProjectedReserve(draftFinanceReadout)}</strong>
-              </div>
-              <div className="draft-hud-metric timer">
-                <span>Clock</span>
-                <strong>{currentOverallPickLabel}</strong>
-              </div>
-              <div className="draft-brand-badge">
-                <span>Room</span>
-                <strong>
-                  {signedBrandName}
-                  <em>{currentPlayerPickLabel}</em>
-                </strong>
-              </div>
-            </header>
-
-            <section className="draft-war-room-grid">
-              <aside className="draft-board-panel" aria-label="Available talent">
-                <div className="draft-panel-head">
-                  <div>
-                    <p className="eyebrow">Available Talent</p>
-                    <h2>{availableWrestlers.length} Showing</h2>
-                  </div>
-                  <button className="secondary-action" onClick={resetDraftBoard} type="button">
-                    Reset
-                  </button>
-                </div>
-                <div className="draft-tools draft-war-toolbar" aria-label="Draft board controls">
-                  <label>
-                    Search
-                    <input value={draftSearch} onChange={(event) => setDraftSearch(event.target.value)} placeholder="Find a performer" />
-                  </label>
-                  <label>
-                    Sort
-                    <select value={draftSort} onChange={(event) => setDraftSort(event.target.value as DraftSort)}>
-                      {draftSortOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Brand
-                    <select value={draftBrandFilter} onChange={(event) => setDraftBrandFilter(event.target.value)}>
-                      {draftBrandFilters.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Tier
-                    <select value={draftRoleTierFilter} onChange={(event) => setDraftRoleTierFilter(event.target.value)}>
-                      {draftRoleTierFilters.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Status
-                    <select value={draftAvailabilityFilter} onChange={(event) => setDraftAvailabilityFilter(event.target.value)}>
-                      {draftAvailabilityFilters.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Style
-                    <select value={draftArchetypeFilter} onChange={(event) => setDraftArchetypeFilter(event.target.value)}>
-                      {draftArchetypeFilters.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <div className="draft-prospect-list">
-                  {availableWrestlers.length ? (
-                    availableWrestlers.map((wrestler) => (
-                      <button
-                        className={`draft-prospect-row${focusedDraftWrestler?.id === wrestler.id ? " is-focused" : ""}`}
-                        key={wrestler.id}
-                        onClick={() => setDraftFocusId(wrestler.id)}
-                        type="button"
-                      >
-                        <WrestlerPortrait className="draft-prospect-portrait" wrestler={wrestler} />
-                        <span className="draft-prospect-copy">
-                          <strong className={getDraftProspectNameClass(wrestler.name)}>{wrestler.name}</strong>
-                          <small>{getWrestlerOverall(wrestler)} OVR</small>
-                        </span>
-                        <em>Pop {wrestler.popularity}</em>
-                        <b>{getWrestlerOverall(wrestler)}</b>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="empty-state compact">No draft files match that search.</div>
-                  )}
-                </div>
-              </aside>
-
-              <section className="draft-clock-stage" aria-label="Selected prospect">
-                <div className="draft-clock-strip">On The Clock</div>
-                {focusedDraftWrestler ? (
-                  <div className="draft-focus-card">
-                    <div className="draft-focus-hero">
-                      <div className="draft-focus-spotlight">
-                        <p className="eyebrow">
-                          {getDraftTag(focusedDraftWrestler.roleTier)} · {getDraftTag(focusedDraftWrestler.archetype)}
-                        </p>
-                        <WrestlerPortrait className="draft-focus-portrait" wrestler={focusedDraftWrestler} />
-                        <h2>{focusedDraftWrestler.name}</h2>
-                      </div>
-                      <div className="draft-focus-overall">
-                        <span>Overall</span>
-                        <strong>{focusedDraftOverall}</strong>
-                      </div>
-                    </div>
-                    <div className="draft-focus-footer">
-                      <div aria-label="Core ratings" className="draft-focus-stat-strip">
-                        <div className="draft-focus-stat">
-                          <span>Pop</span>
-                          <strong>{focusedDraftWrestler.popularity}</strong>
-                        </div>
-                        <div className="draft-focus-stat">
-                          <span>Mom</span>
-                          <strong>{focusedDraftWrestler.momentum}</strong>
-                        </div>
-                        <div className="draft-focus-stat">
-                          <span>Ring</span>
-                          <strong>{focusedDraftWrestler.ringSkill}</strong>
-                        </div>
-                        <div className="draft-focus-stat">
-                          <span>Mic</span>
-                          <strong>{focusedDraftWrestler.promoSkill}</strong>
-                        </div>
-                      </div>
-                      <div className="draft-focus-cost">
-                        <span>Value</span>
-                        <strong>{focusedDraftCost ? formatMoney(focusedDraftCost) : "—"}</strong>
-                        {focusedDraftFinance?.weeklyHireRateUsd ? (
-                          <small>{formatMoney(focusedDraftFinance.weeklyHireRateUsd)}/wk</small>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="empty-state compact">No focused draft file. Clear filters to reopen the board.</div>
-                )}
-                <div className="draft-main-actions">
-                  <button className="secondary-action" onClick={() => setStep("brand")}>
-                    Back
-                  </button>
-                  <button className="primary-action" disabled={!canDraftFocusedWrestler} onClick={draftFocusedWrestler}>
-                    {focusedDraftExceedsBudget ? "Over Budget" : "Draft Selected"}
-                  </button>
-                  {focusedDraftBundleOffer ? (
-                    <button
-                      className="secondary-action draft-bundle-action"
-                      disabled={focusedDraftBundleExceedsBudget}
-                      onClick={() => draftBundle(focusedDraftBundleOffer)}
-                      type="button"
-                    >
-                      {focusedDraftBundleExceedsBudget ? (
-                        "Bundle Over Budget"
-                      ) : (
-                        <>
-                          <span>{`Draft ${focusedDraftBundleOffer.kind === "tag_team" ? "Team" : "Faction"}`}</span>
-                          <strong>{formatMoney(focusedDraftBundleOffer.discountedValue)}</strong>
-                        </>
-                      )}
-                    </button>
-                  ) : null}
-                  <button className={canEnterWeekOne ? "primary-action" : "secondary-action"} disabled={!canEnterWeekOne} onClick={startCareer}>
-                    Enter Week 1
-                  </button>
-                </div>
-              </section>
-
-              <aside className="draft-rival-panel" aria-label="Rival brands and draft status">
-                <section className="draft-rival-status">
-                  <div className="draft-panel-head">
-                    <div>
-                      <p className="eyebrow">Rival Brands</p>
-                      <h2>Draft Status</h2>
-                    </div>
-                    <strong>{availableDraftCount} Open</strong>
-                  </div>
-                  <div className="draft-rival-list">
-                    {previewRivalBrands.map((brand) => {
-                      const roster = openingDraftState.rostersByChairId[brand.id] ?? [];
-                      const latestPick = roster[roster.length - 1];
-                      const brandPortraitSrc = getBrandChairByStyle(brand.brandKey).portraitSrc;
-                      const genderReadout = formatDraftGenderReadout(roster);
-
-                      return (
-                        <article key={brand.id}>
-                          <span aria-hidden="true" className="draft-brand-mini-portrait">
-                            <img alt="" draggable={false} src={brandPortraitSrc} />
-                          </span>
-                          <div className="draft-rival-card-copy">
-                            <strong>{brand.brandName}</strong>
-                            <span>{brand.assignedGMName}</span>
-                            <small>
-                              {latestPick
-                                ? `Latest · ${latestPick.name} · ${roster.length} drafted`
-                                : `${roster.length} drafted`}
-                            </small>
-                            <small>
-                              {genderReadout} · {formatMoney(openingDraftState.remainingBudgetByChairId[brand.id] ?? brand.budget)} left
-                            </small>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </section>
-                <div className="draft-update-panel">
-                  <p className="eyebrow">War Room Updates</p>
-                  <div className="draft-update-feed">
-                    <div className="draft-update-latest">
-                      {rivalLatestPicks.map(({ brand, latestPick, pickCount }) => {
-                        const brandPortraitSrc = getBrandChairByStyle(brand.brandKey).portraitSrc;
-
-                        return (
-                        <div className="draft-update-brand-row" key={brand.id}>
-                          {latestPick ? (
-                            <WrestlerPortrait className="draft-mini-portrait" wrestler={latestPick} />
-                          ) : (
-                            <span aria-hidden="true" className="draft-brand-mini-portrait">
-                              <img alt="" draggable={false} src={brandPortraitSrc} />
-                            </span>
-                          )}
-                          <span className="draft-update-copy">
-                            <strong>{brand.brandName}</strong>
-                            <small>
-                              {latestPick
-                                ? `Latest · ${latestPick.name} · ${pickCount} drafted`
-                                : "Waiting on your first pick"}
-                            </small>
-                          </span>
-                        </div>
-                        );
-                      })}
-                    </div>
-                    <div className="draft-update-history" aria-label="Previous rival picks">
-                      {rivalPickHistory.length ? (
-                        rivalPickHistory.map((event) => (
-                          <span className="draft-update-history-row" key={`${event.overallPick}-${event.wrestler.id}`}>
-                            <WrestlerPortrait className="draft-mini-portrait" wrestler={event.wrestler} />
-                            <span className="draft-update-copy">
-                              <strong>{event.chair.brandName}</strong>
-                              <small>
-                                Pick {event.overallPick} · {event.wrestler.name}
-                              </small>
-                            </span>
-                          </span>
-                        ))
-                      ) : (
-                        <span className="draft-update-history-empty">
-                          <small>No earlier rival picks yet.</small>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </aside>
-            </section>
-
-            <section className="draft-war-bottom" aria-label="Draft support panels">
-              <article className="draft-bottom-panel needs">
-                <p className="eyebrow">Roster Needs</p>
-                {draftedRosterNeedRows.map((row) => (
-                  <span key={row.label}>
-                    <strong>{row.label}</strong>
-                    <em>{row.count}/{row.target}</em>
-                    <i style={{ width: `${Math.min(100, Math.round((row.count / row.target) * 100))}%` }} />
-                  </span>
-                ))}
-              </article>
-              <article className="draft-bottom-panel budget">
-                <p className="eyebrow">Budget</p>
-                <span>Start <strong>{draftFinanceReadout.isUnlimitedBudget ? "Unlimited" : formatMoney(draftFinanceReadout.startingBudgetAmount)}</strong></span>
-                <span>Roster <strong>{formatMoney(draftFinanceReadout.rosterValue)}</strong></span>
-                {draftFinanceReadout.bundleDiscountUsd > 0 ? <span>Bundle Save <strong>{formatMoney(draftFinanceReadout.bundleDiscountUsd)}</strong></span> : null}
-                <span>Left <strong>{formatProjectedReserve(draftFinanceReadout)}</strong></span>
-                <span>Healthy Reserve <strong>{draftFinanceReadout.isUnlimitedBudget ? "Open" : formatMoney(draftFinanceReadout.recommendedReserveTarget)}</strong></span>
-              </article>
-              <article className="draft-bottom-panel up-next">
-                <p className="eyebrow">Up Next</p>
-                <div>
-                  {upNextPicks.length ? (
-                    upNextPicks.map((pick) => (
-                      <span key={`${pick.roundIndex}-${pick.pickInRound}-${pick.chair.id}`}>{pick.chair.brandName}</span>
-                    ))
-                  ) : (
-                    <small>Board opens on pick one.</small>
-                  )}
-                </div>
-              </article>
-              <article className="draft-bottom-panel drafted-mini">
-                <p className="eyebrow">
-                  Drafted · {draftedWrestlers.length} · {formatDraftGenderReadout(draftedWrestlers)}
-                </p>
-                <section>
-                  {draftedWrestlers.length ? (
-                    draftedWrestlers.map((wrestler, index) => (
-                      <span key={wrestler.id}>
-                        <WrestlerPortrait className="draft-mini-portrait" wrestler={wrestler} />
-                        <span>
-                          <strong>{index + 1}. {wrestler.name}</strong>
-                          <small>{getDraftTag(wrestler.roleTier)} / {getWrestlerOverall(wrestler)}</small>
-                        </span>
-                      </span>
-                    ))
-                  ) : (
-                    <small>No picks made yet.</small>
-                  )}
-                </section>
-              </article>
-            </section>
-          </div>
-        ) : null}
-
-          </div>
-        </div>
-      </section>
-      </div>
-    </main>
   );
 }
 
@@ -6593,33 +4869,6 @@ function RivalDraftActivityPanel({ snapshot }: { snapshot: CpuDraftPreviewSnapsh
         </div>
       ) : null}
     </section>
-  );
-}
-
-function ChoiceGrid({
-  choices,
-  selected,
-  onSelect,
-  variant = "default",
-}: {
-  choices: Array<string | ChoiceOption>;
-  selected: string;
-  onSelect: (choice: string) => void;
-  variant?: "default" | "identity";
-}) {
-  return (
-    <div className={`choice-grid${variant === "identity" ? " identity-grid" : ""}`}>
-      {choices.map((choice) => {
-        const option = typeof choice === "string" ? { label: choice } : choice;
-
-        return (
-          <button className={selected === option.label ? "active-filter" : ""} key={option.label} onClick={() => onSelect(option.label)}>
-            <span>{option.label}</span>
-            {option.description ? <small>{option.description}</small> : null}
-        </button>
-        );
-      })}
-    </div>
   );
 }
 

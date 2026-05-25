@@ -49,6 +49,16 @@ export type BrandStyle =
   | "Workrate Showcase"
   | "Reality Era Chaos";
 
+export type BrandOwnerType = "player" | "cpu";
+
+export type BrandIdentity = {
+  id: string;
+  ownerType: BrandOwnerType;
+  brandKey?: PrototypeBrand;
+  name: string;
+  style: BrandStyle;
+};
+
 export type RivalGMAssignment = {
   brand: PrototypeBrand;
   gmName: string;
@@ -267,6 +277,7 @@ export type RivalBrandWeeklyResult = {
 
 export type RivalBrandState = {
   id: string;
+  brandIdentity: BrandIdentity;
   brandKey: PrototypeBrand;
   brandName: string;
   assignedGMId?: string;
@@ -423,6 +434,8 @@ export type Championship = {
 
 export type ChampionshipHistoryEvent = {
   id: string;
+  resultId?: string;
+  eventId?: string;
   championshipId: string;
   championshipName: string;
   eventType: ChampionshipHistoryEventType;
@@ -461,6 +474,8 @@ export type Rivalry = {
 
 export type RivalryHistoryEvent = {
   id: string;
+  resultId?: string;
+  eventId?: string;
   rivalryId: string;
   rivalryName: string;
   participantIds: string[];
@@ -489,6 +504,9 @@ export type SocialPost = {
   weekNumber: number;
   seasonNumber: number;
   showName: string;
+  resultId?: string;
+  eventId?: string;
+  segmentId?: string;
   category: SocialCategory;
   author: string;
   text: string;
@@ -507,6 +525,8 @@ export type FinanceReportBreakdownItem = {
 
 export type FinanceReport = {
   id: string;
+  resultId?: string;
+  eventId?: string;
   seasonNumber: number;
   weekNumber: number;
   showName: string;
@@ -698,12 +718,38 @@ export type ShowResult = {
   lockerRoomFallout?: LockerRoomFallout;
 };
 
+export type DurableGameEventType = "show_resolved";
+
+export type DurableGameEvent = {
+  id: string;
+  type: DurableGameEventType;
+  seasonNumber: number;
+  weekNumber: number;
+  source: "run_show";
+  summary: string;
+  relatedIds: {
+    showResultId: string;
+    segmentIds: string[];
+    titleHistoryEventIds: string[];
+    rivalryHistoryEventIds: string[];
+  };
+  payload: {
+    showName: string;
+    showType: ShowType;
+    totalScore: number;
+    segmentCount: number;
+    titleEventCount: number;
+    rivalryEventCount: number;
+  };
+};
+
 export type GameState = {
   seasonNumber: number;
   seasonStartingMoney: number;
   currentWeek: number;
   gmName: string;
   gmStyle: GMStyle;
+  playerBrand: BrandIdentity;
   brandName: string;
   brandStyle: BrandStyle;
   difficulty: GameDifficulty;
@@ -725,6 +771,7 @@ export type GameState = {
   seasonArchives: SeasonArchiveSummary[];
   injuryRecoveryNotes: InjuryRecoveryNote[];
   socialInbox: SocialInboxState;
+  eventLedger: DurableGameEvent[];
   currentShow: Segment[];
   showHistory: ShowResult[];
 };

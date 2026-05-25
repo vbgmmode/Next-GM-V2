@@ -192,6 +192,7 @@ export function buildWeekReviewViewModel(game: GameState, result: ShowResult): W
   const nextWeek = game.calendar.find((week) => week.weekNumber === result.week + 1);
   const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= result.week + 1 && !week.completed);
   const weeksUntilNextPle = nextPle ? Math.max(0, nextPle.weekNumber - result.week) : 0;
+  const isFinalWeek = result.week >= game.calendar.length;
 
   return {
     isPleResult: result.showType === "ple",
@@ -218,7 +219,7 @@ export function buildWeekReviewViewModel(game: GameState, result: ShowResult): W
     nextWeekTypeLabel: nextWeek ? getShowTypeLabel(nextWeek.showType) : "Review the year",
     nextPleName: nextPle ? nextPle.showName : "None",
     nextPleDetail: nextPle ? `${weeksUntilNextPle} week${weeksUntilNextPle === 1 ? "" : "s"} away` : "No remaining PLE",
-    advanceLabel: result.week >= 12 ? "Season Review" : "Advance Week",
+    advanceLabel: isFinalWeek ? "Season Review" : "Advance Week",
     headline: buildHeadlineBeat(result),
     activeFalloutBeats: buildFalloutBeats(result).filter((beat) => beat.tone !== "quiet"),
     momentumName: result.biggestMomentumGain.name,

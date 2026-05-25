@@ -27,6 +27,8 @@ import { getStipulationById } from "./stipulationCatalog";
 import { getProtectedRestWrestlerIds, resolveSocialInboxRequestsAfterShow } from "./socialInboxActions";
 import { SENTIMENT_NEUTRAL } from "./constants";
 import { getSharedInjuryRiskScore } from "./injury";
+import { createSegmentResult } from "./segmentModel";
+import { commitResolvedShow } from "./showResolutionCommit";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
@@ -370,30 +372,26 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
       rivalryHistoryEvents.push(...rivalryEvents);
     }
 
-    segmentResults.push({
-      segmentId: segment.id,
-      type: segment.type,
-      participantNames: resolvedSegment.participantIds.map((id) => game.wrestlers.find((wrestler) => wrestler.id === id)?.name ?? "Unknown"),
-      participantIds: resolvedSegment.participantIds,
-      score,
-      plannedDurationMinutes: execution.plannedDurationMinutes,
-      actualDurationMinutes: execution.actualDurationMinutes,
-      durationVarianceMinutes: execution.actualDurationMinutes - execution.plannedDurationMinutes,
-      overrunAffected: overrunAffectedSegmentIds.has(segment.id),
-      momentumChanges,
-      fatigueChanges,
-      championshipId: resolvedSegment.championshipId,
-      rivalryId: resolvedSegment.rivalryId ?? sparkedRivalryResolution?.rivalryId,
-      segmentCatalogId: resolvedSegment.segmentCatalogId,
-      stipulationId: resolvedSegment.stipulationId,
-      winnerId,
-      titleNote,
-      rivalryNote,
-      recapNote: getSegmentRecap(resolvedSegment, game.wrestlers, score, isPle, winnerId, openChallengeResolution?.isNoContest),
-      resolvedOpponentId: openChallengeResolution?.opponent?.id,
-      resolvedOpponentName: openChallengeResolution?.opponent?.name,
-      isNoContest,
-    });
+    segmentResults.push(
+      createSegmentResult({
+        sourceSegmentId: segment.id,
+        segment: resolvedSegment,
+        wrestlers: game.wrestlers,
+        score,
+        plannedDurationMinutes: execution.plannedDurationMinutes,
+        actualDurationMinutes: execution.actualDurationMinutes,
+        overrunAffected: overrunAffectedSegmentIds.has(segment.id),
+        momentumChanges,
+        fatigueChanges,
+        winnerId,
+        titleNote,
+        rivalryNote,
+        recapNote: getSegmentRecap(resolvedSegment, game.wrestlers, score, isPle, winnerId, openChallengeResolution?.isNoContest),
+        sparkedRivalryId: sparkedRivalryResolution?.rivalryId,
+        resolvedOpponent: openChallengeResolution?.opponent,
+        isNoContest,
+      }),
+    );
   });
 
   const broadcastOverrunNotes = getBroadcastOverrunNotes(broadcastOverrunMinutes, broadcastOverrunLevel, segmentResults);
@@ -459,18 +457,18 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
     result,
   );
   const financeReport = generateFinanceReport(result, game);
-  const gameBeforeCpuSocial = {
-    ...game,
-    money: financeReport.endingMoney,
+  const commit = commitResolvedShow({
+    game,
+    result,
     wrestlers: gameWithSocialInboxResolution.wrestlers,
     socialInbox: gameWithSocialInboxResolution.socialInbox,
     championships: updatedChampionships,
     rivalries: updatedRivalries,
-    championshipHistory: [...(game.championshipHistory ?? []), ...titleHistoryEvents],
-    rivalryHistory: [...(game.rivalryHistory ?? []), ...rivalryHistoryEvents],
-    financeReports: [...game.financeReports, financeReport],
-    showHistory: [...game.showHistory, result],
-  };
+    championshipHistoryEvents: titleHistoryEvents,
+    rivalryHistoryEvents,
+    financeReport,
+  });
+  const gameBeforeCpuSocial = commit.gameBeforeCpuSocial;
   const rivalBrands = generateCpuWeeklyResults(gameBeforeCpuSocial, result, draftPool);
   const gameWithCpuResults = {
     ...gameBeforeCpuSocial,
@@ -478,7 +476,7 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
   };
 
   return {
-    result,
+    result: commit.result,
     game: {
       ...gameWithCpuResults,
       socialPosts: [...game.socialPosts, ...generateSocialPosts(result, gameWithCpuResults)],
