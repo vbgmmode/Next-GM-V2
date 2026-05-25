@@ -1,5 +1,8 @@
 import type {
   Championship,
+  BrandIdentity,
+  BrandStyle,
+  DurableGameEvent,
   GameDifficulty,
   GameState,
   GMStyle,
@@ -56,10 +59,11 @@ import { getStipulationsForSegment } from "./stipulationCatalog";
 import { normalizeSocialInboxState } from "./socialInboxActions";
 import { DRAFT_CONTRACT_WEEKS, SENTIMENT_NEUTRAL } from "./constants";
 import { createStableDomainId, normalizeOptionalId } from "./domainIds";
+import { createCpuBrandIdentity, createPlayerBrandIdentity, PLAYER_BRAND_ID } from "./brandIdentity";
 
 export type GameScreen = Exclude<Screen, "title" | "setup">;
 export type ProfileReturnScreen = Extract<GameScreen, "roster" | "booking" | "dashboard">;
-export const CURRENT_SAVE_VERSION = 1;
+export const CURRENT_SAVE_VERSION = 2;
 export type SaveVersion = typeof CURRENT_SAVE_VERSION;
 
 export type SavedGameState = {
@@ -117,6 +121,29 @@ function normalizeSeasonArchives(value: unknown): SeasonArchiveSummary[] {
   return Array.isArray(value) ? value.filter(isSeasonArchiveSummary) : [];
 }
 
+function isDurableGameEvent(value: unknown): value is DurableGameEvent {
+  const candidate = value as Partial<DurableGameEvent>;
+
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof candidate.id === "string" &&
+    candidate.type === "show_resolved" &&
+    typeof candidate.seasonNumber === "number" &&
+    typeof candidate.weekNumber === "number" &&
+    candidate.source === "run_show" &&
+    typeof candidate.summary === "string" &&
+    typeof candidate.relatedIds === "object" &&
+    candidate.relatedIds !== null &&
+    typeof candidate.payload === "object" &&
+    candidate.payload !== null
+  );
+}
+
+function normalizeEventLedger(value: unknown): DurableGameEvent[] {
+  return Array.isArray(value) ? value.filter(isDurableGameEvent) : [];
+}
+
 function isGameDifficulty(value: unknown): value is GameDifficulty {
   return value === "Easy" || value === "Medium" || value === "Hard" || value === "Legendary";
 }
@@ -135,6 +162,42 @@ function normalizeDraftMode(value: unknown): DraftMode {
   }
 
   return isDraftMode(value) ? value : defaultCareer.draftMode;
+}
+
+function normalizePlayerBrandIdentity(value: unknown, brandName: string, brandStyle: BrandStyle): BrandIdentity {
+  const fallback = createPlayerBrandIdentity(brandName, brandStyle);
+
+  if (!value || typeof value !== "object") {
+    return fallback;
+  }
+
+  const candidate = value as Partial<BrandIdentity>;
+
+  return {
+    id: PLAYER_BRAND_ID,
+    ownerType: "player",
+    brandKey: isPrototypeBrand(candidate.brandKey) ? candidate.brandKey : fallback.brandKey,
+    name: fallback.name,
+    style: fallback.style,
+  };
+}
+
+function normalizeCpuBrandIdentity(value: unknown, id: string, brandKey: RivalBrandState["brandKey"], brandName: string): BrandIdentity {
+  const fallback = createCpuBrandIdentity(id, brandKey, brandName);
+
+  if (!value || typeof value !== "object") {
+    return fallback;
+  }
+
+  const candidate = value as Partial<BrandIdentity>;
+
+  return {
+    id,
+    ownerType: "cpu",
+    brandKey,
+    name: fallback.name,
+    style: brandKey,
+  };
 }
 
 function isDraftMode(value: unknown): value is DraftMode {
@@ -593,10 +656,14 @@ function normalizeRivalBrands(value: unknown, fallbackAssignments: RivalGMAssign
     }
 
     seenBrands.add(candidate.brandKey);
+    const id = typeof candidate.id === "string" && candidate.id.trim() ? candidate.id : `rival-brand-${candidate.brandKey.toLowerCase()}`;
+    const brandName = typeof candidate.brandName === "string" && candidate.brandName.trim() ? candidate.brandName : candidate.brandKey;
+
     rivalBrands.push({
-      id: typeof candidate.id === "string" && candidate.id.trim() ? candidate.id : `rival-brand-${candidate.brandKey.toLowerCase()}`,
+      id,
+      brandIdentity: normalizeCpuBrandIdentity(candidate.brandIdentity, id, candidate.brandKey, brandName),
       brandKey: candidate.brandKey,
-      brandName: typeof candidate.brandName === "string" && candidate.brandName.trim() ? candidate.brandName : candidate.brandKey,
+      brandName,
       assignedGMId: typeof candidate.assignedGMId === "string" && candidate.assignedGMId.trim() ? candidate.assignedGMId : undefined,
       assignedGMName: candidate.assignedGMName,
       assignedGMStyle: candidate.assignedGMStyle as GMStyle,
@@ -789,6 +856,7 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
   }
 
   const brandStyle = typeof savedGame.brandStyle === "string" ? (savedGame.brandStyle as GameState["brandStyle"]) : defaultCareer.brandStyle;
+  const brandName = typeof savedGame.brandName === "string" && savedGame.brandName.trim() ? savedGame.brandName : defaultCareer.brandName;
   const rivalGMAssignments = normalizeRivalGMAssignments(savedGame.rivalGMAssignments);
   const safeRivalGMAssignments = rivalGMAssignments.length ? rivalGMAssignments : createRivalGMAssignments(brandStyle);
   const startingBudgetTier = isStartingBudgetTier(savedGame.startingBudgetTier) ? normalizeStartingBudgetTier(savedGame.startingBudgetTier) : defaultCareer.startingBudgetTier;
@@ -824,7 +892,8 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
       currentWeek: savedGame.currentWeek ?? 1,
       gmName: savedGame.gmName ?? defaultCareer.gmName,
       gmStyle: savedGame.gmStyle ?? defaultCareer.gmStyle,
-      brandName: savedGame.brandName ?? defaultCareer.brandName,
+      playerBrand: normalizePlayerBrandIdentity(savedGame.playerBrand, brandName, brandStyle),
+      brandName,
       brandStyle,
       difficulty: isGameDifficulty(savedGame.difficulty) ? savedGame.difficulty : defaultCareer.difficulty,
       startingBudgetTier,
@@ -847,6 +916,7 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
       seasonArchives: normalizeSeasonArchives((savedGame as { seasonArchives?: unknown }).seasonArchives),
       injuryRecoveryNotes: Array.isArray(savedGame.injuryRecoveryNotes) ? savedGame.injuryRecoveryNotes : [],
       socialInbox: normalizeSocialInboxState((savedGame as { socialInbox?: unknown }).socialInbox, wrestlers),
+      eventLedger: normalizeEventLedger(savedGame.eventLedger),
       currentShow: normalizeCurrentShow(savedGame.currentShow),
       showHistory,
     },

@@ -16,6 +16,7 @@ import type {
 } from "./types";
 import { generateFinanceReport } from "./finance";
 import { getDifficultyRules, type DifficultyRules } from "./difficultyRules";
+import { createShowResolvedEvent } from "./eventLedger";
 import { generateSocialPosts } from "./social";
 import { generateCpuWeeklyResults } from "./cpuRivalLoop";
 import { createDefaultWrestlerRecord, draftPool } from "./seed";
@@ -468,6 +469,7 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
     rivalries: updatedRivalries,
     championshipHistory: [...(game.championshipHistory ?? []), ...titleHistoryEvents],
     rivalryHistory: [...(game.rivalryHistory ?? []), ...rivalryHistoryEvents],
+    eventLedger: [...(game.eventLedger ?? []), createShowResolvedEvent(game, result)],
     financeReports: [...game.financeReports, financeReport],
     showHistory: [...game.showHistory, result],
   };
