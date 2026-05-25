@@ -11,7 +11,7 @@ import { draftPool } from "./seed";
 import { resolveWrestlerAlignment } from "./wrestlerAlignment";
 import { getCurrentCalendarWeek, getShowGrade, isValidSegment } from "./scoring";
 import { getProtectedRestWrestlerIds } from "./socialInboxActions";
-import type { GameState, Segment, ShowResult, Wrestler } from "./types";
+import type { Championship, GameState, Rivalry, RivalryStructure, Segment, ShowResult, Wrestler } from "./types";
 
 export type DashboardMoraleLevel = "happy" | "neutral" | "angry";
 export type DashboardAlignmentLevel = "face" | "heel" | "neutral" | "unknown";
@@ -35,7 +35,7 @@ export type DashboardViewModel = {
     ratingLabel: string;
   };
   budgetLabel: string;
-  champions: Array<{ holderId?: string; id: string; name: string; title: string }>;
+  champions: Array<{ holderIds: string[]; id: string; isTagTeam: boolean; name: string; prestige: number; title: string }>;
   dateLabel: string;
   draftPool: Array<{ name: string; style: string }>;
   fansLabel: string;
@@ -64,7 +64,14 @@ export type DashboardViewModel = {
     stipulation: string;
   };
   rankingLabel: string;
-  rivalries: Array<{ id: string; intensity: number; leftId: string; leftName: string; rightId: string; rightName: string }>;
+  rivalries: Array<{
+    id: string;
+    intensity: number;
+    label: string;
+    leftPortraitIds: string[];
+    rightPortraitIds: string[];
+    structure: RivalryStructure;
+  }>;
   roster: Array<{
     contract: string;
     cost: string;
@@ -86,6 +93,90 @@ export type DashboardViewModel = {
   secondaryActions: Array<{ label: string; screen: GameScreen }>;
   showCard: Array<{ id: string; index: number; match: string; stipulation: string; valid: boolean }>;
 };
+
+function compactDashboardRead(value: string, limit = 76) {
+  return value.length > limit ? `${value.slice(0, limit - 3)}...` : value;
+}
+
+function getDashboardRivalryStructure(rivalry: Rivalry): RivalryStructure {
+  return rivalry.structure ?? "singles";
+}
+
+function formatDashboardRivalryLastName(name: string) {
+  return name.split(" ").pop() ?? name;
+}
+
+function formatDashboardRivalryTeamLabel(participantIds: string[], wrestlers: Wrestler[]) {
+  const names = participantIds
+    .map((id) => wrestlers.find((wrestler) => wrestler.id === id)?.name)
+    .filter((name): name is string => Boolean(name));
+  const lastNames = names.map((name) => formatDashboardRivalryLastName(name));
+  const useLastNames = new Set(lastNames).size === lastNames.length;
+
+  return names
+    .map((name) => (useLastNames ? formatDashboardRivalryLastName(name) : name.split(" ")[0] ?? name))
+    .join("/");
+}
+
+function buildDashboardRivalryFeedEntry(rivalry: Rivalry, wrestlers: Wrestler[]) {
+  const structure = getDashboardRivalryStructure(rivalry);
+
+  if (structure === "tag_team" && rivalry.participantIds.length === 4) {
+    const leftPortraitIds = rivalry.participantIds.slice(0, 2);
+    const rightPortraitIds = rivalry.participantIds.slice(2, 4);
+    const leftLabel = formatDashboardRivalryTeamLabel(leftPortraitIds, wrestlers);
+    const rightLabel = formatDashboardRivalryTeamLabel(rightPortraitIds, wrestlers);
+
+    return {
+      id: rivalry.id,
+      intensity: rivalry.heat,
+      label: `${leftLabel} vs ${rightLabel}`,
+      leftPortraitIds,
+      rightPortraitIds,
+      structure,
+    };
+  }
+
+  if (structure === "multi_person" && rivalry.participantIds.length >= 3) {
+    return {
+      id: rivalry.id,
+      intensity: rivalry.heat,
+      label: compactDashboardRead(rivalry.name, 42),
+      leftPortraitIds: [rivalry.participantIds[0] ?? ""].filter(Boolean),
+      rightPortraitIds: rivalry.participantIds.slice(1, 3).filter(Boolean),
+      structure,
+    };
+  }
+
+  const [leftId, rightId] = rivalry.participantIds;
+  const left = wrestlers.find((wrestler) => wrestler.id === leftId);
+  const right = wrestlers.find((wrestler) => wrestler.id === rightId);
+  const leftName = left ? formatDashboardRivalryLastName(left.name) : "-";
+  const rightName = right ? formatDashboardRivalryLastName(right.name) : "-";
+
+  return {
+    id: rivalry.id,
+    intensity: rivalry.heat,
+    label: `${leftName} vs ${rightName}`,
+    leftPortraitIds: leftId ? [leftId] : [],
+    rightPortraitIds: rightId ? [rightId] : [],
+    structure,
+  };
+}
+
+function formatDashboardChampionNames(championIds: string[], wrestlers: Wrestler[]) {
+  if (!championIds.length) {
+    return "Vacant";
+  }
+
+  return championIds
+    .map((id) => wrestlers.find((wrestler) => wrestler.id === id)?.name ?? "Unknown")
+    .join(" / ");
+}
+
+function isDashboardTagChampionship(championship: Championship) {
+  return championship.eligibleMatchScope === "tag_team" || championship.division === "Tag Team";
+}
 
 function compactRead(value: string, limit = 76) {
   return value.length > limit ? `${value.slice(0, limit - 3)}...` : value;
@@ -297,13 +388,15 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
   });
 
   const champions = game.championships.slice(0, 5).map((title) => {
-    const holderId = title.championIds[0];
-    const holder = holderId ? game.wrestlers.find((wrestler) => wrestler.id === holderId) : undefined;
+    const holderIds = title.championIds.filter(Boolean);
+    const isTagTeam = isDashboardTagChampionship(title);
 
     return {
-      holderId,
+      holderIds,
       id: title.id,
-      name: holder?.name ?? "Vacant",
+      isTagTeam,
+      name: formatDashboardChampionNames(holderIds, game.wrestlers),
+      prestige: title.prestige,
       title: title.name,
     };
   });
@@ -316,20 +409,9 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
     progress: item.tone === "strong" ? 1 : item.tone === "watch" ? 0.55 : 0.75,
   }));
 
-  const rivalries = game.rivalries.slice(0, 3).map((rivalry) => {
-    const [leftId, rightId] = rivalry.participantIds;
-    const left = game.wrestlers.find((wrestler) => wrestler.id === leftId);
-    const right = game.wrestlers.find((wrestler) => wrestler.id === rightId);
-
-    return {
-      id: rivalry.id,
-      intensity: rivalry.heat,
-      leftId: leftId ?? "",
-      leftName: left?.name.split(" ").pop() ?? "-",
-      rightId: rightId ?? "",
-      rightName: right?.name.split(" ").pop() ?? "-",
-    };
-  });
+  const rivalries = [...game.rivalries]
+    .sort((left, right) => right.heat - left.heat || left.name.localeCompare(right.name))
+    .map((rivalry) => buildDashboardRivalryFeedEntry(rivalry, game.wrestlers));
 
   const historySlice = game.showHistory.slice(-5);
   const chartPoints = historySlice.map((show) => ({

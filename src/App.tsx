@@ -9,6 +9,7 @@ import { SetupGmPortraitGrid } from "./components/SetupGmPortraitGrid";
 import {
   DashboardDynastyAlert,
   DashboardDynastyIntensityMeter,
+  getRivalryHeatTier,
   DashboardDynastyMorale,
   DashboardDynastyPortrait,
   DashboardDynastyProgress,
@@ -6730,17 +6731,26 @@ function DashboardScreen({
           <article className="dashboard-dynasty-panel dashboard-dynasty-champions">
             <div className="dashboard-dynasty-section-heading">
               <span>Champions</span>
-              <b>Gold Ledger</b>
+              <b>Prestige</b>
             </div>
             <div className="dashboard-dynasty-champion-list">
-              {model.champions.map((champion, index) => {
-                const holder = champion.holderId ? findWrestler(champion.holderId) : undefined;
-
-                return (
-                  <div className="dashboard-dynasty-champion-row" key={champion.id}>
+              {model.champions.map((champion, index) => (
+                  <div className={`dashboard-dynasty-champion-row${champion.isTagTeam && champion.holderIds.length === 2 ? " is-tag-team" : ""}`} key={champion.id}>
                     <span className="dashboard-dynasty-slot">{String(index + 1).padStart(2, "0")}</span>
-                    {holder ? (
-                      <DashboardDynastyPortrait wrestler={holder} size="md" />
+                    {champion.holderIds.length ? (
+                      <div className="dashboard-dynasty-champion-portraits">
+                        {champion.holderIds.map((holderId) => {
+                          const holder = findWrestler(holderId);
+
+                          return holder ? (
+                            <DashboardDynastyPortrait key={holderId} wrestler={holder} size="md" />
+                          ) : (
+                            <span aria-hidden="true" className="dashboard-dynasty-portrait-vacant dashboard-dynasty-portrait--md" key={holderId}>
+                              -
+                            </span>
+                          );
+                        })}
+                      </div>
                     ) : (
                       <span className="dashboard-dynasty-portrait-vacant dashboard-dynasty-portrait--md" aria-hidden="true">-</span>
                     )}
@@ -6748,10 +6758,11 @@ function DashboardScreen({
                       <strong title={champion.title}>{champion.title}</strong>
                       <em title={champion.name}>{champion.name}</em>
                     </span>
-                    <span className="dashboard-dynasty-belt" aria-hidden="true">T</span>
+                    <span className="dashboard-dynasty-prestige" title={`Prestige ${champion.prestige}`}>
+                      {champion.prestige}
+                    </span>
                   </div>
-                );
-              })}
+              ))}
             </div>
           </article>
 
@@ -6903,23 +6914,37 @@ function DashboardScreen({
 
                   return (
                     <button
-                      aria-label={`Open ${rivalry.leftName} vs ${rivalry.rightName} in Rivalry Desk`}
-                      className="dashboard-dynasty-rivalry-row is-clickable"
+                      aria-label={`Open ${rivalry.label} in Rivalry Desk`}
+                      className={`dashboard-dynasty-rivalry-row is-clickable heat-${getRivalryHeatTier(rivalry.intensity)}${rivalry.structure === "tag_team" ? " is-tag-team" : ""}`}
                       key={rivalry.id}
                       onClick={openRivalry}
                       type="button"
                     >
-                    <div className="dashboard-dynasty-rivalry-matchup">
-                      <DashboardDynastyPortrait wrestler={wrestlerOrPlaceholder(rivalry.leftId, rivalry.leftName)} size="sm" />
-                      <strong title={rivalry.leftName + " vs " + rivalry.rightName}>
-                        {rivalry.leftName} vs {rivalry.rightName}
-                      </strong>
-                      <DashboardDynastyPortrait wrestler={wrestlerOrPlaceholder(rivalry.rightId, rivalry.rightName)} size="sm" />
+                    <div className={`dashboard-dynasty-rivalry-matchup${rivalry.structure === "tag_team" ? " is-tag-team" : ""}`}>
+                      <div className="dashboard-dynasty-rivalry-side">
+                        {rivalry.leftPortraitIds.map((portraitId) => (
+                          <DashboardDynastyPortrait
+                            key={portraitId}
+                            wrestler={wrestlerOrPlaceholder(portraitId, portraitId)}
+                            size="sm"
+                          />
+                        ))}
+                      </div>
+                      <strong title={rivalry.label}>{rivalry.label}</strong>
+                      <div className="dashboard-dynasty-rivalry-side">
+                        {rivalry.rightPortraitIds.map((portraitId) => (
+                          <DashboardDynastyPortrait
+                            key={portraitId}
+                            wrestler={wrestlerOrPlaceholder(portraitId, portraitId)}
+                            size="sm"
+                          />
+                        ))}
+                      </div>
                     </div>
                     <div className="dashboard-dynasty-rivalry-meter-line">
                       <em>Heat</em>
                       <DashboardDynastyIntensityMeter value={rivalry.intensity} />
-                      <b>{rivalry.intensity}</b>
+                      <b>{Math.max(0, Math.min(100, Math.round(rivalry.intensity)))}</b>
                     </div>
                     </button>
                   );

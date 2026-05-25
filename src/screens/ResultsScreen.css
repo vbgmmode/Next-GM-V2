@@ -415,7 +415,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   padding: 10px 12px 14px;
 }
 
@@ -423,83 +423,141 @@
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  min-height: min(100%, 520px);
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
 }
 
 .rs-segment-card.is-focused .rs-segment-card-body {
-  align-content: center;
-  display: flex;
+  container-type: size;
+  display: grid;
   flex: 1 1 auto;
-  flex-direction: column;
-  gap: 16px;
-  justify-content: center;
-  min-height: 280px;
-  padding: 24px 20px;
+  gap: clamp(4px, 0.8vh, 10px);
+  grid-template-rows: minmax(0, auto) minmax(0, 1fr) auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: clamp(10px, 1.4vh, 16px) clamp(10px, 1.4vw, 16px);
   text-align: center;
 }
 
-.rs-segment-card.is-focused:not(.is-competitive) .rs-spotlight-row {
+.rs-segment-card.is-focused .rs-faceoff {
+  align-self: center;
+  display: grid;
+  gap: clamp(4px, 0.8vh, 8px);
+  margin: 0 auto;
+  max-height: 100%;
+  max-width: min(100%, 960px);
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.rs-segment-card.is-focused .rs-faceoff-headline {
+  font-size: clamp(0.78rem, 2.8cqh, 1.2rem);
+  line-height: 1.1;
+  margin: 0;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.rs-segment-card.is-focused .rs-faceoff-grid,
+.rs-segment-card.is-focused .rs-faceoff-line {
+  max-height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+
+.rs-segment-card.is-focused .rs-faceoff-line {
   justify-content: center;
   width: 100%;
 }
 
-.rs-segment-card.is-focused:not(.is-competitive) .rs-spotlight-row .rs-participant {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent),
-    rgba(8, 9, 13, 0.72);
+.rs-segment-card.is-focused .rs-faceoff-line .rs-participant {
+  background: rgba(8, 9, 13, 0.62);
   border: 1px solid rgba(255, 255, 255, 0.1);
   flex: 0 1 auto;
-  grid-template-columns: 1fr;
-  justify-items: center;
-  max-width: 320px;
-  padding: 16px;
-  text-align: center;
-}
-
-.rs-segment-card.is-focused:not(.is-competitive) .rs-participant-copy {
-  justify-items: center;
-}
-
-.rs-segment-card.is-focused.is-competitive .rs-faceoff {
-  margin: 0 auto;
-  max-width: 960px;
-  width: 100%;
-}
-
-.rs-segment-card.is-focused.is-competitive .rs-faceoff-headline {
-  text-align: center;
+  min-width: 0;
+  padding: clamp(4px, 0.8cqh, 8px);
 }
 
 .rs-segment-card.is-focused .rs-segment-notes {
+  align-content: center;
+  display: grid;
+  gap: clamp(2px, 0.5vh, 4px);
   margin: 0 auto;
-  max-width: 760px;
+  max-width: min(100%, 760px);
+  min-height: 0;
+  overflow: hidden;
   text-align: center;
   width: 100%;
 }
 
 .rs-segment-card.is-focused .rs-segment-foot {
+  flex-shrink: 0;
+  font-size: clamp(0.5rem, 1.4cqh, 0.58rem);
   margin: 0 auto;
-  max-width: 760px;
+  max-width: min(100%, 760px);
+  overflow: hidden;
   text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   width: 100%;
 }
 
-.rs-segment-card.is-focused:not(.is-competitive) .rs-participant-portrait {
-  width: 112px;
+.rs-segment-card.is-focused .rs-participant-portrait {
+  width: clamp(48px, 13cqh, 80px);
 }
 
-.rs-segment-card.is-focused .rs-faceoff-headline {
-  font-size: clamp(1rem, 1.6vw, 1.35rem);
+.rs-segment-card.is-focused .rs-team-members .rs-participant-portrait {
+  width: clamp(36px, 10cqh, 56px);
 }
 
-.rs-segment-card.is-focused .rs-participant-portrait,
-.rs-segment-card.is-focused.is-competitive .rs-participant-portrait {
-  width: 88px;
+.rs-segment-card.is-focused .rs-team-block {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  padding: clamp(4px, 0.8cqh, 6px);
+}
+
+.rs-segment-card.is-focused .rs-team-members {
+  align-items: center;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.rs-segment-card.is-focused .rs-team-members .rs-participant-copy strong {
+  font-size: clamp(0.58rem, 1.6cqh, 0.72rem);
+}
+
+.rs-segment-card.is-focused .rs-participant-copy em {
+  font-size: clamp(0.48rem, 1.3cqh, 0.56rem);
 }
 
 .rs-segment-card.is-focused .rs-segment-recap {
-  font-size: 0.76rem;
-  line-height: 1.42;
+  font-size: clamp(0.58rem, 1.8cqh, 0.74rem);
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.rs-segment-card.is-focused .rs-segment-notes p:not(.rs-segment-recap) {
+  font-size: clamp(0.52rem, 1.5cqh, 0.6rem);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .rs-segment-card.is-focused .rs-segment-card-score strong {
@@ -652,12 +710,16 @@
 .rs-faceoff-grid {
   align-items: stretch;
   display: grid;
-  gap: 10px;
+  gap: clamp(6px, 1vw, 10px);
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  max-width: 100%;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
 }
 
 .rs-faceoff-grid-singles {
-  align-items: center;
+  align-items: stretch;
 }
 
 .rs-faceoff-divider {
@@ -751,12 +813,21 @@
 }
 
 .rs-team-block {
+  align-self: stretch;
   background: rgba(8, 9, 13, 0.62);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  display: grid;
-  gap: 8px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 0.6vh, 6px);
+  height: 100%;
+  justify-items: stretch;
+  max-height: 100%;
+  max-width: 100%;
+  min-height: 0;
   min-width: 0;
-  padding: 8px;
+  overflow: hidden;
+  padding: clamp(4px, 0.8vh, 8px);
 }
 
 .rs-team-block.is-winner {
@@ -774,34 +845,44 @@
   color: #9ea8ba;
   font-size: 0.56rem;
   font-weight: 900;
+  text-align: center;
 }
 
 .rs-team-members {
-  display: grid;
-  gap: 6px;
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  gap: 0;
+  justify-content: center;
+  min-height: 0;
+  min-width: 0;
 }
 
 .rs-team-members .rs-participant {
+  align-items: center;
   background: transparent;
   border: 0;
-  padding: 0;
-}
-
-/* Spotlight (promo / angle) */
-
-.rs-spotlight-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 4px;
+  justify-items: center;
+  min-width: 0;
+  padding: 0 4px;
+  text-align: center;
 }
 
-.rs-spotlight-row .rs-participant {
-  flex: 1 1 160px;
-  max-width: 100%;
+.rs-team-members .rs-participant-portrait {
+  width: 72px;
 }
 
-.rs-spotlight-row .rs-participant-portrait {
-  width: 56px;
+.rs-team-members .rs-participant-copy {
+  justify-items: center;
+  width: 100%;
+}
+
+.rs-team-members .rs-participant-copy strong {
+  font-size: 0.72rem;
 }
 
 /* Notes + foot */
