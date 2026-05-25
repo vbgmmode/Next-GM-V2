@@ -1,12 +1,16 @@
 import { useMemo, useState } from "react";
 import {
+  matchRatingKeys,
+  ensureMatchRatings,
+} from "../game/matchRatings";
+import {
   matchSimulationLabStructures,
   runMatchSimulationLab,
   type MatchSimulationLabDistributionRow,
   type MatchSimulationLabStructure,
 } from "../game/matchSimulationLab";
 import { stipulationCatalog } from "../game/stipulationCatalog";
-import type { GameState, MatchOutcomeModel, MatchRatingsProgressionMode } from "../game/types";
+import type { GameState, MatchOutcomeModel, MatchRatingsProgressionMode, Wrestler } from "../game/types";
 import "./MatchSimulationLabScreen.css";
 
 type MatchSimulationLabScreenProps = {
@@ -27,12 +31,71 @@ const structureParticipantCount: Record<MatchSimulationLabStructure, number> = {
   four_way: 4,
 };
 
+type LabTierFilter = "all" | "top" | "mid" | "lower" | "specialists";
+type LabStyleFilter =
+  | "all"
+  | "technical"
+  | "submission"
+  | "power"
+  | "aerial"
+  | "brawling"
+  | "hardcore"
+  | "stamina"
+  | "popularity"
+  | "skill";
+type LabSort = "rank" | "overall" | "name";
+
 function formatPercent(value?: number) {
   return typeof value === "number" ? `${(value * 100).toFixed(1)}%` : "n/a";
 }
 
 function formatNumber(value?: number) {
   return typeof value === "number" ? value.toFixed(2) : "n/a";
+}
+
+function getAverageRating(wrestler: Wrestler) {
+  const ratings = ensureMatchRatings(wrestler);
+  return matchRatingKeys.reduce((sum, key) => sum + ratings[key], 0) / matchRatingKeys.length;
+}
+
+function getTierGroup(wrestler: Wrestler): Exclude<LabTierFilter, "all" | "specialists"> {
+  if (wrestler.roleTier === "MainEvent" || wrestler.roleTier === "UpperCard" || (wrestler.draftRank ?? 999) <= 40) {
+    return "top";
+  }
+
+  if (wrestler.roleTier === "Prospect" || wrestler.roleTier === "Enhancement" || (wrestler.draftRank ?? 0) > 100) {
+    return "lower";
+  }
+
+  return "mid";
+}
+
+function hasSpecialistShape(wrestler: Wrestler) {
+  const ratings = ensureMatchRatings(wrestler);
+  const average = getAverageRating(wrestler);
+  return matchRatingKeys.some((key) => ratings[key] - average >= 8);
+}
+
+function styleMatches(wrestler: Wrestler, style: LabStyleFilter) {
+  if (style === "all") {
+    return true;
+  }
+
+  const ratings = ensureMatchRatings(wrestler);
+
+  if (style === "popularity") {
+    return wrestler.popularity - wrestler.ringSkill >= 10;
+  }
+
+  if (style === "skill") {
+    return wrestler.ringSkill - wrestler.popularity >= 10;
+  }
+
+  if (style === "stamina") {
+    return ratings.stamina >= 72 || ratings.resilience >= 72;
+  }
+
+  return ratings[style] >= Math.max(68, getAverageRating(wrestler) + 5);
 }
 
 function getDefaultParticipantIds(roster: GameState["wrestlers"]) {
@@ -77,7 +140,7 @@ function distributionRows(rows: MatchSimulationLabDistributionRow[]) {
 }
 
 export function MatchSimulationLabScreen({ game }: MatchSimulationLabScreenProps) {
-  const roster = useMemo(() => game.wrestlers.filter((wrestler) => wrestler.injuryStatus !== "major").slice(0, 80), [game.wrestlers]);
+  const roster = useMemo(() => game.wrestlers.filter((wrestler) => wrestler.injuryStatus !== "major"), [game.wrestlers]);
   const [matchStructure, setMatchStructure] = useState<MatchSimulationLabStructure>("singles");
   const [participantIds, setParticipantIds] = useState<string[]>(() => getDefaultParticipantIds(roster));
   const [stipulationId, setStipulationId] = useState("");
@@ -85,8 +148,48 @@ export function MatchSimulationLabScreen({ game }: MatchSimulationLabScreenProps
   const [model, setModel] = useState<MatchOutcomeModel>("deepRatings");
   const [progression, setProgression] = useState<MatchRatingsProgressionMode>("disabled");
   const [baseSeed, setBaseSeed] = useState("dev-lab");
+  const [search, setSearch] = useState("");
+  const [tierFilter, setTierFilter] = useState<LabTierFilter>("all");
+  const [styleFilter, setStyleFilter] = useState<LabStyleFilter>("all");
+  const [sortMode, setSortMode] = useState<LabSort>("rank");
   const requiredParticipantCount = structureParticipantCount[matchStructure];
   const selectedParticipantIds = participantIds.slice(0, requiredParticipantCount);
+  const visibleRoster = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return roster
+      .filter((wrestler) => {
+        const searchable = [wrestler.name, wrestler.roleTier, wrestler.archetype, wrestler.wrestlingStyle, wrestler.sourceBrand]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        const tierMatches =
+          tierFilter === "all" ||
+          (tierFilter === "specialists" ? hasSpecialistShape(wrestler) : getTierGroup(wrestler) === tierFilter);
+        return (!normalizedSearch || searchable.includes(normalizedSearch)) && tierMatches && styleMatches(wrestler, styleFilter);
+      })
+      .sort((left, right) => {
+        if (sortMode === "overall") {
+          return getAverageRating(right) - getAverageRating(left) || left.name.localeCompare(right.name);
+        }
+
+        if (sortMode === "name") {
+          return left.name.localeCompare(right.name);
+        }
+
+        return (left.draftRank ?? 999) - (right.draftRank ?? 999) || left.name.localeCompare(right.name);
+      });
+  }, [roster, search, sortMode, styleFilter, tierFilter]);
+  const selectableRoster = useMemo(() => {
+    const byId = new Map(visibleRoster.map((wrestler) => [wrestler.id, wrestler]));
+    selectedParticipantIds.forEach((id) => {
+      const selected = roster.find((wrestler) => wrestler.id === id);
+      if (selected && !byId.has(id)) {
+        byId.set(id, selected);
+      }
+    });
+    return [...byId.values()];
+  }, [roster, selectedParticipantIds, visibleRoster]);
   const result = useMemo(
     () =>
       runMatchSimulationLab({
@@ -186,14 +289,62 @@ export function MatchSimulationLabScreen({ game }: MatchSimulationLabScreenProps
         </label>
       </section>
 
+      <section className="match-sim-lab-controls" aria-label="Roster filters">
+        <label>
+          Search
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, style, brand" />
+        </label>
+
+        <label>
+          Tier
+          <select value={tierFilter} onChange={(event) => setTierFilter(event.target.value as LabTierFilter)}>
+            <option value="all">All tiers</option>
+            <option value="top">Top / upper</option>
+            <option value="mid">Mid-card</option>
+            <option value="lower">Lower / prospects</option>
+            <option value="specialists">Specialists</option>
+          </select>
+        </label>
+
+        <label>
+          Style
+          <select value={styleFilter} onChange={(event) => setStyleFilter(event.target.value as LabStyleFilter)}>
+            <option value="all">All styles</option>
+            <option value="technical">Technical</option>
+            <option value="submission">Submission</option>
+            <option value="power">Power</option>
+            <option value="aerial">Aerial</option>
+            <option value="brawling">Brawling</option>
+            <option value="hardcore">Hardcore</option>
+            <option value="stamina">Stamina</option>
+            <option value="popularity">Popularity-heavy</option>
+            <option value="skill">Low-pop / high-skill</option>
+          </select>
+        </label>
+
+        <label>
+          Sort
+          <select value={sortMode} onChange={(event) => setSortMode(event.target.value as LabSort)}>
+            <option value="rank">Draft rank</option>
+            <option value="overall">Overall rating</option>
+            <option value="name">Name</option>
+          </select>
+        </label>
+
+        <div className="match-sim-lab-roster-count" aria-label="Visible lab roster count">
+          <strong>{visibleRoster.length}</strong>
+          <span>shown of {roster.length} lab wrestlers</span>
+        </div>
+      </section>
+
       <section className="match-sim-lab-participants" aria-label="Participant controls">
         {Array.from({ length: requiredParticipantCount }, (_, index) => (
           <label key={`${matchStructure}-${index}`}>
             {matchStructure === "tag_2v2" ? `Slot ${index + 1}${index < 2 ? " Team A" : " Team B"}` : `Participant ${index + 1}`}
             <select value={selectedParticipantIds[index] ?? ""} onChange={(event) => updateParticipant(index, event.target.value)}>
-              {roster.map((wrestler) => (
+              {selectableRoster.map((wrestler) => (
                 <option key={wrestler.id} value={wrestler.id}>
-                  {wrestler.name}
+                  {wrestler.name} · {wrestler.roleTier ?? "Tier n/a"} · {getAverageRating(wrestler).toFixed(0)}
                 </option>
               ))}
             </select>

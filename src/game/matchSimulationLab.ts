@@ -1,6 +1,8 @@
-import { calculateEffectiveMatchPower, calculateMatchupWinProbability } from "./matchRatings";
+import { calculateEffectiveMatchPower, calculateMatchupWinProbability, ensureMatchRatings, matchRatingKeys } from "./matchRatings";
 import { createPlayableRunShowOptions, isValidSegment, runShow } from "./scoring";
+import { createNewGame, draftPool } from "./seed";
 import { getStipulationById } from "./stipulationCatalog";
+import { MATCH_OUTCOME_TUNING } from "./matchTuning";
 import type {
   GameState,
   MatchOutcomeModel,
@@ -170,6 +172,50 @@ export const matchSimulationLabStipulationIds = [
   "iron_man",
 ] as const;
 
+function getAverageMatchRating(wrestler: Wrestler) {
+  const ratings = ensureMatchRatings(wrestler);
+  return matchRatingKeys.reduce((sum, key) => sum + ratings[key], 0) / matchRatingKeys.length;
+}
+
+export function getMatchSimulationLabRoster(game?: GameState, limit = 160): Wrestler[] {
+  const byId = new Map<string, Wrestler>();
+  const add = (wrestler: Wrestler) => {
+    if (wrestler.injuryStatus === "major" || byId.has(wrestler.id)) {
+      return;
+    }
+
+    byId.set(wrestler.id, {
+      ...wrestler,
+      matchRatings: ensureMatchRatings(wrestler),
+    });
+  };
+
+  game?.wrestlers.forEach(add);
+  draftPool.forEach(add);
+
+  return [...byId.values()]
+    .sort((left, right) => {
+      const leftRank = left.draftRank ?? 999;
+      const rightRank = right.draftRank ?? 999;
+      return leftRank - rightRank || getAverageMatchRating(right) - getAverageMatchRating(left) || left.name.localeCompare(right.name);
+    })
+    .slice(0, Math.max(1, Math.round(limit)));
+}
+
+export function createMatchSimulationLabGame(game?: GameState): GameState {
+  const labRoster = getMatchSimulationLabRoster(game);
+
+  if (game) {
+    return {
+      ...cloneGame(game),
+      wrestlers: labRoster,
+      currentShow: [],
+    };
+  }
+
+  return createNewGame({ draftedWrestlers: labRoster });
+}
+
 function clampIterationCount(iterations?: number) {
   if (typeof iterations !== "number" || !Number.isFinite(iterations)) {
     return DEFAULT_ITERATIONS;
@@ -291,13 +337,13 @@ function getExpectedCompetitors(input: MatchSimulationLabInput): ExpectedCompeti
     wrestler,
     power: calculateEffectiveMatchPower(wrestler, context),
   }));
-  const totalPower = powers.reduce((sum, entry) => sum + Math.max(0.01, entry.power.effectivePower), 0);
+  const totalPower = powers.reduce((sum, entry) => sum + Math.max(0.01, entry.power.effectivePower) ** MATCH_OUTCOME_TUNING.multiPersonPowerExponent, 0);
 
   return powers.map(({ wrestler, power }) => ({
     id: wrestler.id,
     label: wrestler.name,
     participantIds: [wrestler.id],
-    expectedProbability: Math.max(0.01, power.effectivePower) / totalPower,
+    expectedProbability: Math.max(0.01, power.effectivePower) ** MATCH_OUTCOME_TUNING.multiPersonPowerExponent / totalPower,
     averageEffectivePower: power.effectivePower,
   }));
 }

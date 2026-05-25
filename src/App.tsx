@@ -68,6 +68,7 @@ import {
   getSegmentParticipantRange,
   type SegmentCatalogOption,
 } from "./game/matchFormatCatalog";
+import { createMatchSimulationLabGame } from "./game/matchSimulationLab";
 import { getStipulationById } from "./game/stipulationCatalog";
 import { CURRENT_SAVE_VERSION, migrateSavedGameState } from "./game/migration";
 import { createUniqueDomainId } from "./game/domainIds";
@@ -3396,7 +3397,7 @@ function App() {
   const hasCurrentWeekReview = latestResult ? latestResult.week === game?.currentWeek : false;
   const recentCareer = getMostRecentCareer(careerSaves);
   const isMatchSimulationLab = isDevMatchSimulationLabRequested();
-  const matchSimulationLabGame = useMemo(() => game ?? createNewGame({ draftedWrestlers: draftPool.slice(0, 12) }), [game]);
+  const matchSimulationLabGame = useMemo(() => createMatchSimulationLabGame(game ?? undefined), [game]);
 
   useEffect(() => syncAppViewportHeight(), []);
 
@@ -5075,6 +5076,28 @@ function DashboardScreen({
         </aside>
 
         <section className="dashboard-dynasty-column dashboard-dynasty-center-column">
+          {model.falloutFromLastWeek ? (
+            <article className="dashboard-dynasty-panel dashboard-dynasty-fallout">
+              <div className="dashboard-dynasty-section-heading">
+                <span>Fallout From Last Week</span>
+                <b>{model.falloutFromLastWeek.weekLabel}</b>
+              </div>
+              <div className="dashboard-dynasty-fallout-lead">
+                <strong>{model.falloutFromLastWeek.headline}</strong>
+                <p>{model.falloutFromLastWeek.detail}</p>
+              </div>
+              <div className="dashboard-dynasty-fallout-grid">
+                {model.falloutFromLastWeek.items.map((item) => (
+                  <div className={`dashboard-dynasty-fallout-item tone-${item.tone}`} key={item.id}>
+                    <span>{item.label}</span>
+                    <strong title={item.value}>{item.value}</strong>
+                    <p>{item.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ) : null}
+
           <article className="dashboard-dynasty-panel dashboard-dynasty-roster-panel">
             <div className="dashboard-dynasty-roster-topline">
               <div className="dashboard-dynasty-section-heading">

@@ -35,6 +35,26 @@ describe("match simulation balance audit", () => {
     expect(result.scenarioMatrix.some((scenario) => scenario.stipulationId === "iron_man")).toBe(true);
   });
 
+  it("builds audit scenarios from more than only top-ranked main-event wrestlers", () => {
+    const result = runMatchSimulationBalanceAudit({
+      iterationsPerScenario: 20,
+      baseSeed: "scenario-roster-spread",
+      includeProgressionSeason: false,
+    });
+    const participantIds = new Set(result.scenarioMatrix.flatMap((scenario) => scenario.participantIds));
+    const participants = draftPool.filter((wrestler) => participantIds.has(wrestler.id));
+    const roleTiers = new Set(participants.map((wrestler) => wrestler.roleTier));
+    const scenarioLabels = result.scenarioMatrix.map((scenario) => scenario.label).join(" ");
+
+    expect(participants.some((wrestler) => (wrestler.draftRank ?? 0) > 80)).toBe(true);
+    expect(roleTiers.has("MainEvent")).toBe(true);
+    expect([...roleTiers].some((tier) => tier === "Midcard" || tier === "UpperCard")).toBe(true);
+    expect([...roleTiers].some((tier) => tier === "Prospect" || tier === "Enhancement")).toBe(true);
+    expect(scenarioLabels).toContain("Submission");
+    expect(scenarioLabels).toContain("flyer");
+    expect(scenarioLabels).toContain("brawler");
+  });
+
   it("keeps supported balance scenarios off fallback paths", () => {
     const result = runMatchSimulationBalanceAudit({
       iterationsPerScenario: 60,

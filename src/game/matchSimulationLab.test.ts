@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createNewGame, draftPool } from "./seed";
 import { runShow } from "./scoring";
-import { runMatchSimulationLab } from "./matchSimulationLab";
+import { createMatchSimulationLabGame, getMatchSimulationLabRoster, runMatchSimulationLab } from "./matchSimulationLab";
 import type { MatchRatings, Segment, Wrestler } from "./types";
 
 function explicitRatings(overrides: Partial<MatchRatings> = {}): MatchRatings {
@@ -109,8 +109,8 @@ describe("match simulation lab", () => {
     expect(result.successfulIterations).toBe(1000);
     expect(result.fallbackCounts.total).toBe(0);
     expect(result.winnerDistribution.map((row) => ({ id: row.id, count: row.count, actualProbability: row.actualProbability }))).toEqual([
-      { id: "lab-b", count: 503, actualProbability: 0.503 },
-      { id: "lab-a", count: 497, actualProbability: 0.497 },
+      { id: "lab-a", count: 501, actualProbability: 0.501 },
+      { id: "lab-b", count: 499, actualProbability: 0.499 },
     ]);
   });
 
@@ -138,6 +138,41 @@ describe("match simulation lab", () => {
     expect(runMatchSimulationLab({ game, participantIds: ids, matchStructure: "tag_2v2", iterations: 25 }).winnerDistribution.length).toBeGreaterThan(0);
     expect(runMatchSimulationLab({ game, participantIds: ids.slice(0, 3), matchStructure: "three_way", iterations: 25 }).winnerDistribution.length).toBeGreaterThan(0);
     expect(runMatchSimulationLab({ game, participantIds: ids, matchStructure: "four_way", iterations: 25 }).winnerDistribution.length).toBeGreaterThan(0);
+  });
+
+  it("exposes a broad hydrated dev-lab roster beyond top stars", () => {
+    const roster = getMatchSimulationLabRoster();
+    const roleTiers = new Set(roster.map((wrestler) => wrestler.roleTier));
+
+    expect(roster.length).toBeGreaterThan(80);
+    expect(roleTiers.has("MainEvent")).toBe(true);
+    expect(roleTiers.has("Midcard")).toBe(true);
+    expect([...roleTiers].some((tier) => tier === "Prospect" || tier === "Enhancement")).toBe(true);
+    expect(roster.every((wrestler) => wrestler.matchRatings)).toBe(true);
+    expect(roster.some((wrestler) => (wrestler.draftRank ?? 0) > 100)).toBe(true);
+    expect(roster.some((wrestler) => wrestler.ringSkill - wrestler.popularity >= 8)).toBe(true);
+    expect(roster.some((wrestler) => wrestler.popularity - wrestler.ringSkill >= 8)).toBe(true);
+  });
+
+  it("lets the lab select non-top-star participants from the expanded roster", () => {
+    const game = createMatchSimulationLabGame();
+    const lowerCardIds = game.wrestlers
+      .filter((wrestler) => wrestler.division === "Mens" && ((wrestler.draftRank ?? 0) > 100 || wrestler.roleTier === "Prospect" || wrestler.roleTier === "Enhancement"))
+      .slice(0, 2)
+      .map((wrestler) => wrestler.id);
+
+    expect(lowerCardIds).toHaveLength(2);
+    const result = runMatchSimulationLab({
+      game,
+      participantIds: lowerCardIds,
+      matchStructure: "singles",
+      iterations: 50,
+      baseSeed: "expanded-roster-lower-card",
+    });
+
+    expect(result.successfulIterations).toBe(50);
+    expect(result.fallbackCounts.total).toBe(0);
+    expect(result.winnerDistribution.map((row) => row.id).sort()).toEqual([...lowerCardIds].sort());
   });
 
   it("reports fall-taker and protected participant distributions for tag and multi-person matches", () => {

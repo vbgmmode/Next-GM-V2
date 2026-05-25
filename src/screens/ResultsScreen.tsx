@@ -3,7 +3,13 @@ import { DynastyManagementShell, type DynastyManagementCta } from "../components
 import { SuperstarPortrait } from "../components/SuperstarPortrait";
 import type { GameScreen } from "../game/migration";
 import type { GameState, ShowResult, Wrestler } from "../game/types";
-import { buildResultsViewModel, type SegmentBroadcastRead, type SegmentParticipantRead } from "./resultsScreenReads";
+import {
+  buildResultsViewModel,
+  getFalloutBeatDisplayLabel,
+  type ResultsRecapBeat,
+  type SegmentBroadcastRead,
+  type SegmentParticipantRead,
+} from "./resultsScreenReads";
 import "./ResultsScreen.css";
 
 function getReelTypeLabel(type: SegmentBroadcastRead["type"]) {
@@ -26,6 +32,16 @@ function RsMetric({ detail, label, value }: { detail?: string; label: string; va
       <strong>{value}</strong>
       {detail ? <small>{detail}</small> : null}
     </div>
+  );
+}
+
+function RsFalloutCard({ beat, compact = false }: { beat: ResultsRecapBeat; compact?: boolean }) {
+  return (
+    <article className={`rs-fallout-card tone-${beat.tone}${compact ? " is-compact" : ""}`}>
+      <span>{getFalloutBeatDisplayLabel(beat)}</span>
+      <strong title={beat.value}>{beat.value}</strong>
+      <p>{beat.detail}</p>
+    </article>
   );
 }
 
@@ -239,6 +255,26 @@ export function ResultsScreen({
             <RsMetric label="Net P/L" value={model.financeProfitLabel} detail={model.financeProfitDetail} />
             <RsMetric label="Peak Segment" value={`${model.bestSegmentScore}`} detail={model.bestSegmentDetail} />
             <RsMetric label="Runtime" value={model.runtimeLabel} detail={model.runtimeDetail} />
+          </div>
+        </section>
+
+        <section className="rs-fallout-command" aria-label="Week 1 receipt">
+          <article className={`rs-receipt-headline tone-${model.headlineBeat.tone}`}>
+            <span>Week {model.week} Receipt</span>
+            <strong>{model.headlineBeat.value}</strong>
+            <p>{model.headlineBeat.detail}</p>
+          </article>
+
+          <div className="rs-fallout-beat-grid">
+            {model.falloutBeats.map((beat) => (
+              <RsFalloutCard beat={beat} compact key={beat.id} />
+            ))}
+          </div>
+
+          <div className="rs-reaction-strip">
+            {model.topSocialReaction ? <RsFalloutCard beat={model.topSocialReaction} compact /> : null}
+            {model.rivalPressureBeat ? <RsFalloutCard beat={model.rivalPressureBeat} compact /> : null}
+            <RsFalloutCard beat={model.nextWeekPressureBeat} compact />
           </div>
         </section>
 

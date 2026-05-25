@@ -15,6 +15,7 @@ import {
   type EffectiveMatchPowerContext,
   resolveMatchOutcomePreview,
 } from "./matchRatings";
+import { MATCH_FALL_TAKER_TUNING, MATCH_OUTCOME_TUNING } from "./matchTuning";
 
 export type SegmentWinnerSelectionContext = {
   segmentIndex: number;
@@ -268,7 +269,7 @@ function resolveMultiPersonDeepRatingsOutcome(
     segment.segmentCatalogId ?? "match",
     segment.stipulationId ?? "standard",
   ].join("-");
-  const winnerPick = weightedDeterministicPick(participantPowers, ({ power }) => power.effectivePower, seed);
+  const winnerPick = weightedDeterministicPick(participantPowers, ({ power }) => power.effectivePower ** MATCH_OUTCOME_TUNING.multiPersonPowerExponent, seed);
   const winner = winnerPick?.item.wrestler;
 
   if (!winner || winnerPick === undefined) {
@@ -381,17 +382,22 @@ function weightedDeterministicPick<T>(items: T[], weightFor: (item: T) => number
 function getFallTakerWeight(wrestler: Wrestler, context: EffectiveMatchPowerContext) {
   const ratings = ensureMatchRatings(wrestler);
   const effectivePower = calculateEffectiveMatchPower(wrestler, context).effectivePower;
-  const injuryPenalty = wrestler.injuryStatus === "major" ? 28 : wrestler.injuryStatus === "minor" ? 14 : 0;
+  const injuryPenalty =
+    wrestler.injuryStatus === "major"
+      ? MATCH_FALL_TAKER_TUNING.majorInjuryPenalty
+      : wrestler.injuryStatus === "minor"
+        ? MATCH_FALL_TAKER_TUNING.minorInjuryPenalty
+        : 0;
   return (
-    (100 - ratings.resilience) * 1.15 +
-    (100 - ratings.stamina) * 0.9 +
-    (100 - ratings.clutch) * 0.65 +
-    (100 - wrestler.morale) * 0.35 +
-    (100 - wrestler.momentum) * 0.25 +
-    wrestler.fatigue * 0.55 +
-    Math.max(0, 70 - effectivePower) * 0.35 +
+    (100 - ratings.resilience) * MATCH_FALL_TAKER_TUNING.resilienceGap +
+    (100 - ratings.stamina) * MATCH_FALL_TAKER_TUNING.staminaGap +
+    (100 - ratings.clutch) * MATCH_FALL_TAKER_TUNING.clutchGap +
+    (100 - wrestler.morale) * MATCH_FALL_TAKER_TUNING.moraleGap +
+    (100 - wrestler.momentum) * MATCH_FALL_TAKER_TUNING.momentumGap +
+    wrestler.fatigue * MATCH_FALL_TAKER_TUNING.fatigue +
+    Math.max(0, 70 - effectivePower) * MATCH_FALL_TAKER_TUNING.weakPowerGap +
     injuryPenalty +
-    1
+    MATCH_FALL_TAKER_TUNING.floor
   );
 }
 

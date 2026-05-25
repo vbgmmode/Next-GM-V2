@@ -60,6 +60,25 @@
   background: #171c24;
 }
 
+.match-sim-lab-roster-count {
+  align-self: end;
+  min-height: 36px;
+  border: 1px solid rgba(232, 237, 244, 0.16);
+  padding: 6px 10px;
+  color: #cfd7e3;
+  background: #171c24;
+}
+
+.match-sim-lab-roster-count strong {
+  display: block;
+  color: #f7d36d;
+  font-size: 0.95rem;
+}
+
+.match-sim-lab-roster-count span {
+  font-size: 0.78rem;
+}
+
 .match-sim-lab-participants {
   margin: 14px 0 18px;
 }

@@ -181,15 +181,16 @@ describe("match ratings foundation", () => {
     expect(first.profileId).toBe("balanced");
   });
 
-  it("uses a Bradley-Terry-style win probability ratio", () => {
+  it("uses a tuned Bradley-Terry-style win probability ratio", () => {
     const probability = calculateMatchupWinProbability(
       { competitorId: "a", effectivePower: 80 },
       { competitorId: "b", effectivePower: 20 },
     );
 
     expect(probability.rawCompetitorAWinProbability).toBeCloseTo(0.8, 5);
-    expect(probability.competitorAWinProbability).toBeCloseTo(0.8, 5);
-    expect(probability.competitorBWinProbability).toBeCloseTo(0.2, 5);
+    expect(probability.competitorAWinProbability).toBeGreaterThan(probability.rawCompetitorAWinProbability);
+    expect(probability.competitorAWinProbability).toBeLessThan(0.97);
+    expect(probability.competitorBWinProbability).toBeGreaterThan(0.03);
   });
 
   it("favors stronger wrestlers without removing upset probability", () => {

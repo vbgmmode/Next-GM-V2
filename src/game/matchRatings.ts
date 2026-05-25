@@ -1,4 +1,5 @@
 import type { MatchRatings, Segment, SegmentType, ShowType, Wrestler } from "./types";
+import { MATCH_CURRENT_STATE_TUNING, MATCH_OUTCOME_TUNING } from "./matchTuning";
 
 export type MatchRatingKey = keyof MatchRatings;
 
@@ -86,9 +87,7 @@ export type MatchOutcomePreview = MatchupWinProbabilityBreakdown & {
 };
 
 const clampRating = (value: number) => Math.min(100, Math.max(0, Math.round(value)));
-const EFFECTIVE_POWER_FLOOR = 5;
-const MIN_WIN_PROBABILITY = 0.03;
-const MAX_WIN_PROBABILITY = 0.97;
+const EFFECTIVE_POWER_FLOOR = MATCH_OUTCOME_TUNING.effectivePowerFloor;
 
 function numberOr(value: unknown, fallback: number) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
@@ -252,8 +251,11 @@ export function deriveMatchRatingCurrentModifiers({
   fatigue,
   injuryStatus,
 }: Pick<Wrestler, "momentum" | "morale" | "fatigue" | "injuryStatus">): MatchRatingCurrentModifiers {
-  const form = Math.round((numberOr(momentum, 50) - 50) * 0.08 + (numberOr(morale, 50) - 50) * 0.05);
-  const fatigueDrag = Math.round(Math.max(0, numberOr(fatigue, 0) - 45) * -0.08);
+  const form = Math.round(
+    (numberOr(momentum, 50) - 50) * MATCH_CURRENT_STATE_TUNING.momentumModifier +
+      (numberOr(morale, 50) - 50) * MATCH_CURRENT_STATE_TUNING.moraleModifier,
+  );
+  const fatigueDrag = Math.round(Math.max(0, numberOr(fatigue, 0) - MATCH_CURRENT_STATE_TUNING.fatigueStart) * MATCH_CURRENT_STATE_TUNING.fatiguePenalty);
   const injuryDrag = injuryStatus === "major" ? -12 : injuryStatus === "minor" ? -4 : 0;
 
   return {
@@ -267,7 +269,8 @@ export function deriveMatchRatingCurrentModifiers({
 
 function createWeights(overrides: Partial<Record<MatchRatingKey, number>> = {}): Record<MatchRatingKey, number> {
   return matchRatingKeys.reduce<Record<MatchRatingKey, number>>((weights, key) => {
-    weights[key] = overrides[key] ?? 1;
+    const override = overrides[key];
+    weights[key] = override === undefined ? 1 : 1 + (override - 1) * MATCH_OUTCOME_TUNING.stipulationWeightMultiplier;
     return weights;
   }, {} as Record<MatchRatingKey, number>);
 }
@@ -501,7 +504,15 @@ export function calculateMatchupWinProbability(
   const competitorBPower = Math.max(EFFECTIVE_POWER_FLOOR, numberOr(competitorB.effectivePower, EFFECTIVE_POWER_FLOOR));
   const denominator = competitorAPower + competitorBPower;
   const rawCompetitorAWinProbability = denominator > 0 ? competitorAPower / denominator : 0.5;
-  const competitorAWinProbability = clamp(rawCompetitorAWinProbability, MIN_WIN_PROBABILITY, MAX_WIN_PROBABILITY);
+  const adjustedCompetitorAPower = competitorAPower ** MATCH_OUTCOME_TUNING.winProbabilityPowerExponent;
+  const adjustedCompetitorBPower = competitorBPower ** MATCH_OUTCOME_TUNING.winProbabilityPowerExponent;
+  const adjustedDenominator = adjustedCompetitorAPower + adjustedCompetitorBPower;
+  const adjustedCompetitorAWinProbability = adjustedDenominator > 0 ? adjustedCompetitorAPower / adjustedDenominator : 0.5;
+  const competitorAWinProbability = clamp(
+    adjustedCompetitorAWinProbability,
+    MATCH_OUTCOME_TUNING.minWinProbability,
+    MATCH_OUTCOME_TUNING.maxWinProbability,
+  );
 
   return {
     competitorAId: competitorA.competitorId,

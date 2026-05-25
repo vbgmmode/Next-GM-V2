@@ -14,6 +14,7 @@ import {
   type MatchRatingKey,
   matchRatingKeys,
 } from "./matchRatings";
+import { MATCH_PROGRESSION_TUNING, scaleMatchRatingDeltas } from "./matchTuning";
 import { isStandardMultiPersonDeepRatingsSegment } from "./matchOutcomeResolver";
 
 export type PostShowMatchRatingsProgressionInput = {
@@ -346,9 +347,9 @@ function getMatchRatingProgressionDeltas(
   }
 
   if (outcomeRole === "loser" && segment.score >= 80) {
-    add("selling", 0.45);
-    add("resilience", 0.35);
-    add("timing", 0.25);
+    add("selling", MATCH_PROGRESSION_TUNING.highQualityLoserSellingBonus);
+    add("resilience", MATCH_PROGRESSION_TUNING.highQualityLoserResilienceBonus);
+    add("timing", MATCH_PROGRESSION_TUNING.highQualityLoserTimingBonus);
   }
 
   if (outcomeRole === "loser" && segment.score < 55) {
@@ -376,19 +377,15 @@ function getMatchRatingProgressionDeltas(
   }
 
   if (role === "fallTaker") {
-    add("clutch", -0.85);
-    add("resilience", -0.65);
-    add("timing", -0.55);
+    add("clutch", -0.85 * MATCH_PROGRESSION_TUNING.fallTakerRegressionFactor);
+    add("resilience", -0.65 * MATCH_PROGRESSION_TUNING.fallTakerRegressionFactor);
+    add("timing", -0.55 * MATCH_PROGRESSION_TUNING.fallTakerRegressionFactor);
   }
 
   if (role === "protectedLoser") {
-    matchRatingKeys.forEach((key) => {
-      if (deltas[key] !== undefined) {
-        deltas[key] *= 0.45;
-      }
-    });
-    add("selling", segment.score >= 80 ? 0.2 : 0.05);
-    add("resilience", segment.score >= 80 ? 0.15 : 0);
+    scaleMatchRatingDeltas(deltas, matchRatingKeys, MATCH_PROGRESSION_TUNING.protectedLoserFactor);
+    add("selling", segment.score >= 80 ? MATCH_PROGRESSION_TUNING.protectedLoserHighQualitySellingBonus : MATCH_PROGRESSION_TUNING.protectedLoserDefaultSellingBonus);
+    add("resilience", segment.score >= 80 ? MATCH_PROGRESSION_TUNING.protectedLoserHighQualityResilienceBonus : 0);
   }
 
   if (wrestler.fatigue >= 80) {

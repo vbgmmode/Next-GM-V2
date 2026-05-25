@@ -2,6 +2,7 @@ import { DynastyManagementShell, type DynastyManagementCta } from "../components
 import { formatMoney } from "../game/formatters";
 import type { GameScreen } from "../game/migration";
 import type { GameState, ShowResult } from "../game/types";
+import { getFalloutBeatDisplayLabel, type ResultsRecapBeat } from "./resultsScreenReads";
 import { buildWeekReviewViewModel } from "./weekReviewScreenReads";
 import "./WeekReviewScreen.css";
 
@@ -36,6 +37,16 @@ function WrRosterRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function WrFalloutBeat({ beat }: { beat: ResultsRecapBeat }) {
+  return (
+    <article className={`wr-fallout-beat tone-${beat.tone}`}>
+      <span>{getFalloutBeatDisplayLabel(beat)}</span>
+      <strong title={beat.value}>{beat.value}</strong>
+      <p>{beat.detail}</p>
+    </article>
+  );
+}
+
 export function WeekReviewScreen({
   game,
   onAdvanceWeek,
@@ -49,6 +60,21 @@ export function WeekReviewScreen({
 }) {
   const model = buildWeekReviewViewModel(game, result);
   const visibleRatings = model.ratingsBattle?.entries.slice(0, 4) ?? [];
+  const commandBeats = [
+    model.activeFalloutBeats[0],
+    model.rosterFalloutGroups[0]
+      ? {
+          id: "week-review-roster",
+          label: model.rosterFalloutGroups[0].label === "Locker Room" ? "Locker Room" : "Locker Room Tense",
+          value: model.rosterFalloutGroups[0].label,
+          detail: model.rosterFalloutGroups[0].lines[0] ?? "No major roster pressure moved after this show.",
+          tone: model.rosterFalloutGroups[0].id === "injuries" || model.rosterFalloutGroups[0].id === "morale-drops" ? "danger" : "steady",
+        }
+      : undefined,
+    model.topSocialReaction,
+    model.rivalPressureBeat,
+    model.nextWeekPressureBeat,
+  ].filter((beat): beat is ResultsRecapBeat => Boolean(beat));
   const rosterRows = model.rosterFalloutGroups.flatMap((group) =>
     group.lines.map((line, index) => ({
       id: `${group.id}-${index}`,
@@ -94,6 +120,19 @@ export function WeekReviewScreen({
             <WrMetric label="Next Show" value={model.nextWeekName} detail={model.nextWeekTypeLabel} />
             <WrMetric label="Next PLE" value={model.nextPleName} detail={model.nextPleDetail} />
             <WrMetric label="Peak Segment" value={`${model.bestSegmentScore}`} detail={model.bestSegmentDetail} />
+          </div>
+        </section>
+
+        <section className="wr-fallout-command" aria-label="Fallout command">
+          <article className={`wr-fallout-headline tone-${model.headline.tone}`}>
+            <span>Fallout Command</span>
+            <strong>{model.headline.value}</strong>
+            <p>{model.headline.detail}</p>
+          </article>
+          <div className="wr-fallout-beat-grid">
+            {commandBeats.slice(0, 5).map((beat) => (
+              <WrFalloutBeat beat={beat} key={beat.id} />
+            ))}
           </div>
         </section>
 

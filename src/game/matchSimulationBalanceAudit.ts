@@ -1,5 +1,6 @@
-import { matchRatingKeys } from "./matchRatings";
+import { calculateEffectiveMatchPower, ensureMatchRatings, matchRatingKeys, type MatchRatingKey } from "./matchRatings";
 import {
+  getMatchSimulationLabRoster,
   matchSimulationLabStipulationIds,
   runMatchSimulationLab,
   type MatchSimulationLabResult,
@@ -382,10 +383,14 @@ function buildAuditRoster(rosterFilter?: (wrestler: Wrestler) => boolean) {
 
 function createAuditGame(inputGame?: GameState, rosterFilter?: (wrestler: Wrestler) => boolean): GameState {
   if (inputGame) {
-    return cloneGame(inputGame);
+    return {
+      ...cloneGame(inputGame),
+      wrestlers: getMatchSimulationLabRoster(inputGame).filter((wrestler) => (rosterFilter ? rosterFilter(wrestler) : true)),
+      currentShow: [],
+    };
   }
 
-  const wrestlers = buildAuditRoster(rosterFilter);
+  const wrestlers = getMatchSimulationLabRoster(undefined).filter((wrestler) => (rosterFilter ? rosterFilter(wrestler) : true));
   return {
     ...createNewGame({ draftedWrestlers: wrestlers }),
     wrestlers,
@@ -395,14 +400,111 @@ function createAuditGame(inputGame?: GameState, rosterFilter?: (wrestler: Wrestl
   };
 }
 
+function getOverallRating(wrestler: Wrestler) {
+  const ratings = ensureMatchRatings(wrestler);
+  return matchRatingKeys.reduce((sum, key) => sum + ratings[key], 0) / matchRatingKeys.length;
+}
+
+function getEffectivePower(wrestler: Wrestler) {
+  return calculateEffectiveMatchPower(wrestler, { segmentCatalogId: "M001", showType: "tv", cardPosition: "main_event" }).effectivePower;
+}
+
+function textIncludes(wrestler: Wrestler, patterns: string[]) {
+  const text = [wrestler.name, wrestler.roleTier, wrestler.archetype, wrestler.wrestlingStyle, wrestler.presentationHook, wrestler.sourceBrand]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return patterns.some((pattern) => text.includes(pattern));
+}
+
+function getScenarioTalent(game: GameState) {
+  const pool = game.wrestlers.filter((wrestler) => wrestler.division === "Mens" && wrestler.injuryStatus !== "major");
+  const byEffective = [...pool].sort((left, right) => getEffectivePower(right) - getEffectivePower(left) || (left.draftRank ?? 999) - (right.draftRank ?? 999));
+  const byWeakest = [...pool].sort((left, right) => getEffectivePower(left) - getEffectivePower(right) || (right.draftRank ?? 999) - (left.draftRank ?? 999));
+  const byMid = [...pool].sort((left, right) => Math.abs(getOverallRating(left) - 63) - Math.abs(getOverallRating(right) - 63) || left.name.localeCompare(right.name));
+  const byTiredFavorite = [...pool].sort((left, right) => right.fatigue + getEffectivePower(right) * 0.2 - (left.fatigue + getEffectivePower(left) * 0.2));
+  const byFreshUnderdog = [...pool].sort((left, right) => left.fatigue + getEffectivePower(left) * 0.2 - (right.fatigue + getEffectivePower(right) * 0.2));
+  const usedFallback = (index: number) => pool[index % Math.max(1, pool.length)]?.id ?? "";
+  const pick = (candidates: Wrestler[], exclude: string[] = []) => candidates.find((wrestler) => !exclude.includes(wrestler.id))?.id ?? usedFallback(exclude.length);
+  const byRating = (key: MatchRatingKey) => [...pool].sort((left, right) => ensureMatchRatings(right)[key] - ensureMatchRatings(left)[key] || left.name.localeCompare(right.name));
+  const style = (key: MatchRatingKey, patterns: string[]) => {
+    const shaped = pool.filter((wrestler) => textIncludes(wrestler, patterns) || ensureMatchRatings(wrestler)[key] >= getOverallRating(wrestler) + 5);
+    return (shaped.length ? shaped : byRating(key)).sort(
+      (left, right) =>
+        (ensureMatchRatings(right)[key] - getOverallRating(right)) - (ensureMatchRatings(left)[key] - getOverallRating(left)) ||
+        ensureMatchRatings(right)[key] - ensureMatchRatings(left)[key] ||
+        left.name.localeCompare(right.name),
+    );
+  };
+  const lowPopHighSkill = [...pool].sort(
+    (left, right) =>
+      (right.ringSkill - right.popularity) - (left.ringSkill - left.popularity) ||
+      ensureMatchRatings(right).technical - ensureMatchRatings(left).technical,
+  );
+  const highPopLowerSkill = [...pool].sort(
+    (left, right) =>
+      (right.popularity - right.ringSkill) - (left.popularity - left.ringSkill) ||
+      ensureMatchRatings(right).psychology - ensureMatchRatings(left).psychology,
+  );
+
+  const eliteA = pick(byEffective);
+  const eliteB = pick(byEffective, [eliteA]);
+  const midA = pick(byMid, [eliteA, eliteB]);
+  const midB = pick(byMid, [eliteA, eliteB, midA]);
+  const midC = pick(byMid, [eliteA, eliteB, midA, midB]);
+  const midD = pick(byMid, [eliteA, eliteB, midA, midB, midC]);
+  const lowerA = pick(byWeakest, [eliteA, eliteB, midA, midB, midC, midD]);
+  const lowerB = pick(byWeakest, [eliteA, eliteB, midA, midB, midC, midD, lowerA]);
+  const technical = pick(lowPopHighSkill, [eliteA, eliteB, midA, midB]);
+  const entertainer = pick(highPopLowerSkill, [technical]);
+  const submission = pick(style("submission", ["submission", "technician", "ring general", "mat"]), [technical, entertainer]);
+  const powerhouse = pick(style("power", ["powerhouse", "monster", "giant", "hoss"]), [submission]);
+  const flyer = pick(style("aerial", ["highflyer", "high flyer", "aerial", "lucha"]), [submission, powerhouse]);
+  const brawler = pick(style("brawling", ["brawler", "fight", "striker"]), [flyer]);
+  const hardcore = pick(style("hardcore", ["hardcore", "deathmatch", "extreme", "chaos"]), [brawler]);
+  const stamina = pick(style("stamina", ["iron", "endurance", "machine"]), [hardcore]);
+  const tiredFavorite = pick(byTiredFavorite, [lowerA, lowerB]);
+  const freshUnderdog = pick(byFreshUnderdog, [tiredFavorite, eliteA, eliteB]);
+
+  return {
+    eliteA,
+    eliteB,
+    midA,
+    midB,
+    midC,
+    midD,
+    lowerA,
+    lowerB,
+    technical,
+    entertainer,
+    submission,
+    powerhouse,
+    flyer,
+    brawler,
+    hardcore,
+    stamina,
+    tiredFavorite,
+    freshUnderdog,
+  };
+}
+
 function scenario(
   game: GameState,
   input: Omit<MatchSimulationBalanceAuditScenario, "participantIds"> & { participantIds: string[] },
 ): MatchSimulationBalanceAuditScenario {
   const knownIds = new Set(game.wrestlers.map((wrestler) => wrestler.id));
+  const fallbackIds = game.wrestlers.filter((wrestler) => wrestler.division === "Mens" && wrestler.injuryStatus !== "major").map((wrestler) => wrestler.id);
+  const seen = new Set<string>();
+  const participantIds = input.participantIds.map((id) => {
+    const fallbackId = fallbackIds.find((candidate) => !seen.has(candidate)) ?? id;
+    const nextId = knownIds.has(id) && !seen.has(id) ? id : fallbackId;
+    seen.add(nextId);
+    return nextId;
+  });
+
   return {
     ...input,
-    participantIds: input.participantIds.filter((id) => knownIds.has(id)),
+    participantIds,
   };
 }
 
@@ -410,15 +512,17 @@ function buildScenarioMatrix(game: GameState, scenarioSet: MatchSimulationBalanc
   const include = (category: MatchSimulationBalanceAuditCategory) => scenarioSet.includes(category);
   const scenarios: MatchSimulationBalanceAuditScenario[] = [];
   const add = (entry: Omit<MatchSimulationBalanceAuditScenario, "participantIds"> & { participantIds: string[] }) => scenarios.push(scenario(game, entry));
+  const talent = getScenarioTalent(game);
 
   if (include("singles")) {
-    add({ id: "singles-close", category: "singles", label: "Close singles matchup", description: "Two similarly rated balanced wrestlers.", matchStructure: "singles", participantIds: ["audit-balanced-a", "audit-balanced-b"] });
-    add({ id: "singles-favorite-underdog", category: "singles", label: "Favorite vs underdog", description: "Main-event favorite against mid-card underdog.", matchStructure: "singles", participantIds: ["audit-favorite", "audit-underdog"] });
-    add({ id: "singles-extreme-favorite-jobber", category: "singles", label: "Extreme favorite vs prospect", description: "Strong favorite against enhancement-level prospect.", matchStructure: "singles", participantIds: ["audit-favorite", "audit-jobber"] });
-    add({ id: "singles-popularity-skill", category: "singles", label: "Popularity-heavy vs skill-heavy", description: "Presentation-heavy star against ring-skill ace.", matchStructure: "singles", participantIds: ["audit-popularity-heavy", "audit-skill-heavy"] });
-    add({ id: "singles-stamina-gap", category: "singles", label: "High stamina vs low stamina", description: "Similar overall profile with stamina/resilience split.", matchStructure: "singles", participantIds: ["audit-stamina-high", "audit-stamina-low"] });
-    add({ id: "singles-momentum-gap", category: "singles", label: "High momentum vs low momentum", description: "Similar ratings with current-form split.", matchStructure: "singles", participantIds: ["audit-momentum-high", "audit-momentum-low"] });
-    add({ id: "singles-tired-favorite", category: "singles", label: "High fatigue favorite vs fresh underdog", description: "Superior wrestler carrying red-line fatigue.", matchStructure: "singles", participantIds: ["audit-tired-favorite", "audit-fresh-underdog"] });
+    add({ id: "singles-elite-elite", category: "singles", label: "Elite vs elite", description: "Two top effective-power wrestlers.", matchStructure: "singles", participantIds: [talent.eliteA, talent.eliteB] });
+    add({ id: "singles-elite-midcard", category: "singles", label: "Elite vs mid-card", description: "Top star against mid-card profile.", matchStructure: "singles", participantIds: [talent.eliteA, talent.midA] });
+    add({ id: "singles-extreme-favorite-jobber", category: "singles", label: "Elite vs prospect/jobber", description: "Top star against low-card or prospect profile.", matchStructure: "singles", participantIds: [talent.eliteA, talent.lowerA] });
+    add({ id: "singles-midcard-midcard", category: "singles", label: "Mid-card vs mid-card", description: "Two near-middle roster profiles.", matchStructure: "singles", participantIds: [talent.midA, talent.midB] });
+    add({ id: "singles-popularity-skill", category: "singles", label: "Low-pop technical vs high-pop entertainer", description: "Ring-skill specialist against popularity-heavy profile.", matchStructure: "singles", participantIds: [talent.technical, talent.entertainer] });
+    add({ id: "singles-submission-powerhouse", category: "singles", label: "Submission specialist vs powerhouse", description: "Submission specialist against power profile.", matchStructure: "singles", participantIds: [talent.submission, talent.powerhouse] });
+    add({ id: "singles-flyer-brawler", category: "singles", label: "High flyer vs brawler", description: "Aerial profile against brawling profile.", matchStructure: "singles", participantIds: [talent.flyer, talent.brawler] });
+    add({ id: "singles-tired-favorite", category: "singles", label: "High fatigue favorite vs fresh underdog", description: "Superior wrestler carrying red-line fatigue.", matchStructure: "singles", participantIds: [talent.tiredFavorite, talent.freshUnderdog] });
   }
 
   if (include("stipulation")) {
@@ -430,7 +534,7 @@ function buildScenarioMatrix(game: GameState, scenarioSet: MatchSimulationBalanc
         label: `${stipulationId ?? "standard"} sensitivity`,
         description: "Same specialist matchup across stipulation profiles.",
         matchStructure: "singles",
-        participantIds: ["audit-submission-specialist", "audit-chaos-flyer"],
+        participantIds: [talent.submission, talent.hardcore],
         stipulationId,
         comparisonGroupId: "specialist-stipulation-sweep",
       });
@@ -438,18 +542,18 @@ function buildScenarioMatrix(game: GameState, scenarioSet: MatchSimulationBalanc
   }
 
   if (include("tag")) {
-    add({ id: "tag-balanced-teams", category: "tag", label: "Balanced 2v2 teams", description: "Two balanced teams with small internal spread.", matchStructure: "tag_2v2", participantIds: ["audit-balanced-a", "audit-balanced-b", "audit-stamina-high", "audit-momentum-high"] });
-    add({ id: "tag-strong-weak-vs-balanced", category: "tag", label: "Strong/weak partner team vs balanced team", description: "One main-event anchor paired with a fall-risk partner.", matchStructure: "tag_2v2", participantIds: ["audit-favorite", "audit-jobber", "audit-balanced-a", "audit-balanced-b"] });
-    add({ id: "tag-fatigue-fall-risk", category: "tag", label: "High-fatigue partner fall-taker risk", description: "A strong but tired partner should carry visible fall risk.", matchStructure: "tag_2v2", participantIds: ["audit-tired-favorite", "audit-underdog", "audit-fresh-underdog", "audit-stamina-high"] });
-    add({ id: "tag-protected-partner", category: "tag", label: "Protected partner behavior", description: "Team loss should identify one fall-taker and one protected loser.", matchStructure: "tag_2v2", participantIds: ["audit-favorite", "audit-underdog", "audit-balanced-a", "audit-jobber"] });
-    add({ id: "tag-favorite-underdog", category: "tag", label: "Favorite team vs underdog team", description: "Two strong wrestlers against two weak wrestlers.", matchStructure: "tag_2v2", participantIds: ["audit-favorite", "audit-skill-heavy", "audit-underdog", "audit-jobber"] });
+    add({ id: "tag-balanced-teams", category: "tag", label: "Balanced 2v2 teams", description: "Two balanced mid-card teams.", matchStructure: "tag_2v2", participantIds: [talent.midA, talent.midB, talent.midC, talent.midD] });
+    add({ id: "tag-strong-weak-vs-balanced", category: "tag", label: "One-star/one-weak vs balanced", description: "One top anchor paired with lower-card partner.", matchStructure: "tag_2v2", participantIds: [talent.eliteA, talent.lowerA, talent.midA, talent.midB] });
+    add({ id: "tag-fatigue-fall-risk", category: "tag", label: "High-fatigue partner fall-taker risk", description: "A strong but tired partner should carry visible fall risk.", matchStructure: "tag_2v2", participantIds: [talent.tiredFavorite, talent.lowerB, talent.freshUnderdog, talent.stamina] });
+    add({ id: "tag-protected-partner", category: "tag", label: "Protected partner behavior", description: "Team loss should identify one fall-taker and one protected loser.", matchStructure: "tag_2v2", participantIds: [talent.eliteA, talent.midA, talent.midB, talent.lowerA] });
+    add({ id: "tag-favorite-underdog", category: "tag", label: "Favorite team vs underdog team", description: "Two strong wrestlers against two weaker profiles.", matchStructure: "tag_2v2", participantIds: [talent.eliteA, talent.eliteB, talent.lowerA, talent.lowerB] });
   }
 
   if (include("multi")) {
-    add({ id: "multi-triple-favorite", category: "multi", label: "Triple threat favorite check", description: "One favorite and two underdogs.", matchStructure: "three_way", participantIds: ["audit-favorite", "audit-underdog", "audit-jobber"] });
-    add({ id: "multi-four-way-close", category: "multi", label: "Fatal 4-way close powers", description: "Four wrestlers with near-balanced effective powers.", matchStructure: "four_way", participantIds: ["audit-balanced-a", "audit-balanced-b", "audit-stamina-high", "audit-momentum-high"] });
-    add({ id: "multi-four-way-extreme", category: "multi", label: "Fatal 4-way extreme favorite", description: "One major favorite against three weaker profiles.", matchStructure: "four_way", participantIds: ["audit-favorite", "audit-underdog", "audit-jobber", "audit-momentum-low"] });
-    add({ id: "multi-fall-protection-distribution", category: "multi", label: "Fall-taker/protection distribution", description: "Four-way designed to inspect fall concentration and protected losers.", matchStructure: "four_way", participantIds: ["audit-skill-heavy", "audit-chaos-flyer", "audit-stamina-low", "audit-jobber"] });
+    add({ id: "multi-triple-favorite", category: "multi", label: "Triple threat favorite check", description: "One favorite and two underdogs.", matchStructure: "three_way", participantIds: [talent.eliteA, talent.lowerA, talent.lowerB] });
+    add({ id: "multi-four-way-close", category: "multi", label: "Fatal 4-way close mid-carders", description: "Four wrestlers with near-balanced mid-card powers.", matchStructure: "four_way", participantIds: [talent.midA, talent.midB, talent.midC, talent.midD] });
+    add({ id: "multi-four-way-extreme", category: "multi", label: "Fatal 4-way dominant favorite", description: "One dominant favorite against three weaker profiles.", matchStructure: "four_way", participantIds: [talent.eliteA, talent.midA, talent.lowerA, talent.lowerB] });
+    add({ id: "multi-fall-protection-distribution", category: "multi", label: "Fall-taker/protection distribution", description: "Four-way designed to inspect fall concentration and protected losers.", matchStructure: "four_way", participantIds: [talent.technical, talent.hardcore, talent.midA, talent.lowerA] });
   }
 
   return scenarios;
