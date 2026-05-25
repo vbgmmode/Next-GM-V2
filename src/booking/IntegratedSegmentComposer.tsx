@@ -244,14 +244,18 @@ export function IntegratedSegmentComposer({
   const showRivalryBadge = segment.type !== "Open Challenge";
   const showStipulationBadge = segment.type === "Match";
   const showFinishBadge = segment.type === "Match" && segment.participantIds.length > 0;
-  const titleEligibleMatchOption = useMemo(
-    () => catalogOptions.find((option) => option.championshipAllowed && option.minParticipants === 2 && option.maxParticipants === 2),
-    [catalogOptions],
-  );
+  const titleEligibleMatchOption = useMemo(() => {
+    if (selectedOption.championshipAllowed && selectedOption.currentTitleEligible) {
+      return selectedOption;
+    }
+
+    return catalogOptions.find((option) => option.championshipAllowed && option.currentTitleEligible);
+  }, [catalogOptions, selectedOption]);
   const needsTitleEligibleFormat =
     segment.type === "Match" &&
     !selectedOption.currentTitleEligible &&
     Boolean(titleEligibleMatchOption && segment.segmentCatalogId !== titleEligibleMatchOption.id);
+  const titleParticipantGap = Math.max(0, range.min - segment.participantIds.length);
 
   function openOverlay(next: OverlayState) {
     setStageMenuOpen(false);
@@ -616,7 +620,11 @@ export function IntegratedSegmentComposer({
               </button>
             ))}
             {!eligibleChampionships.length && !buildableChampionships.length && !selectedChampionship ? (
-              <p className="booking-overlay-note">No eligible titles for current participants.</p>
+              <p className="booking-overlay-note">
+                {titleParticipantGap > 0 && selectedOption.currentTitleEligible
+                  ? `Add ${titleParticipantGap} more participant${titleParticipantGap === 1 ? "" : "s"} to unlock title booking on this ${formatLabel.toLowerCase()}.`
+                  : "No eligible titles for current participants."}
+              </p>
             ) : null}
           </div>
         </BookingOverlay>

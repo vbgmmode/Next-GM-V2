@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createDefaultChampionships, createNewGame, draftPool } from "../game/seed";
 import { runShow } from "../game/scoring";
 import type { Championship, Segment, Wrestler } from "../game/types";
-import { canSegmentAttachChampionship } from "./bookingUtils";
+import { canSegmentAttachChampionship, getSinglesTitleContestParticipantCount, resolveSinglesTitleMatchCatalogOption } from "./bookingUtils";
 import { getBuildableChampionships } from "./composerReads";
 
 function sameDivisionWrestlers(division: "Mens" | "Womens", count = 3) {
@@ -91,6 +91,50 @@ describe("booking title eligibility", () => {
     const segment = createTripleThreatTitleSegment(wrestlers, title.id);
 
     expect(canSegmentAttachChampionship(segment, title, wrestlers)).toBe(true);
+  });
+
+  it("allows women's united states championship on triple threat matches", () => {
+    const wrestlers = sameDivisionWrestlers("Womens", 3);
+    const usTitle = createDefaultChampionships(wrestlers, "SmackDown").find((championship) => championship.name === "Women's United States Championship");
+
+    expect(usTitle).toBeDefined();
+
+    const title = { ...usTitle!, championIds: [wrestlers[0].id] };
+    const segment = createTripleThreatTitleSegment(wrestlers, title.id);
+
+    expect(canSegmentAttachChampionship(segment, title, wrestlers)).toBe(true);
+  });
+
+  it("allows attaching a defended singles title before the multi-way field is full", () => {
+    const wrestlers = sameDivisionWrestlers("Womens", 3);
+    const title = createSinglesTitle("Womens", wrestlers[0].id);
+    const segment = {
+      ...createTripleThreatTitleSegment(wrestlers, title.id),
+      participantIds: wrestlers.slice(0, 2).map((wrestler) => wrestler.id),
+      championshipId: undefined,
+    };
+
+    expect(canSegmentAttachChampionship(segment, title, wrestlers)).toBe(true);
+  });
+
+  it("preserves triple threat format when building a singles title match", () => {
+    const wrestlers = sameDivisionWrestlers("Womens", 3);
+    const segment = {
+      id: "triple-empty",
+      type: "Match" as const,
+      participantIds: [],
+      segmentCatalogId: "M002",
+      segmentDisplayName: "Triple Threat",
+      durationMinutes: 13,
+      participantMin: 3,
+      participantMax: 3,
+    };
+    const title = createSinglesTitle("Womens", wrestlers[0].id);
+    const option = resolveSinglesTitleMatchCatalogOption(segment, false);
+
+    expect(option?.id).toBe("M002");
+    expect(getSinglesTitleContestParticipantCount(segment)).toBe(3);
+    expect(canSegmentAttachChampionship({ ...segment, participantIds: wrestlers.map((wrestler) => wrestler.id) }, title, wrestlers)).toBe(true);
   });
 
   it.each(["Mens", "Womens"] as const)("allows %s singles titles on fatal 4-way matches", (division) => {

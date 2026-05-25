@@ -1,4 +1,5 @@
 import {
+  getCatalogOptionById,
   getDefaultCatalogOption,
   getSegmentCatalogOption,
   getSegmentParticipantRange,
@@ -620,16 +621,137 @@ function canSegmentContestVacantTagChampionship(segment: Segment, championship: 
   );
 }
 
-function isSinglesTitleContestShape(segment: Segment) {
+export function getSinglesTitleContestParticipantCount(segment: Pick<Segment, "segmentCatalogId">) {
   if (segment.segmentCatalogId === "M002") {
-    return segment.participantIds.length === 3;
+    return 3;
   }
 
   if (segment.segmentCatalogId === "M003") {
-    return segment.participantIds.length === 4;
+    return 4;
   }
 
-  return segment.participantIds.length === 2;
+  return 2;
+}
+
+export function isSinglesTitleEligibleMatchFormat(segment: Pick<Segment, "segmentCatalogId" | "type">) {
+  return (
+    segment.type === "Match" &&
+    (segment.segmentCatalogId === "M001" ||
+      segment.segmentCatalogId === "M002" ||
+      segment.segmentCatalogId === "M003" ||
+      !segment.segmentCatalogId)
+  );
+}
+
+export function resolveSinglesTitleMatchCatalogOption(
+  sourceSegment: Pick<Segment, "segmentCatalogId" | "type">,
+  isTagTitle: boolean,
+) {
+  if (isTagTitle) {
+    return getCatalogOptionById("M020") ?? getDefaultCatalogOption("Match");
+  }
+
+  if (sourceSegment.segmentCatalogId === "M002" || sourceSegment.segmentCatalogId === "M003") {
+    return getCatalogOptionById(sourceSegment.segmentCatalogId) ?? getDefaultCatalogOption("Match");
+  }
+
+  return getCatalogOptionById("M001") ?? getDefaultCatalogOption("Match");
+}
+
+export function pickParticipantIdCombinations(poolIds: string[], count: number, fixedIds: string[] = []) {
+  const fixed = [...new Set(fixedIds)];
+  const remaining = count - fixed.length;
+
+  if (remaining < 0) {
+    return [];
+  }
+
+  const available = poolIds.filter((id) => !fixed.includes(id));
+
+  if (remaining === 0) {
+    return fixed.length === count ? [fixed] : [];
+  }
+
+  if (available.length < remaining) {
+    return [];
+  }
+
+  const results: string[][] = [];
+
+  function choose(start: number, picked: string[]) {
+    if (picked.length === remaining) {
+      results.push([...fixed, ...picked]);
+      return;
+    }
+
+    for (let index = start; index <= available.length - (remaining - picked.length); index += 1) {
+      choose(index + 1, [...picked, available[index]]);
+    }
+  }
+
+  choose(0, []);
+  return results;
+}
+
+function isSinglesTitleContestShape(segment: Segment) {
+  return segment.participantIds.length === getSinglesTitleContestParticipantCount(segment);
+}
+
+function findChampionTitleForParticipants(participantIds: string[], championships: Championship[]) {
+  return championships.find(
+    (championship) =>
+      !isTagChampionship(championship) &&
+      championship.championIds.length === 1 &&
+      participantIds.includes(championship.championIds[0]),
+  );
+}
+
+function preserveChampionParticipantIds(
+  participantIds: string[],
+  option: SegmentCatalogOption,
+  championships: Championship[],
+) {
+  const championTitle = findChampionTitleForParticipants(participantIds, championships);
+
+  if (!championTitle?.championIds.length) {
+    return participantIds.slice(0, option.maxParticipants);
+  }
+
+  const championId = championTitle.championIds[0];
+  const challengerIds = participantIds.filter((id) => id !== championId);
+  const keptChallengers = challengerIds.slice(0, Math.max(0, option.maxParticipants - 1));
+
+  if (!participantIds.includes(championId)) {
+    return participantIds.slice(0, option.maxParticipants);
+  }
+
+  return [championId, ...keptChallengers];
+}
+
+function canSegmentAttachSinglesTitleMatch(segment: Segment, championship: Championship, wrestlers: Wrestler[] = []) {
+  if (!isSinglesTitleEligibleMatchFormat(segment) || isTagChampionship(championship)) {
+    return false;
+  }
+
+  if (!doSegmentParticipantsFitChampionship(segment, championship, wrestlers)) {
+    return false;
+  }
+
+  const requiredCount = getSinglesTitleContestParticipantCount(segment);
+  const participantCount = segment.participantIds.length;
+
+  if (participantCount < 2 || participantCount > requiredCount || new Set(segment.participantIds).size !== participantCount) {
+    return false;
+  }
+
+  if (isVacantSinglesChampionship(championship)) {
+    return participantCount === requiredCount && isValidSegment(segment, wrestlers);
+  }
+
+  return (
+    isSinglesChampionship(championship) &&
+    segment.participantIds.includes(championship.championIds[0])
+  );
 }
 
 export function trimParticipantsForCatalogOption(
@@ -647,27 +769,8 @@ export function trimParticipantsForCatalogOption(
     return participantIds.slice(0, 4);
   }
 
-  if (option.maxParticipants === 2 && segment.type === "Match") {
-    const attachedTitle = segment.championshipId
-      ? championships.find((championship) => championship.id === segment.championshipId)
-      : undefined;
-    const championTitle =
-      attachedTitle ??
-      championships.find(
-        (championship) =>
-          !isTagChampionship(championship) &&
-          championship.championIds.length === 1 &&
-          participantIds.includes(championship.championIds[0]),
-      );
-
-    if (championTitle?.championIds.length === 1) {
-      const championId = championTitle.championIds[0];
-      const challengerId = participantIds.find((id) => id !== championId);
-
-      if (participantIds.includes(championId) && challengerId) {
-        return [championId, challengerId];
-      }
-    }
+  if (segment.type === "Match" && (option.id === "M001" || option.id === "M002" || option.id === "M003")) {
+    return preserveChampionParticipantIds(participantIds, option, championships);
   }
 
   return participantIds.slice(0, option.maxParticipants);
@@ -694,6 +797,10 @@ export function canSegmentContestChampionship(segment: Segment, championship: Ch
 
 export function canSegmentAttachChampionship(segment: Segment, championship: Championship, wrestlers: Wrestler[] = []) {
   if (canSegmentContestChampionship(segment, championship, wrestlers)) {
+    return true;
+  }
+
+  if (canSegmentAttachSinglesTitleMatch(segment, championship, wrestlers)) {
     return true;
   }
 
