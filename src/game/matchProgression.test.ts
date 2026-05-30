@@ -47,6 +47,18 @@ function progressionRoster(): Wrestler[] {
   }));
 }
 
+function rosterWithRatings(ratings: MatchRatings, overrides: Partial<Wrestler> = {}) {
+  return progressionRoster().map((wrestler) => ({
+    ...wrestler,
+    momentum: 70,
+    fatigue: 10,
+    injuryStatus: "healthy" as const,
+    injuryWeeksRemaining: 0,
+    matchRatings: { ...ratings },
+    ...overrides,
+  }));
+}
+
 function gameWithShow(segment: Segment, wrestlers = progressionRoster()) {
   return {
     ...createNewGame({ draftedWrestlers: wrestlers }),
@@ -115,6 +127,10 @@ function resultWithSegments(segmentResults: ShowResult["segmentResults"]): ShowR
       injuryNotes: [],
     },
   };
+}
+
+function getRatingDeltaTotal(deltas: Partial<MatchRatings> | undefined) {
+  return Object.values(deltas ?? {}).reduce((sum, delta) => sum + delta, 0);
 }
 
 describe("match ratings progression helper", () => {
@@ -239,6 +255,131 @@ describe("match ratings progression helper", () => {
       enabled: true,
       eligible: false,
       reason: "manualNonSinglesFallDataUnavailable",
+      wrestlerIdsAffected: [],
+      deltas: {},
+    });
+  });
+
+  it("keeps progression behavior stable when the expectation gap is within thresholds", () => {
+    const wrestlers = rosterWithRatings(explicitRatings({ stamina: 70, resilience: 70, timing: 70, psychology: 70 }));
+    const resolved = deepRatingsResult(singlesSegment(wrestlers), wrestlers);
+    const insideExpectationResult = resultWithSegments([{ ...resolved.result.segmentResults[0], score: 78 }]);
+
+    const first = applyPostShowMatchRatingsProgression({
+      mode: "enabled",
+      wrestlers: resolved.game.wrestlers,
+      result: insideExpectationResult,
+      matchOutcomeModel: "deepRatings",
+    });
+    const second = applyPostShowMatchRatingsProgression({
+      mode: "enabled",
+      wrestlers: resolved.game.wrestlers,
+      result: insideExpectationResult,
+      matchOutcomeModel: "deepRatings",
+    });
+
+    expect(second.wrestlers).toEqual(first.wrestlers);
+    expect(second.segmentResults[0].internalMatchRatingsProgressionAudit?.deltas).toEqual(
+      first.segmentResults[0].internalMatchRatingsProgressionAudit?.deltas,
+    );
+  });
+
+  it("accelerates positive breakout deltas before existing caps and clamps", () => {
+    const wrestlers = rosterWithRatings(explicitRatings({ stamina: 78, resilience: 78, timing: 78, psychology: 78 }));
+    const resolved = deepRatingsResult(singlesSegment(wrestlers, { stipulationId: "iron_man" }), wrestlers);
+    const normalResult = resultWithSegments([{ ...resolved.result.segmentResults[0], score: 89 }]);
+    const breakoutResult = resultWithSegments([{ ...resolved.result.segmentResults[0], score: 91 }]);
+
+    const normalProgression = applyPostShowMatchRatingsProgression({
+      mode: "enabled",
+      wrestlers: resolved.game.wrestlers,
+      result: normalResult,
+      matchOutcomeModel: "deepRatings",
+    });
+    const breakoutProgression = applyPostShowMatchRatingsProgression({
+      mode: "enabled",
+      wrestlers: resolved.game.wrestlers,
+      result: breakoutResult,
+      matchOutcomeModel: "deepRatings",
+    });
+    const winnerId = resolved.result.segmentResults[0].winnerId ?? "";
+    const normalWinnerDeltas = normalProgression.segmentResults[0].internalMatchRatingsProgressionAudit?.deltas[winnerId];
+    const breakoutWinnerDeltas = breakoutProgression.segmentResults[0].internalMatchRatingsProgressionAudit?.deltas[winnerId];
+
+    expect(getRatingDeltaTotal(breakoutWinnerDeltas)).toBeGreaterThan(getRatingDeltaTotal(normalWinnerDeltas));
+  });
+
+  it("does not accelerate negative breakout deltas", () => {
+    const wrestlers = rosterWithRatings(explicitRatings({ clutch: 72, resilience: 72, timing: 72, stamina: 72 }));
+    const resolved = deepRatingsResult(tagSegment(wrestlers), wrestlers);
+    const highScoreResult = resultWithSegments([{ ...resolved.result.segmentResults[0], score: 88 }]);
+    const breakoutResult = resultWithSegments([{ ...resolved.result.segmentResults[0], score: 91 }]);
+
+    const highScoreProgression = applyPostShowMatchRatingsProgression({
+      mode: "enabled",
+      wrestlers: resolved.game.wrestlers,
+      result: highScoreResult,
+      matchOutcomeModel: "deepRatings",
+    });
+    const breakoutProgression = applyPostShowMatchRatingsProgression({
+      mode: "enabled",
+      wrestlers: resolved.game.wrestlers,
+      result: breakoutResult,
+      matchOutcomeModel: "deepRatings",
+    });
+    const fallTakerId = resolved.result.segmentResults[0].internalOutcomeAudit?.fallTakerId ?? "";
+    const highScoreFallTaker = highScoreProgression.segmentResults[0].internalMatchRatingsProgressionAudit?.deltas[fallTakerId];
+    const breakoutFallTaker = breakoutProgression.segmentResults[0].internalMatchRatingsProgressionAudit?.deltas[fallTakerId];
+
+    expect(getRatingDeltaTotal(breakoutFallTaker)).toBeGreaterThanOrEqual(getRatingDeltaTotal(highScoreFallTaker) - 1);
+  });
+
+  it("applies disappointing-match momentum and ring-metric penalties to physical participants only", () => {
+    const wrestlers = rosterWithRatings(explicitRatings(Object.fromEntries(Object.keys(explicitRatings()).map((key) => [key, 80])) as Partial<MatchRatings>));
+    const resolved = deepRatingsResult(singlesSegment(wrestlers), wrestlers);
+    const disappointingResult = resultWithSegments([{ ...resolved.result.segmentResults[0], score: 50 }]);
+    const participantIds = new Set(resolved.result.segmentResults[0].participantIds);
+
+    const progression = applyPostShowMatchRatingsProgression({
+      mode: "enabled",
+      wrestlers: resolved.game.wrestlers,
+      result: disappointingResult,
+      matchOutcomeModel: "deepRatings",
+    });
+
+    progression.wrestlers.forEach((wrestler) => {
+      const before = resolved.game.wrestlers.find((candidate) => candidate.id === wrestler.id)!;
+
+      if (participantIds.has(wrestler.id)) {
+        expect(wrestler.momentum).toBe(Math.max(0, before.momentum - 15));
+        expect(wrestler.matchRatings?.timing ?? 100).toBeLessThan(before.matchRatings?.timing ?? 0);
+        expect(wrestler.matchRatings?.psychology ?? 100).toBeLessThan(before.matchRatings?.psychology ?? 0);
+      } else {
+        expect(wrestler.momentum).toBe(before.momentum);
+        expect(wrestler.matchRatings).toEqual(before.matchRatings);
+      }
+    });
+  });
+
+  it("skips malformed participant inputs without crashing progression", () => {
+    const wrestlers = progressionRoster();
+    const malformedSegment = {
+      ...deepRatingsResult(singlesSegment(wrestlers), wrestlers).result.segmentResults[0],
+      participantIds: [],
+      winnerId: undefined,
+      score: Number.NaN,
+    };
+
+    const progression = applyPostShowMatchRatingsProgression({
+      mode: "enabled",
+      wrestlers,
+      result: resultWithSegments([malformedSegment]),
+      matchOutcomeModel: "deepRatings",
+    });
+
+    expect(progression.segmentResults[0].internalMatchRatingsProgressionAudit).toMatchObject({
+      enabled: true,
+      eligible: false,
       wrestlerIdsAffected: [],
       deltas: {},
     });
