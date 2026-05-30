@@ -20,6 +20,24 @@ function getSuperstarMailDetail(wrestler?: Wrestler) {
   };
 }
 
+function isRequestRepresentedOnCard(game: GameState, item: SuperstarMailItem) {
+  return game.currentShow.some((segment) => {
+    if (!segment.participantIds.includes(item.wrestlerId)) {
+      return false;
+    }
+
+    if (item.action?.type === "title_shot") {
+      return Boolean(segment.championshipId);
+    }
+
+    if (item.action?.type === "story_spot") {
+      return Boolean(segment.rivalryId) || segment.type === "Promo" || segment.type === "Backstage Angle" || segment.type === "Contract Signing";
+    }
+
+    return item.action?.type === "tv_time";
+  });
+}
+
 function SocialTrendCard({ children, title }: { children: ReactNode; title: string }) {
   return (
     <section className="social-trends-card">
@@ -49,6 +67,7 @@ function SuperstarMailRow({
   const mailDetail = getSuperstarMailDetail(wrestler);
   const activeRequest = getActiveSocialInboxRequest(game, item.id, item.wrestlerId);
   const actionDisabled = Boolean(activeRequest);
+  const requestStatus = activeRequest ? (isRequestRepresentedOnCard(game, item) ? "Represented on current card." : "Still pending on current card.") : item.action?.detail;
 
   return (
     <article
@@ -83,7 +102,7 @@ function SuperstarMailRow({
           <button className="social-mail-action" disabled={actionDisabled} onClick={() => onSuperstarMailAction?.(item)} type="button">
             {actionDisabled ? "Accepted" : item.action.label}
           </button>
-          <small>{actionDisabled ? "Request is active on the GM desk." : item.action.detail}</small>
+          <small>{requestStatus}</small>
         </div>
       ) : null}
     </article>
@@ -97,7 +116,7 @@ export function SocialTrendsPanel({
   game: GameState;
   onSuperstarMailAction?: (item: SuperstarMailItem) => void;
 }) {
-  const mailSnapshot = useMemo(() => getSuperstarMailSnapshot(game, 6), [game]);
+  const mailSnapshot = useMemo(() => getSuperstarMailSnapshot(game, 3), [game]);
   const mailIds = useMemo(() => mailSnapshot?.items.map((item) => item.id) ?? [], [mailSnapshot]);
   const [expandedMailId, setExpandedMailId] = useState<string | null>(null);
   const [readMailIds, setReadMailIds] = useState<Set<string>>(() => new Set());
@@ -136,18 +155,25 @@ export function SocialTrendsPanel({
             <b>{unreadCount} Unread</b>
           </div>
           <div className="social-mail-list" aria-label="Superstar inbox">
-            {mailSnapshot.items.map((item) => (
-              <SuperstarMailRow
-                game={game}
-                expanded={expandedMailId === item.id}
-                item={item}
-                key={item.id}
-                onSelect={() => handleMailSelect(item.id)}
-                onSuperstarMailAction={onSuperstarMailAction}
-                read={readMailIds.has(item.id)}
-                wrestler={game.wrestlers.find((wrestler) => wrestler.id === item.wrestlerId)}
-              />
-            ))}
+            {mailSnapshot.items.length ? (
+              mailSnapshot.items.map((item) => (
+                <SuperstarMailRow
+                  game={game}
+                  expanded={expandedMailId === item.id}
+                  item={item}
+                  key={item.id}
+                  onSelect={() => handleMailSelect(item.id)}
+                  onSuperstarMailAction={onSuperstarMailAction}
+                  read={readMailIds.has(item.id)}
+                  wrestler={game.wrestlers.find((wrestler) => wrestler.id === item.wrestlerId)}
+                />
+              ))
+            ) : (
+              <div className="social-mail-empty">
+                <strong>No active asks</strong>
+                <span>Nothing needs a direct promise from the GM desk this week.</span>
+              </div>
+            )}
           </div>
         </SocialTrendCard>
       ) : null}

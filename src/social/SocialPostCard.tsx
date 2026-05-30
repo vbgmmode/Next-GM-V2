@@ -4,6 +4,7 @@ import type { GameState, SocialPost, Wrestler } from "../game/types";
 import {
   formatEngagementCount,
   formatFanFeedLabel,
+  getSocialAuthorAvatarSrc,
   getRelatedWrestlerNames,
   getSocialAuthorInitials,
   getSocialAuthorMeta,
@@ -24,12 +25,14 @@ function SocialActionIcon({ label, children }: { label: string; children: ReactN
 export function SocialPostCard({ game, post }: { game: GameState; post: SocialPost }) {
   const { displayName, handle } = getSocialAuthorMeta(post.author);
   const initials = getSocialAuthorInitials(post.author);
+  const avatarSrc = getSocialAuthorAvatarSrc(post.author);
   const engagement = getSocialPostEngagement(post.id);
   const relatedNames = getRelatedWrestlerNames(post, game.wrestlers);
 
   return (
     <article className={`social-timeline-post tone-${post.tone}`}>
-      <div aria-hidden="true" className="social-timeline-avatar">
+      <div aria-hidden="true" className="social-timeline-avatar has-image">
+        <img alt="" loading="lazy" src={avatarSrc} />
         <span>{initials}</span>
       </div>
 

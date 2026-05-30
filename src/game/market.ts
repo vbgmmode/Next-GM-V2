@@ -7,6 +7,10 @@ import { ensureMatchRatings } from "./matchRatings";
 import type {
   GameState,
   MarketContract,
+  MarketNegotiationInterestRead,
+  MarketNegotiationOffer,
+  MarketNegotiationOutcome,
+  MarketNegotiationPersonality,
   MarketState,
   MarketTransaction,
   OfficeMandateEvent,
@@ -167,6 +171,116 @@ export function getExternalMarketOffer(wrestler: Wrestler, seasonNumber: number,
     weeks,
     weeklyAsk,
     dueNow: weeklyAsk * weeks,
+  };
+}
+
+const negotiationPersonalityLabels: Record<MarketNegotiationPersonality, string> = {
+  money_first: "Money First",
+  security_seeker: "Security Seeker",
+  spotlight_driven: "Spotlight Driven",
+  momentum_chaser: "Momentum Chaser",
+  rival_leverage: "Rival Leverage",
+};
+
+export function getMarketNegotiationPersonality(wrestler: Wrestler): MarketNegotiationPersonality {
+  const roll = hashString(`market-personality-${wrestler.id}-${wrestler.sourceBrand ?? ""}-${wrestler.roleTier ?? ""}`) % 5;
+  return (["money_first", "security_seeker", "spotlight_driven", "momentum_chaser", "rival_leverage"] as const)[roll];
+}
+
+export function getMarketNegotiationPersonalityLabel(personality: MarketNegotiationPersonality) {
+  return negotiationPersonalityLabels[personality];
+}
+
+function getInterestRead(score: number): MarketNegotiationInterestRead {
+  if (score >= 86) return "Deal Feels Ready";
+  if (score >= 74) return "Near Agreement";
+  if (score >= 62) return "Serious Interest";
+  if (score >= 48) return "Listening";
+  return "Cold";
+}
+
+function getRosterRoleFitScore(game: GameState, wrestler: Wrestler) {
+  const sameTierCount = game.wrestlers.filter((item) => item.roleTier === wrestler.roleTier).length;
+  const rosterCrowdPenalty = Math.max(0, game.wrestlers.length - 12) * 2;
+  const tierCrowdPenalty = wrestler.roleTier === "MainEvent" ? sameTierCount * 4 : wrestler.roleTier === "UpperCard" ? sameTierCount * 2 : sameTierCount;
+  const rosterNeedBoost = game.wrestlers.length < 10 ? 12 : game.wrestlers.length < 14 ? 5 : 0;
+
+  return clamp(62 + rosterNeedBoost - rosterCrowdPenalty - tierCrowdPenalty, 25, 82);
+}
+
+function getBrandMomentumScore(game: GameState) {
+  const office = game.marketState.officeMandate;
+  const rankingBoost = office.mandateStatus === "surging" ? 12 : office.mandateStatus === "stable" ? 6 : office.mandateStatus === "watch" ? 2 : -6;
+  return clamp(Math.round((office.ownerTrust + office.brandReputation) / 2) + rankingBoost, 25, 92);
+}
+
+function getRivalPressureScore(game: GameState, wrestler: Wrestler) {
+  const interestedBrands = game.rivalBrands.filter((brand) => {
+    const offer = getExternalMarketOffer(wrestler, game.seasonNumber, game.currentWeek, MARKET_CONTRACT_MAX_WEEKS);
+    return offer.dueNow <= brand.budget && !brand.rosterWrestlerIds.includes(wrestler.id);
+  });
+
+  return clamp(50 + interestedBrands.length * 8, 35, 88);
+}
+
+export function getMarketOfferEvaluation(
+  game: GameState,
+  wrestler: Wrestler,
+  offerInput: { contractWeeks: number; weeklySalary: number },
+) {
+  const contractWeeks = getContractWeeksForMarket(game, offerInput.contractWeeks);
+  const weeklySalary = Math.max(1000, Math.round(offerInput.weeklySalary));
+  const dueNow = weeklySalary * contractWeeks;
+  const baselineOffer = getExternalMarketOffer(wrestler, game.seasonNumber, game.currentWeek, contractWeeks);
+  const personality = getMarketNegotiationPersonality(wrestler);
+  const moneyScore = clamp(45 + Math.round((weeklySalary / Math.max(1, baselineOffer.weeklyAsk) - 0.9) * 90), 10, 100);
+  const securityScore = clamp(30 + Math.round((contractWeeks / MARKET_CONTRACT_MAX_WEEKS) * 70), 10, 100);
+  const roleFitScore = getRosterRoleFitScore(game, wrestler);
+  const momentumScore = getBrandMomentumScore(game);
+  const rivalPressureScore = getRivalPressureScore(game, wrestler);
+  const weights: Record<MarketNegotiationPersonality, { money: number; security: number; role: number; momentum: number; rival: number }> = {
+    money_first: { money: 0.45, security: 0.16, role: 0.14, momentum: 0.14, rival: 0.11 },
+    security_seeker: { money: 0.2, security: 0.43, role: 0.14, momentum: 0.13, rival: 0.1 },
+    spotlight_driven: { money: 0.2, security: 0.14, role: 0.42, momentum: 0.14, rival: 0.1 },
+    momentum_chaser: { money: 0.18, security: 0.14, role: 0.14, momentum: 0.43, rival: 0.11 },
+    rival_leverage: { money: 0.22, security: 0.14, role: 0.12, momentum: 0.12, rival: 0.4 },
+  };
+  const weight = weights[personality];
+  const baseScore = Math.round(
+    moneyScore * weight.money +
+      securityScore * weight.security +
+      roleFitScore * weight.role +
+      momentumScore * weight.momentum +
+      rivalPressureScore * weight.rival,
+  );
+  const roll = (hashString(`market-offer-${game.seasonNumber}-${game.currentWeek}-${game.brandName}-${wrestler.id}-${contractWeeks}-${weeklySalary}`) % 19) - 7;
+  const finalScore = clamp(baseScore + roll);
+  const accepted = finalScore >= 70;
+  const contextReads = [
+    personality === "money_first"
+      ? "Wants the richest weekly number"
+      : personality === "security_seeker"
+        ? "Wants contract security"
+        : personality === "spotlight_driven"
+          ? "Watching roster crowding"
+          : personality === "momentum_chaser"
+            ? "Watching brand momentum"
+            : "Using rival leverage",
+    roleFitScore < 50 ? "Concerned about crowded roster" : roleFitScore >= 70 ? "Sees a clear role lane" : "Role fit is workable",
+    rivalPressureScore >= 70 ? "Rival interest is active" : "Rival pressure is limited",
+  ];
+
+  return {
+    accepted,
+    contractWeeks,
+    weeklySalary,
+    dueNow,
+    interestRead: getInterestRead(baseScore),
+    personality,
+    personalityLabel: getMarketNegotiationPersonalityLabel(personality),
+    contextReads,
+    baseScore,
+    finalScore,
   };
 }
 
@@ -434,6 +548,55 @@ function removePlayerWrestlerOwnership(game: GameState, wrestlerId: string): Gam
   };
 }
 
+function addPlayerMarketSigning(
+  game: GameState,
+  wrestler: Wrestler,
+  offer: { contractWeeks: number; weeklySalary: number; dueNow: number },
+  note: string,
+): GameState {
+  const contract = createMarketContract(wrestler, "player", "player", "free_agent", offer.contractWeeks, "prepaid", offer.weeklySalary, offer.dueNow);
+  const transaction = createTransaction(game, "signing", [wrestler.id], [wrestler.name], offer.dueNow, note, {
+    toBrandId: "player",
+    toBrandName: game.brandName,
+    accepted: true,
+  });
+
+  return {
+    ...game,
+    money: game.money - offer.dueNow,
+    wrestlers: [...game.wrestlers, normalizeMarketRosterAddition(wrestler)],
+    marketState: {
+      ...game.marketState,
+      weeklyBoard: game.marketState.weeklyBoard
+        ? {
+            ...game.marketState.weeklyBoard,
+            entries: game.marketState.weeklyBoard.entries.map((entry) =>
+              entry.wrestlerId === wrestler.id
+                ? {
+                    ...entry,
+                    status: "player_signed",
+                    weeklyAsk: offer.weeklySalary,
+                    transactionId: transaction.id,
+                    offer: {
+                      contractWeeks: offer.contractWeeks,
+                      weeklySalary: offer.weeklySalary,
+                      dueNow: offer.dueNow,
+                      interestRead: "Deal Feels Ready",
+                      personality: getMarketNegotiationPersonality(wrestler),
+                      outcome: "accepted",
+                      note,
+                    },
+                  }
+                : entry,
+            ),
+          }
+        : game.marketState.weeklyBoard,
+      playerContracts: [...game.marketState.playerContracts.filter((item) => item.wrestlerId !== wrestler.id), contract],
+      transactions: [...game.marketState.transactions, transaction],
+    },
+  };
+}
+
 export function signPlayerFreeAgent(game: GameState, wrestlerId: string, draftPool: Wrestler[], requestedWeeks?: number): GameState {
   const boardReadyGame = ensureWeeklyMarketBoard(game, draftPool);
   const boardEntry = boardReadyGame.marketState.weeklyBoard?.entries.find((entry) => entry.wrestlerId === wrestlerId);
@@ -450,39 +613,156 @@ export function signPlayerFreeAgent(game: GameState, wrestlerId: string, draftPo
     return game;
   }
 
-  const contract = createMarketContract(wrestler, "player", "player", "free_agent", contractWeeks, "prepaid", offer.weeklyAsk, offer.dueNow);
-  const transaction = createTransaction(
+  return addPlayerMarketSigning(
     boardReadyGame,
-    "signing",
-    [wrestler.id],
-    [wrestler.name],
-    offer.dueNow,
-    `${boardReadyGame.brandName} signed ${wrestler.name} for ${contract.contractWeeksRemaining} weeks.`,
-    {
-      toBrandId: "player",
-      toBrandName: boardReadyGame.brandName,
-    },
+    wrestler,
+    { contractWeeks, weeklySalary: offer.weeklyAsk, dueNow: offer.dueNow },
+    `${boardReadyGame.brandName} signed ${wrestler.name} for ${contractWeeks} weeks.`,
   );
+}
+
+function getDeclinedOfferOutcome(game: GameState, wrestler: Wrestler, evaluation: ReturnType<typeof getMarketOfferEvaluation>): MarketNegotiationOutcome {
+  const roll = hashString(`market-decline-${game.seasonNumber}-${game.currentWeek}-${wrestler.id}-${evaluation.contractWeeks}-${evaluation.weeklySalary}`) % 100;
+
+  if (evaluation.finalScore >= 62) {
+    return "return_next_week";
+  }
+
+  if (evaluation.personality === "rival_leverage" || roll >= 82) {
+    const rivalClaim = pickCpuClaimBrand(game, wrestler, new Set());
+    if (rivalClaim) {
+      return "rival_signed";
+    }
+  }
+
+  return "cooldown";
+}
+
+function getDeclinedOfferNote(game: GameState, wrestler: Wrestler, outcome: MarketNegotiationOutcome) {
+  if (outcome === "return_next_week") {
+    return `${wrestler.name} declined ${game.brandName}'s offer but kept the line open for next week.`;
+  }
+
+  if (outcome === "rival_signed") {
+    return `${wrestler.name} declined ${game.brandName}'s offer and let a rival move in.`;
+  }
+
+  return `${wrestler.name} declined ${game.brandName}'s offer and stepped away from the board.`;
+}
+
+export function submitPlayerMarketOffer(
+  game: GameState,
+  wrestlerId: string,
+  draftPool: Wrestler[],
+  requestedWeeks: number,
+  requestedWeeklySalary: number,
+): GameState {
+  const boardReadyGame = ensureWeeklyMarketBoard(game, draftPool);
+  const boardEntry = boardReadyGame.marketState.weeklyBoard?.entries.find((entry) => entry.wrestlerId === wrestlerId);
+  const wrestler = boardEntry?.status === "available" ? getAvailableFreeAgents(boardReadyGame, draftPool).find((item) => item.id === wrestlerId) : undefined;
+
+  if (!wrestler || boardEntry?.offer) {
+    return game;
+  }
+
+  const evaluation = getMarketOfferEvaluation(boardReadyGame, wrestler, {
+    contractWeeks: requestedWeeks,
+    weeklySalary: requestedWeeklySalary,
+  });
+
+  if (boardReadyGame.money < evaluation.dueNow) {
+    return game;
+  }
+
+  if (evaluation.accepted) {
+    return addPlayerMarketSigning(
+      boardReadyGame,
+      wrestler,
+      {
+        contractWeeks: evaluation.contractWeeks,
+        weeklySalary: evaluation.weeklySalary,
+        dueNow: evaluation.dueNow,
+      },
+      `${boardReadyGame.brandName} signed ${wrestler.name} after a ${evaluation.interestRead.toLowerCase()} negotiation read.`,
+    );
+  }
+
+  const outcome = getDeclinedOfferOutcome(boardReadyGame, wrestler, evaluation);
+  const declineNote = getDeclinedOfferNote(boardReadyGame, wrestler, outcome);
+  const declinedOffer: MarketNegotiationOffer = {
+    contractWeeks: evaluation.contractWeeks,
+    weeklySalary: evaluation.weeklySalary,
+    dueNow: evaluation.dueNow,
+    interestRead: evaluation.interestRead,
+    personality: evaluation.personality,
+    outcome,
+    note: declineNote,
+  };
+  const declinedTransaction = createTransaction(boardReadyGame, "signing", [wrestler.id], [wrestler.name], 0, declineNote, {
+    toBrandId: "player",
+    toBrandName: boardReadyGame.brandName,
+    accepted: false,
+  });
+
+  if (outcome === "rival_signed") {
+    const rivalClaim = pickCpuClaimBrand(boardReadyGame, wrestler, new Set());
+    if (rivalClaim) {
+      const { transaction, nextBrand } = addCpuBoardSigning(boardReadyGame, rivalClaim.brand, wrestler);
+      return {
+        ...boardReadyGame,
+        rivalBrands: boardReadyGame.rivalBrands.map((brand) => (brand.id === rivalClaim.brand.id ? nextBrand : brand)),
+        marketState: {
+          ...boardReadyGame.marketState,
+          weeklyBoard: boardReadyGame.marketState.weeklyBoard
+            ? {
+                ...boardReadyGame.marketState.weeklyBoard,
+                entries: boardReadyGame.marketState.weeklyBoard.entries.map((entry) =>
+                  entry.wrestlerId === wrestler.id
+                    ? {
+                        ...entry,
+                        status: "rival_signed",
+                        offer: { ...declinedOffer, note: `${declineNote} ${rivalClaim.brand.brandName} filed the winning contract.` },
+                        rivalBrandId: rivalClaim.brand.id,
+                        rivalBrandName: rivalClaim.brand.brandName,
+                        transactionId: transaction.id,
+                      }
+                    : entry,
+                ),
+              }
+            : boardReadyGame.marketState.weeklyBoard,
+          transactions: [...boardReadyGame.marketState.transactions, declinedTransaction, transaction],
+        },
+      };
+    }
+  }
 
   return {
     ...boardReadyGame,
-    money: boardReadyGame.money - offer.dueNow,
-    wrestlers: [
-      ...boardReadyGame.wrestlers,
-      normalizeMarketRosterAddition(wrestler),
-    ],
     marketState: {
       ...boardReadyGame.marketState,
       weeklyBoard: boardReadyGame.marketState.weeklyBoard
         ? {
             ...boardReadyGame.marketState.weeklyBoard,
             entries: boardReadyGame.marketState.weeklyBoard.entries.map((entry) =>
-              entry.wrestlerId === wrestler.id ? { ...entry, status: "player_signed", transactionId: transaction.id } : entry,
+              entry.wrestlerId === wrestler.id
+                ? {
+                    ...entry,
+                    status: "offer_declined",
+                    offer: declinedOffer,
+                    transactionId: declinedTransaction.id,
+                  }
+                : entry,
             ),
           }
         : boardReadyGame.marketState.weeklyBoard,
-      playerContracts: [...boardReadyGame.marketState.playerContracts.filter((item) => item.wrestlerId !== wrestler.id), contract],
-      transactions: [...boardReadyGame.marketState.transactions, transaction],
+      cooldowns:
+        outcome === "cooldown"
+          ? [
+              ...boardReadyGame.marketState.cooldowns.filter((item) => item.wrestlerId !== wrestler.id),
+              { wrestlerId: wrestler.id, availableWeek: boardReadyGame.currentWeek + 3, releasedByBrandId: "declined_offer" },
+            ]
+          : boardReadyGame.marketState.cooldowns,
+      transactions: [...boardReadyGame.marketState.transactions, declinedTransaction],
     },
   };
 }
@@ -677,6 +957,53 @@ function getTradeValue(wrestler: Wrestler, contract?: MarketContract) {
   return wrestler.popularity * 0.45 + wrestler.momentum * 0.28 + Math.max(wrestler.ringSkill, wrestler.promoSkill) * 0.22 - (contract?.weeklySalary ?? 0) / 3500;
 }
 
+function getTradeRead(score: number) {
+  if (score >= 18) return "Rival Wants This";
+  if (score >= 8) return "Strong Fit";
+  if (score >= -6) return "Workable";
+  if (score >= -16) return "Long Shot";
+  return "No Traction";
+}
+
+export function getPlayerTradeEvaluation(game: GameState, outgoingWrestlerId: string | undefined, targetWrestlerId: string | undefined, draftPool: Wrestler[]) {
+  const outgoing = game.wrestlers.find((wrestler) => wrestler.id === outgoingWrestlerId);
+  const rivalBrand = game.rivalBrands.find((brand) => brand.rosterWrestlerIds.includes(targetWrestlerId ?? ""));
+  const target = draftPool.find((wrestler) => wrestler.id === targetWrestlerId);
+
+  if (!outgoing || !rivalBrand || !target) {
+    return undefined;
+  }
+
+  const outgoingContract = getContractForWrestler(game, outgoing.id);
+  const targetContract = rivalBrand.contracts.find((contract) => contract.wrestlerId === target.id);
+  const valueDelta = getTradeValue(outgoing, outgoingContract) - getTradeValue(target, targetContract);
+  const divisionCount = rivalBrand.rosterWrestlerIds.filter((id) => draftPool.find((wrestler) => wrestler.id === id)?.division === outgoing.division).length;
+  const needBonus = divisionCount < 4 ? 8 : 0;
+  const styleBonus = rivalBrand.assignedGMStyle === "Talent Developer" && outgoing.roleTier === "Prospect" ? 8 : rivalBrand.assignedGMStyle === "Ratings Chaser" && outgoing.popularity >= target.popularity ? 6 : 0;
+  const deterministicPush = (hashString(`${game.seasonNumber}-${game.currentWeek}-${rivalBrand.id}-${outgoing.id}-${target.id}`) % 13) - 6;
+  const score = valueDelta + needBonus + styleBonus + deterministicPush;
+  const accepted = score >= -6;
+  const transactionFee = accepted ? Math.max(0, Math.round(Math.abs(valueDelta) * 1400)) : 0;
+  const contextReads = [
+    valueDelta >= 8 ? "Value favors your side" : valueDelta >= -6 ? "Value is close" : "Rival sees a value gap",
+    needBonus > 0 ? `${rivalBrand.brandName} needs ${outgoing.division}` : `${rivalBrand.brandName} is stocked there`,
+    styleBonus > 0 ? `${rivalBrand.assignedGMStyle} fit is active` : "GM style does not add leverage",
+    deterministicPush >= 3 ? "Desk mood is warm" : deterministicPush <= -3 ? "Desk mood is skeptical" : "Desk mood is neutral",
+  ];
+
+  return {
+    accepted,
+    contextReads,
+    deterministicPush,
+    needBonus,
+    read: getTradeRead(score),
+    score,
+    styleBonus,
+    transactionFee,
+    valueDelta,
+  };
+}
+
 export function proposePlayerTrade(game: GameState, outgoingWrestlerId: string, targetWrestlerId: string, draftPool: Wrestler[]): GameState {
   const outgoing = game.wrestlers.find((wrestler) => wrestler.id === outgoingWrestlerId);
   const rivalBrand = game.rivalBrands.find((brand) => brand.rosterWrestlerIds.includes(targetWrestlerId));
@@ -688,12 +1015,10 @@ export function proposePlayerTrade(game: GameState, outgoingWrestlerId: string, 
 
   const outgoingContract = getContractForWrestler(game, outgoing.id);
   const targetContract = rivalBrand.contracts.find((contract) => contract.wrestlerId === target.id);
-  const valueDelta = getTradeValue(outgoing, outgoingContract) - getTradeValue(target, targetContract);
-  const needBonus = rivalBrand.rosterWrestlerIds.filter((id) => draftPool.find((wrestler) => wrestler.id === id)?.division === outgoing.division).length < 4 ? 8 : 0;
-  const styleBonus = rivalBrand.assignedGMStyle === "Talent Developer" && outgoing.roleTier === "Prospect" ? 8 : rivalBrand.assignedGMStyle === "Ratings Chaser" && outgoing.popularity >= target.popularity ? 6 : 0;
-  const deterministicPush = (hashString(`${game.seasonNumber}-${game.currentWeek}-${rivalBrand.id}-${outgoing.id}-${target.id}`) % 13) - 6;
-  const accepted = valueDelta + needBonus + styleBonus + deterministicPush >= -6;
-  const transactionFee = accepted ? Math.max(0, Math.round(Math.abs(valueDelta) * 1400)) : 0;
+  const tradeEvaluation = getPlayerTradeEvaluation(game, outgoingWrestlerId, targetWrestlerId, draftPool);
+  const valueDelta = tradeEvaluation?.valueDelta ?? getTradeValue(outgoing, outgoingContract) - getTradeValue(target, targetContract);
+  const accepted = tradeEvaluation?.accepted ?? false;
+  const transactionFee = tradeEvaluation?.transactionFee ?? 0;
   const transaction = createTransaction(
     game,
     "trade",

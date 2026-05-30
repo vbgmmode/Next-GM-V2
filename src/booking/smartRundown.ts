@@ -5,7 +5,8 @@ import { getCurrentCalendarWeek, isValidSegment } from "../game/scoring";
 import { getSegmentPrestigeWeight, isSeasonFinalePleWeek } from "../game/championshipPrestigeReads";
 import { getProtectedRestWrestlerIds } from "../game/socialInboxActions";
 import { createUniqueDomainId } from "../game/domainIds";
-import type { GameState, Rivalry, Segment, Wrestler } from "../game/types";
+import { wrestlerFitsChampionshipDivision } from "../game/titleCatalog";
+import type { Championship, GameState, Rivalry, Segment, SocialInboxRequest, Wrestler } from "../game/types";
 import {
   canSegmentAttachRivalry,
   canSegmentAttachChampionship,
@@ -246,6 +247,7 @@ function buildSmartSegment(
   durationMinutes: number,
   index: number,
   rivalryId?: string,
+  championshipId?: string,
 ) {
   const option = getCatalogOptionById(optionId) ?? getDefaultCatalogOption("Match")!;
   let segment: Segment = {
@@ -260,7 +262,14 @@ function buildSmartSegment(
     rivalryId,
   };
 
-  if (option.championshipAllowed) {
+  if (option.championshipAllowed && championshipId) {
+    const championship = game.championships.find((title) => title.id === championshipId);
+    if (championship && canSegmentAttachChampionship(segment, championship, game.wrestlers)) {
+      segment = { ...segment, championshipId: championship.id };
+    }
+  }
+
+  if (option.championshipAllowed && !segment.championshipId) {
     const championship = game.championships.find((title) => canSegmentAttachChampionship(segment, title, game.wrestlers));
     if (championship) {
       segment = { ...segment, championshipId: championship.id };
@@ -286,6 +295,124 @@ function buildSmartSegment(
   return segment;
 }
 
+function getActiveSmartInboxRequests(game: GameState) {
+  const priority: Record<string, number> = {
+    title_shot: 4,
+    story_spot: 3,
+    tv_time: 2,
+    rest: 1,
+  };
+
+  return game.socialInbox.requests
+    .filter((request) => request.status === "accepted" && request.actionType !== "rest")
+    .sort((a, b) => (priority[b.actionType] ?? 0) - (priority[a.actionType] ?? 0) || a.createdWeekNumber - b.createdWeekNumber);
+}
+
+function getTitleForSmartRequest(game: GameState, requester: Wrestler) {
+  return game.championships
+    .filter(
+      (championship) =>
+        championship.eligibleMatchScope !== "tag_team" &&
+        championship.division !== "Tag Team" &&
+        championship.championIds.length === 1 &&
+        wrestlerFitsChampionshipDivision(requester, championship),
+    )
+    .sort((a, b) => {
+      const aContender = (a.contenderIds ?? []).includes(requester.id) ? 1 : 0;
+      const bContender = (b.contenderIds ?? []).includes(requester.id) ? 1 : 0;
+      return bContender - aContender || b.prestige - a.prestige || a.name.localeCompare(b.name);
+    })[0];
+}
+
+function chooseSmartTitleOpponent(
+  game: GameState,
+  title: Championship,
+  requester: Wrestler,
+  available: Wrestler[],
+  usage: Record<string, number>,
+  maxUsagePerWrestler: number,
+  variantSeed: number,
+) {
+  const championId = title.championIds[0];
+
+  if (requester.id !== championId) {
+    return available.find((wrestler) => wrestler.id === championId && (usage[wrestler.id] ?? 0) < maxUsagePerWrestler);
+  }
+
+  const contenderIds = new Set(title.contenderIds ?? []);
+  return sortSmartTalent(
+    available.filter(
+      (wrestler) =>
+        wrestler.id !== requester.id &&
+        (usage[wrestler.id] ?? 0) < maxUsagePerWrestler &&
+        wrestlerFitsChampionshipDivision(wrestler, title) &&
+        canWrestlersShareMatch([requester, wrestler]),
+    ),
+    game,
+    usage,
+    "match",
+    variantSeed,
+  ).sort((a, b) => Number(contenderIds.has(b.id)) - Number(contenderIds.has(a.id)))[0];
+}
+
+function buildSmartPromiseSegment(
+  game: GameState,
+  request: SocialInboxRequest,
+  available: Wrestler[],
+  usage: Record<string, number>,
+  usedPairs: Set<string>,
+  index: number,
+  maxUsagePerWrestler: number,
+  variantSeed: number,
+) {
+  const requester = available.find((wrestler) => wrestler.id === request.wrestlerId && (usage[wrestler.id] ?? 0) < maxUsagePerWrestler);
+
+  if (!requester) {
+    return undefined;
+  }
+
+  if (request.actionType === "title_shot") {
+    const title = getTitleForSmartRequest(game, requester);
+    if (!title) {
+      return undefined;
+    }
+
+    const opponent = chooseSmartTitleOpponent(game, title, requester, available, usage, maxUsagePerWrestler, variantSeed);
+    if (!opponent || opponent.id === requester.id || !canWrestlersShareMatch([requester, opponent])) {
+      return undefined;
+    }
+
+    const participantIds = title.championIds.includes(requester.id) ? [requester.id, opponent.id] : [opponent.id, requester.id];
+    if (hasSmartPairOnCard(participantIds, usedPairs)) {
+      return undefined;
+    }
+
+    return {
+      note: `Accounted for ${request.wrestlerName}'s title-scene promise with a ${title.name} match.`,
+      segment: buildSmartSegment(game, "M001", participantIds, 28, index, undefined, title.id),
+    };
+  }
+
+  if (request.actionType === "story_spot") {
+    const rivalry = game.rivalries.find((item) => item.participantIds.includes(request.wrestlerId) && item.status !== "stale");
+    const participantIds = rivalry
+      ? rivalry.participantIds.filter((id) => available.some((wrestler) => wrestler.id === id) && (usage[id] ?? 0) < maxUsagePerWrestler)
+      : [requester.id];
+    const optionId = rivalry ? getSmartStoryOptionId(rivalry, variantSeed) : "P002";
+    const option = getCatalogOptionById(optionId);
+
+    return {
+      note: `Accounted for ${request.wrestlerName}'s story promise on the generated card.`,
+      segment: buildSmartSegment(game, optionId, participantIds.slice(0, option?.maxParticipants ?? participantIds.length), rivalry ? 14 : 12, index, rivalry?.id),
+    };
+  }
+
+  return {
+    note: `Accounted for ${request.wrestlerName}'s TV-time promise on the generated card.`,
+    segment: buildSmartSegment(game, "P001", [requester.id], 14, index),
+  };
+}
+
 export function buildSmartRundown(game: GameState, variantSeed = 0): SmartRundownResult {
   const protectedRestIds = getProtectedRestWrestlerIds(game);
   const available = game.wrestlers.filter((wrestler) => isSmartRundownAvailable(wrestler) && !protectedRestIds.has(wrestler.id));
@@ -295,6 +422,34 @@ export function buildSmartRundown(game: GameState, variantSeed = 0): SmartRundow
   const usedPairs = new Set<string>();
   const usedRivalryIds = new Set<string>();
   const maxUsagePerWrestler = 1;
+  const addSegmentObject = (segment: Segment) => {
+    if (hasSmartPairOnCard(segment.participantIds, usedPairs)) {
+      return false;
+    }
+
+    if (segment.rivalryId && usedRivalryIds.has(segment.rivalryId)) {
+      return false;
+    }
+
+    if (!isValidSegment(segment, game.wrestlers, protectedRestIds)) {
+      return false;
+    }
+
+    segments.push(segment);
+    segment.participantIds.forEach((id) => {
+      usage[id] = (usage[id] ?? 0) + 1;
+    });
+
+    if (segment.participantIds.length === 2) {
+      usedPairs.add(getSmartPairKey(segment.participantIds));
+    }
+
+    if (segment.rivalryId) {
+      usedRivalryIds.add(segment.rivalryId);
+    }
+
+    return true;
+  };
   const addSegment = (optionId: string, participantIds: string[], durationMinutes: number, rivalryId?: string) => {
     if (hasSmartPairOnCard(participantIds, usedPairs)) {
       return false;
@@ -335,6 +490,19 @@ export function buildSmartRundown(game: GameState, variantSeed = 0): SmartRundow
 
   const shape = getSmartCardShape(game, available, variantSeed);
   const rivalryPool = getSmartRivalries(game, available, variantSeed);
+
+  getActiveSmartInboxRequests(game).forEach((request, index) => {
+    if (segments.length >= maxBookingSegments) {
+      return;
+    }
+
+    const promiseSegment = buildSmartPromiseSegment(game, request, available, usage, usedPairs, segments.length, maxUsagePerWrestler, variantSeed + index);
+    if (promiseSegment && addSegmentObject(promiseSegment.segment)) {
+      notes.add(promiseSegment.note);
+    } else {
+      notes.add(`Left ${request.wrestlerName}'s accepted ${request.askLabel} ask pending; the current roster, title, or segment rules blocked a clean generated slot.`);
+    }
+  });
 
   rivalryPool.slice(0, shape.targetRivalryBeats).forEach((rivalry, index) => {
     if (usedRivalryIds.has(rivalry.id)) {
@@ -534,6 +702,36 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
       notes: [],
       segments: [],
     };
+  }
+
+  const promise = getActiveSmartInboxRequests(game).find(
+    (request) =>
+      !currentShow.some((segment) => {
+        if (!segment.participantIds.includes(request.wrestlerId)) {
+          return false;
+        }
+
+        if (request.actionType === "title_shot") {
+          return Boolean(segment.championshipId);
+        }
+
+        if (request.actionType === "story_spot") {
+          return Boolean(segment.rivalryId) || segment.type === "Backstage Angle" || segment.type === "Contract Signing" || segment.type === "Promo";
+        }
+
+        return true;
+      }),
+  );
+
+  if (promise) {
+    const promiseSegment = buildSmartPromiseSegment(game, promise, available, usage, usedPairs, currentShow.length, 2, variantSeed);
+
+    if (promiseSegment && isValidSegment(promiseSegment.segment, game.wrestlers, protectedRestIds)) {
+      return {
+        notes: [promiseSegment.note],
+        segments: [promiseSegment.segment],
+      };
+    }
   }
 
   const cardHasRivalry = (rivalryId: string) => currentShow.some((segment) => segment.rivalryId === rivalryId);

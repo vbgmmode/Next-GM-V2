@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createNewGame, draftPool } from "../game/seed";
 import { isValidSegment } from "../game/scoring";
+import { wrestlerFitsChampionshipDivision } from "../game/titleCatalog";
 import type { GameState, Rivalry, Segment, Wrestler } from "../game/types";
 import { getSegmentDurationMinutes, getShowReadiness, maxBookingSegments } from "./bookingUtils";
 import { buildSmartRundown, buildSmartSingleSegment } from "./smartRundown";
@@ -140,6 +141,53 @@ describe("smartRundown", () => {
 
     expect(result.error).toBeUndefined();
     expect(result.segments.some((segment) => segment.rivalryId === rivalry.id && segment.segmentCatalogId === "M020")).toBe(true);
+  });
+
+  it("prioritizes an accepted title-shot promise in the generated rundown", () => {
+    const game = makeGame();
+    const title = game.championships.find((championship) => championship.eligibleMatchScope !== "tag_team" && championship.division !== "Tag Team");
+
+    expect(title).toBeDefined();
+
+    const champion = game.wrestlers.find((wrestler) => wrestlerFitsChampionshipDivision(wrestler, title!));
+    const challenger = game.wrestlers.find((wrestler) => wrestler.id !== champion?.id && wrestlerFitsChampionshipDivision(wrestler, title!));
+
+    expect(champion).toBeDefined();
+    expect(challenger).toBeDefined();
+
+    const result = buildSmartRundown({
+      ...game,
+      championships: game.championships.map((championship) =>
+        championship.id === title!.id ? { ...championship, championIds: [champion!.id], contenderIds: [challenger!.id] } : championship,
+      ),
+      socialInbox: {
+        requests: [
+          {
+            id: "accepted-title-shot",
+            mailId: "mail-title-shot",
+            wrestlerId: challenger!.id,
+            wrestlerName: challenger!.name,
+            actionType: "title_shot",
+            askLabel: "Title Shot",
+            createdSeasonNumber: game.seasonNumber,
+            createdWeekNumber: game.currentWeek,
+            deadlineSeasonNumber: game.seasonNumber,
+            deadlineWeekNumber: game.currentWeek + 2,
+            status: "accepted",
+          },
+        ],
+      },
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(
+      result.segments.some(
+        (segment) =>
+          segment.championshipId === title!.id &&
+          segment.participantIds.includes(champion!.id) &&
+          segment.participantIds.includes(challenger!.id),
+      ),
+    ).toBe(true);
   });
 
   it("refuses to add a single smart segment when the card is full", () => {

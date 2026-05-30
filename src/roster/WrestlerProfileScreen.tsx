@@ -3,6 +3,9 @@ import { isRivalryIntergenderBlocked } from "../booking/bookingUtils";
 import { DynastyManagementShell, type DynastyManagementCta } from "../components/DynastyManagementShell";
 import { DashboardDynastyAlignment } from "../components/dashboardDynasty";
 import { SuperstarPortrait as WrestlerPortrait } from "../components/SuperstarPortrait";
+import { MARKET_CONTRACT_MAX_WEEKS } from "../game/constants";
+import { formatMoney } from "../game/formatters";
+import { getContractForWrestler, getRenewalOffer } from "../game/market";
 import { resolveWrestlerAlignment, WRESTLER_ALIGNMENT_OPTIONS } from "../game/wrestlerAlignment";
 import { getWrestlerAffiliations } from "../game/affiliationCatalog";
 import { formatAffiliationKind, getAffiliationMemberNames } from "./rosterDisplayUtils";
@@ -42,6 +45,8 @@ export function WrestlerProfileScreen({
   onBackToDashboard,
   onBackToRoster,
   onNavigate,
+  onReleaseWrestler,
+  onRenewContract,
   onSetAlignment,
   returnScreen,
   wrestler,
@@ -61,10 +66,28 @@ export function WrestlerProfileScreen({
   const identitySnapshot = getWrestlerIdentitySnapshot(wrestler, game);
   const valueProfile = getWrestlerValueProfile(wrestler);
   const lockerRoomRead = getWrestlerLockerRoomRead(wrestler, game);
+  const contract = getContractForWrestler(game, wrestler.id);
+  const marketClosed = latestResult?.week === game.currentWeek;
+  const releaseGuardActive = game.wrestlers.length <= 8;
   const record = wrestler.record;
   const formatRecord = (wins = 0, losses = 0, draws = 0) => `${wins}-${losses}${draws ? `-${draws}` : ""}`;
   const showValueTierChip = valueProfile.valueTierLabel.toLowerCase() !== "protected star";
   const [expandedProfilePanels, setExpandedProfilePanels] = useState<Set<ProfilePanelId>>(() => new Set(["stats", "gmRead"]));
+  const [contractNegotiating, setContractNegotiating] = useState(false);
+  const [selectedRenewalWeeks, setSelectedRenewalWeeks] = useState(4);
+  const renewalOffer = getRenewalOffer(wrestler, selectedRenewalWeeks);
+  const renewalDisabledReason = marketClosed
+    ? "Contract desk closes after the show runs."
+    : !contract
+      ? "No active contract to extend."
+      : game.money < renewalOffer.dueNow
+        ? "Insufficient cash for this extension."
+        : "";
+  const releaseDisabledReason = marketClosed
+    ? "Contract desk closes after the show runs."
+    : releaseGuardActive
+      ? "Minimum roster guard active."
+      : "";
   const profileStatRows = [
     { label: "Popularity", value: `${wrestler.popularity}` },
     { label: "Momentum", value: `${wrestler.momentum}` },
@@ -98,6 +121,8 @@ export function WrestlerProfileScreen({
 
   useEffect(() => {
     setExpandedProfilePanels(new Set(["stats", "gmRead"]));
+    setContractNegotiating(false);
+    setSelectedRenewalWeeks(4);
   }, [wrestler.id]);
 
   const statsSummary = `POP ${wrestler.popularity} / MOM ${wrestler.momentum} / HEAT ${wrestler.audienceHeat ?? 50} / TRUST ${wrestler.trust ?? 50}`;
@@ -264,9 +289,46 @@ export function WrestlerProfileScreen({
                 <p>
                   <strong>Cost read:</strong> {valueProfile.costRead}
                 </p>
-                <small className="roster-muted-copy">
-                  Context-only readout. No contract mechanics, payroll locks, or automatic booking restrictions are active in this build.
-                </small>
+                <p>
+                  <strong>Active deal:</strong>{" "}
+                  {contract
+                    ? `${contract.contractWeeksRemaining} wk / ${formatMoney(contract.weeklySalary)}/wk rate / ${contract.paymentModel === "prepaid" ? "Prepaid" : `Penalty ${formatMoney(contract.releasePenalty)}`}`
+                    : "No active contract read"}
+                </p>
+                {contractNegotiating ? (
+                  <div className="roster-contract-terms-panel">
+                    <label>
+                      <span>Extend Weeks</span>
+                      <input
+                        min="1"
+                        max={MARKET_CONTRACT_MAX_WEEKS}
+                        onChange={(event) => setSelectedRenewalWeeks(Math.max(1, Math.min(MARKET_CONTRACT_MAX_WEEKS, Number(event.target.value) || 1)))}
+                        type="number"
+                        value={selectedRenewalWeeks}
+                      />
+                    </label>
+                    <strong>
+                      {formatMoney(renewalOffer.weeklyAsk)}/wk · Due now {formatMoney(renewalOffer.dueNow)}
+                    </strong>
+                  </div>
+                ) : null}
+                <div className="roster-contract-actions" aria-label={`${wrestler.name} contract actions`}>
+                  <button
+                    className={`roster-btn roster-btn-secondary ${contractNegotiating ? "is-active" : ""}`.trim()}
+                    disabled={marketClosed || !contract}
+                    onClick={() => setContractNegotiating((open) => !open)}
+                    type="button"
+                  >
+                    {contractNegotiating ? "Hide Terms" : "Negotiate"}
+                  </button>
+                  <button className="roster-btn roster-btn-primary" disabled={Boolean(renewalDisabledReason)} onClick={() => onRenewContract(wrestler.id, selectedRenewalWeeks)} type="button">
+                    Extend Deal
+                  </button>
+                  <button className="roster-btn roster-btn-secondary" disabled={Boolean(releaseDisabledReason)} onClick={() => onReleaseWrestler(wrestler.id)} type="button">
+                    Release
+                  </button>
+                </div>
+                <small className="roster-muted-copy">{renewalDisabledReason || releaseDisabledReason || "Renewals and releases file from this superstar page. Trade proposals stay on the Market Desk wire."}</small>
               </div>
             </RosterProfilePanel>
 

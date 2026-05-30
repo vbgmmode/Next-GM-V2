@@ -4,8 +4,8 @@ import { migrateSavedGameState } from "./migration";
 import { isValidSegment, runShow } from "./scoring";
 import { createNewGame } from "./seed";
 import {
+  acceptSocialInboxPromise,
   acceptSocialInboxRest,
-  acceptSocialInboxTvTime,
   getProtectedRestWrestlerIds,
   isWrestlerProtectedRest,
 } from "./socialInboxActions";
@@ -70,21 +70,16 @@ describe("social inbox actions", () => {
     expect(isWrestlerProtectedRest(advanced, wrestler.id)).toBe(false);
   });
 
-  it("creates a valid solo promo for TV time requests", () => {
+  it("tracks TV time requests as promises without auto-booking", () => {
     const game = createNewGame();
     const item = mailItem(game, "TV Time");
-    const result = acceptSocialInboxTvTime(game, item);
-    const segment = result.game.currentShow.find((entry) => entry.id === result.segmentId);
+    const result = acceptSocialInboxPromise(game, item, "tv_time");
 
-    expect(segment).toMatchObject({
-      type: "Promo",
-      participantIds: [item.wrestlerId],
-    });
-    expect(segment ? isValidSegment(segment, result.game.wrestlers) : false).toBe(true);
-    expect(result.game.socialInbox.requests.at(-1)).toMatchObject({
+    expect(result.currentShow).toHaveLength(game.currentShow.length);
+    expect(result.socialInbox.requests.at(-1)).toMatchObject({
       actionType: "tv_time",
       status: "accepted",
-      segmentId: result.segmentId,
+      segmentId: undefined,
     });
   });
 });

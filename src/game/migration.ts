@@ -410,8 +410,35 @@ function normalizeWeeklyMarketBoard(value: unknown): WeeklyMarketBoard | undefin
       .map((entry) => {
         const boardEntry = entry as Partial<WeeklyMarketBoard["entries"][number]>;
         const status =
-          boardEntry.status === "rival_signed" || boardEntry.status === "player_signed" || boardEntry.status === "available"
+          boardEntry.status === "rival_signed" || boardEntry.status === "player_signed" || boardEntry.status === "available" || boardEntry.status === "offer_declined"
             ? boardEntry.status
+            : undefined;
+        const rawOffer = boardEntry.offer;
+        const offer =
+          rawOffer &&
+          typeof rawOffer.contractWeeks === "number" &&
+          typeof rawOffer.weeklySalary === "number" &&
+          typeof rawOffer.dueNow === "number" &&
+          (rawOffer.interestRead === "Cold" ||
+            rawOffer.interestRead === "Listening" ||
+            rawOffer.interestRead === "Serious Interest" ||
+            rawOffer.interestRead === "Near Agreement" ||
+            rawOffer.interestRead === "Deal Feels Ready") &&
+          (rawOffer.personality === "money_first" ||
+            rawOffer.personality === "security_seeker" ||
+            rawOffer.personality === "spotlight_driven" ||
+            rawOffer.personality === "momentum_chaser" ||
+            rawOffer.personality === "rival_leverage") &&
+          (rawOffer.outcome === "accepted" || rawOffer.outcome === "return_next_week" || rawOffer.outcome === "cooldown" || rawOffer.outcome === "rival_signed")
+            ? {
+                contractWeeks: rawOffer.contractWeeks,
+                weeklySalary: rawOffer.weeklySalary,
+                dueNow: rawOffer.dueNow,
+                interestRead: rawOffer.interestRead,
+                personality: rawOffer.personality,
+                outcome: rawOffer.outcome,
+                note: typeof rawOffer.note === "string" ? rawOffer.note : "Negotiation restored.",
+              }
             : undefined;
 
         return typeof boardEntry.wrestlerId === "string" && status
@@ -419,6 +446,7 @@ function normalizeWeeklyMarketBoard(value: unknown): WeeklyMarketBoard | undefin
               wrestlerId: boardEntry.wrestlerId,
               status,
               weeklyAsk: typeof boardEntry.weeklyAsk === "number" ? boardEntry.weeklyAsk : 0,
+              offer,
               rivalBrandId: typeof boardEntry.rivalBrandId === "string" ? boardEntry.rivalBrandId : undefined,
               rivalBrandName: typeof boardEntry.rivalBrandName === "string" ? boardEntry.rivalBrandName : undefined,
               transactionId: typeof boardEntry.transactionId === "string" ? boardEntry.transactionId : undefined,

@@ -28,8 +28,8 @@ import {
   proposePlayerTrade,
   releasePlayerWrestler,
   renewPlayerContract,
-  signPlayerFreeAgent,
   signPlayerFreeAgentBundle,
+  submitPlayerMarketOffer,
 } from "./game/market";
 import { MARKET_CONTRACT_MAX_WEEKS, PLE_COUNT, PLE_CYCLE_WEEKS, SEASON_WEEK_COUNT } from "./game/constants";
 import {
@@ -109,8 +109,8 @@ import {
 } from "./game/scoring";
 import { getChampionshipArtworkSrc, getTitleCatalogBrand, wrestlerFitsChampionshipDivision } from "./game/titleCatalog";
 import {
+  acceptSocialInboxPromise,
   acceptSocialInboxRest,
-  acceptSocialInboxTvTime,
   getProtectedRestWrestlerIds,
   isWrestlerProtectedRest,
 } from "./game/socialInboxActions";
@@ -2775,7 +2775,8 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
   }
 
   function handleSuperstarMailAction(item: SuperstarMailItem) {
-    if (!item.action) {
+    const action = item.action;
+    if (!action) {
       return;
     }
 
@@ -2784,18 +2785,14 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
         return current;
       }
 
-      if (item.action?.type === "rest") {
+      if (action.type === "rest") {
         const updatedGame = acceptSocialInboxRest(current, item);
         persistGameSnapshot(updatedGame, "social");
         return updatedGame;
       }
 
-      const { game: updatedGame, segmentId } = acceptSocialInboxTvTime(current, item);
-      persistGameSnapshot(updatedGame, "booking");
-      setBookingFocusSegmentId(segmentId);
-      setProfileWrestlerId(undefined);
-      setProfileReturnScreen("booking");
-      setScreen("booking");
+      const updatedGame = acceptSocialInboxPromise(current, item, action.type);
+      persistGameSnapshot(updatedGame, "social");
       return updatedGame;
     });
   }
@@ -3277,7 +3274,7 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
     setScreen("dashboard");
   }
 
-  function signFreeAgent(wrestlerId: string, contractWeeks: number) {
+  function submitMarketOffer(wrestlerId: string, contractWeeks: number, weeklySalary: number) {
     setGame((current) => {
       if (!current) {
         return current;
@@ -3288,7 +3285,7 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
         return current;
       }
 
-      const updatedGame = signPlayerFreeAgent(current, wrestlerId, draftPool, contractWeeks);
+      const updatedGame = submitPlayerMarketOffer(current, wrestlerId, draftPool, contractWeeks, weeklySalary);
       persistGameSnapshot(updatedGame, "market");
       return updatedGame;
     });
@@ -3327,7 +3324,12 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
     });
   }
 
-  function renewContract(wrestlerId: string, contractWeeks: number) {
+  function renewContract(
+    wrestlerId: string,
+    contractWeeks: number,
+    nextScreen: SavedGameState["screen"] = "market",
+    profileState?: Pick<SavedGameState, "profileReturnScreen" | "profileWrestlerId">,
+  ) {
     setGame((current) => {
       if (!current) {
         return current;
@@ -3339,12 +3341,12 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
       }
 
       const updatedGame = renewPlayerContract(current, wrestlerId, contractWeeks);
-      persistGameSnapshot(updatedGame, "market");
+      persistGameSnapshot(updatedGame, nextScreen, profileState);
       return updatedGame;
     });
   }
 
-  function releaseWrestler(wrestlerId: string) {
+  function releaseWrestler(wrestlerId: string, nextScreen: SavedGameState["screen"] = "market") {
     setGame((current) => {
       if (!current) {
         return current;
@@ -3368,7 +3370,7 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
       }
 
       const updatedGame = releasePlayerWrestler(current, wrestlerId);
-      persistGameSnapshot(updatedGame, "market");
+      persistGameSnapshot(updatedGame, nextScreen);
       return updatedGame;
     });
   }
@@ -3483,6 +3485,13 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
         onBackToDashboard={() => closeWrestlerProfile("dashboard")}
         onBackToRoster={() => closeWrestlerProfile("roster")}
         onNavigate={navigateTo}
+        onReleaseWrestler={(wrestlerId) => releaseWrestler(wrestlerId, "roster")}
+        onRenewContract={(wrestlerId, contractWeeks) =>
+          renewContract(wrestlerId, contractWeeks, "profile", {
+            profileReturnScreen,
+            profileWrestlerId: wrestlerId,
+          })
+        }
         onSetAlignment={setWrestlerAlignment}
         returnScreen={profileReturnScreen}
         wrestler={profileWrestler}
@@ -3501,10 +3510,8 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
         latestResult={latestResult}
         onNavigate={navigateTo}
         onProposeTrade={proposeTrade}
-        onReleaseWrestler={releaseWrestler}
-        onRenewContract={renewContract}
         onSignBundle={signFreeAgentBundle}
-        onSignFreeAgent={signFreeAgent}
+        onSubmitMarketOffer={submitMarketOffer}
       />,
     );
   }

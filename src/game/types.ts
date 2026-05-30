@@ -89,7 +89,23 @@ export type OfficeMandateStatus = "stable" | "watch" | "critical" | "surging";
 
 export type MarketPaymentModel = "weekly" | "prepaid";
 
-export type WeeklyMarketBoardEntryStatus = "available" | "rival_signed" | "player_signed";
+export type WeeklyMarketBoardEntryStatus = "available" | "rival_signed" | "player_signed" | "offer_declined";
+
+export type MarketNegotiationPersonality = "money_first" | "security_seeker" | "spotlight_driven" | "momentum_chaser" | "rival_leverage";
+
+export type MarketNegotiationInterestRead = "Cold" | "Listening" | "Serious Interest" | "Near Agreement" | "Deal Feels Ready";
+
+export type MarketNegotiationOutcome = "accepted" | "return_next_week" | "cooldown" | "rival_signed";
+
+export type MarketNegotiationOffer = {
+  contractWeeks: number;
+  weeklySalary: number;
+  dueNow: number;
+  interestRead: MarketNegotiationInterestRead;
+  personality: MarketNegotiationPersonality;
+  outcome: MarketNegotiationOutcome;
+  note: string;
+};
 
 export type MarketContract = {
   id: string;
@@ -150,6 +166,7 @@ export type WeeklyMarketBoardEntry = {
   wrestlerId: string;
   status: WeeklyMarketBoardEntryStatus;
   weeklyAsk: number;
+  offer?: MarketNegotiationOffer;
   rivalBrandId?: string;
   rivalBrandName?: string;
   transactionId?: string;
@@ -740,7 +757,7 @@ export type InjuryRecoveryNote = {
   note: string;
 };
 
-export type SocialInboxActionType = "rest" | "tv_time";
+export type SocialInboxActionType = "rest" | "tv_time" | "title_shot" | "story_spot";
 
 export type SocialInboxRequestStatus = "accepted" | "fulfilled" | "broken";
 

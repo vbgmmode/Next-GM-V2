@@ -47,6 +47,68 @@
   border-color: rgba(255, 255, 255, 0.16);
 }
 
+.roster-profile-shell .roster-btn-secondary.is-active {
+  border-color: rgba(var(--dynasty-accent-rgb), 0.58);
+  box-shadow: 0 0 0 1px rgba(var(--dynasty-accent-rgb), 0.16);
+  color: var(--accent-gold-bright, var(--bc-prestige));
+}
+
+.roster-contract-terms-panel {
+  background: rgba(8, 9, 13, 0.72);
+  border: 1px solid rgba(var(--dynasty-accent-rgb), 0.24);
+  border-left: 3px solid rgba(var(--dynasty-accent-rgb), 0.86);
+  border-radius: 2px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 96px minmax(0, 1fr);
+  padding: 8px;
+}
+
+.roster-contract-terms-panel label {
+  display: grid;
+  gap: 4px;
+}
+
+.roster-contract-terms-panel span {
+  color: var(--text-muted, var(--bc-text-muted));
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.roster-contract-terms-panel input {
+  background: rgba(4, 6, 10, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  color: var(--bc-text-primary);
+  font: inherit;
+  font-weight: 900;
+  min-height: 34px;
+  padding: 0 8px;
+  width: 100%;
+}
+
+.roster-contract-terms-panel strong {
+  align-self: center;
+  color: var(--accent-gold-bright, var(--bc-prestige));
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.roster-contract-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.roster-contract-actions .roster-btn {
+  flex: 1 1 112px;
+  min-height: 34px;
+}
+
 .roster-panel {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02)),

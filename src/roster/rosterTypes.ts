@@ -62,6 +62,8 @@ export type WrestlerProfileScreenProps = {
   onBackToDashboard: () => void;
   onBackToRoster: () => void;
   onNavigate: (screen: GameScreen) => void;
+  onReleaseWrestler: (wrestlerId: string) => void;
+  onRenewContract: (wrestlerId: string, contractWeeks: number) => void;
   onSetAlignment: (wrestlerId: string, alignment: WrestlerAlignment) => void;
   returnScreen: ProfileReturnScreen;
   wrestler: Wrestler;
