@@ -94,11 +94,8 @@ The game currently supports:
 - Title/Rivalry History v1 with lightweight title changes, defenses, rivalry movement, PLE payoffs, profile context, and season story summaries
 - Rivalry context attached to eligible segments
 - Run Show
-- Results with a viewport-fit top broadcast recap package, collapsed Post-Show Cause Ledger, collapsed operational fallout support, expandable broadcast breakdown, and major title/rivalry/PLE/Open Challenge notes folded into resolved post-show readouts
-- Dedicated Week Review screen before Advance Week
-- Results → Week Review → Advance Week flow
-- Week Review aftermath handoff with the Advance Week or Season Review action inside the PLE/week aftermath box, plus show outcome, GM Office after-action readout, roster fallout, social buzz, rivalries, and next-week setup without duplicating full Results/Finance/Championship fallout panels
-- Persisted Week Review screen state
+- Results / Show Recap with a viewport-fit top broadcast recap package, first-class segment inspection through a focused Segment Receipt window opened from the broadcast rundown reel, collapsed post-show support rows, and a compact GM Handoff / Next Week band that carries roster fallout, social/rival pressure, next-show pressure, and the Advance Week or Season Review action
+- Old persisted `weekReview` screen state redirects to merged Show Recap/results when a current reviewable result exists
 - TV-time tracking with appearances this season, last booked week, and consecutive weeks booked
 - Open Challenge resolved opponents count as booked after the show
 - Roster pressure labels for overused, underused, protected star, morale risk, and injury risk states
@@ -134,9 +131,8 @@ Title
 → Week 1 Dashboard
 → Booking
 → Run Show
-→ Results
-→ Week Review
-→ Advance Week
+→ Show Recap + GM Handoff
+→ Advance Week / Season Review
 → Season Review
 → Mid-Career Draft
 → Start Next Season
@@ -147,8 +143,7 @@ The loop must remain playable after every change.
 - Setup frames the player as a hired GM entering a larger GM universe before Draft Night.
 - Dashboard orients the week through Living World Pressure / Office Pulse, next action, and current brand pressure.
 - Booking is the TV production desk for assembling the current card with context and warnings, not predicted fallout.
-- Results is the resolved broadcast recap and immediate consequence reveal.
-- Week Review is the GM office handoff before advancing the calendar.
+- Results / Show Recap is the resolved broadcast recap, compact broadcast rundown, first-class Segment Receipt window, compact GM handoff, and calendar transition surface.
 - Roster is the living locker room and wrestler profile surface.
 - Championships is the prestige, contender, title-history, and division-health surface.
 - Rivalries is the creative/story room for active feud temperature, timing, stakes, and payoff pressure from existing state.
@@ -176,7 +171,7 @@ The loop must remain playable after every change.
 - A manually booked finish is player-authored intent, not a predicted outcome; Open Challenge finish controls must not reveal the hidden opponent before Run Show.
 - Results should focus on broadcast recap.
 - Results operational fallout should remain quieter support below the broadcast recap, not a second headline recap.
-- Week Review should connect consequences before advancing.
+- The compact GM Handoff inside Results should connect consequences before advancing.
 - Advance Week should happen after the player has seen the week's fallout.
 - The UI can warn, summarize, and provide context, but it should not secretly decide for the player.
 - Big moments deserve stronger presentation.
@@ -248,9 +243,9 @@ Completed stabilization passes:
 - Results Broadcast Recap Staging v1
 - Results Operational Fallout Quieting v1
 - Results Viewport-Fit Expandable Fallout v1 (implemented)
-- Week Review GM Handoff v1
-- Week Review Consequence Handoff Polish v1
-- Week Review Aftermath Action Consolidation v1 (implemented)
+- Post-Show GM Handoff v1
+- Post-Show Consequence Handoff Polish v1
+- Show Recap Aftermath Action Consolidation v1 (implemented)
 - Roster Locker Room Personality v1
 - Championships Prestige / Division Identity v1
 - Championships Command Board / Contender Control v1 (implemented, viewport-fit)
@@ -389,7 +384,6 @@ When relevant, also smoke-test:
 - Booking at least 2 valid segments
 - Run Show
 - Results
-- Week Review
 - Advance Week
 - Refresh persistence
 - Any screen touched by the ticket

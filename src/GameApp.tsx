@@ -205,7 +205,6 @@ const SeasonReviewScreen = lazy(() => import("./screens/SeasonReviewScreen").the
 const RivalriesScreen = lazy(() => import("./screens/RivalriesScreen").then((module) => ({ default: module.RivalriesScreen })));
 const RosterScreen = lazy(() => import("./roster").then((module) => ({ default: module.RosterScreen })));
 const SocialScreen = lazy(() => import("./social").then((module) => ({ default: module.SocialScreen })));
-const WeekReviewScreen = lazy(() => import("./screens/WeekReviewScreen").then((module) => ({ default: module.WeekReviewScreen })));
 const WrestlerProfileScreen = lazy(() => import("./roster").then((module) => ({ default: module.WrestlerProfileScreen })));
 
 type RosterSort = "popularity" | "momentum" | "fatigue" | "morale";
@@ -510,7 +509,7 @@ function formatLocationLabel(screen: GameScreen) {
     seasonReview: "Season Review",
     offseasonDraft: "Offseason Draft",
     social: "IWC Pulse",
-    weekReview: "Week Review",
+    weekReview: "Show Recap",
   };
 
   return labels[screen];
@@ -2455,6 +2454,8 @@ function isGameScreenPreview(value: string): value is GameScreen {
 }
 
 function normalizeCareerSummary(summary: StoredSaveSummary): CareerSave {
+  const previewScreen = isGameScreenPreview(summary.preview.screen) ? summary.preview.screen : "dashboard";
+
   return {
     id: summary.id,
     name: summary.name,
@@ -2464,7 +2465,7 @@ function normalizeCareerSummary(summary: StoredSaveSummary): CareerSave {
       brandName: summary.preview.brandName,
       gmName: summary.preview.gmName,
       money: summary.preview.money,
-      screen: isGameScreenPreview(summary.preview.screen) ? summary.preview.screen : "dashboard",
+      screen: previewScreen === "weekReview" ? "results" : previewScreen,
       seasonNumber: summary.preview.seasonNumber,
       week: summary.preview.week,
     },
@@ -2524,7 +2525,7 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
   const [rivalriesFocusId, setRivalriesFocusId] = useState<string | undefined>();
   const [didApplyBootRequest, setDidApplyBootRequest] = useState(bootRequest?.type !== "load-career");
   const latestResult = game?.showHistory[game.showHistory.length - 1];
-  const hasCurrentWeekReview = latestResult ? latestResult.week === game?.currentWeek : false;
+  const hasCurrentPostShow = latestResult ? latestResult.week === game?.currentWeek : false;
   const recentCareer = getMostRecentCareer(careerSaves);
   const isMatchSimulationLab = isDevMatchSimulationLabRequested();
   const matchSimulationLabGame = useMemo(() => createMatchSimulationLabGame(game ?? undefined), [game]);
@@ -2699,7 +2700,16 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
       return;
     }
 
-    if (nextScreen === "weekReview" && !hasCurrentWeekReview) {
+    if (nextScreen === "weekReview") {
+      const destination = hasCurrentPostShow ? "results" : "dashboard";
+      persistGameSnapshot(game, destination);
+      setProfileWrestlerId(undefined);
+      setProfileReturnScreen("roster");
+      setScreen(destination);
+      return;
+    }
+
+    if (nextScreen === "results" && !latestResult) {
       persistGameSnapshot(game, "dashboard");
       setProfileWrestlerId(undefined);
       setProfileReturnScreen("roster");
@@ -3543,16 +3553,15 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
     return renderLazyScreen(
       <ResultsScreen
         game={game}
-        canContinueWeekReview={hasCurrentWeekReview}
+        onAdvanceWeek={advanceWeek}
         result={latestResult}
-        onContinueWeekReview={() => navigateTo("weekReview")}
         onNavigate={navigateTo}
       />,
     );
   }
 
-  if (screen === "weekReview" && latestResult && hasCurrentWeekReview) {
-    return renderLazyScreen(<WeekReviewScreen game={game} onAdvanceWeek={advanceWeek} onNavigate={navigateTo} result={latestResult} />);
+  if (screen === "weekReview" && latestResult && hasCurrentPostShow) {
+    return renderLazyScreen(<ResultsScreen game={game} onAdvanceWeek={advanceWeek} onNavigate={navigateTo} result={latestResult} />);
   }
 
   if (screen === "seasonReview") {

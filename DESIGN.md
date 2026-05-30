@@ -174,16 +174,18 @@ Each screen has one job. Match the contract for the screen you are building or r
 |----------|-------|
 | Broadcast recap headline | Dry summary |
 | Show grade | No consequences |
-| Segment / match ratings | Second competing operational headline recap |
+| Segment / match ratings reel | Second competing operational headline recap |
+| Focused Segment Receipt window from reel selection | Inline detail block that crowds the handoff |
 | Fan / business impact | |
 | Title / rivalry fallout | |
 | IWC / social reaction | |
 | Injuries / morale changes | |
-| Week transition | |
+| Compact GM handoff / next-week pressure | |
+| Advance Week / Season Review action | |
 
-### Week Review
+### Show Recap Handoff
 
-**Purpose:** close the weekly loop before advancing.
+**Purpose:** close the weekly loop inside Show Recap before advancing.
 
 | Required | Avoid |
 |----------|-------|
@@ -192,9 +194,8 @@ Each screen has one job. Match the contract for the screen you are building or r
 | Roster fallout | |
 | Title / rivalry updates | |
 | Social buzz | |
-| Finance impact | |
 | Next-week pressure | |
-| Clear Advance Week action | |
+| Clear Advance Week / Season Review action | Full second recap screen |
 
 Consequence language must be tied to **resolved events**.
 

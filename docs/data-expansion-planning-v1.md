@@ -21,7 +21,7 @@ Rivalry Payoff Window v1, Brand Pulse v1, and Non-Blocking Rival Draft Activity 
 
 This planning gate exists to prevent random content bloat and protect the solo loop:
 
-- keep the loop stable (title → setup → draft → Week 1 → booking → run show → results → week review → advance)
+- keep the loop stable (title → setup → draft → Week 1 → booking → run show → Show Recap + GM Handoff → advance)
 - avoid accidental changes to scoring, simulation, persistence, or validation
 - keep the product feeling like a premium wrestling GM broadcast command center rather than a content dump
 - keep any future content changes bounded, reviewable, and reversible
@@ -104,7 +104,7 @@ When this planning is converted into implementation, require:
 - simulation formulas unchanged
 - no outcome spoilers before run show
 - app typechecks and builds
-- smoke test through New Game → Draft Review → Booking → Run Show → Results → Week Review → Advance Week loop
+- smoke test through New Game → Draft Review → Booking → Run Show → Show Recap + GM Handoff → Advance Week loop
 
 ## 10) Recommended Next Bounded Slice
 

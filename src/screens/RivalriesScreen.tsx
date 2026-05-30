@@ -105,10 +105,9 @@ export function RivalriesScreen({
   const [feudSuggestionsExpanded, setFeudSuggestionsExpanded] = useState(true);
   const [endDraftOpen, setEndDraftOpen] = useState(false);
   const [endReason, setEndReason] = useState<string>(RIVALRY_END_REASONS[0]);
+  const [sparkDeskOpen, setSparkDeskOpen] = useState(false);
 
   const currentWeek = getCurrentCalendarWeek(game);
-  const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= game.currentWeek && !week.completed);
-  const nextPleWeeks = nextPle ? Math.max(0, nextPle.weekNumber - game.currentWeek) : 0;
   const range = getRivalryStructureParticipantRange(structure);
   const composerParticipantIds = participantIds.slice(0, range.max).filter(Boolean);
   const isDuplicate = composerParticipantIds.length >= range.min && hasDuplicateRivalry(game.rivalries, structure, composerParticipantIds);
@@ -176,6 +175,7 @@ export function RivalriesScreen({
     }
 
     onCreateRivalry({ participantIds: composerParticipantIds, structure, stakes, storylineId });
+    setSparkDeskOpen(false);
   }
 
   function applyFeudSuggestion(suggestion: RivalryFeudSuggestion) {
@@ -196,10 +196,6 @@ export function RivalriesScreen({
 
   const onClockCount = onClockEntries.length;
   const activeCount = game.rivalries.length;
-  const calendarTag = currentWeek.isGoHome ? "Go-Home Wk" : currentWeek.showType === "ple" ? "PLE Wk" : "TV Wk";
-  const pleTag = nextPleWeeks === 0 ? "PLE Now" : `PLE in ${nextPleWeeks}`;
-  const stripHeadline = onClockCount > 0 ? `${onClockCount} On The Clock` : "Story Room Stable";
-  const stripDetail = `${activeCount} Active · ${calendarTag} · ${pleTag}`;
 
   const focusReady = Boolean(selectedRivalry && selectedSnapshot && (pendingFinale ? finaleBooked : selectedSnapshot.currentCardBeats > 0));
   const focusBlocked = Boolean(selectedRivalry && selectedBlocked);
@@ -232,147 +228,121 @@ export function RivalriesScreen({
         label: selectedSnapshot?.primary.label ?? "On Deck",
         tone: focusUrgent ? "warning" : "neutral",
       }
-    : canCreate
-      ? {
-          eyebrow: "Composer Ready",
-          label: "Start Rivalry",
-          onClick: handleCreateRivalry,
-          tone: "positive",
-        }
-      : {
-          eyebrow: "Story Room",
-          label: hasFeudFocus ? selectedSnapshot?.primary.label ?? "Story Desk" : "No Story Selected",
-          tone: "neutral",
-        };
+    : {
+        eyebrow: "Story Room",
+        label: hasFeudFocus ? selectedSnapshot?.primary.label ?? "Story Desk" : "No Story Selected",
+        tone: "neutral",
+      };
+
+  const sparkDesk = (
+    <div className="rivalry-spark-window rivalry-panel" role="document">
+      <div className="rivalry-panel-head">
+        <div>
+          <p className="eyebrow">Spark Desk</p>
+          <h2>Start The Spark</h2>
+        </div>
+        <button className="rivalry-panel-action" onClick={() => setSparkDeskOpen(false)} type="button">
+          Close
+        </button>
+      </div>
+      <div className="rivalry-mode-toggle" aria-label="Rivalry structure">
+        {(["singles", "tag_team", "multi_person"] as RivalryStructure[]).map((option) => (
+          <button className={structure === option ? "active-filter" : ""} key={option} onClick={() => setStructure(option)} type="button">
+            {formatRivalryStructure(option)}
+          </button>
+        ))}
+      </div>
+      <div className={`rivalry-feud-suggestions ${feudSuggestionsExpanded ? "is-expanded" : ""}`} aria-label="Suggested feuds">
+        <button
+          aria-expanded={feudSuggestionsExpanded}
+          className="rivalry-feud-suggestions-toggle"
+          onClick={() => setFeudSuggestionsExpanded((open) => !open)}
+          type="button"
+        >
+          <div>
+            <p className="eyebrow">Suggest Feuds</p>
+            <strong>{feudSuggestions.length} ready</strong>
+          </div>
+          <span>{feudSuggestionsExpanded ? "Hide" : "Show"}</span>
+        </button>
+        {feudSuggestionsExpanded ? (
+          <div className="rivalry-feud-suggestion-list">
+            {feudSuggestions.length ? (
+              feudSuggestions.map((suggestion) => (
+                <button className="rivalry-feud-suggestion" key={suggestion.id} onClick={() => applyFeudSuggestion(suggestion)} type="button">
+                  <strong title={suggestion.headline}>{suggestion.headline}</strong>
+                  <small>
+                    {formatRivalryStructure(suggestion.structure)} · {formatRivalryStakes(suggestion.stakes)}
+                  </small>
+                  <p>{suggestion.reason}</p>
+                </button>
+              ))
+            ) : (
+              <p className="muted-copy">No clean feud lanes left on the roster board.</p>
+            )}
+          </div>
+        ) : null}
+      </div>
+      <div className="rivalry-composer-body">
+        <div className="rivalry-composer-selects">
+          {Array.from({ length: range.max }).map((_, index) => {
+            const slotLabel = structure === "tag_team" ? `${index < 2 ? "Team A" : "Team B"} ${(index % 2) + 1}` : `Wrestler ${index + 1}`;
+
+            return (
+              <label className="rivalry-composer-slot" key={`composer-slot-${index}`}>
+                <span>{slotLabel}</span>
+                <select className="rivalry-desk-select" value={participantIds[index] ?? ""} onChange={(event) => updateParticipantSlot(index, event.target.value)}>
+                  <option value="">Choose wrestler</option>
+                  {game.wrestlers
+                    .filter((wrestler) => !activeRivalryParticipantIds.has(wrestler.id) || wrestler.id === (participantIds[index] ?? ""))
+                    .map((wrestler) => (
+                      <option key={wrestler.id} value={wrestler.id}>
+                        {wrestler.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            );
+          })}
+        </div>
+        <label className="rivalry-composer-field">
+          Stakes
+          <select className="rivalry-desk-select" value={stakes} onChange={(event) => setStakes(event.target.value as RivalryStakes)}>
+            {(["personal", "title", "respect", "revenge"] as RivalryStakes[]).map((option) => (
+              <option key={option} value={option}>
+                {formatRivalryStakes(option)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="rivalry-composer-field">
+          Storyline
+          <select className="rivalry-desk-select" value={storylineId} onChange={(event) => setStorylineId(event.target.value)}>
+            {safeRivalryStorylineOptions.map((storyline) => (
+              <option key={storyline.id} value={storyline.id}>
+                {storyline.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="rivalry-composer-read">{selectedStoryline.titleFit}</p>
+        <div className="rivalry-composer-actions">
+          <button className="primary-action" disabled={!canCreate} onClick={handleCreateRivalry} type="button">
+            Start Rivalry
+          </button>
+          <div className="rivalry-composer-warnings">
+            {isDuplicate ? <p className="form-warning">Duplicate active rivalry already exists.</p> : <p className="form-warning is-placeholder" aria-hidden="true">&nbsp;</p>}
+            {rivalryBlockReason ? <p className="form-warning">{rivalryBlockReason}</p> : <p className="form-warning is-placeholder" aria-hidden="true">&nbsp;</p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <DynastyManagementShell className="rivalries-command-shell" currentScreen="rivalries" cta={rivalriesCta} game={game} latestResult={latestResult} onNavigate={onNavigate}>
       <div className="rivalry-desk-body">
-        <section className="rivalry-recap-strip" aria-label="Story room recap">
-          <p className="eyebrow">Story Room</p>
-          <strong>{stripHeadline}</strong>
-          <span>{stripDetail}</span>
-        </section>
-
         <section className="rivalry-command-board" aria-label="Rivalry creative desk">
-          <aside className="rivalry-composer-rail rivalry-panel" aria-label="Rivalry composer">
-            <div className="rivalry-panel-head">
-              <div>
-                <p className="eyebrow">Spark Desk</p>
-                <h2>Start The Spark</h2>
-              </div>
-              <button
-                className="rivalry-panel-action"
-                disabled={!feudSuggestions.length}
-                onClick={() => feudSuggestions[0] && applyFeudSuggestion(feudSuggestions[0])}
-                type="button"
-              >
-                + New Feud
-              </button>
-            </div>
-            <div className="rivalry-mode-toggle" aria-label="Rivalry structure">
-              {(["singles", "tag_team", "multi_person"] as RivalryStructure[]).map((option) => (
-                <button className={structure === option ? "active-filter" : ""} key={option} onClick={() => setStructure(option)} type="button">
-                  {formatRivalryStructure(option)}
-                </button>
-              ))}
-            </div>
-            <div className={`rivalry-feud-suggestions ${feudSuggestionsExpanded ? "is-expanded" : ""}`} aria-label="Suggested feuds">
-              <button
-                aria-expanded={feudSuggestionsExpanded}
-                className="rivalry-feud-suggestions-toggle"
-                onClick={() => setFeudSuggestionsExpanded((open) => !open)}
-                type="button"
-              >
-                <div>
-                  <p className="eyebrow">Suggest Feuds</p>
-                  <strong>{feudSuggestions.length} ready</strong>
-                </div>
-                <span>{feudSuggestionsExpanded ? "Hide ▴" : "Show ▾"}</span>
-              </button>
-              {feudSuggestionsExpanded ? (
-                <div className="rivalry-feud-suggestion-list">
-                  {feudSuggestions.length ? (
-                    feudSuggestions.map((suggestion) => (
-                      <button className="rivalry-feud-suggestion" key={suggestion.id} onClick={() => applyFeudSuggestion(suggestion)} type="button">
-                        <strong title={suggestion.headline}>{suggestion.headline}</strong>
-                        <small>
-                          {formatRivalryStructure(suggestion.structure)} · {formatRivalryStakes(suggestion.stakes)}
-                        </small>
-                        <p>{suggestion.reason}</p>
-                      </button>
-                    ))
-                  ) : (
-                    <p className="muted-copy">No clean feud lanes left on the roster board.</p>
-                  )}
-                </div>
-              ) : null}
-            </div>
-            <div className="rivalry-composer-body">
-              <div className="rivalry-composer-selects">
-                {Array.from({ length: range.max }).map((_, index) => {
-                  const slotLabel =
-                    structure === "tag_team"
-                      ? `${index < 2 ? "Team A" : "Team B"} ${(index % 2) + 1}`
-                      : `Wrestler ${index + 1}`;
-
-                  return (
-                    <label className="rivalry-composer-slot" key={`composer-slot-${index}`}>
-                      <span>{slotLabel}</span>
-                      <select
-                        className="rivalry-desk-select"
-                        value={participantIds[index] ?? ""}
-                        onChange={(event) => updateParticipantSlot(index, event.target.value)}
-                      >
-                        <option value="">Choose wrestler</option>
-                        {game.wrestlers
-                          .filter(
-                            (wrestler) =>
-                              !activeRivalryParticipantIds.has(wrestler.id) || wrestler.id === (participantIds[index] ?? ""),
-                          )
-                          .map((wrestler) => (
-                          <option key={wrestler.id} value={wrestler.id}>
-                            {wrestler.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  );
-                })}
-              </div>
-              <label className="rivalry-composer-field">
-                Stakes
-                <select className="rivalry-desk-select" value={stakes} onChange={(event) => setStakes(event.target.value as RivalryStakes)}>
-                  {(["personal", "title", "respect", "revenge"] as RivalryStakes[]).map((option) => (
-                    <option key={option} value={option}>
-                      {formatRivalryStakes(option)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="rivalry-composer-field">
-                Storyline
-                <select className="rivalry-desk-select" value={storylineId} onChange={(event) => setStorylineId(event.target.value)}>
-                  {safeRivalryStorylineOptions.map((storyline) => (
-                    <option key={storyline.id} value={storyline.id}>
-                      {storyline.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <p className="rivalry-composer-read">{selectedStoryline.titleFit}</p>
-              <div className="rivalry-composer-actions">
-                <button className="primary-action" disabled={!canCreate} onClick={handleCreateRivalry} type="button">
-                  Start Rivalry
-                </button>
-                <div className="rivalry-composer-warnings">
-                  {isDuplicate ? <p className="form-warning">Duplicate active rivalry already exists.</p> : <p className="form-warning is-placeholder" aria-hidden="true">&nbsp;</p>}
-                  {rivalryBlockReason ? <p className="form-warning">{rivalryBlockReason}</p> : <p className="form-warning is-placeholder" aria-hidden="true">&nbsp;</p>}
-                </div>
-              </div>
-            </div>
-          </aside>
-
           <div className="rivalry-desk-column">
             <div className="rivalry-feud-rail rivalry-panel is-desk-strip" aria-label="Active feuds">
               <div className="rivalry-panel-head">
@@ -429,8 +399,13 @@ export function RivalriesScreen({
                     )}
                   </>
                 ) : (
-                  <p className="muted-copy">No active rivalries. Use the composer to spark the next program.</p>
+                  <p className="muted-copy">No active rivalries. Open the Spark Desk to build the next program.</p>
                 )}
+              </div>
+              <div className="rivalry-feud-footer">
+                <button className="rivalry-spark-launch" onClick={() => setSparkDeskOpen(true)} type="button">
+                  Start The Spark
+                </button>
               </div>
             </div>
 
@@ -581,12 +556,22 @@ export function RivalriesScreen({
             </section>
           ) : (
             <section className="rivalry-focus-workspace rivalry-panel" aria-label="Story focus workspace">
-              <p className="muted-copy">Pick a feud above or start one in the composer.</p>
+              <div className="rivalry-empty-story">
+                <p className="eyebrow">No Story Selected</p>
+                <h3>Pick a feud from the rail or start one from Active Feuds.</h3>
+                <p className="muted-copy">The Spark Desk opens from the bottom of the Active Feuds panel.</p>
+              </div>
             </section>
           )}
           </div>
         </section>
       </div>
+      {sparkDeskOpen ? (
+        <div className="rivalry-spark-backdrop" aria-label="Spark Desk rivalry composer" aria-modal="true" role="dialog">
+          <button className="rivalry-spark-scrim" aria-label="Close Spark Desk" onClick={() => setSparkDeskOpen(false)} type="button" />
+          {sparkDesk}
+        </div>
+      ) : null}
     </DynastyManagementShell>
   );
 }

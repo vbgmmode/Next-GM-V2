@@ -1,7 +1,7 @@
 # Season Archive / Legacy Index Planning v1
 
 ## 1) Why Season Archive / Legacy belongs next
-The game already has a strong weekly loop and readable consequence surfaces (Week Review, Season Review, title history, rivalry movement, social signals). The next low-risk continuity step is to preserve what matters from completed seasons so players can feel long-term consequences without adding new simulation systems.
+The game already has a strong weekly loop and readable consequence surfaces (Show Recap, Season Review, title history, rivalry movement, social signals). The next low-risk continuity step is to preserve what matters from completed seasons so players can feel long-term consequences without adding new simulation systems.
 
 The core reason to do this now is emotional retention: a one-screen, read-only legacy index gives a player a reason to care about what happened in a season, makes “next season” feel earned, and supports franchise-mode identity without forcing accounting systems.
 

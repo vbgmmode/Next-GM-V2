@@ -127,36 +127,36 @@ export type LivingWorldPressureSnapshot = {
   items: LivingWorldPressureItem[];
 };
 
-export type WeekReviewHandoffTone = "strong" | "steady" | "watch";
+export type PostShowHandoffTone = "strong" | "steady" | "watch";
 
-export type WeekReviewHandoffItem = {
+export type PostShowHandoffItem = {
   id: string;
   label: string;
   value: string;
   detail: string;
-  tone: WeekReviewHandoffTone;
+  tone: PostShowHandoffTone;
 };
 
-export type WeekReviewHandoffSnapshot = {
+export type PostShowHandoffSnapshot = {
   headline: string;
   detail: string;
-  items: WeekReviewHandoffItem[];
+  items: PostShowHandoffItem[];
 };
 
-export type WeekReviewOfficeTone = "strong" | "steady" | "watch";
+export type PostShowOfficeTone = "strong" | "steady" | "watch";
 
-export type WeekReviewOfficeItem = {
+export type PostShowOfficeItem = {
   id: string;
   label: string;
   value: string;
   detail: string;
-  tone: WeekReviewOfficeTone;
+  tone: PostShowOfficeTone;
 };
 
-export type WeekReviewOfficeSnapshot = {
+export type PostShowOfficeSnapshot = {
   headline: string;
   detail: string;
-  items: WeekReviewOfficeItem[];
+  items: PostShowOfficeItem[];
 };
 
 
@@ -1238,7 +1238,7 @@ export function getLivingWorldPressureSnapshot(game: GameState, result?: ShowRes
 }
 
 
-export function getWeekReviewHandoffSnapshot(game: GameState, result: ShowResult, financeReport?: FinanceReport): WeekReviewHandoffSnapshot {
+export function getPostShowHandoffSnapshot(game: GameState, result: ShowResult, financeReport?: FinanceReport): PostShowHandoffSnapshot {
   const nextWeek = game.calendar.find((week) => week.weekNumber === result.week + 1);
   const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= result.week + 1 && !week.completed);
   const weeksUntilNextPle = nextPle ? Math.max(0, nextPle.weekNumber - result.week) : 0;
@@ -1272,7 +1272,7 @@ export function getWeekReviewHandoffSnapshot(game: GameState, result: ShowResult
       : `${nextPle.showName} is ${formatWeekCount(weeksUntilNextPle)} away.`
     : "No remaining PLE is on the current season calendar.";
 
-  const items: WeekReviewHandoffItem[] = [
+  const items: PostShowHandoffItem[] = [
     {
       id: "talent-temperature",
       label: "Talent Temperature",
@@ -1347,7 +1347,7 @@ export function getWeekReviewHandoffSnapshot(game: GameState, result: ShowResult
 }
 
 
-export function getWeekReviewOfficeSnapshot(game: GameState, result: ShowResult, financeReport?: FinanceReport): WeekReviewOfficeSnapshot {
+export function getPostShowOfficeSnapshot(game: GameState, result: ShowResult, financeReport?: FinanceReport): PostShowOfficeSnapshot {
   const bestSegment = getSafeBestSegment(result);
   const titleEvents = result.titleHistoryEvents ?? [];
   const titleChanges = titleEvents.filter((event) => event.eventType === "title_change");

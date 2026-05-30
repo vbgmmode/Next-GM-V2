@@ -50,6 +50,8 @@ function isGameScreenPreview(value: string): value is GameScreen {
 }
 
 function normalizeCareerSummary(summary: StoredSaveSummary): CareerSave {
+  const previewScreen = isGameScreenPreview(summary.preview.screen) ? summary.preview.screen : "dashboard";
+
   return {
     id: summary.id,
     name: summary.name,
@@ -59,7 +61,7 @@ function normalizeCareerSummary(summary: StoredSaveSummary): CareerSave {
       brandName: summary.preview.brandName,
       gmName: summary.preview.gmName,
       money: summary.preview.money,
-      screen: isGameScreenPreview(summary.preview.screen) ? summary.preview.screen : "dashboard",
+      screen: previewScreen === "weekReview" ? "results" : previewScreen,
       seasonNumber: summary.preview.seasonNumber,
       week: summary.preview.week,
     },
@@ -116,7 +118,7 @@ function formatLocationLabel(screen: GameScreen) {
     seasonReview: "Season Review",
     offseasonDraft: "Offseason Draft",
     social: "IWC Pulse",
-    weekReview: "Week Review",
+    weekReview: "Show Recap",
   };
 
   return labels[screen];

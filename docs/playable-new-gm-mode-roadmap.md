@@ -10,7 +10,7 @@ It is a sequencing guide, not an active ticket list. A feature is only in scope 
 
 As of this roadmap, the game supports the solo weekly loop:
 
-Title -> Setup -> Draft Night -> Draft Review -> Dashboard -> Booking -> Run Show -> Results -> Week Review -> Advance Week -> Season Review -> Start Next Season
+Title -> Setup -> Draft Night -> Draft Review -> Dashboard -> Booking -> Run Show -> Show Recap + GM Handoff -> Advance Week / Season Review -> Start Next Season
 
 The current mode includes localStorage persistence, deterministic show resolution, free optional Book Finish control with simulated winners as the default, roster pressure, injuries, title changes, rivalry movement, social posts, finance reports, season archives, deterministic CPU rival brands, limited Rival Intelligence, player/CPU market transactions, tag title support, Rivalries Command Desk support for singles/tag 2v2/multi rivalry structures, and multiple read-only context surfaces.
 
@@ -21,7 +21,7 @@ Prioritize bounded improvements that preserve the current loop:
 - Strengthen player-facing UI clarity and command-center presentation.
 - Keep Booking as the primary decision surface.
 - Let Booking feel staged instead of cramped: the player should be able to see the card/rundown as they build, then enter focused setup surfaces for matchups, promos, title context, rivalry context, and other segment details.
-- Keep Results and Week Review as consequence reveal surfaces.
+- Keep Show Recap as the consequence reveal surface, with first-class segment inspection in a focused Segment Receipt window and a compact GM Handoff before the calendar advances.
 - Keep scout, rival visibility, tag, and season-memory features bounded unless a ticket explicitly adds gameplay; finance, contracts, and market pressure are now active gameplay systems.
 - Prefer stabilization, validation, and focused UI polish over broad new systems.
 

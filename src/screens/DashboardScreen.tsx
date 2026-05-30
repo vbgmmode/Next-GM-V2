@@ -78,10 +78,10 @@ export function DashboardScreen({
   const wrestlerOrPlaceholder = (id: string, fallbackName: string): Pick<Wrestler, "id" | "name"> =>
     findWrestler(id) ?? { id: id || fallbackName, name: fallbackName };
   const dashboardCta: DynastyManagementCta = {
-    eyebrow: model.hasWeekReview ? "Office Waiting" : "Next Action",
+    eyebrow: model.hasPendingPostShow ? "Recap Waiting" : "Next Action",
     label: model.primaryAction.label,
     onClick: () => onNavigate(model.primaryAction.screen),
-    tone: model.hasWeekReview ? "warning" : "brand",
+    tone: model.hasPendingPostShow ? "warning" : "brand",
   };
 
   return (

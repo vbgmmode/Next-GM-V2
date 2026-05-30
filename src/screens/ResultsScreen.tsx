@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DynastyManagementShell, type DynastyManagementCta } from "../components/DynastyManagementShell";
 import { SuperstarPortrait } from "../components/SuperstarPortrait";
 import type { GameScreen } from "../game/migration";
@@ -10,6 +10,7 @@ import {
   type SegmentBroadcastRead,
   type SegmentParticipantRead,
 } from "./resultsScreenReads";
+import { buildPostShowHandoffViewModel } from "./postShowHandoffReads";
 import "./ResultsScreen.css";
 
 function getReelTypeLabel(type: SegmentBroadcastRead["type"]) {
@@ -190,22 +191,25 @@ function SegmentBroadcastCard({
 
 export function ResultsScreen({
   game,
-  canContinueWeekReview,
-  onContinueWeekReview,
+  onAdvanceWeek,
   onNavigate,
   result,
 }: {
   game: GameState;
-  canContinueWeekReview: boolean;
-  onContinueWeekReview: () => void;
+  onAdvanceWeek: () => void;
   result: ShowResult;
   onNavigate: (screen: GameScreen) => void;
 }) {
   const model = buildResultsViewModel(game, result);
+  const handoffModel = buildPostShowHandoffViewModel(game, result);
   const [selectedSegmentId, setSelectedSegmentId] = useState(model.segmentReads[0]?.segmentId ?? "");
+  const [segmentWindowOpen, setSegmentWindowOpen] = useState(false);
   const selectedIndex = model.segmentReads.findIndex((read) => read.segmentId === selectedSegmentId);
   const activeIndex = selectedIndex >= 0 ? selectedIndex : 0;
   const selectedRead = model.segmentReads[activeIndex] ?? model.segmentReads[0];
+  const rosterFallout = handoffModel.rosterFalloutGroups[0];
+  const socialOrRivalBeat = handoffModel.topSocialReaction ?? handoffModel.rivalPressureBeat;
+  const isCurrentPostShow = result.week === game.currentWeek && result.seasonNumber === game.seasonNumber;
   const segmentPager = useMemo(
     () => ({
       current: activeIndex + 1,
@@ -219,12 +223,26 @@ export function ResultsScreen({
   );
 
   const resultsCta: DynastyManagementCta = {
-    disabled: !canContinueWeekReview,
-    eyebrow: canContinueWeekReview ? "Fallout Ready" : "Reviewed",
-    label: canContinueWeekReview ? "Continue to Week Review" : "Week Review Complete",
-    onClick: onContinueWeekReview,
-    tone: canContinueWeekReview ? "warning" : "neutral",
+    eyebrow: isCurrentPostShow ? "Calendar Action" : "Archived Recap",
+    label: isCurrentPostShow ? handoffModel.advanceLabel : "Return to Brand HQ",
+    onClick: isCurrentPostShow ? onAdvanceWeek : () => onNavigate("dashboard"),
+    tone: isCurrentPostShow ? (handoffModel.advanceLabel === "Season Review" ? "brand" : "positive") : "neutral",
   };
+
+  useEffect(() => {
+    if (!segmentWindowOpen) {
+      return;
+    }
+
+    function closeSegmentWindow(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSegmentWindowOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", closeSegmentWindow);
+    return () => window.removeEventListener("keydown", closeSegmentWindow);
+  }, [segmentWindowOpen]);
 
   return (
     <DynastyManagementShell
@@ -297,7 +315,10 @@ export function ResultsScreen({
                 aria-current={read.segmentId === selectedRead?.segmentId ? "page" : undefined}
                 className={`rs-reel-chip tone-${read.scoreTone}${read.isNoContest ? " is-no-contest" : ""}${read.isCompetitive ? " is-match" : ""}${read.segmentId === selectedRead?.segmentId ? " is-active" : ""}`}
                 key={read.segmentId}
-                onClick={() => setSelectedSegmentId(read.segmentId)}
+                onClick={() => {
+                  setSelectedSegmentId(read.segmentId);
+                  setSegmentWindowOpen(true);
+                }}
                 title={`${read.type} · ${read.score} · ${read.reelSummary}`}
                 type="button"
               >
@@ -311,45 +332,88 @@ export function ResultsScreen({
             ))}
           </div>
 
-          {selectedRead ? (
-            <div className="rs-segment-focus">
-              <div className="rs-segment-focus-head">
-                <div>
-                  <span>Segment Receipt</span>
-                  <strong>
-                    {String(selectedRead.index).padStart(2, "0")} · {selectedRead.type}
-                  </strong>
-                </div>
-                <div className="rs-segment-pager">
-                  <button
-                    className="rs-segment-pager-btn"
-                    disabled={!segmentPager.hasPrev}
-                    onClick={() => segmentPager.prevId && setSelectedSegmentId(segmentPager.prevId)}
-                    type="button"
-                  >
-                    Prev
-                  </button>
-                  <span>
-                    {segmentPager.current} / {segmentPager.total}
-                  </span>
-                  <button
-                    className="rs-segment-pager-btn"
-                    disabled={!segmentPager.hasNext}
-                    onClick={() => segmentPager.nextId && setSelectedSegmentId(segmentPager.nextId)}
-                    type="button"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
+          <section className="rs-handoff-band" aria-label="GM handoff and next week">
+            <article className="rs-handoff-lead">
+              <span>GM Handoff</span>
+              <strong>{handoffModel.handoff.headline}</strong>
+              <p>{handoffModel.handoff.items[0]?.detail ?? handoffModel.headline.detail}</p>
+            </article>
 
-              <div className="rs-segment-focus-body">
-                <SegmentBroadcastCard focused read={selectedRead} wrestlers={game.wrestlers} />
-              </div>
+            <div className="rs-handoff-beats">
+              <article>
+                <span>Roster Fallout</span>
+                <strong>{rosterFallout?.label ?? "Locker Room"}</strong>
+                <p>{rosterFallout?.lines[0] ?? "No major roster pressure moved after this show."}</p>
+              </article>
+              {socialOrRivalBeat ? (
+                <article>
+                  <span>{getFalloutBeatDisplayLabel(socialOrRivalBeat)}</span>
+                  <strong title={socialOrRivalBeat.value}>{socialOrRivalBeat.value}</strong>
+                  <p>{socialOrRivalBeat.detail}</p>
+                </article>
+              ) : null}
+              <article>
+                <span>Next Show</span>
+                <strong>{handoffModel.nextWeekName}</strong>
+                <p>
+                  {handoffModel.nextWeekTypeLabel} · {handoffModel.nextPleName} {handoffModel.nextPleDetail}
+                </p>
+              </article>
             </div>
-          ) : null}
+
+            <button className="rs-handoff-action" onClick={isCurrentPostShow ? onAdvanceWeek : () => onNavigate("dashboard")} type="button">
+              <span>
+                {isCurrentPostShow ? (handoffModel.advanceLabel === "Season Review" ? "Close Season" : "Calendar Ready") : "Recap Archive"}
+              </span>
+              <strong>{isCurrentPostShow ? handoffModel.advanceLabel : "Brand HQ"}</strong>
+            </button>
+          </section>
         </section>
       </div>
+
+      {segmentWindowOpen && selectedRead ? (
+        <div className="rs-segment-window-backdrop" aria-labelledby="rs-segment-window-title" aria-modal="true" role="dialog">
+          <button className="rs-segment-window-scrim" aria-label="Close segment receipt" onClick={() => setSegmentWindowOpen(false)} type="button" />
+          <section className="rs-segment-window" role="document">
+            <header className="rs-segment-window-head">
+              <div>
+                <span>Segment Receipt</span>
+                <strong id="rs-segment-window-title">
+                  {String(selectedRead.index).padStart(2, "0")} · {selectedRead.type}
+                </strong>
+              </div>
+              <div className="rs-segment-pager">
+                <button
+                  className="rs-segment-pager-btn"
+                  disabled={!segmentPager.hasPrev}
+                  onClick={() => segmentPager.prevId && setSelectedSegmentId(segmentPager.prevId)}
+                  type="button"
+                >
+                  Prev
+                </button>
+                <span>
+                  {segmentPager.current} / {segmentPager.total}
+                </span>
+                <button
+                  className="rs-segment-pager-btn"
+                  disabled={!segmentPager.hasNext}
+                  onClick={() => segmentPager.nextId && setSelectedSegmentId(segmentPager.nextId)}
+                  type="button"
+                >
+                  Next
+                </button>
+                <button className="rs-segment-pager-btn rs-segment-close-btn" onClick={() => setSegmentWindowOpen(false)} type="button">
+                  Close
+                </button>
+              </div>
+            </header>
+
+            <div className="rs-segment-window-body">
+              <SegmentBroadcastCard focused read={selectedRead} wrestlers={game.wrestlers} />
+            </div>
+          </section>
+        </div>
+      ) : null}
     </DynastyManagementShell>
   );
 }

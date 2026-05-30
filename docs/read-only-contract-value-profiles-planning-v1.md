@@ -134,7 +134,7 @@ This planning ticket itself does not implement any of these files.
 - Roster cards optionally show a compact, non-blocking value signal when enabled.
 - Finance screen context shows aggregate value pressure as one-line retrospective framing.
 - Existing saves load and continue.
-- Core loop remains: New Game → Dashboard → Booking → Run Show → Results → Week Review → Advance Week.
+- Core loop remains: New Game → Dashboard → Booking → Run Show → Show Recap + GM Handoff → Advance Week.
 - Refresh persistence and Continue Career still function identically.
 - No change in winner resolution, rivalry movement, title resolution, finance formula output, injury formulas, morale/fatigue/momentum, or save compatibility behavior.
 

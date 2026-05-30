@@ -1,10 +1,10 @@
 import { getCpuResultsFeedSnapshot, getRatingsBattleSnapshot } from "../game/cpuRivalLoop";
 import { formatAttendance, formatMoney } from "../game/formatters";
 import {
-  getWeekReviewHandoffSnapshot,
-  getWeekReviewOfficeSnapshot,
-  type WeekReviewHandoffSnapshot,
-  type WeekReviewOfficeSnapshot,
+  getPostShowHandoffSnapshot,
+  getPostShowOfficeSnapshot,
+  type PostShowHandoffSnapshot,
+  type PostShowOfficeSnapshot,
 } from "../game/gameContextReads";
 import { getRosterPressureTags } from "../game/rosterContextReads";
 import { getBestSegment, getShowGrade } from "../game/scoring";
@@ -21,19 +21,19 @@ import {
   type ResultsRecapBeat,
 } from "./resultsScreenReads";
 
-export type WeekReviewFalloutGroup = {
+export type PostShowHandoffFalloutGroup = {
   id: string;
   label: string;
   lines: string[];
 };
 
-export type WeekReviewStoryEvent = {
+export type PostShowHandoffStoryEvent = {
   id: string;
   tag: string;
   note: string;
 };
 
-export type WeekReviewViewModel = {
+export type PostShowHandoffViewModel = {
   isPleResult: boolean;
   showName: string;
   showTypeLabel: string;
@@ -48,8 +48,8 @@ export type WeekReviewViewModel = {
   bestSegmentDetail: string;
   runtimeLabel: string;
   runtimeDetail: string;
-  office: WeekReviewOfficeSnapshot;
-  handoff: WeekReviewHandoffSnapshot;
+  office: PostShowOfficeSnapshot;
+  handoff: PostShowHandoffSnapshot;
   nextWeekName: string;
   nextWeekTypeLabel: string;
   nextPleName: string;
@@ -64,21 +64,21 @@ export type WeekReviewViewModel = {
   momentumAmount: number;
   fatigueName: string;
   fatigueAmount: number;
-  rosterFalloutGroups: WeekReviewFalloutGroup[];
-  storyEvents: WeekReviewStoryEvent[];
+  rosterFalloutGroups: PostShowHandoffFalloutGroup[];
+  storyEvents: PostShowHandoffStoryEvent[];
   reviewedRivalries: Rivalry[];
   ratingsBattle: ReturnType<typeof getRatingsBattleSnapshot>;
   cpuResultsFeed: ReturnType<typeof getCpuResultsFeedSnapshot>;
   broadcastOverrunNotes: string[];
 };
 
-function buildRosterFalloutGroups(game: GameState, result: ShowResult): WeekReviewFalloutGroup[] {
+function buildRosterFalloutGroups(game: GameState, result: ShowResult): PostShowHandoffFalloutGroup[] {
   const fallout = result.lockerRoomFallout;
   const bookedIds = [...new Set(result.segmentResults.flatMap((segment) => segment.participantIds))];
   const injuryRiskWrestlers = game.wrestlers.filter(
     (wrestler) => bookedIds.includes(wrestler.id) && getRosterPressureTags(wrestler, game.currentWeek).includes("Injury Risk"),
   );
-  const groups: WeekReviewFalloutGroup[] = [];
+  const groups: PostShowHandoffFalloutGroup[] = [];
 
   if (fallout?.moraleDrops.length) {
     groups.push({
@@ -154,8 +154,8 @@ function buildRosterFalloutGroups(game: GameState, result: ShowResult): WeekRevi
   return groups;
 }
 
-function buildStoryEvents(game: GameState, result: ShowResult): WeekReviewStoryEvent[] {
-  const events: WeekReviewStoryEvent[] = [];
+function buildStoryEvents(game: GameState, result: ShowResult): PostShowHandoffStoryEvent[] {
+  const events: PostShowHandoffStoryEvent[] = [];
   const rivalryHistoryEvents = result.rivalryHistoryEvents ?? [];
 
   rivalryHistoryEvents.forEach((event) => {
@@ -191,7 +191,7 @@ function buildStoryEvents(game: GameState, result: ShowResult): WeekReviewStoryE
   return events;
 }
 
-export function buildWeekReviewViewModel(game: GameState, result: ShowResult): WeekReviewViewModel {
+export function buildPostShowHandoffViewModel(game: GameState, result: ShowResult): PostShowHandoffViewModel {
   const bestSegment = getBestSegment(result);
   const financeReport = getFinanceReportForResult(game, result);
   const rivalryIds = [...new Set(result.segmentResults.map((segment) => segment.rivalryId).filter((id): id is string => Boolean(id)))];
@@ -223,8 +223,8 @@ export function buildWeekReviewViewModel(game: GameState, result: ShowResult): W
     bestSegmentDetail: getSegmentResultParticipantsLabel(bestSegment, game.wrestlers),
     runtimeLabel: result.actualRuntimeMinutes !== undefined ? `${result.actualRuntimeMinutes} min` : "Legacy",
     runtimeDetail: result.plannedRuntimeMinutes !== undefined ? `Planned ${result.plannedRuntimeMinutes} min` : "No runtime record",
-    office: getWeekReviewOfficeSnapshot(game, result, financeReport),
-    handoff: getWeekReviewHandoffSnapshot(game, result, financeReport),
+    office: getPostShowOfficeSnapshot(game, result, financeReport),
+    handoff: getPostShowHandoffSnapshot(game, result, financeReport),
     nextWeekName: nextWeek ? nextWeek.showName : "Season Review",
     nextWeekTypeLabel: nextWeek ? getShowTypeLabel(nextWeek.showType) : "Review the year",
     nextPleName: nextPle ? nextPle.showName : "None",

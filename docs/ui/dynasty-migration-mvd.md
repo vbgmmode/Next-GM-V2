@@ -23,9 +23,9 @@
 | **Visual shell coverage** | **~68%** | Dynasty chrome + grid layouts exist for all 15 screens; depth varies from rich (Dashboard) to placeholder (Championships, Season Review) |
 | **Layout region coverage** | **~55%** | Top HUD and primary stage mostly mapped; side rails, tactical grids, and lower-third strips are simplified or absent on 8+ screens |
 | **Interaction coverage** | **~22%** | Nav spine + a few CTAs wired; no segment CRUD, draft picks, market transactions, title/rivalry management, or save CRUD |
-| **Data / read-model coverage** | **~30%** | `buildDashboardModel` + partial week-review reads; most screens use raw `GameState` slices instead of production context reads |
+| **Data / read-model coverage** | **~30%** | `buildDashboardModel` + partial post-show handoff reads; most screens use raw `GameState` slices instead of production context reads |
 
-**Bottom line:** The prototype proves the Dynasty *look* across the full app map. The migration work is dominated by **interaction wiring and read-model extraction from `App.tsx`**, not CSS. Wave 0–2 (shared kit + shell + spine) delivers a playable Dynasty-skinned loop for Title → Dashboard → Booking → Results → Week Review without touching the heaviest screens (Setup draft, Championships, Season Review).
+**Bottom line:** The prototype proves the Dynasty *look* across the full app map. The migration work is dominated by **interaction wiring and read-model extraction from `App.tsx`**, not CSS. Wave 0–2 (shared kit + shell + spine) delivers a playable Dynasty-skinned loop for Title → Dashboard → Booking → Show Recap without touching the heaviest screens (Setup draft, Championships, Season Review).
 
 ### Product decision required
 
@@ -80,7 +80,6 @@ src/
 | DashboardScreen | 379 |
 | RivalriesScreen | 354 |
 | FinanceScreen | 332 |
-| WeekReviewScreen | 270 |
 | RosterScreen | 252 |
 | MarketScreen (file) | 245 |
 | ResultsScreen | 199 |
@@ -101,7 +100,6 @@ Legend: **P** = Present · **~** = Partial · **—** = Missing
 | Dashboard | ~ | ~ | ~ | ~ | **M** | 2 |
 | Booking | ~ | ~ | — | ~ | **XL** | 3 |
 | Results | ~ | ~ | ~ | ~ | **M** | 2 |
-| Week Review | ~ | ~ | ~ | ~ | **M** | 2 |
 | Roster | ~ | ~ | ~ | — | **M** | 4 |
 | Market | ~ | ~ | — | ~ | **M** | 4 |
 | Profile | ~ | ~ | ~ | — | **L** | 4 |
@@ -162,21 +160,21 @@ Legend: **P** = Present · **~** = Partial · **—** = Missing
 
 | Dimension | Production | Prototype | Gap |
 |-----------|----------|-----------|-----|
-| **Visual** | Recap package, cause ledger, broadcast fallout, segment breakdown | Hero + ledger rows + ratings summary | Collapsible panels, injury/overrun sections missing |
-| **Layout** | Recap + side panels + collapsible lists | `dynasty-results-grid` | Rival intel / CPU feed rails absent |
-| **Interactions** | Continue to week review (gated); expand/collapse sections | Nav to dashboard / week review | Gate logic (`canContinueWeekReview`) not wired |
+| **Visual** | Recap package, cause ledger, broadcast fallout, rundown reel, focused Segment Receipt window | Hero + ledger rows + ratings summary | Collapsible panels, injury/overrun sections missing |
+| **Layout** | Recap + compact rundown + focused segment window + handoff band | `dynasty-results-grid` | Rival intel / CPU feed rails absent |
+| **Interactions** | Advance Week / Season Review from compact handoff; expand/collapse sections | Nav to dashboard / recap | Direct calendar action wiring |
 | **Data** | `buildResultsRecapPackage`, cause ledger, broadcast fallout snapshots | Fixture `ShowResult` + `getShowGrade` | Requires live post-`runShow` result |
 
 **Monolith tax:** L
 
-#### 6. Week Review
+#### 6. Show Recap Handoff
 
 | Dimension | Production | Prototype | Gap |
 |-----------|----------|-----------|-----|
-| **Visual** | Aftermath hero, office/handoff boards, consequence strip | Hero + office items + handoff panel | Side rail (social buzz, rival intel) simplified |
-| **Layout** | Hero + main board + side rail + consequence strip | `dynasty-week-review-grid` | Consequence strip collapsed into office panel |
+| **Visual** | Compact GM handoff inside Show Recap | Handoff panel | Social/rival pressure simplified |
+| **Layout** | Recap + rundown reel + segment window + handoff band | `dynasty-results-grid` | Handoff should stay viewport-fit |
 | **Interactions** | Advance Week → `advanceGameWeek`; season review at week 50 | Advance → playthrough toast (no mutation) | Real week advance + save required |
-| **Data** | `getWeekReviewOfficeSnapshot`, `getWeekReviewHandoffSnapshot` | Same read models used | Finance rollup from `game.financeReports` — partial |
+| **Data** | `getPostShowOfficeSnapshot`, `getPostShowHandoffSnapshot` | Same read models used | Finance rollup from `game.financeReports` — partial |
 
 **Monolith tax:** L
 
@@ -340,7 +338,7 @@ MonolithTax: **+L** for App.tsx inline screens · **+S** for `MarketScreen.tsx`
 | Effort | Screens |
 |--------|---------|
 | **S** | Calendar, Social |
-| **M** | Title, Dashboard, Results, Week Review, Roster, Market, Finance |
+| **M** | Title, Dashboard, Show Recap, Roster, Market, Finance |
 | **L** | Profile, Rivalries |
 | **XL** | Setup, Booking, Championships, Season Review |
 
@@ -365,7 +363,7 @@ Ranked by what blocks a shippable Dynasty experience:
 | 9 | **Profile + roster context reads** — management depth | Medium | L | Profile, Roster |
 | 10 | **Season review + next season rollover** | Medium | XL | Season Review |
 
-**Honorable mentions:** Week Review real `advanceWeek` wiring (M); Results cause ledger / fallout panels (M); Finance expandable breakdowns (M); CSS dual-stack maintenance cost (cross-cutting).
+**Honorable mentions:** Show Recap direct `advanceWeek` wiring (M); Results cause ledger / fallout panels (M); Finance expandable breakdowns (M); CSS dual-stack maintenance cost (cross-cutting).
 
 ---
 
@@ -412,7 +410,7 @@ flowchart TD
 
 ---
 
-### Wave 2 — Spine (Title → Dashboard → Results → Week Review)
+### Wave 2 — Spine (Title → Dashboard → Show Recap)
 
 **Goal:** Playable Dynasty-skinned weekly loop with real sim.
 
@@ -420,12 +418,11 @@ flowchart TD
 |--------|------|
 | Title | Dynasty layout + wire save CRUD |
 | Dashboard | Port `DashboardScene` layout; complete adapter reads; wire primary CTA routing |
-| Results | Port recap layout; wire cause ledger / fallout; gate week review |
-| Week Review | Port layout; wire `advanceWeek` + season review branch |
+| Show Recap | Port recap layout; wire cause ledger, fallout, focused Segment Receipt window, compact GM handoff, and `advanceWeek` / season review branch |
 
-**Exit criteria:** New or continued career → book (existing booking UI ok) → run show → results → week review → advance week works at 1280×720 with Dynasty chrome on spine screens. No document scroll on spine.
+**Exit criteria:** New or continued career → book (existing booking UI ok) → run show → Show Recap + GM Handoff → advance week works at 1280×720 with Dynasty chrome on spine screens. No document scroll on spine.
 
-**What the player gets if you stop here:** Dynasty look on title, HQ, results, and week review; booking/setup/management tabs still broadcast-styled internally.
+**What the player gets if you stop here:** Dynasty look on title, HQ, and Show Recap; booking/setup/management tabs still broadcast-styled internally.
 
 ---
 
@@ -501,7 +498,7 @@ Screens needing new adapters (beyond `buildDashboardModel`):
 | `buildMarketModel` | market, financeCatalog, formatters | Market |
 | `buildFinanceModel` | finance, financeCatalog | Finance |
 | `buildResultsModel` | scoring, gameContextReads | Results |
-| `buildWeekReviewModel` | gameContextReads, rosterContextReads, scoring | Week Review |
+| `buildPostShowHandoffModel` | gameContextReads, rosterContextReads, scoring | Show Recap handoff |
 | `buildChampionshipsModel` | storyContextReads, titleCatalog | Championships |
 | `buildRivalriesModel` | rivalryCatalog, storyContextReads, scoring | Rivalries |
 | `buildSeasonReviewModel` | cpuRivalLoop, scoring, season archives | Season Review |

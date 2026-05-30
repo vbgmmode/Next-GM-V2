@@ -24,7 +24,7 @@ Non-title tag matches touch core systems in a way that is riskier than diagnosti
 - match result and scoring paths,
 - rivalry/title/ranking-free assumptions,
 - injury/fatigue/morale fallout expectations,
-- recap and Week Review rendering,
+- Show Recap rendering,
 - future compatibility with match-format metadata and title mechanics.
 
 The gate exists to keep the existing offline solo loop stable while defining a bounded, reversible path forward.
@@ -89,7 +89,7 @@ This should be represented in a discriminated way so old segments and one-on-one
 - Booking flow: `match format -> team side A wrestlers -> team side B wrestlers`.
 - Card summary line should include team-vs-team context.
 - Results rendering should support a readable tag-side outcome label.
-- Week Review should only reflect this if existing consequence surfaces naturally consume participants; no new Week Review screens.
+- The Show Recap handoff should only reflect this if existing consequence surfaces naturally consume participants; no new post-show screens.
 
 ## 8) Explicitly forbidden for this implementation slice
 
@@ -124,7 +124,7 @@ This should be represented in a discriminated way so old segments and one-on-one
 - Title flag/toggle cannot be enabled for tag matches.
 - Show can run with mixed card (singles + promo + tag).
 - Results render tag matches without crash.
-- Week Review and Advance Week continue to function.
+- Show Recap and Advance Week continue to function.
 - Existing saves load and continue through refresh.
 - `npm exec tsc -- --noEmit` and `npm run build` still pass.
 
@@ -141,4 +141,3 @@ Use this as the next prompt:
 - Open Challenge and title guardrails accidentally accepting tag metadata.
 - Any result rendering path that infers side winner from singles ordering.
 - Any place where team/side labels are persisted as mutable authoritative state.
-

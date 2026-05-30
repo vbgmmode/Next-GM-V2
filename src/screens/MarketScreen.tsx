@@ -145,10 +145,10 @@ export function MarketScreen({
   onSignBundle: (affiliationId: string, contractWeeks: number) => void;
   onSignFreeAgent: (wrestlerId: string, contractWeeks: number) => void;
 }) {
-  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
+  const hasCurrentPostShow = latestResult?.week === game.currentWeek;
   const snapshot = getMarketSnapshot(game, draftPool);
   const office = game.marketState.officeMandate;
-  const marketClosed = Boolean(hasCurrentWeekReview);
+  const marketClosed = Boolean(hasCurrentPostShow);
   const boardEntries = snapshot.weeklyBoard?.entries ?? [];
   const boardRows = boardEntries
     .map((entry) => {

@@ -80,7 +80,7 @@ Pre-show must not show:
 - predicted injury outcome
 - predicted morale impact
 
-## 6) Results / Week Review post-show disclosure
+## 6) Show Recap post-show disclosure
 
 Once the show resolves, add or keep read-only labels based on:
 - selected stipulation + chosen participants
@@ -146,10 +146,10 @@ No source behavior changes in this planning slice.
 - Invalid stipulation-format combinations are blocked in Booking UI.
 - Multiple stipulations do not co-exist on one segment in first pass.
 - Simulation results remain unchanged (existing winner/fallout behavior).
-- Results and Week Review remain unchanged except safe descriptive text.
+- Show Recap remains unchanged except safe descriptive text.
 - Refresh persistence works across sessions.
 - No new team objects, rankings, or title-engine rewrites required.
-- Core playable loop remains: New Game/New setup → Draft Review → Dashboard → Booking → Run Show → Results → Week Review → Advance Week.
+- Core playable loop remains: New Game/New setup → Draft Review → Dashboard → Booking → Run Show → Show Recap + GM Handoff → Advance Week.
 
 ## 12) Explicit out-of-scope for v1
 
@@ -165,7 +165,7 @@ No source behavior changes in this planning slice.
 - match-format additions
 - new screens
 - persistence schema change or migration churn
-- broad redesign of Booking, Results, or Week Review
+- broad redesign of Booking or Show Recap
 
 ## Recommended next smallest implementation slice after planning
 

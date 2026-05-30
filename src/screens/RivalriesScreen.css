@@ -25,47 +25,29 @@
   padding-top: 8px;
 }
 
-.rivalry-recap-strip {
-  align-items: center;
-  background:
-    linear-gradient(90deg, rgba(var(--bc-brand-primary-rgb), 0.18), transparent 62%),
-    rgba(8, 10, 14, 0.96);
-  border: 1px solid rgba(var(--bc-brand-primary-rgb), 0.34);
+.rivalry-spark-launch {
+  background: rgba(var(--bc-brand-primary-rgb), 0.14);
+  border: 1px solid rgba(var(--bc-brand-primary-rgb), 0.46);
   border-left: 3px solid var(--bc-brand-primary);
   border-radius: 2px;
-  display: flex;
-  flex: 0 0 auto;
-  gap: 12px;
-  min-width: 0;
-  padding: 8px 10px;
-}
-
-.rivalry-recap-strip .eyebrow {
   color: var(--bc-brand-selected);
-  flex: 0 0 auto;
-  margin: 0;
-}
-
-.rivalry-recap-strip strong {
-  color: #f4f7fb;
+  cursor: pointer;
   flex: 0 0 auto;
   font-family: var(--font-display);
-  font-size: 0.82rem;
+  font-size: 0.68rem;
   font-weight: 900;
-  line-height: 1.1;
+  line-height: 1;
+  min-height: 30px;
+  padding: 7px 10px;
   text-transform: uppercase;
-  white-space: nowrap;
+  width: 100%;
 }
 
-.rivalry-recap-strip span {
-  color: #9ea8ba;
-  flex: 1 1 auto;
-  font-size: 0.72rem;
-  line-height: 1.25;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.rivalry-spark-launch:hover,
+.rivalry-spark-launch:focus-visible {
+  background: rgba(var(--bc-brand-primary-rgb), 0.22);
+  border-color: rgba(var(--bc-brand-primary-rgb), 0.7);
+  outline: none;
 }
 
 .rivalry-command-board {
@@ -73,7 +55,7 @@
   display: grid;
   flex: 1 1 auto;
   gap: 8px;
-  grid-template-columns: minmax(210px, 0.52fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
 }
@@ -365,6 +347,111 @@ button.rivalry-feud-suggestion p {
 
 .rivalry-composer-rail .rivalry-panel-head {
   flex: 0 0 auto;
+}
+
+.rivalry-spark-backdrop {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.58);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 28px;
+  position: fixed;
+  z-index: 40;
+}
+
+.rivalry-spark-scrim {
+  background: transparent;
+  border: 0;
+  cursor: default;
+  inset: 0;
+  padding: 0;
+  position: absolute;
+}
+
+.rivalry-spark-window {
+  border-left: 3px solid var(--bc-brand-primary);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(var(--bc-brand-primary-rgb), 0.2);
+  display: grid;
+  gap: 10px;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  max-height: min(760px, calc(100dvh - 56px));
+  max-width: 760px;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  width: min(760px, calc(100vw - 56px));
+  z-index: 1;
+}
+
+.rivalry-spark-window .rivalry-mode-toggle {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.rivalry-spark-window .rivalry-mode-toggle button {
+  background: rgba(10, 12, 18, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #a8b0be;
+  font-size: 0.62rem;
+  font-weight: 900;
+  min-height: 34px;
+  padding: 6px 8px;
+  text-transform: uppercase;
+}
+
+.rivalry-spark-window .rivalry-mode-toggle button.active-filter {
+  background: rgba(var(--bc-brand-primary-rgb), 0.14);
+  border-color: rgba(var(--bc-brand-primary-rgb), 0.46);
+  color: var(--bc-brand-selected);
+}
+
+.rivalry-spark-window .rivalry-feud-suggestion-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-height: 148px;
+}
+
+.rivalry-spark-window .rivalry-composer-body {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.45fr);
+}
+
+.rivalry-spark-window .rivalry-composer-selects {
+  grid-column: 1;
+  grid-row: 1 / span 4;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.rivalry-spark-window .rivalry-composer-actions {
+  align-self: end;
+  grid-column: 2;
+}
+
+.rivalry-empty-story {
+  align-content: center;
+  display: grid;
+  flex: 1 1 auto;
+  gap: 8px;
+  justify-items: start;
+  min-height: 0;
+  padding: 28px;
+}
+
+.rivalry-empty-story h3 {
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2vw, 1.9rem);
+  font-weight: 900;
+  line-height: 1.02;
+  margin: 0;
+  max-width: 620px;
+  text-transform: uppercase;
+}
+
+.rivalry-empty-story .muted-copy {
+  max-width: 560px;
 }
 
 .rivalry-panel-head {
@@ -913,7 +1000,7 @@ button.rivalry-feud-suggestion p {
 .rivalry-desk-column {
   display: grid;
   gap: 8px;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(320px, 0.4fr) minmax(0, 0.6fr);
   min-height: 0;
   min-width: 0;
 }
@@ -921,18 +1008,25 @@ button.rivalry-feud-suggestion p {
 .rivalry-feud-rail.is-desk-strip {
   border-left: 3px solid var(--bc-brand-primary);
   border-top-color: var(--bc-brand-primary);
-  flex: 0 0 auto;
-  grid-template-rows: auto auto auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   min-height: 0;
+}
+
+.rivalry-feud-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: grid;
+  flex: 0 0 auto;
+  padding-top: 8px;
 }
 
 .rivalry-feud-rail.is-desk-strip .rivalry-feud-list {
   display: grid;
-  gap: 4px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
+  gap: 6px;
+  grid-template-columns: minmax(0, 1fr);
   max-height: none;
-  overflow: visible;
-  padding-right: 0;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .rivalry-feud-rail.is-desk-strip .rivalry-feud-list > .eyebrow {
@@ -1123,14 +1217,42 @@ button.rivalry-feud-suggestion p {
 
 @media (max-width: 1180px) {
   .rivalry-command-board {
-    grid-template-columns: minmax(200px, 0.58fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .rivalry-feud-rail.is-desk-strip .rivalry-feud-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .rivalry-spark-window .rivalry-feud-suggestion-list,
+  .rivalry-spark-window .rivalry-composer-selects {
+    grid-template-columns: 1fr;
+  }
+
+  .rivalry-spark-window .rivalry-composer-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rivalry-spark-window .rivalry-composer-selects,
+  .rivalry-spark-window .rivalry-composer-actions {
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .rivalry-desk-panels {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .rivalry-desk-column {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .rivalry-feud-rail.is-desk-strip {
+    grid-template-rows: auto auto auto auto;
+  }
+
+  .rivalry-feud-rail.is-desk-strip .rivalry-feud-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+    padding-right: 0;
   }
 }
