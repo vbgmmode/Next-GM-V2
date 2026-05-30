@@ -77,6 +77,12 @@ export const MATCH_PROGRESSION_TUNING = {
   highQualityLossLearningBonus: 0.2,
 } as const;
 
+export const EXPECTATION_DISAPPOINTMENT_THRESHOLD = -8;
+export const EXPECTATION_BREAKOUT_THRESHOLD = 12;
+export const BREAKOUT_PROGRESSION_ACCELERATION = 1.5;
+export const DISAPPOINTMENT_MOMENTUM_PENALTY = -15;
+export const DISAPPOINTMENT_RING_METRIC_DROP = -0.5;
+
 export function scaleMatchRatingDeltas(
   deltas: Partial<Record<keyof MatchRatings, number>>,
   keys: Array<keyof MatchRatings>,
