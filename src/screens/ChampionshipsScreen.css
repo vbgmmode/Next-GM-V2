@@ -432,6 +432,7 @@
   border: 1px dashed rgba(var(--bc-prestige-rgb), 0.42);
   border-radius: 2px;
   color: var(--bc-prestige);
+  cursor: pointer;
   display: inline-flex;
   flex-direction: column;
   font-family: var(--font-display);
@@ -440,8 +441,43 @@
   gap: 4px;
   height: 64px;
   justify-content: center;
+  min-height: 64px;
+  padding: 0;
+  text-align: center;
   text-transform: uppercase;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
   width: 64px;
+}
+
+.championships-command-shell button.championship-hero-vacant {
+  border-style: dashed;
+}
+
+.championships-command-shell button.championship-hero-vacant:hover,
+.championships-command-shell button.championship-hero-vacant:focus-visible {
+  background:
+    radial-gradient(circle at 50% 30%, rgba(var(--bc-prestige-rgb), 0.28), transparent 55%),
+    rgba(14, 17, 24, 0.96);
+  border-color: rgba(var(--bc-prestige-rgb), 0.72);
+  box-shadow: 0 0 16px rgba(var(--bc-prestige-rgb), 0.18);
+  color: var(--bc-prestige);
+  outline: none;
+}
+
+.championship-hero-vacant.is-open {
+  border-color: rgba(var(--bc-brand-primary-rgb), 0.78);
+  border-style: solid;
+  box-shadow: 0 0 0 1px rgba(var(--bc-brand-primary-rgb), 0.24);
+}
+
+.championship-hero-vacant span,
+.championship-hero-vacant small {
+  display: block;
+  line-height: 1.05;
+  pointer-events: none;
 }
 
 .championship-focus-title-block .eyebrow {

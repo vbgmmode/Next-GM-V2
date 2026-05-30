@@ -89,47 +89,55 @@ export function RosterScreen({ game, latestResult, onNavigate, onOpenProfile }: 
     <DynastyManagementShell className="roster-dynasty-shell" currentScreen="roster" cta={rosterCta} game={game} latestResult={latestResult} onNavigate={onNavigate}>
       <section className="roster-dynasty-desk" aria-label="Locker Room command board">
         <div className="roster-dynasty-main">
-          <aside className="roster-filter-rail" aria-label="Roster filters">
-          <RosterPanel kicker="Filters" title="Locker Room" badge={`${game.wrestlers.length} Signed`}>
-            <div className="roster-filter-stack">
-              {ROSTER_FILTER_OPTIONS.map((option) => (
-                <button className={`roster-filter-btn ${filter === option ? "is-active" : ""}`} key={option} onClick={() => setFilter(option)} type="button">
-                  <span>{getRosterFilterLabel(option)}</span>
-                  <strong>{filterCounts[option]}</strong>
-                </button>
-              ))}
-            </div>
-            <div className="roster-sort-box">
-              <span>Sort By</span>
-              <select value={sortBy} onChange={(event) => setSortBy(event.target.value as RosterSort)}>
-                {ROSTER_SORT_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {getRosterSortLabel(option)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="roster-quick-reads">
-              <p className="roster-panel-kicker">Quick Reads</p>
-              <span>{topOverused ? `${topOverused.name} needs protection` : "No overuse spike"}</span>
-              <span>{topUnderused ? `${topUnderused.name} needs TV time` : "No long absence"}</span>
-              <span>{featuredAffiliations.length ? `${featuredAffiliations.length} team links visible` : "No team links drafted"}</span>
-            </div>
-          </RosterPanel>
-        </aside>
-
-        <section className="roster-board-stage" aria-label="Superstar board">
+          <section className="roster-board-stage" aria-label="Superstar board">
           <RosterPanel kicker="Superstar Board" title={`Superstars (${visibleWrestlers.length})`}>
-            <label className="roster-search-field">
-              <span>Search</span>
-              <input
-                aria-label="Search superstars"
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search superstars..."
-                type="search"
-                value={searchQuery}
-              />
-            </label>
+            <div className="roster-board-filters" aria-label="Roster filters">
+              <div className="roster-board-filters-head">
+                <span>Locker Room</span>
+                <b>{game.wrestlers.length} Signed</b>
+              </div>
+              <div className="roster-filter-stack">
+                {ROSTER_FILTER_OPTIONS.map((option) => (
+                  <button
+                    className={`roster-filter-btn ${filter === option ? "is-active" : ""}`}
+                    key={option}
+                    onClick={() => setFilter(option)}
+                    type="button"
+                  >
+                    <span>{getRosterFilterLabel(option)}</span>
+                    <strong>{filterCounts[option]}</strong>
+                  </button>
+                ))}
+              </div>
+              <div className="roster-board-controls-row">
+                <div className="roster-sort-box">
+                  <span>Sort By</span>
+                  <select value={sortBy} onChange={(event) => setSortBy(event.target.value as RosterSort)}>
+                    {ROSTER_SORT_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {getRosterSortLabel(option)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <label className="roster-search-field">
+                  <span>Search</span>
+                  <input
+                    aria-label="Search superstars"
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search superstars..."
+                    type="search"
+                    value={searchQuery}
+                  />
+                </label>
+              </div>
+              <div className="roster-quick-reads">
+                <p className="roster-panel-kicker">Quick Reads</p>
+                <span>{topOverused ? `${topOverused.name} needs protection` : "No overuse spike"}</span>
+                <span>{topUnderused ? `${topUnderused.name} needs TV time` : "No long absence"}</span>
+                <span>{featuredAffiliations.length ? `${featuredAffiliations.length} team links visible` : "No team links drafted"}</span>
+              </div>
+            </div>
             <div className="roster-grid" aria-label="Roster list">
               {visibleWrestlers.length ? (
                 visibleWrestlers.map((wrestler) => (
