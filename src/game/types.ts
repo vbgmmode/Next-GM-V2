@@ -366,6 +366,8 @@ export type MatchRatings = {
   clutch: number;
 };
 
+export type MatchPacing = "Sprint" | "Normal" | "Epic";
+
 export type MatchOutcomeModel = "legacy" | "deepRatings";
 
 export type MatchRatingsProgressionMode = "disabled" | "enabled";

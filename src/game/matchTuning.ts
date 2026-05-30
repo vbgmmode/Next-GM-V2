@@ -1,4 +1,4 @@
-import type { MatchRatings } from "./types";
+import type { MatchPacing, MatchRatings } from "./types";
 
 export const MATCH_OUTCOME_TUNING = {
   effectivePowerFloor: 5,
@@ -14,10 +14,29 @@ export const MATCH_OUTCOME_TUNING = {
 
 export const MATCH_CURRENT_STATE_TUNING = {
   momentumModifier: 0.08,
-  moraleModifier: 0.05,
-  fatigueStart: 45,
-  fatiguePenalty: -0.08,
+  // Morale and fatigue need to be visible in the dev lab without overpowering permanent match ratings.
+  moraleModifier: 0.16,
+  fatigueStart: 30,
+  fatiguePenalty: -0.24,
 } as const;
+
+export const MATCH_PACING_WEIGHT_MULTIPLIERS = {
+  Sprint: {
+    power: 1.25,
+    explosiveness: 1.45,
+    stamina: 0.3,
+  },
+  Normal: {},
+  Epic: {
+    stamina: 1.45,
+    resilience: 1.35,
+    psychology: 1.3,
+  },
+} as const satisfies Record<MatchPacing, Partial<Record<keyof MatchRatings, number>>>;
+
+export const MAX_TAG_SYNERGY_BONUS = 8;
+export const SYNERGY_EXPERIENCE_MULTIPLIER = 0.12;
+export const IMPROMPTU_MAIN_EVENT_EGO_PENALTY = -5;
 
 export const MATCH_FALL_TAKER_TUNING = {
   resilienceGap: 1.15,

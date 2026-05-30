@@ -1,5 +1,5 @@
-import type { MatchRatings, Segment, SegmentType, ShowType, Wrestler } from "./types";
-import { MATCH_CURRENT_STATE_TUNING, MATCH_OUTCOME_TUNING, MATCH_PROGRESSION_TUNING } from "./matchTuning";
+import type { MatchPacing, MatchRatings, Segment, SegmentType, ShowType, Wrestler } from "./types";
+import { MATCH_CURRENT_STATE_TUNING, MATCH_OUTCOME_TUNING, MATCH_PACING_WEIGHT_MULTIPLIERS, MATCH_PROGRESSION_TUNING } from "./matchTuning";
 
 export type MatchRatingKey = keyof MatchRatings;
 
@@ -34,6 +34,7 @@ export type EffectiveMatchPowerContext = Partial<Pick<Segment, "type" | "segment
   cardPosition?: MatchOutcomeCardPosition;
   isTitleMatch?: boolean;
   isRivalryMatch?: boolean;
+  matchPacing?: MatchPacing;
 };
 
 export type MatchContextWeightProfile = {
@@ -365,24 +366,53 @@ function getMatchContextWeightProfile(context: EffectiveMatchPowerContext = {}):
   }
 }
 
+function resolveMatchPacing(pacing?: MatchPacing): MatchPacing {
+  return pacing === "Sprint" || pacing === "Epic" ? pacing : "Normal";
+}
+
+function applyMatchPacingWeights(profile: MatchContextWeightProfile, pacing?: MatchPacing): MatchContextWeightProfile {
+  const resolvedPacing = resolveMatchPacing(pacing);
+  const multipliers: Partial<Record<MatchRatingKey, number>> = MATCH_PACING_WEIGHT_MULTIPLIERS[resolvedPacing];
+
+  if (resolvedPacing === "Normal") {
+    return profile;
+  }
+
+  return {
+    id: `${profile.id}-${resolvedPacing.toLowerCase()}`,
+    weights: matchRatingKeys.reduce<Record<MatchRatingKey, number>>((weights, key) => {
+      weights[key] = getSafeWeight(profile.weights, key) * numberOr(multipliers[key], 1);
+      return weights;
+    }, {} as Record<MatchRatingKey, number>),
+  };
+}
+
+function getEffectiveMatchWeightProfile(context: EffectiveMatchPowerContext = {}): MatchContextWeightProfile {
+  return applyMatchPacingWeights(getMatchContextWeightProfile(context), context.matchPacing);
+}
+
+function getSafeWeight(weights: Partial<Record<MatchRatingKey, number>>, key: MatchRatingKey) {
+  return Math.max(0, numberOr(weights[key], 0));
+}
+
 function getWeightedRatingPower(ratings: MatchRatings, weights: Record<MatchRatingKey, number>) {
-  const totalWeight = matchRatingKeys.reduce((sum, key) => sum + Math.max(0, weights[key]), 0);
+  const totalWeight = matchRatingKeys.reduce((sum, key) => sum + getSafeWeight(weights, key), 0);
 
   if (totalWeight <= 0) {
     return EFFECTIVE_POWER_FLOOR;
   }
 
-  return matchRatingKeys.reduce((sum, key) => sum + ratings[key] * Math.max(0, weights[key]), 0) / totalWeight;
+  return matchRatingKeys.reduce((sum, key) => sum + ratings[key] * getSafeWeight(weights, key), 0) / totalWeight;
 }
 
 function getWeightedModifierPower(modifiers: MatchRatingCurrentModifiers, weights: Record<MatchRatingKey, number>) {
-  const totalWeight = matchRatingKeys.reduce((sum, key) => sum + Math.max(0, weights[key]), 0);
+  const totalWeight = matchRatingKeys.reduce((sum, key) => sum + getSafeWeight(weights, key), 0);
 
   if (totalWeight <= 0) {
     return 0;
   }
 
-  return matchRatingKeys.reduce((sum, key) => sum + (modifiers[key] ?? 0) * Math.max(0, weights[key]), 0) / totalWeight;
+  return matchRatingKeys.reduce((sum, key) => sum + (modifiers[key] ?? 0) * getSafeWeight(weights, key), 0) / totalWeight;
 }
 
 function getAvailabilityModifier(wrestler: Wrestler) {
@@ -466,7 +496,7 @@ export function calculateEffectiveMatchPower(
   context: EffectiveMatchPowerContext = {},
 ): EffectiveMatchPowerBreakdown {
   const wrestlers = Array.isArray(wrestlerOrTeam) ? wrestlerOrTeam : [wrestlerOrTeam];
-  const profile = getMatchContextWeightProfile(context);
+  const profile = getEffectiveMatchWeightProfile(context);
   const members = wrestlers.map<EffectiveMatchPowerMemberBreakdown>((wrestler) => {
     const baseRatings = ensureMatchRatings(wrestler);
     const currentModifiers = deriveMatchRatingCurrentModifiers(wrestler);

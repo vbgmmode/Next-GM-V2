@@ -15,7 +15,19 @@ import {
   type EffectiveMatchPowerContext,
   resolveMatchOutcomePreview,
 } from "./matchRatings";
-import { MATCH_FALL_TAKER_TUNING, MATCH_OUTCOME_TUNING } from "./matchTuning";
+import { affiliationCatalog } from "./affiliationCatalog";
+import {
+  IMPROMPTU_MAIN_EVENT_EGO_PENALTY,
+  MATCH_FALL_TAKER_TUNING,
+  MATCH_OUTCOME_TUNING,
+  MAX_TAG_SYNERGY_BONUS,
+  SYNERGY_EXPERIENCE_MULTIPLIER,
+} from "./matchTuning";
+
+type TagTeamSynergySource = {
+  experiencePoints?: unknown;
+  isImpromptu?: unknown;
+};
 
 export type SegmentWinnerSelectionContext = {
   segmentIndex: number;
@@ -155,8 +167,8 @@ function resolveTagDeepRatingsOutcome(
   }
 
   const powerContext = getOutcomePowerContext(segment, context);
-  const teamAPower = calculateEffectiveMatchPower(teamA, powerContext);
-  const teamBPower = calculateEffectiveMatchPower(teamB, powerContext);
+  const teamAPower = calculateTagTeamEffectivePower(teamA, powerContext);
+  const teamBPower = calculateTagTeamEffectivePower(teamB, powerContext);
   const probability = calculateMatchupWinProbability(teamAPower, teamBPower);
   const seed = [
     "deep-ratings-tag",
@@ -336,6 +348,70 @@ function getOutcomePowerContext(segment: Segment, context: SegmentWinnerSelectio
     isTitleMatch: Boolean(segment.championshipId),
     isRivalryMatch: Boolean(segment.rivalryId),
   };
+}
+
+function calculateTagTeamEffectivePower(team: Wrestler[], context: EffectiveMatchPowerContext): EffectiveMatchPowerBreakdown {
+  const basePower = calculateEffectiveMatchPower(team, context);
+  const individualPowerAverage = getAverageMemberEffectivePower(basePower);
+  const synergyContext = getTagTeamSynergyContext(team);
+  const effectivePower = Math.max(
+    MATCH_OUTCOME_TUNING.effectivePowerFloor,
+    individualPowerAverage + synergyContext.teamSynergyBonus + synergyContext.egoClashPenalty,
+  );
+
+  return {
+    ...basePower,
+    effectivePower,
+  };
+}
+
+function getAverageMemberEffectivePower(power: EffectiveMatchPowerBreakdown) {
+  const memberPowers = power.members
+    .map((member) => member.effectivePower)
+    .filter((effectivePower) => Number.isFinite(effectivePower));
+
+  if (!memberPowers.length) {
+    return MATCH_OUTCOME_TUNING.effectivePowerFloor;
+  }
+
+  return memberPowers.reduce((sum, effectivePower) => sum + effectivePower, 0) / memberPowers.length;
+}
+
+function getTagTeamSynergyContext(team: Wrestler[]) {
+  const sourceTeam = findExactSourceTagTeam(team);
+  const source = sourceTeam as TagTeamSynergySource | undefined;
+  const experiencePoints = numberOr(source?.experiencePoints, 0);
+  const isImpromptu = typeof source?.isImpromptu === "boolean" ? source.isImpromptu : !sourceTeam;
+  const teamSynergyBonus = Math.min(MAX_TAG_SYNERGY_BONUS, Math.max(0, experiencePoints) * SYNERGY_EXPERIENCE_MULTIPLIER);
+  const egoClashPenalty = isImpromptu && team.length === 2 && team.every(isMainEventTier) ? IMPROMPTU_MAIN_EVENT_EGO_PENALTY : 0;
+
+  return {
+    teamSynergyBonus,
+    egoClashPenalty,
+  };
+}
+
+function findExactSourceTagTeam(team: Wrestler[]) {
+  if (team.length !== 2) {
+    return undefined;
+  }
+
+  const teamIds = new Set(team.map((wrestler) => wrestler.id));
+
+  return affiliationCatalog.find(
+    (affiliation) =>
+      affiliation.kind === "tag_team" &&
+      affiliation.memberWrestlerIds.length === teamIds.size &&
+      affiliation.memberWrestlerIds.every((id) => teamIds.has(id)),
+  );
+}
+
+function numberOr(value: unknown, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function isMainEventTier(wrestler: Wrestler) {
+  return wrestler.roleTier === "MainEvent";
 }
 
 function isSafeStandardTagSegment(segment: Pick<Segment | SegmentResult, "type" | "segmentCatalogId" | "participantIds">) {

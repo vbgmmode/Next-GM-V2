@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createNewGame, draftPool } from "./seed";
 import { resolveSegmentWinnerSelection } from "./matchOutcomeResolver";
+import { IMPROMPTU_MAIN_EVENT_EGO_PENALTY, MATCH_OUTCOME_TUNING } from "./matchTuning";
 import type { MatchRatings, Segment, Wrestler } from "./types";
 
 function explicitRatings(overrides: Partial<MatchRatings> = {}): MatchRatings {
@@ -188,6 +189,47 @@ describe("match outcome resolver", () => {
     expect(first.audit.protectedParticipantIds).toEqual(
       first.audit.losingTeamParticipantIds?.filter((id) => id !== first.audit.fallTakerId),
     );
+  });
+
+  it("applies the bounded impromptu main-event ego penalty only to tag team effective power", () => {
+    const wrestlers = tunedRoster().map((wrestler) => ({
+      ...wrestler,
+      roleTier: "MainEvent" as const,
+    }));
+    const game = gameWithRoster(wrestlers);
+    const segment = tagSegment(wrestlers);
+
+    const result = resolveSegmentWinnerSelection(segment, game, baseContext());
+    const teamBreakdown = result.audit.teamPowerBreakdown?.[0];
+    const memberPowers = Object.values(teamBreakdown?.memberEffectivePowers ?? {});
+    const memberAverage = memberPowers.reduce((sum, power) => sum + power, 0) / memberPowers.length;
+
+    expect(memberPowers).toHaveLength(2);
+    expect(teamBreakdown?.effectivePower).toBeCloseTo(
+      Math.max(MATCH_OUTCOME_TUNING.effectivePowerFloor, memberAverage + IMPROMPTU_MAIN_EVENT_EGO_PENALTY),
+      3,
+    );
+  });
+
+  it("keeps tag team effective power floored when synergy inputs are missing and penalties apply", () => {
+    const floorRatings = explicitRatings(Object.fromEntries(Object.keys(explicitRatings()).map((key) => [key, 0])) as Partial<MatchRatings>);
+    const wrestlers = tunedRoster().map((wrestler) => ({
+      ...wrestler,
+      roleTier: "MainEvent" as const,
+      momentum: 0,
+      morale: 0,
+      fatigue: 100,
+      matchRatings: floorRatings,
+    }));
+    const game = gameWithRoster(wrestlers);
+    const segment = tagSegment(wrestlers);
+
+    const result = resolveSegmentWinnerSelection(segment, game, baseContext());
+
+    expect(result.audit.teamPowerBreakdown).toHaveLength(2);
+    result.audit.teamPowerBreakdown?.forEach((teamBreakdown) => {
+      expect(teamBreakdown.effectivePower).toBeGreaterThanOrEqual(MATCH_OUTCOME_TUNING.effectivePowerFloor);
+    });
   });
 
   it("excludes Open Challenge from deep ratings and uses the legacy fallback audit", () => {
