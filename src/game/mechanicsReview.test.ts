@@ -37,13 +37,16 @@ describe("mechanics review foundations", () => {
     expect(game.marketState.playerContracts.every((contract) => contract.contractWeeksRemaining === DRAFT_CONTRACT_WEEKS)).toBe(true);
     expect(game.wrestlers.every((wrestler) => wrestler.audienceHeat === SENTIMENT_NEUTRAL && wrestler.trust === SENTIMENT_NEUTRAL)).toBe(true);
     expect(game.wrestlers.every((wrestler) => wrestler.record?.season.wins === 0 && wrestler.record?.career.tagWins === 0)).toBe(true);
+    expect(game.rivalries).toEqual([]);
   });
 
   it("migrates legacy sentiment and records without forcing 12-week saves into a full-season calendar", () => {
     const legacyGame = createNewGame({ draftedWrestlers: draftPool.slice(0, 4) });
+    const { rivalries, ...legacyGameWithoutRivalries } = legacyGame;
+    void rivalries;
     const migrated = migrateSavedGameState({
       game: {
-        ...legacyGame,
+        ...legacyGameWithoutRivalries,
         calendar: createLegacyTwelveWeekCalendar(),
         startingBudgetTier: "$4M",
         wrestlers: legacyGame.wrestlers.map(stripNewWrestlerFields),
@@ -56,6 +59,7 @@ describe("mechanics review foundations", () => {
     expect(migrated?.game.wrestlers[0].audienceHeat).toBe(SENTIMENT_NEUTRAL);
     expect(migrated?.game.wrestlers[0].trust).toBe(SENTIMENT_NEUTRAL);
     expect(migrated?.game.wrestlers[0].record?.season.losses).toBe(0);
+    expect(migrated?.game.rivalries).toEqual([]);
   });
 
   it("runs the offseason draft from a fresh 2M war chest and carries leftover cash into week 1", () => {

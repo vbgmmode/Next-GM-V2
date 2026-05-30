@@ -9,13 +9,10 @@ import type {
   PrototypeBrand,
   RivalBrandState,
   RivalGMAssignment,
-  Rivalry,
-  RivalryStakes,
   StartingBudgetTier,
   Wrestler,
 } from "./types";
 import { getTitleCatalogEntriesForBrand } from "./titleCatalog";
-import { applyRivalryCatalogDefaults, getDefaultStorylineIdForStakes, getRivalryStoryline } from "./rivalryCatalog";
 import { top200DraftPool } from "./top200DraftPool";
 import { enrichWrestlerIdentityContext } from "./wrestlerIdentityContext";
 import { resolveWrestlerAlignment } from "./wrestlerAlignment";
@@ -189,24 +186,6 @@ export const roster: Wrestler[] = cloneWrestlers(top200DraftPool.slice(0, defaul
 
 export const draftPool: Wrestler[] = cloneWrestlers(top200DraftPool);
 
-function byStarPower(wrestlers: Wrestler[]) {
-  return [...wrestlers].sort((a, b) => b.popularity + b.momentum - (a.popularity + a.momentum));
-}
-
-function getSeedDivisionGroup(wrestler: Wrestler) {
-  const division = wrestler.division?.toLowerCase() ?? "";
-
-  if (division.includes("women") || division.includes("female")) {
-    return "Womens";
-  }
-
-  if (division.includes("men") || division.includes("male")) {
-    return "Mens";
-  }
-
-  return undefined;
-}
-
 export function createDefaultChampionships(wrestlers: Wrestler[] = roster, brandStyle: BrandStyle = defaultCareer.brandStyle): Championship[] {
   const brandCatalogTitles = getTitleCatalogEntriesForBrand(brandStyle);
   const catalogTitles = brandCatalogTitles.filter((title) => title.eligibleMatchScope === "singles");
@@ -293,114 +272,6 @@ export function createDefaultChampionships(wrestlers: Wrestler[] = roster, brand
       defenses: 0,
     },
   ];
-}
-
-function createRivalryFromPair(id: string, wrestlers: Wrestler[], stakes: RivalryStakes): Rivalry | null {
-  const [first, second] = wrestlers;
-
-  if (!first || !second) {
-    return null;
-  }
-
-  const heat = Math.round((first.popularity + first.momentum + second.popularity + second.momentum) / 4);
-  const freshness = stakes === "title" ? 78 : stakes === "respect" ? 72 : 66;
-
-  return applyRivalryCatalogDefaults({
-    id,
-    name: `${first.name} vs ${second.name}`,
-    participantIds: [first.id, second.id],
-    structure: "singles",
-    storylineId: getDefaultStorylineIdForStakes(stakes),
-    relationshipTag: getRivalryStoryline({ stakes, storylineId: getDefaultStorylineIdForStakes(stakes) }).relationshipTag,
-    heat,
-    freshness,
-    weeksActive: 1,
-    lastAdvancedWeek: 0,
-    status: heat >= 68 ? "rising" : "steady",
-    stakes,
-  });
-}
-
-export function createDefaultRivalries(wrestlers: Wrestler[] = roster): Rivalry[] {
-  const ranked = byStarPower(wrestlers);
-  const usedWrestlerIds = new Set<string>();
-  const getNextSameDivisionPair = () => {
-    const available = ranked.filter((wrestler) => !usedWrestlerIds.has(wrestler.id));
-    const first = available.find((wrestler) => {
-      const division = getSeedDivisionGroup(wrestler);
-      return Boolean(division && available.some((candidate) => candidate.id !== wrestler.id && getSeedDivisionGroup(candidate) === division));
-    });
-
-    if (!first) {
-      return [];
-    }
-
-    const second = available.find((wrestler) => wrestler.id !== first.id && getSeedDivisionGroup(wrestler) === getSeedDivisionGroup(first));
-
-    if (!second) {
-      return [];
-    }
-
-    usedWrestlerIds.add(first.id);
-    usedWrestlerIds.add(second.id);
-    return [first, second];
-  };
-  const rivalries = [
-    createRivalryFromPair("rivalry-opening-title", getNextSameDivisionPair(), "title"),
-    createRivalryFromPair("rivalry-locker-room-respect", getNextSameDivisionPair(), "respect"),
-    createRivalryFromPair("rivalry-personal-score", getNextSameDivisionPair(), "personal"),
-  ].filter((rivalry): rivalry is Rivalry => Boolean(rivalry));
-
-  if (rivalries.length) {
-    return rivalries;
-  }
-
-  const fallbackRivalries: Rivalry[] = [
-    {
-      id: "rivalry-rex-jax",
-      name: "Rex Carter vs Jax Ransom",
-      participantIds: ["rex-carter", "jax-ransom"],
-      structure: "singles",
-      heat: 68,
-      freshness: 78,
-      weeksActive: 1,
-      lastAdvancedWeek: 0,
-      status: "rising",
-      storylineId: "championship_chase",
-      relationshipTag: "rivals",
-      stakes: "title",
-    },
-    {
-      id: "rivalry-mara-sable",
-      name: "Mara Volt vs Sable King",
-      participantIds: ["mara-volt", "sable-king"],
-      structure: "singles",
-      heat: 61,
-      freshness: 72,
-      weeksActive: 1,
-      lastAdvancedWeek: 0,
-      status: "steady",
-      storylineId: "respect_feud",
-      relationshipTag: "respect",
-      stakes: "respect",
-    },
-    {
-      id: "rivalry-nyx-elena",
-      name: "Nyx Cross vs Elena Echo",
-      participantIds: ["nyx-cross", "elena-echo"],
-      structure: "singles",
-      heat: 58,
-      freshness: 66,
-      weeksActive: 1,
-      lastAdvancedWeek: 0,
-      status: "steady",
-      storylineId: "personal_grudge",
-      relationshipTag: "rivals",
-      stakes: "personal",
-    },
-  ];
-
-  return fallbackRivalries.map(applyRivalryCatalogDefaults);
 }
 
 export function createSeasonCalendar(): CalendarWeek[] {
@@ -494,7 +365,7 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
     money: startingMoney,
     wrestlers: startingRoster,
     championships: createDefaultChampionships(startingRoster, career.brandStyle),
-    rivalries: createDefaultRivalries(startingRoster),
+    rivalries: [],
     championshipHistory: [],
     rivalryHistory: [],
     calendar: createSeasonCalendar(),

@@ -28,7 +28,7 @@ export function BookingEmptyStage({ canAddSegment, smartRundownError, onAddSegme
           + Add Segment
         </button>
         <button className="booking-btn booking-btn-secondary" onClick={onGenerateSmartRundown} type="button">
-          Smart Rundown
+          Generate Booking
         </button>
       </div>
     </section>

@@ -39,7 +39,6 @@ import type {
 } from "./types";
 import {
   createDefaultChampionships,
-  createDefaultRivalries,
   createDefaultWrestlerRecord,
   createRivalBrandUniverse,
   createRivalGMAssignments,
@@ -813,7 +812,16 @@ function normalizeChampionships(championships: unknown, wrestlers: Wrestler[], b
 }
 
 function normalizeRivalries(rivalries: unknown, wrestlers: Wrestler[]) {
-  return Array.isArray(rivalries) ? (rivalries as Rivalry[]).map(applyRivalryCatalogDefaults) : createDefaultRivalries(wrestlers);
+  const wrestlerIds = new Set(wrestlers.map((wrestler) => wrestler.id));
+  return Array.isArray(rivalries)
+    ? (rivalries as Rivalry[])
+        .map((rivalry) => ({
+          ...rivalry,
+          participantIds: Array.isArray(rivalry.participantIds) ? rivalry.participantIds.filter((id) => wrestlerIds.has(id)) : [],
+        }))
+        .filter((rivalry) => rivalry.participantIds.length >= 2)
+        .map(applyRivalryCatalogDefaults)
+    : [];
 }
 
 function normalizeCurrentShow(currentShow: unknown): Segment[] {

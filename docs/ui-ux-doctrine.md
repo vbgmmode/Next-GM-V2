@@ -187,9 +187,9 @@ The player should be able to read who matters, who is rising, who is frustrated,
 
 Roster cards should carry character and status. Tables should exist for deeper management and comparison.
 
-Championships should feel prestigious. A title screen should spotlight the champion, the reign, the contenders, the current story, and the health of the division.
+Championships should feel prestigious. A title screen should spotlight the champion, the reign, the contenders, the current story, and the health of the division. Automatic contender reads should rotate within credible same-division lanes and remain advisory unless the player manually edits a contender order.
 
-Rivalries should feel elastic and alive. They can be started manually, shaped through booking, and emerge from the world over time. The UI should help organize them without making them feel artificially capped or over-systematized.
+Rivalries should feel elastic and alive. They can be started manually, shaped through booking, and emerge from the world over time, but they should not be auto-seeded from the initial draft. The UI should help organize them without making them feel artificially capped or over-systematized.
 
 ## Social And IWC
 

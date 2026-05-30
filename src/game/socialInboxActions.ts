@@ -43,7 +43,7 @@ export function normalizeSocialInboxState(value: unknown, wrestlers: Wrestler[] 
             item.actionType !== "tv_time" &&
             item.actionType !== "title_shot" &&
             item.actionType !== "story_spot") ||
-          (item.status !== "accepted" && item.status !== "fulfilled" && item.status !== "broken")
+          (item.status !== "accepted" && item.status !== "declined" && item.status !== "fulfilled" && item.status !== "broken")
         ) {
           return undefined;
         }
@@ -112,6 +112,17 @@ export function getActiveSocialInboxRequest(game: GameState, mailId: string, wre
   );
 }
 
+export function getCurrentSocialInboxRequest(game: GameState, mailId: string, wrestlerId: string) {
+  return game.socialInbox.requests.find(
+    (request) =>
+      request.mailId === mailId &&
+      request.wrestlerId === wrestlerId &&
+      request.createdSeasonNumber === game.seasonNumber &&
+      request.createdWeekNumber === game.currentWeek &&
+      (request.status === "accepted" || request.status === "declined"),
+  );
+}
+
 export function getProtectedRestWrestlerIds(game: GameState) {
   return new Set(
     game.socialInbox.requests
@@ -157,7 +168,7 @@ function getRequestDeadline(game: GameState, actionType: SocialInboxActionType) 
   };
 }
 
-function upsertAcceptedRequest(game: GameState, item: MailActionInput, actionType: SocialInboxActionType, segmentId?: string): SocialInboxRequest {
+function buildRequest(game: GameState, item: MailActionInput, actionType: SocialInboxActionType, status: "accepted" | "declined", segmentId?: string): SocialInboxRequest {
   const deadline = getRequestDeadline(game, actionType);
 
   return {
@@ -169,30 +180,74 @@ function upsertAcceptedRequest(game: GameState, item: MailActionInput, actionTyp
     askLabel: item.askLabel,
     createdSeasonNumber: game.seasonNumber,
     createdWeekNumber: game.currentWeek,
-    status: "accepted",
+    status,
     segmentId,
+    note: status === "accepted" ? getAcceptedRequestNote(item, actionType, deadline.deadlineWeekNumber) : getDeclinedRequestNote(item),
     ...deadline,
   };
 }
 
-function replaceActiveRequest(requests: SocialInboxRequest[], nextRequest: SocialInboxRequest) {
+function getAcceptedRequestNote(item: MailActionInput, actionType: SocialInboxActionType, deadlineWeekNumber: number) {
+  if (actionType === "rest") {
+    return `${item.wrestlerName} expects a protected week now. Keep them off this week's card.`;
+  }
+
+  if (actionType === "title_shot") {
+    return `${item.wrestlerName} expects title-scene booking by Week ${deadlineWeekNumber}.`;
+  }
+
+  if (actionType === "story_spot") {
+    return `${item.wrestlerName} expects meaningful story attention by Week ${deadlineWeekNumber}.`;
+  }
+
+  return `${item.wrestlerName} expects useful TV time by Week ${deadlineWeekNumber}.`;
+}
+
+function getDeclinedRequestNote(item: MailActionInput) {
+  return `${item.wrestlerName} heard the no. Morale and trust took an immediate hit.`;
+}
+
+function applyInboxDecisionStats(game: GameState, wrestlerId: string, decision: "accepted" | "declined") {
+  const moraleDelta = decision === "accepted" ? 1 : -3;
+  const trustDelta = decision === "accepted" ? 2 : -2;
+
+  return game.wrestlers.map((wrestler) =>
+    wrestler.id === wrestlerId
+      ? {
+          ...wrestler,
+          morale: clamp(wrestler.morale + moraleDelta),
+          trust: clamp((wrestler.trust ?? 50) + trustDelta),
+        }
+      : wrestler,
+  );
+}
+
+function replaceCurrentRequest(requests: SocialInboxRequest[], nextRequest: SocialInboxRequest) {
   return [
     ...requests.filter(
-      (request) =>
-        !(
+      (request) => {
+        const sameAcceptedAction =
           request.status === "accepted" &&
           request.wrestlerId === nextRequest.wrestlerId &&
           request.actionType === nextRequest.actionType &&
           request.createdSeasonNumber === nextRequest.createdSeasonNumber &&
-          request.createdWeekNumber === nextRequest.createdWeekNumber
-        ),
+          request.createdWeekNumber === nextRequest.createdWeekNumber;
+        const sameMailDecision =
+          request.mailId === nextRequest.mailId &&
+          request.wrestlerId === nextRequest.wrestlerId &&
+          request.createdSeasonNumber === nextRequest.createdSeasonNumber &&
+          request.createdWeekNumber === nextRequest.createdWeekNumber &&
+          (request.status === "accepted" || request.status === "declined");
+
+        return !sameAcceptedAction && !sameMailDecision;
+      },
     ),
     nextRequest,
   ];
 }
 
 export function acceptSocialInboxRest(game: GameState, item: MailActionInput): GameState {
-  const request = upsertAcceptedRequest(game, item, "rest");
+  const request = buildRequest(game, item, "rest", "accepted");
   const currentShow = game.currentShow.map((segment) => {
     const participantIds = segment.participantIds.filter((id) => id !== item.wrestlerId);
     return {
@@ -204,20 +259,34 @@ export function acceptSocialInboxRest(game: GameState, item: MailActionInput): G
 
   return {
     ...game,
+    wrestlers: applyInboxDecisionStats(game, item.wrestlerId, "accepted"),
     socialInbox: {
-      requests: replaceActiveRequest(game.socialInbox.requests, request),
+      requests: replaceCurrentRequest(game.socialInbox.requests, request),
     },
     currentShow,
   };
 }
 
 export function acceptSocialInboxPromise(game: GameState, item: MailActionInput, actionType: Exclude<SocialInboxActionType, "rest">): GameState {
-  const request = upsertAcceptedRequest(game, item, actionType);
+  const request = buildRequest(game, item, actionType, "accepted");
 
   return {
     ...game,
+    wrestlers: applyInboxDecisionStats(game, item.wrestlerId, "accepted"),
     socialInbox: {
-      requests: replaceActiveRequest(game.socialInbox.requests, request),
+      requests: replaceCurrentRequest(game.socialInbox.requests, request),
+    },
+  };
+}
+
+export function declineSocialInboxRequest(game: GameState, item: MailActionInput, actionType: SocialInboxActionType): GameState {
+  const request = buildRequest(game, item, actionType, "declined");
+
+  return {
+    ...game,
+    wrestlers: applyInboxDecisionStats(game, item.wrestlerId, "declined"),
+    socialInbox: {
+      requests: replaceCurrentRequest(game.socialInbox.requests, request),
     },
   };
 }

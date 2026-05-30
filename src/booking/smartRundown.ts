@@ -269,13 +269,6 @@ function buildSmartSegment(
     }
   }
 
-  if (option.championshipAllowed && !segment.championshipId) {
-    const championship = game.championships.find((title) => canSegmentAttachChampionship(segment, title, game.wrestlers));
-    if (championship) {
-      segment = { ...segment, championshipId: championship.id };
-    }
-  }
-
   if (rivalryId) {
     const rivalry = game.rivalries.find((item) => item.id === rivalryId);
 
@@ -413,6 +406,14 @@ function buildSmartPromiseSegment(
   };
 }
 
+function getSmartReadiness(game: GameState, segments: Segment[]) {
+  const protectedRestIds = getProtectedRestWrestlerIds(game);
+  const validSegments = segments.filter((segment) => isValidSegment(segment, game.wrestlers, protectedRestIds));
+  const runtime = validSegments.reduce((total, segment) => total + getSegmentDurationMinutes(segment), 0);
+
+  return getShowReadiness(validSegments.length, segments.length - validSegments.length, runtime);
+}
+
 export function buildSmartRundown(game: GameState, variantSeed = 0): SmartRundownResult {
   const protectedRestIds = getProtectedRestWrestlerIds(game);
   const available = game.wrestlers.filter((wrestler) => isSmartRundownAvailable(wrestler) && !protectedRestIds.has(wrestler.id));
@@ -421,9 +422,14 @@ export function buildSmartRundown(game: GameState, variantSeed = 0): SmartRundow
   const usage: Record<string, number> = {};
   const usedPairs = new Set<string>();
   const usedRivalryIds = new Set<string>();
+  const usedChampionshipIds = new Set<string>();
   const maxUsagePerWrestler = 1;
   const addSegmentObject = (segment: Segment) => {
     if (hasSmartPairOnCard(segment.participantIds, usedPairs)) {
+      return false;
+    }
+
+    if (segment.championshipId && usedChampionshipIds.has(segment.championshipId)) {
       return false;
     }
 
@@ -446,6 +452,10 @@ export function buildSmartRundown(game: GameState, variantSeed = 0): SmartRundow
 
     if (segment.rivalryId) {
       usedRivalryIds.add(segment.rivalryId);
+    }
+
+    if (segment.championshipId) {
+      usedChampionshipIds.add(segment.championshipId);
     }
 
     return true;
@@ -475,6 +485,10 @@ export function buildSmartRundown(game: GameState, variantSeed = 0): SmartRundow
 
     if (rivalryId) {
       usedRivalryIds.add(rivalryId);
+    }
+
+    if (segment.championshipId) {
+      usedChampionshipIds.add(segment.championshipId);
     }
 
     return true;
@@ -724,7 +738,8 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
   );
 
   if (promise) {
-    const promiseSegment = buildSmartPromiseSegment(game, promise, available, usage, usedPairs, currentShow.length, 2, variantSeed);
+    const promiseMaxUsage = promise.actionType === "title_shot" ? 1 : 2;
+    const promiseSegment = buildSmartPromiseSegment(game, promise, available, usage, usedPairs, currentShow.length, promiseMaxUsage, variantSeed);
 
     if (promiseSegment && isValidSegment(promiseSegment.segment, game.wrestlers, protectedRestIds)) {
       return {
@@ -742,7 +757,7 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
   )[0];
 
   if (rivalry && !cardHasRivalry(rivalry.id)) {
-    const rivalryParticipantIds = rivalry.participantIds.filter((id) => (usage[id] ?? 0) < 2);
+    const rivalryParticipantIds = rivalry.participantIds.filter((id) => (usage[id] ?? 0) < 1);
 
     if (rivalryParticipantIds.length >= 2 && !hasSmartPairOnCard(rivalryParticipantIds, usedPairs)) {
       if (canUseRivalryMatch(game, rivalry, rivalryParticipantIds) && !usedPairs.has(getSmartPairKey(rivalryParticipantIds))) {
@@ -769,7 +784,7 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
   }
 
   if (!currentShow.some((segment) => segment.type === "Match")) {
-    const pair = chooseSmartPair(game, available, usage, usedPairs, variantSeed);
+    const pair = chooseSmartPair(game, available, usage, usedPairs, variantSeed, 1);
 
     if (pair.length === 2) {
       const segment = buildSmartSegment(game, "M001", pair.map((wrestler) => wrestler.id), 28, currentShow.length);
@@ -825,7 +840,7 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
     }
   }
 
-  const pair = chooseSmartPair(game, available, usage, usedPairs, variantSeed);
+  const pair = chooseSmartPair(game, available, usage, usedPairs, variantSeed, 1);
 
   if (pair.length === 2) {
     const segment = buildSmartSegment(game, "M001", pair.map((wrestler) => wrestler.id), 24, currentShow.length);
@@ -833,6 +848,19 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
     if (isValidSegment(segment, game.wrestlers, protectedRestIds)) {
       return {
         notes: ["Added another match beat to the rundown."],
+        segments: [segment],
+      };
+    }
+  }
+
+  const fallbackPair = chooseSmartPair(game, available, usage, usedPairs, variantSeed, 2);
+
+  if (fallbackPair.length === 2) {
+    const segment = buildSmartSegment(game, "M001", fallbackPair.map((wrestler) => wrestler.id), 24, currentShow.length);
+
+    if (isValidSegment(segment, game.wrestlers, protectedRestIds)) {
+      return {
+        notes: ["Added a fallback match beat to get the rundown closer to ready."],
         segments: [segment],
       };
     }
@@ -855,5 +883,51 @@ export function buildSmartSingleSegment(game: GameState, currentShow: Segment[] 
     error: "Production could not safely draft a ready segment from the current roster.",
     notes: [],
     segments: [],
+  };
+}
+
+export function buildSmartFillGaps(game: GameState, currentShow: Segment[] = game.currentShow, variantSeed = 0): SmartRundownResult {
+  if (currentShow.length >= maxBookingSegments) {
+    return {
+      error: "The rundown is full. Remove a segment before autogenerating another.",
+      notes: [],
+      segments: [],
+    };
+  }
+
+  const notes = new Set<string>();
+  const additions: Segment[] = [];
+  let draftShow = [...currentShow];
+  let readiness = getSmartReadiness(game, draftShow);
+
+  while (!readiness.canRun && draftShow.length < maxBookingSegments) {
+    const result = buildSmartSingleSegment(game, draftShow, variantSeed + additions.length);
+
+    if (result.error || !result.segments[0]) {
+      return {
+        error: result.error ?? `Production could not safely fill the remaining card: ${readiness.note}`,
+        notes: [...notes],
+        segments: additions,
+      };
+    }
+
+    const [segment] = result.segments;
+    additions.push(segment);
+    result.notes.forEach((note) => notes.add(note));
+    draftShow = [...draftShow, segment];
+    readiness = getSmartReadiness(game, draftShow);
+  }
+
+  if (!readiness.canRun) {
+    return {
+      error: `Production added what it could, but the card still is not ready: ${readiness.note}`,
+      notes: [...notes],
+      segments: additions,
+    };
+  }
+
+  return {
+    notes: [...notes],
+    segments: additions,
   };
 }

@@ -4,6 +4,8 @@ import type { GameState, SocialPost, Wrestler } from "../game/types";
 import {
   formatEngagementCount,
   formatFanFeedLabel,
+  formatSocialPersonaLabel,
+  formatSocialTriggerLabel,
   getSocialAuthorAvatarSrc,
   getRelatedWrestlerNames,
   getSocialAuthorInitials,
@@ -28,6 +30,7 @@ export function SocialPostCard({ game, post }: { game: GameState; post: SocialPo
   const avatarSrc = getSocialAuthorAvatarSrc(post.author);
   const engagement = getSocialPostEngagement(post.id);
   const relatedNames = getRelatedWrestlerNames(post, game.wrestlers);
+  const triggerLabel = formatSocialTriggerLabel(post);
 
   return (
     <article className={`social-timeline-post tone-${post.tone}`}>
@@ -55,6 +58,8 @@ export function SocialPostCard({ game, post }: { game: GameState; post: SocialPo
 
         <div className="social-timeline-meta">
           <span>{post.showName}</span>
+          <span>{formatSocialPersonaLabel(post)}</span>
+          {triggerLabel ? <span>{triggerLabel}</span> : null}
           {relatedNames ? <span>{relatedNames}</span> : null}
         </div>
 
@@ -135,8 +140,8 @@ export function WrestlerFeedCard({
         <p className="social-timeline-text">{item.jab}</p>
 
         <div className="social-timeline-meta">
-          <span>@{item.targetName}</span>
-          <span>Rivalry bait</span>
+          <span>{item.contextLabel ?? "Locker-room post"}</span>
+          {item.targetName ? <span>{item.targetName}</span> : null}
         </div>
 
         <footer className="social-timeline-actions" aria-label="Post engagement">

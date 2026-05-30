@@ -65,7 +65,7 @@ The game currently supports:
 - Brand Pulse v1 with read-only, non-simulated post-show brand pressure diagnostics derived from player results and static rival brand flavor
 - Non-Blocking Rival Draft Activity v1 with read-only draft-week flavor diagnostics for rival-brand setup context
 - Full CPU Rival System v1 with deterministic parallel rival draft claims, persisted rival rosters, hidden CPU card simulation, CPU titles/rivalries/injuries/finance/free-agent claims, ratings-battle standings, and summarized post-show Results Feed pressure
-- Full Market + Rival Pressure v1 with player free-agent signings, tag/faction bundle signings at a 20% package discount, releases, deterministic trade proposals, contract/payroll pressure, CPU market churn, limited Rival Intelligence, and office mandates that affect money/trust/reputation without firing or progression locks
+- Full Market + Rival Pressure v1 with one-offer weekly free-agent negotiation in a centered deal window, deterministic wrestler negotiation personalities, accepted/declined result animations, tag/faction bundle signings at a 20% package discount, roster renewals/releases handled from superstar/profile flow, deterministic trade proposals with qualitative trade reads and result animations, contract/payroll pressure, CPU market churn, limited Rival Intelligence, and office mandates that affect money/trust/reputation without firing or progression locks
 - Top 200 open draft pool staged from data/rosters and activated through src/game/top200DraftPool.ts
 - 120 source-balanced game-eligible performers available by default in Draft Night from the staged Top 200 roster data, with Madden-like in-game stat distribution applied at export
 - Open Draft Night availability across source brands; player brand selection does not restrict draft availability
@@ -102,9 +102,9 @@ The game currently supports:
 - Deterministic locker room fallout after shows
 - Injury System v1 with deterministic minor/major injuries from fatigue and overuse, major-injury booking blocks, recovery on Advance Week, and persisted injury state
 - Roster command board with compact wrestler cards, selected-superstar dock, morale trend, injury report, and read-only locker-room reads from existing momentum, morale, fatigue, injury, title, rivalry, sentiment, records, and TV-time state
-- Wrestler Profiles v1 with compact stat rows, audience heat/trust and season/career record splits, expandable local-state detail panels, pressure labels, GM Read, championship/rivalry/social context, and deterministic read-only decision support
-- Championships with a viewport-fit Champion Wall, selected-title command workspace, collapsed committee support strip, contained panel scrolling, title catalog context, vacant-title assignment, champion revocation, player-edited contender order, selected-title contender board, title scene health, and title history for assigned/revoked/resolved title events
-- Rivalries Command Desk with active rivalry rail, selected rivalry spotlight, compact Creative Desk strip, create/end controls, and current-state reads from existing heat, freshness, timing, history, card usage, and PLE context
+- Wrestler Profiles v1 with compact stat rows, week-change chips for tracked stat movement, audience heat/trust and season/career record splits, expandable local-state detail panels, pressure labels, GM Read, championship/rivalry/social context, and deterministic read-only decision support
+- Championships with a viewport-fit Champion Wall, selected-title command workspace, collapsed committee support strip, contained panel scrolling, title catalog context, vacant-title assignment, champion revocation, player-edited contender order, rotating automatic same-division contender reads when no manual lane is set, selected-title contender board, title scene health, and title history for assigned/revoked/resolved title events
+- Rivalries Command Desk with active rivalry rail, selected rivalry spotlight, compact Creative Desk strip, create/end controls, and current-state reads from existing heat, freshness, timing, history, card usage, and PLE context; new player careers do not auto-create starter rivalries after Draft Night
 - Rivalry structure support for Singles, Tag 2v2, and Multi rivalries, with optional persisted `Rivalry.structure`, legacy saves defaulting to singles, participantIds remaining canonical, and no team records, faction records, rankings, or team-level stats
 - Calendar
 - 50-week season
@@ -113,7 +113,7 @@ The game currently supports:
 - Season Review
 - Mid-Career Draft between Season Review and Start Next Season
 - Start Next Season
-- Social/IWC with existing post feed, filters, and read-only resolved-state IWC mood summary
+- Social/IWC with existing post feed, filters, read-only resolved-state IWC mood summary, and sparse Superstar Mail direct asks driven by firm/urgent roster pressure
 - Finance & Brand Pressure with active contract/market pressure, GM Office Pressure derived from current money, latest finance report, season finance history, best/worst business weeks, and closed-report show cost context, with finance summary metrics under nav and expandable support panels for talent value, latest report, season reads, and finance history
 - FinanceReport legacy-compatible v2 optional fields for future detailed revenue and expense categories
 - Read-only gameplay context helpers extracted into src/game/gameContextReads.ts for recent derived UI snapshots while React screen components remain in src/App.tsx
@@ -147,7 +147,7 @@ The loop must remain playable after every change.
 - Roster is the living locker room and wrestler profile surface.
 - Championships is the prestige, contender, title-history, and division-health surface.
 - Rivalries is the creative/story room for active feud temperature, timing, stakes, and payoff pressure from existing state.
-- Social/IWC is the resolved audience mood and post-show reaction surface.
+- Social/IWC is the resolved audience mood, post-show reaction, and sparse direct-roster-ask surface.
 - Finance is the GM office pressure surface for current money, latest closed business result, season trend, and readable report context.
 - Calendar is the season clock, PLE cadence, and upcoming-show context.
 - Season Review is the end-of-season legacy and continuity recap before the Mid-Career Draft.
@@ -185,9 +185,15 @@ The loop must remain playable after every change.
 - Championships should feel prestigious.
 - Rivalries should feel elastic and alive.
 - Rivalries should read as a creative story-room surface using existing heat, freshness, timing, card usage, and resolved history; do not imply hidden story simulation.
+- Automatic contender reads may rotate within credible same-division lanes by title and calendar phase, but manual contender order is player-authored and should remain authoritative.
+- Player rivalries should be created by the player or emerge from resolved booking outcomes, not seeded automatically from the initial draft.
 - Championships and rivalries should preserve meaningful history from actual gameplay.
 - History should come from resolved events, not invented offscreen story.
 - Social/IWC should react to actual outcomes.
+- Superstar Mail should be scarce: stable weeks may have no active asks, tense weeks usually have one or two, and three asks should require unusually high pressure.
+- Superstar Mail accept/decline decisions are player-authored office responses. Accepting creates a tracked soft promise with a visible deadline and modest immediate morale/trust lift; declining closes the request for the week with modest immediate morale/trust fallout.
+- Accepted Superstar Mail can influence Generate Matches through existing segment/title/rivalry rules, but should not auto-book a card or create new segment types.
+- Wrestler profile week-change chips should reflect tracked resolved-show or immediate office-decision stat movement; static attributes such as Ring Skill and Promo Skill stay flat unless a future accepted ticket adds progression for them.
 - Finance should be clear, gamey, and decision-focused.
 - Finance should read current and retrospective business pressure only; active payroll, market transactions, and office mandates are allowed, but do not add forecasts, sponsorships, predictive financial outcomes, firing, or progression locks unless explicitly requested.
 
@@ -280,9 +286,10 @@ Completed stabilization passes:
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
-- Keep scout/read-only career-memory features bounded while using the active Market desk for signing, release, trade, and contract pressure.
+- Keep scout/read-only career-memory features bounded while using the active Market desk for free-agent negotiation, trade-wire decisions, and contract pressure; keep roster renewals/releases in the superstar/profile flow unless a future accepted ticket reopens that boundary.
 - Treat season legacy as read-only narrative continuity first; keep the Mid-Career Draft bounded to the current offseason roster-refresh loop.
 - Keep recent context passes read-only and non-predictive: pre-show surfaces may explain existing pressure, but consequences and outcome language stay retrospective after Run Show.
+- Keep automatic championship contender reads as read-only guidance, not rankings or persistence, and preserve manual contender lanes when the player sets them.
 - Keep rival brands as summarized ratings-battle and market pressure with deterministic internal CPU simulation; do not expand into rival HQ screens, editable CPU booking, progression locks, firing, or career-ending fail states unless a future accepted ticket explicitly asks for it.
 - Use src/game/gameContextReads.ts or another focused read-model module for pure derived gameplay context when a future slice would otherwise add more helper logic to src/GameApp.tsx.
 - Treat src/GameApp.tsx and src/styles.css as high-risk growth areas; preserve the lightweight src/App.tsx title/save entry path and prefer bounded extraction, verification, or small focused UI fixes over broad screen rewrites.

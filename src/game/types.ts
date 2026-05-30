@@ -363,6 +363,53 @@ export type SocialCategory =
 
 export type SocialTone = "excited" | "angry" | "skeptical" | "impressed" | "chaotic" | "analytical";
 
+export type SocialReactionPersona =
+  | "agenda_pusher"
+  | "doomposter"
+  | "fantasy_booker"
+  | "workrate_nerd"
+  | "aura_poster"
+  | "burial_cop"
+  | "let_it_play_out_defender"
+  | "let_it_play_out_skeptic"
+  | "dirt_sheet"
+  | "tribalist"
+  | "continuity_nerd"
+  | "meme_account";
+
+export type SocialReactionSentiment = "positive" | "negative" | "mixed" | "chaotic";
+
+export type SocialReactionTriggerType =
+  | "big_win"
+  | "clean_loss"
+  | "upset"
+  | "squash"
+  | "title_change"
+  | "title_retention"
+  | "rivalry_advancement"
+  | "rivalry_stagnation"
+  | "hot_crowd"
+  | "dead_crowd"
+  | "high_rated_match"
+  | "low_rated_match"
+  | "controversial_finish"
+  | "repeated_booking"
+  | "underused_star"
+  | "overpushed_star"
+  | "injury_fatigue_concern"
+  | "morale_issue"
+  | "show_rating_swing"
+  | "fan_momentum_swing"
+  | "long_term_callback"
+  | "market_move";
+
+export type SocialReactionTarget =
+  | { type: "wrestler"; id: string; name: string }
+  | { type: "team"; ids: string[]; name: string }
+  | { type: "title"; id: string; name: string }
+  | { type: "rivalry"; id: string; name: string }
+  | { type: "show"; id: string; name: string };
+
 export type PressureLabel = "Stable" | "Tight" | "Critical" | "Surging";
 
 export type InjuryStatus = "healthy" | "minor" | "major";
@@ -624,6 +671,14 @@ export type SocialPost = {
   relatedWrestlerIds: string[];
   relatedRivalryIds?: string[];
   relatedChampionshipIds?: string[];
+  persona?: SocialReactionPersona;
+  sentiment?: SocialReactionSentiment;
+  intensity?: 1 | 2 | 3 | 4 | 5;
+  triggerType?: SocialReactionTriggerType;
+  target?: SocialReactionTarget;
+  sourceEventId?: string;
+  sourceResultId?: string;
+  tags?: string[];
 };
 
 export type FinanceReportBreakdownItem = {
@@ -759,7 +814,7 @@ export type InjuryRecoveryNote = {
 
 export type SocialInboxActionType = "rest" | "tv_time" | "title_shot" | "story_spot";
 
-export type SocialInboxRequestStatus = "accepted" | "fulfilled" | "broken";
+export type SocialInboxRequestStatus = "accepted" | "declined" | "fulfilled" | "broken";
 
 export type SocialInboxRequest = {
   id: string;

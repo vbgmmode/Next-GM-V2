@@ -6,6 +6,7 @@ import { createNewGame } from "./seed";
 import {
   acceptSocialInboxPromise,
   acceptSocialInboxRest,
+  declineSocialInboxRequest,
   getProtectedRestWrestlerIds,
   isWrestlerProtectedRest,
 } from "./socialInboxActions";
@@ -76,10 +77,27 @@ describe("social inbox actions", () => {
     const result = acceptSocialInboxPromise(game, item, "tv_time");
 
     expect(result.currentShow).toHaveLength(game.currentShow.length);
+    expect(result.wrestlers.find((wrestler) => wrestler.id === item.wrestlerId)?.morale).toBe(game.wrestlers[0].morale + 1);
+    expect(result.wrestlers.find((wrestler) => wrestler.id === item.wrestlerId)?.trust).toBe((game.wrestlers[0].trust ?? 50) + 2);
     expect(result.socialInbox.requests.at(-1)).toMatchObject({
       actionType: "tv_time",
       status: "accepted",
       segmentId: undefined,
+    });
+  });
+
+  it("declines a request with immediate morale and trust fallout", () => {
+    const game = createNewGame();
+    const item = mailItem(game, "Title Shot");
+    const result = declineSocialInboxRequest(game, item, "title_shot");
+    const wrestler = result.wrestlers.find((entry) => entry.id === item.wrestlerId);
+
+    expect(wrestler?.morale).toBe(game.wrestlers[0].morale - 3);
+    expect(wrestler?.trust).toBe((game.wrestlers[0].trust ?? 50) - 2);
+    expect(result.socialInbox.requests.at(-1)).toMatchObject({
+      actionType: "title_shot",
+      status: "declined",
+      note: expect.stringContaining("heard the no"),
     });
   });
 });

@@ -7,6 +7,10 @@ import type { GameState, Segment, SegmentType } from "./types";
 
 const DEFAULT_MAX_BOOKING_SEGMENTS = 24;
 
+function isChampionshipBookedOnOtherSegment(game: GameState, championshipId: string | undefined, segmentId: string) {
+  return Boolean(championshipId && game.currentShow.some((segment) => segment.id !== segmentId && segment.championshipId === championshipId));
+}
+
 function sanitizeBookingSegment(game: GameState, segment: Segment) {
   let updatedSegment = { ...segment };
   const range = getSegmentParticipantRange(updatedSegment);
@@ -21,7 +25,7 @@ function sanitizeBookingSegment(game: GameState, segment: Segment) {
 
   const championship = updatedSegment.championshipId ? game.championships.find((title) => title.id === updatedSegment.championshipId) : undefined;
 
-  if (championship && !canSegmentAttachChampionship(updatedSegment, championship, game.wrestlers)) {
+  if (championship && (!canSegmentAttachChampionship(updatedSegment, championship, game.wrestlers) || isChampionshipBookedOnOtherSegment(game, championship.id, updatedSegment.id))) {
     updatedSegment = { ...updatedSegment, championshipId: undefined };
   }
 
@@ -79,7 +83,21 @@ export function updateBookingSegment(game: GameState, segmentId: string, updates
 }
 
 export function replaceCurrentShow(game: GameState, segments: Segment[]) {
-  return { ...game, currentShow: segments };
+  const bookedChampionshipIds = new Set<string>();
+  const currentShow = segments.map((segment) => {
+    if (!segment.championshipId) {
+      return segment;
+    }
+
+    if (bookedChampionshipIds.has(segment.championshipId)) {
+      return { ...segment, championshipId: undefined };
+    }
+
+    bookedChampionshipIds.add(segment.championshipId);
+    return segment;
+  });
+
+  return { ...game, currentShow };
 }
 
 export function setSegmentChampionship(game: GameState, segmentId: string, championshipId: string) {
@@ -92,7 +110,12 @@ export function setSegmentChampionship(game: GameState, segmentId: string, champ
     changed = true;
     const championship = game.championships.find((title) => title.id === championshipId);
 
-    if (!championshipId || !championship || !canSegmentAttachChampionship(segment, championship, game.wrestlers)) {
+    if (
+      !championshipId ||
+      !championship ||
+      !canSegmentAttachChampionship(segment, championship, game.wrestlers) ||
+      isChampionshipBookedOnOtherSegment(game, championshipId, segment.id)
+    ) {
       return { ...segment, championshipId: undefined };
     }
 

@@ -111,6 +111,7 @@ import { getChampionshipArtworkSrc, getTitleCatalogBrand, wrestlerFitsChampionsh
 import {
   acceptSocialInboxPromise,
   acceptSocialInboxRest,
+  declineSocialInboxRequest,
   getProtectedRestWrestlerIds,
   isWrestlerProtectedRest,
 } from "./game/socialInboxActions";
@@ -178,7 +179,7 @@ import {
 } from "./booking/bookingUtils";
 import { getWrestlerValueProfile } from "./roster/rosterValueReads";
 import type { WrestlerValueProfile } from "./roster/rosterTypes";
-import type { SuperstarMailItem } from "./social/socialTypes";
+import type { SuperstarMailDecision, SuperstarMailItem } from "./social/socialTypes";
 import { buildQaRuntimeHarnessState, getQaHarnessMode } from "./qa/qaHarness";
 import {
   formatDraftGenderReadout,
@@ -2774,7 +2775,7 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
     });
   }
 
-  function handleSuperstarMailAction(item: SuperstarMailItem) {
+  function handleSuperstarMailAction(item: SuperstarMailItem, decision: SuperstarMailDecision) {
     const action = item.action;
     if (!action) {
       return;
@@ -2783,6 +2784,12 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
     setGame((current) => {
       if (!current) {
         return current;
+      }
+
+      if (decision === "decline") {
+        const updatedGame = declineSocialInboxRequest(current, item, action.type);
+        persistGameSnapshot(updatedGame, "social");
+        return updatedGame;
       }
 
       if (action.type === "rest") {

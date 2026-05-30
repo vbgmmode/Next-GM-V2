@@ -98,6 +98,62 @@ export function formatFanFeedLabel(category: SocialCategory) {
   return "Drama";
 }
 
+export function formatSocialPersonaLabel(post: SocialPost) {
+  if (!post.persona) {
+    return formatFanFeedLabel(post.category);
+  }
+
+  const labels: Record<NonNullable<SocialPost["persona"]>, string> = {
+    agenda_pusher: "Agenda",
+    doomposter: "Doompost",
+    fantasy_booker: "Fantasy Booking",
+    workrate_nerd: "Workrate",
+    aura_poster: "Aura",
+    burial_cop: "Burial Watch",
+    let_it_play_out_defender: "Let It Play Out",
+    let_it_play_out_skeptic: "Story Skeptic",
+    dirt_sheet: "Rumor Board",
+    tribalist: "Tribal",
+    continuity_nerd: "Continuity",
+    meme_account: "Meme",
+  };
+
+  return labels[post.persona];
+}
+
+export function formatSocialTriggerLabel(post: SocialPost) {
+  if (!post.triggerType) {
+    return undefined;
+  }
+
+  const labels: Record<NonNullable<SocialPost["triggerType"]>, string> = {
+    big_win: "Big Win",
+    clean_loss: "Clean Loss",
+    upset: "Upset",
+    squash: "Squash",
+    title_change: "Title Change",
+    title_retention: "Title Retention",
+    rivalry_advancement: "Rivalry Advanced",
+    rivalry_stagnation: "Rivalry Stalled",
+    hot_crowd: "Crowd Pop",
+    dead_crowd: "Dead Crowd",
+    high_rated_match: "Match Quality",
+    low_rated_match: "Cold Segment",
+    controversial_finish: "Finish Debate",
+    repeated_booking: "Repeated Booking",
+    underused_star: "Underused Star",
+    overpushed_star: "Overpushed",
+    injury_fatigue_concern: "Workload",
+    morale_issue: "Morale",
+    show_rating_swing: "Show Quality",
+    fan_momentum_swing: "Momentum",
+    long_term_callback: "Callback",
+    market_move: "Market Move",
+  };
+
+  return labels[post.triggerType];
+}
+
 export function getFanFeedPosts(game: GameState) {
   return [...game.socialPosts].reverse().filter((post) => post.category !== "analyst_take");
 }
@@ -680,57 +736,38 @@ function buildRivalryJabs(game: GameState, rivalry: Rivalry): WrestlerJabCandida
   const participants = rivalry.participantIds
     .map((id) => findRosterWrestler(game, id))
     .filter((wrestler): wrestler is Wrestler => Boolean(wrestler))
-    .slice(0, 2);
+    .sort((left, right) => right.momentum + right.popularity - (left.momentum + left.popularity) || left.name.localeCompare(right.name));
 
-  if (participants.length < 2) {
+  if (!participants.length) {
     return [];
   }
 
-  const [author, target] = participants;
+  const author = participants[0];
   const tone: WrestlerJabTone = rivalry.stakes === "title" ? "title" : rivalry.heat >= 70 ? "heated" : "challenge";
-  const intentLabel = rivalry.heat >= 75 ? "FEUD SHOT" : "HEAT REPLY";
+  const intentLabel = rivalry.heat >= 75 ? "RIVALRY MOOD" : "STORY READ";
   const priority = 88 + Math.min(rivalry.heat, 12) + (rivalry.status === "rising" ? 8 : 0);
-
-  const authorJab = pickLine(`jab-rivalry-${rivalry.id}-${author.id}`, [
-    `${target.name} really thought last week closed this. cute.`,
-    `hey ${target.name} — still waiting on that follow-up you promised the camera.`,
-    `${target.name} wants smoke? fine. stop posting and walk to the ring.`,
-    rivalry.stakes === "title"
-      ? `${target.name} holding that belt like rent is due tomorrow.`
-      : `${target.name} keeps talking like the receipt wasn't public.`,
-  ]);
-
-  const replyJab = pickLine(`jab-rivalry-reply-${rivalry.id}-${target.id}`, [
-    `${author.name} tweeting through it again instead of showing up.`,
-    `${author.name} wants a rivalry push off one segment. respectfully, no.`,
-    `if ${author.name} needs social media to stay relevant, that tells you everything.`,
-    rivalry.stakes === "title"
-      ? `${author.name} can tweet all week — the belt still isn't yours.`
-      : `${author.name} still mad about a loss that wasn't even close.`,
-  ]);
 
   return [
     {
       id: `jab-rivalry-${rivalry.id}-${author.id}`,
       authorId: author.id,
       authorName: author.name,
-      targetId: target.id,
-      targetName: target.name,
-      jab: authorJab,
+      targetId: rivalry.id,
+      targetName: rivalry.name,
+      contextLabel: "Rivalry mood",
+      jab: pickLine(`jab-rivalry-${rivalry.id}-${author.id}`, [
+        rivalry.stakes === "title"
+          ? `every title story has a point where talking stops mattering. feels like we're there.`
+          : `some stories get loud because the room knows there is unfinished business.`,
+        `people keep calling this tension. i call it a receipt waiting for the right camera.`,
+        `you can feel when a rivalry is starting to own the room. this one is not background noise anymore.`,
+        rivalry.heat >= 80
+          ? `the crowd already picked up on this. now it is on us to make the next beat impossible to ignore.`
+          : `slow weeks do not mean cold story. sometimes the room is just waiting for someone to swing first.`,
+      ]),
       intentLabel,
       tone,
       priority,
-    },
-    {
-      id: `jab-rivalry-reply-${rivalry.id}-${target.id}`,
-      authorId: target.id,
-      authorName: target.name,
-      targetId: author.id,
-      targetName: author.name,
-      jab: replyJab,
-      intentLabel: "HEAT REPLY",
-      tone: tone === "title" ? "title" : "petty",
-      priority: priority - 4,
     },
   ];
 }
@@ -745,55 +782,37 @@ function buildShowSegmentJabs(game: GameState, segment: SegmentResult, result: S
     return [];
   }
 
-  const [first, second] = participants;
-
-  if (pairHasActiveRivalry(game, first.id, second.id)) {
-    return [];
-  }
-
   const winnerId = segment.momentumChanges
     ? Object.entries(segment.momentumChanges).sort((left, right) => right[1] - left[1])[0]?.[0]
     : undefined;
-  const winner = participants.find((wrestler) => wrestler.id === winnerId) ?? first;
-  const loser = participants.find((wrestler) => wrestler.id !== winner.id) ?? second;
+  const author = participants.find((wrestler) => wrestler.id === winnerId) ?? participants[0];
+  const momentumDelta = segment.momentumChanges[author.id] ?? 0;
+  const fatigueDelta = segment.fatigueChanges[author.id] ?? 0;
   const priority = 72 + Math.min(segment.score, 18) + (segment.type === "Match" ? 6 : 0);
-
-  const winnerJab = pickLine(`jab-show-win-${result.id}-${segment.segmentId}-${winner.id}`, [
-    `${loser.name} got a TV slot and still couldn't keep up. run it back.`,
-    `nice moment for ${loser.name}. still wouldn't last five with me.`,
-    `${result.showName} gave ${loser.name} a lane and the timeline is being generous.`,
-    `${loser.name} wants relevance off one segment? say less.`,
-  ]);
-
-  const loserJab = pickLine(`jab-show-loss-${result.id}-${segment.segmentId}-${loser.id}`, [
-    `${winner.name} got the pop and the easy booking. rematch me without the protection.`,
-    `enjoy the mentions, ${winner.name}. that angle didn't settle anything.`,
-    `${winner.name} talking like one segment made them the face of this brand.`,
-    `cool win for ${winner.name}. still see you in the hallway every week.`,
-  ]);
 
   return [
     {
-      id: `jab-show-win-${segment.segmentId}-${winner.id}`,
-      authorId: winner.id,
-      authorName: winner.name,
-      targetId: loser.id,
-      targetName: loser.name,
-      jab: winnerJab,
-      intentLabel: "POST-SHOW SHOT",
-      tone: "challenge",
+      id: `jab-show-state-${segment.segmentId}-${author.id}`,
+      authorId: author.id,
+      authorName: author.name,
+      contextLabel: result.showName,
+      jab: pickLine(`jab-show-state-${result.id}-${segment.segmentId}-${author.id}-${momentumDelta}-${fatigueDelta}`, [
+        momentumDelta > 0
+          ? `felt the room shift tonight. not calling it momentum until i do it again.`
+          : `not every night gives you the clip. still showed up, still working.`,
+        segment.score >= 82
+          ? `when the crowd gives you that kind of noise, you do not waste it.`
+          : `some segments are receipts, some are lessons. tonight gave me both.`,
+        fatigueDelta >= 8
+          ? `body is loud after that one. worth it if the room remembers the moment.`
+          : `the best kind of TV time is the kind that makes next week feel heavier.`,
+        segment.type === "Match"
+          ? `bell to bell, i felt exactly where i stand right now. next week has to build on it.`
+          : `camera time only matters if you make people feel something. that was the assignment.`,
+      ]),
+      intentLabel: momentumDelta > 0 ? "MOMENTUM READ" : "POST-SHOW READ",
+      tone: momentumDelta > 0 ? "mood" : "challenge",
       priority,
-    },
-    {
-      id: `jab-show-loss-${segment.segmentId}-${loser.id}`,
-      authorId: loser.id,
-      authorName: loser.name,
-      targetId: winner.id,
-      targetName: winner.name,
-      jab: loserJab,
-      intentLabel: "RIVALRY BAIT",
-      tone: "heated",
-      priority: priority - 2,
     },
   ];
 }
@@ -809,33 +828,25 @@ function buildChampionJabs(game: GameState): WrestlerJabCandidate[] {
       continue;
     }
 
-    const challengers = game.wrestlers
-      .filter((wrestler) => wrestler.id !== champion.id && wrestler.injuryStatus !== "major")
-      .sort((left, right) => right.momentum - left.momentum || right.popularity - left.popularity)
-      .slice(0, 2);
-
-    for (const challenger of challengers) {
-      if (pairHasActiveRivalry(game, champion.id, challenger.id)) {
-        continue;
-      }
-
-      candidates.push({
-        id: `jab-title-${championship.id}-${challenger.id}`,
-        authorId: challenger.id,
-        authorName: challenger.name,
-        targetId: champion.id,
-        targetName: champion.name,
-        jab: pickLine(`jab-title-${championship.id}-${challenger.id}`, [
-          `${champion.name} holding ${championship.name} like nobody else is on the roster.`,
-          `title scene getting boring. ${champion.name}, pick a real challenger.`,
-          `${champion.name} keeps ducking fresh matchups and calling it reign.`,
-          `everyone wants ${championship.name}. ${champion.name} just posts through it.`,
-        ]),
-        intentLabel: "TITLE BAIT",
-        tone: "title",
-        priority: 78 + Math.min(challenger.momentum, 10),
-      });
-    }
+    candidates.push({
+      id: `jab-title-${championship.id}-${champion.id}`,
+      authorId: champion.id,
+      authorName: champion.name,
+      targetId: championship.id,
+      targetName: championship.name,
+      contextLabel: "Title pressure",
+      jab: pickLine(`jab-title-${championship.id}-${champion.id}-${championship.defenses}`, [
+        `carrying ${championship.name} means every week is a referendum. good. keep watching.`,
+        `${championship.name} does not get lighter when the timeline gets louder.`,
+        `everybody has a title opinion until the lights hit. then the belt tells the truth.`,
+        championship.defenses > 0
+          ? `defending ${championship.name} is not a slogan. it is the part people remember.`
+          : `first week with ${championship.name} is all noise. the reign starts when the next bell rings.`,
+      ]),
+      intentLabel: "TITLE PRESSURE",
+      tone: "title",
+      priority: 78 + Math.min(champion.momentum, 10),
+    });
   }
 
   return candidates;
@@ -858,19 +869,18 @@ function buildRosterTensionJabs(game: GameState, seasonNumber: number, weekNumbe
 
   if (underused && spotlight && underused.id !== spotlight.id && !pairHasActiveRivalry(game, underused.id, spotlight.id)) {
     candidates.push({
-      id: `jab-tv-${underused.id}-${spotlight.id}`,
+      id: `jab-tv-${underused.id}`,
       authorId: underused.id,
       authorName: underused.name,
-      targetId: spotlight.id,
-      targetName: spotlight.name,
-      jab: pickLine(`jab-tv-${underused.id}-${spotlight.id}`, [
-        `${spotlight.name} gets every week and still tweets like they're hungry.`,
-        `creative finds time for ${spotlight.name} every show. funny how that works.`,
-        `${spotlight.name} wants the whole card? come get my spot then.`,
-        `been off TV while ${spotlight.name} collects reps. say that part out loud.`,
+      contextLabel: "TV-time pressure",
+      jab: pickLine(`jab-tv-${underused.id}-${weekNumber}`, [
+        `there is a difference between patience and disappearing. i know which one this is starting to feel like.`,
+        `every week off TV makes the next entrance louder in my head. hope the room is ready for that.`,
+        `not asking for noise. asking for a spot where the work can actually answer.`,
+        `funny how fast people forget what you can do when the camera stops finding you.`,
       ]),
-      intentLabel: "RIVALRY BAIT",
-      tone: "petty",
+      intentLabel: "TV-TIME READ",
+      tone: "pressure",
       priority: 64 + Math.min(getWeeksSinceLastBooked(underused, game.currentWeek), 8),
     });
   }
@@ -879,21 +889,20 @@ function buildRosterTensionJabs(game: GameState, seasonNumber: number, weekNumbe
   const hot = sorted[0];
   const cold = sorted.at(-1);
 
-  if (hot && cold && hot.id !== cold.id && !pairHasActiveRivalry(game, hot.id, cold.id)) {
+  if (hot && cold && hot.id !== cold.id) {
     candidates.push({
-      id: `jab-momentum-${seasonNumber}-${weekNumber}-${hot.id}-${cold.id}`,
+      id: `jab-momentum-${seasonNumber}-${weekNumber}-${hot.id}`,
       authorId: hot.id,
       authorName: hot.name,
-      targetId: cold.id,
-      targetName: cold.name,
-      jab: pickLine(`jab-momentum-${hot.id}-${cold.id}`, [
-        `${cold.name} tweeting like momentum is a group project.`,
-        `${cold.name} wants a push off vibes. i want a reason to answer.`,
-        `timeline sleeping on ${cold.name}? not my problem, but the room hears it.`,
-        `${cold.name} keeps asking for heat without earning the shot.`,
+      contextLabel: "Momentum mood",
+      jab: pickLine(`jab-momentum-${hot.id}-${weekNumber}`, [
+        `momentum is only real if you protect it when everybody starts watching.`,
+        `the room feels different when your name is the one getting louder.`,
+        `not every push is announced. sometimes you hear it in the building before anyone says it.`,
+        `i can feel the week changing around me. that is when the work has to get sharper.`,
       ]),
-      intentLabel: "CALL OUT",
-      tone: "petty",
+      intentLabel: "MOMENTUM READ",
+      tone: "mood",
       priority: 58 + Math.min(hot.momentum - cold.momentum, 12),
     });
   }
@@ -905,7 +914,7 @@ function dedupeJabCandidates(candidates: WrestlerJabCandidate[]) {
   const seen = new Set<string>();
 
   return candidates.filter((candidate) => {
-    const key = `${candidate.authorId}->${candidate.targetId}:${candidate.jab.toLowerCase()}`;
+    const key = `${candidate.authorId}:${candidate.contextLabel ?? candidate.targetId ?? "self"}:${candidate.jab.toLowerCase()}`;
     if (seen.has(key)) {
       return false;
     }
@@ -939,7 +948,7 @@ export function getWrestlerJabFeed(game: GameState, limit = 8): WrestlerJabFeedS
 
   return {
     weekLabel: `Season ${seasonNumber} · Week ${weekNumber}`,
-    detail: "Roster callouts trying to spark heat. Social shots only — not a booking forecast.",
+    detail: "Superstar posts from current mood, TV-time pressure, title status, rivalries, and post-show receipts.",
     items: items.map(({ priority: _priority, ...item }) => item),
   };
 }

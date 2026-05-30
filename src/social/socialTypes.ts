@@ -1,6 +1,8 @@
 import type { GameScreen } from "../game/migration";
 import type { GameState, ShowResult, SocialInboxActionType, SocialPost } from "../game/types";
 
+export type SuperstarMailDecision = "accept" | "decline";
+
 export type SocialTimelineTab = "all" | "iwc" | "superstars";
 
 export type IwcMoodTone = SocialPost["tone"];
@@ -59,14 +61,15 @@ export type IwcTrendingTopicsSnapshot = {
   topics: IwcTrendingTopic[];
 };
 
-export type WrestlerJabTone = "heated" | "petty" | "challenge" | "title";
+export type WrestlerJabTone = "heated" | "petty" | "challenge" | "title" | "mood" | "pressure";
 
 export type WrestlerJabItem = {
   id: string;
   authorId: string;
   authorName: string;
-  targetId: string;
-  targetName: string;
+  targetId?: string;
+  targetName?: string;
+  contextLabel?: string;
   jab: string;
   intentLabel: string;
   tone: WrestlerJabTone;
@@ -81,7 +84,7 @@ export type WrestlerJabFeedSnapshot = {
 export type SocialScreenProps = {
   game: GameState;
   latestResult?: ShowResult;
-  onSuperstarMailAction?: (item: SuperstarMailItem) => void;
+  onSuperstarMailAction?: (item: SuperstarMailItem, decision: SuperstarMailDecision) => void;
   onNavigate: (screen: GameScreen) => void;
 };
 

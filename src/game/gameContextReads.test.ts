@@ -74,6 +74,20 @@ describe("gameContextReads championship selectors", () => {
     expect(scene.eligibleRoster.map((wrestler) => wrestler.id)).toContain(wrestlers[1].id);
   });
 
+  it("rotates automatic contender reads by title and calendar phase", () => {
+    const wrestlers = sameDivisionWrestlers(10);
+    const { contenderIds: primaryContenderIds, ...primaryTitle } = title("primary-title", [wrestlers[0].id], 90);
+    const { contenderIds: secondaryContenderIds, ...secondaryTitle } = title("secondary-title", [wrestlers[0].id], 80);
+    void primaryContenderIds;
+    void secondaryContenderIds;
+    const primaryWeekOne = getTitleDivisionScene(primaryTitle, wrestlers, [], 1, [primaryTitle]).topContenders.map((wrestler) => wrestler.id);
+    const secondaryWeekOne = getTitleDivisionScene(secondaryTitle, wrestlers, [], 1, [secondaryTitle]).topContenders.map((wrestler) => wrestler.id);
+    const primaryWeekThree = getTitleDivisionScene(primaryTitle, wrestlers, [], 3, [primaryTitle]).topContenders.map((wrestler) => wrestler.id);
+
+    expect(secondaryWeekOne).not.toEqual(primaryWeekOne);
+    expect(primaryWeekThree).not.toEqual(primaryWeekOne);
+  });
+
   it("ranks build-pressure championship snapshots ahead of prestige-only stable scenes", () => {
     const wrestlers = sameDivisionWrestlers(5);
     const game = baseGame(wrestlers, [

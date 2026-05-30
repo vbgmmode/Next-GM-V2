@@ -4,7 +4,7 @@ import { isValidSegment } from "../game/scoring";
 import { wrestlerFitsChampionshipDivision } from "../game/titleCatalog";
 import type { GameState, Rivalry, Segment, Wrestler } from "../game/types";
 import { getSegmentDurationMinutes, getShowReadiness, maxBookingSegments } from "./bookingUtils";
-import { buildSmartRundown, buildSmartSingleSegment } from "./smartRundown";
+import { buildSmartFillGaps, buildSmartRundown, buildSmartSingleSegment } from "./smartRundown";
 
 function makeGame(wrestlers: Wrestler[] = draftPool.slice(0, 12)) {
   return createNewGame({
@@ -41,6 +41,19 @@ function makeFullCard(game: GameState): Segment[] {
     participantMin: 2,
     participantMax: 2,
   }));
+}
+
+function makePromoSegment(game: GameState, index = 0, wrestlerId = game.wrestlers[0].id): Segment {
+  return {
+    id: `existing-promo-${index + 1}`,
+    type: "Promo",
+    participantIds: [wrestlerId],
+    segmentCatalogId: "P001",
+    segmentDisplayName: "Standard Promo",
+    durationMinutes: 5,
+    participantMin: 1,
+    participantMax: 3,
+  };
 }
 
 describe("smartRundown", () => {
@@ -190,9 +203,108 @@ describe("smartRundown", () => {
     ).toBe(true);
   });
 
+  it("fills gaps by returning appended segments without reordering existing card segments", () => {
+    const game = makeGame();
+    const existing = [makePromoSegment(game)];
+    const result = buildSmartFillGaps(game, existing, 1);
+    const combined = [...existing, ...result.segments];
+
+    expect(result.segments.length).toBeGreaterThan(0);
+    expect(combined[0]).toBe(existing[0]);
+    expect(result.segments.some((segment) => segment.id === existing[0].id)).toBe(false);
+  });
+
+  it("attempts accepted inbox requests while filling gaps", () => {
+    const game = makeGame();
+    const requester = game.wrestlers[3];
+    const result = buildSmartFillGaps(
+      {
+        ...game,
+        socialInbox: {
+          requests: [
+            {
+              id: "accepted-tv-time",
+              mailId: "mail-tv-time",
+              wrestlerId: requester.id,
+              wrestlerName: requester.name,
+              actionType: "tv_time",
+              askLabel: "TV Time",
+              createdSeasonNumber: game.seasonNumber,
+              createdWeekNumber: game.currentWeek,
+              deadlineSeasonNumber: game.seasonNumber,
+              deadlineWeekNumber: game.currentWeek + 2,
+              status: "accepted",
+            },
+          ],
+        },
+      },
+      [makePromoSegment(game, 0, game.wrestlers[0].id)],
+      2,
+    );
+
+    expect(result.segments.some((segment) => segment.participantIds.includes(requester.id))).toBe(true);
+  });
+
+  it("does not casually attach championships to generated filler matches", () => {
+    const game = makeGame();
+    const title = game.championships.find((championship) => championship.eligibleMatchScope !== "tag_team" && championship.division !== "Tag Team");
+
+    expect(title).toBeDefined();
+
+    const champion = game.wrestlers.find((wrestler) => wrestlerFitsChampionshipDivision(wrestler, title!));
+    const contender = game.wrestlers.find((wrestler) => wrestler.id !== champion?.id && wrestlerFitsChampionshipDivision(wrestler, title!));
+
+    expect(champion).toBeDefined();
+    expect(contender).toBeDefined();
+
+    const result = buildSmartSingleSegment(
+      {
+        ...game,
+        championships: game.championships.map((championship) =>
+          championship.id === title!.id ? { ...championship, championIds: [champion!.id], contenderIds: [contender!.id] } : championship,
+        ),
+      },
+      [],
+      3,
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(result.segments.some((segment) => segment.championshipId)).toBe(false);
+  });
+
+  it("does not assign winners or finishes to generated segments", () => {
+    const game = makeGame();
+    const fullCard = buildSmartRundown(game, 7);
+    const filledCard = buildSmartFillGaps(game, [makePromoSegment(game)], 8);
+    const generatedSegments = [...fullCard.segments, ...filledCard.segments];
+
+    expect(generatedSegments.length).toBeGreaterThan(0);
+    expect(generatedSegments.some((segment) => segment.winnerId)).toBe(false);
+  });
+
+  it("returns partial additions with a blocker when fill gaps cannot make the card runnable", () => {
+    const game = makeGame();
+    const lowRuntimeAlmostFullCard = Array.from({ length: maxBookingSegments - 1 }, (_, index) =>
+      makePromoSegment(game, index, game.wrestlers[index % game.wrestlers.length].id),
+    ).map((segment) => ({ ...segment, durationMinutes: 1 }));
+
+    const result = buildSmartFillGaps(game, lowRuntimeAlmostFullCard, 9);
+
+    expect(result.segments.length).toBeGreaterThan(0);
+    expect(result.error).toMatch(/card still is not ready|Production could not safely/);
+  });
+
   it("refuses to add a single smart segment when the card is full", () => {
     const game = makeGame();
     const result = buildSmartSingleSegment(game, makeFullCard(game), 1);
+
+    expect(result.error).toBe("The rundown is full. Remove a segment before autogenerating another.");
+    expect(result.segments).toEqual([]);
+  });
+
+  it("refuses to fill gaps when the card is full", () => {
+    const game = makeGame();
+    const result = buildSmartFillGaps(game, makeFullCard(game), 1);
 
     expect(result.error).toBe("The rundown is full. Remove a segment before autogenerating another.");
     expect(result.segments).toEqual([]);

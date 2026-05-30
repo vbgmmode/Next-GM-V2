@@ -37,9 +37,9 @@ export function BookingTypePickerOverlay({
             </p>
           ) : null}
           <button className="booking-btn booking-btn-secondary booking-type-autogen" disabled={!canAddSegment} onClick={handleSmartSegment} type="button">
-            Smart Segment
+            Generate Slot
           </button>
-          <p className="booking-type-picker-note">Autogenerate one segment from current roster, titles, and rivalries.</p>
+          <p className="booking-type-picker-note">Autogenerate one slot from current roster, titles, and rivalries.</p>
         </div>
       }
       onClose={onClose}

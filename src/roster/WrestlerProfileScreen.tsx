@@ -38,6 +38,73 @@ import {
 import type { ProfilePanelId, WrestlerProfileScreenProps } from "./rosterTypes";
 import { getWrestlerValueProfile } from "./rosterValueReads";
 
+type ProfileStatDeltaTone = "up" | "down" | "flat";
+
+type ProfileStatRow = {
+  label: string;
+  value: string;
+  note?: string;
+  weeklyDelta?: number;
+  weeklyDeltaLabel?: string;
+};
+
+function formatProfileStatDelta(delta = 0) {
+  return `Wk ${delta > 0 ? "+" : ""}${delta}`;
+}
+
+function getProfileStatDeltaTone(delta = 0): ProfileStatDeltaTone {
+  if (delta > 0) {
+    return "up";
+  }
+
+  if (delta < 0) {
+    return "down";
+  }
+
+  return "flat";
+}
+
+function getProfileWeeklyDeltas(game: WrestlerProfileScreenProps["game"], wrestler: WrestlerProfileScreenProps["wrestler"], latestResult: WrestlerProfileScreenProps["latestResult"]) {
+  const segmentResults = latestResult?.segmentResults ?? [];
+  const titleStatNotes = latestResult?.lockerRoomFallout?.titleStatNotes?.filter((note) => note.wrestlerId === wrestler.id) ?? [];
+  const moraleMoves = [
+    ...(latestResult?.lockerRoomFallout?.moraleBoosts ?? []),
+    ...(latestResult?.lockerRoomFallout?.moraleDrops ?? []),
+    ...(latestResult?.lockerRoomFallout?.overuseWarnings ?? []),
+    ...(latestResult?.lockerRoomFallout?.underuseWarnings ?? []),
+  ].filter((item) => item.wrestlerId === wrestler.id);
+  const momentumFromSegments = segmentResults.reduce((total, segment) => total + (segment.momentumChanges?.[wrestler.id] ?? 0), 0);
+  const fatigue = segmentResults.reduce((total, segment) => total + (segment.fatigueChanges?.[wrestler.id] ?? 0), 0);
+  const titleMomentum = titleStatNotes.reduce((total, note) => total + note.momentumChange, 0);
+  const popularity = titleStatNotes.reduce((total, note) => total + note.popularityChange, 0);
+  const moraleFromResult = moraleMoves.reduce((total, item) => total + (item.moraleChange ?? 0), 0);
+  const currentDecisionMoves = game.socialInbox.requests.filter(
+    (request) =>
+      request.wrestlerId === wrestler.id &&
+      request.createdSeasonNumber === game.seasonNumber &&
+      request.createdWeekNumber === game.currentWeek &&
+      (request.status === "accepted" || request.status === "declined"),
+  );
+  const moraleFromDecisions = currentDecisionMoves.reduce((total, request) => total + (request.status === "accepted" ? 1 : -3), 0);
+  const trustFromDecisions = currentDecisionMoves.reduce((total, request) => total + (request.status === "accepted" ? 2 : -2), 0);
+  const protectedRestTrust = moraleMoves.some((item) => item.note.toLowerCase().includes("protected rest week")) ? 2 : 0;
+  const trustFromResult =
+    protectedRestTrust -
+    (latestResult?.lockerRoomFallout?.overuseWarnings ?? []).filter((item) => item.wrestlerId === wrestler.id).length * 3 -
+    (latestResult?.lockerRoomFallout?.underuseWarnings ?? []).filter((item) => item.wrestlerId === wrestler.id).length * 2;
+
+  return {
+    audienceHeat: momentumFromSegments > 0 ? Math.max(0, Math.round(momentumFromSegments / 2)) : 0,
+    fatigue,
+    morale: moraleFromResult + moraleFromDecisions,
+    momentum: momentumFromSegments + titleMomentum,
+    popularity,
+    promoSkill: 0,
+    ringSkill: 0,
+    trust: trustFromResult + trustFromDecisions,
+  };
+}
+
 export function WrestlerProfileScreen({
   game,
   latestResult,
@@ -88,15 +155,16 @@ export function WrestlerProfileScreen({
     : releaseGuardActive
       ? "Minimum roster guard active."
       : "";
-  const profileStatRows = [
-    { label: "Popularity", value: `${wrestler.popularity}` },
-    { label: "Momentum", value: `${wrestler.momentum}` },
-    { label: "Fatigue", value: `${wrestler.fatigue}` },
-    { label: "Morale", value: `${wrestler.morale}` },
-    { label: "Audience Heat", value: `${wrestler.audienceHeat ?? 50}`, note: "Resolved reaction" },
-    { label: "Trust", value: `${wrestler.trust ?? 50}`, note: "Office relationship" },
-    { label: "Ring Skill", value: `${wrestler.ringSkill}` },
-    { label: "Promo Skill", value: `${wrestler.promoSkill}` },
+  const weeklyDeltas = getProfileWeeklyDeltas(game, wrestler, latestResult);
+  const profileStatRows: ProfileStatRow[] = [
+    { label: "Popularity", value: `${wrestler.popularity}`, weeklyDelta: weeklyDeltas.popularity },
+    { label: "Momentum", value: `${wrestler.momentum}`, weeklyDelta: weeklyDeltas.momentum },
+    { label: "Fatigue", value: `${wrestler.fatigue}`, weeklyDelta: weeklyDeltas.fatigue },
+    { label: "Morale", value: `${wrestler.morale}`, weeklyDelta: weeklyDeltas.morale },
+    { label: "Audience Heat", value: `${wrestler.audienceHeat ?? 50}`, note: "Resolved reaction", weeklyDelta: weeklyDeltas.audienceHeat },
+    { label: "Trust", value: `${wrestler.trust ?? 50}`, note: "Office relationship", weeklyDelta: weeklyDeltas.trust },
+    { label: "Ring Skill", value: `${wrestler.ringSkill}`, weeklyDelta: weeklyDeltas.ringSkill },
+    { label: "Promo Skill", value: `${wrestler.promoSkill}`, weeklyDelta: weeklyDeltas.promoSkill },
     { label: "Injury", value: getInjuryStatusLabel(wrestler.injuryStatus), note: getInjuryDetail(wrestler) },
     { label: "Season Singles", value: formatRecord(record?.season.wins, record?.season.losses, record?.season.draws), note: "Resolved matches" },
     { label: "Season Tag", value: formatRecord(record?.season.tagWins, record?.season.tagLosses, record?.season.tagDraws), note: "Resolved tag matches" },
@@ -218,7 +286,14 @@ export function WrestlerProfileScreen({
                 {profileStatRows.map((row) => (
                   <article className="roster-profile-stat-row" key={row.label}>
                     <span>{row.label}</span>
-                    <strong>{row.value}</strong>
+                    <strong>
+                      {row.value}
+                      {typeof row.weeklyDelta === "number" ? (
+                        <em className={`roster-profile-stat-delta tone-${getProfileStatDeltaTone(row.weeklyDelta)}`}>
+                          {row.weeklyDeltaLabel ?? formatProfileStatDelta(row.weeklyDelta)}
+                        </em>
+                      ) : null}
+                    </strong>
                     <small>{row.note ?? ""}</small>
                   </article>
                 ))}
