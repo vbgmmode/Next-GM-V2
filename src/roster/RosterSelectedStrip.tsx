@@ -32,13 +32,15 @@ export function RosterSelectedStrip({
   return (
     <RosterPanel className="roster-selected-strip" kicker="Selected Superstar" title={wrestler.name} badge={`OVR ${getWrestlerOverall(wrestler)}`}>
       <div className="roster-selected-strip-body">
-        <WrestlerPortrait className="roster-selected-portrait" wrestler={wrestler} />
-        <div className="roster-selected-summary">
-          <div className="roster-selected-meta">
-            <span>{wrestler.roleTier ?? "Roster"}</span>
-            <span>{wrestler.archetype ?? "Utility"}</span>
-            <span>{getWrestlerDivisionLabel(wrestler)}</span>
-            {championships.length ? <span>{championships.map((championship) => championship.name).join(" / ")}</span> : null}
+        <div className="roster-selected-identity">
+          <WrestlerPortrait className="roster-selected-portrait" wrestler={wrestler} />
+          <div className="roster-selected-summary">
+            <div className="roster-selected-meta">
+              <span>{wrestler.roleTier ?? "Roster"}</span>
+              <span>{wrestler.archetype ?? "Utility"}</span>
+              <span>{getWrestlerDivisionLabel(wrestler)}</span>
+              {championships.length ? <span>{championships.map((championship) => championship.name).join(" / ")}</span> : null}
+            </div>
           </div>
         </div>
         <div className="roster-selected-metrics">

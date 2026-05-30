@@ -268,10 +268,16 @@ export function ChampionshipsScreen({
                           <WrestlerPortrait className="championship-hero-portrait" key={wrestler.id} wrestler={wrestler} />
                         ))
                       ) : (
-                        <span className="championship-hero-vacant">
+                        <button
+                          aria-expanded={assignChampionOpen}
+                          aria-label={`Assign champion to ${selectedTitleRead.championship.name}`}
+                          className={`championship-hero-vacant${assignChampionOpen ? " is-open" : ""}`}
+                          onClick={() => setAssignChampionOpen(true)}
+                          type="button"
+                        >
                           <span>Vacant</span>
                           <small>Belt Open</small>
-                        </span>
+                        </button>
                       )}
                     </div>
                   </div>

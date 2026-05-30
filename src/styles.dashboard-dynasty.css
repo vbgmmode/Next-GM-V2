@@ -13,6 +13,7 @@
   --dashboard-dynasty-text: var(--bc-text-primary);
   --dashboard-dynasty-soft: var(--bc-text-secondary);
   --dashboard-dynasty-muted: var(--bc-text-muted);
+  --dashboard-dynasty-bottom-band: minmax(248px, 0.4fr);
   background:
     radial-gradient(circle at 50% 42%, rgba(var(--dashboard-dynasty-accent-rgb), 0.16), transparent 34%),
     radial-gradient(circle at 75% 8%, rgba(var(--bc-prestige-rgb), 0.1), transparent 25%),
@@ -567,6 +568,8 @@
 }
 
 .dashboard-dynasty-metrics {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: hidden;
 }
@@ -590,20 +593,47 @@
   font-size: 0.72rem;
 }
 
-.dashboard-dynasty-chart-shell {
+.dashboard-dynasty-metrics .dashboard-dynasty-chart-shell {
+  align-items: stretch;
   flex: 1 1 auto;
-  max-height: 96px;
-  min-height: 76px;
+  height: auto;
+  justify-content: center;
+  margin-top: 4px;
+  max-height: none;
+  min-height: 88px;
+}
+
+.dashboard-dynasty-metrics .dashboard-dynasty-chart {
+  height: 100%;
+  max-height: 132px;
+  min-height: 88px;
+  width: 100%;
+}
+
+.dashboard-dynasty-chart-shell {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  height: 52px;
+  justify-content: center;
+  margin-top: 2px;
+  max-height: 52px;
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
   width: 100%;
 }
 
 .dashboard-dynasty-chart {
+  aspect-ratio: 280 / 60;
   display: block;
-  height: 100%;
-  max-height: 96px;
+  flex: 0 0 auto;
+  height: 52px;
+  max-height: 52px;
+  max-width: 100%;
   min-height: 0;
-  width: 100%;
+  overflow: hidden;
+  width: auto;
 }
 
 .dashboard-dynasty-mini-stat-grid div,
@@ -651,15 +681,82 @@
   flex: 1 1 auto;
 }
 
+.dashboard-dynasty-left-column {
+  display: grid;
+  grid-template-rows: 158px minmax(0, 1fr) var(--dashboard-dynasty-bottom-band);
+}
+
+.dashboard-dynasty-left-column .dashboard-dynasty-brand-status {
+  flex: unset;
+  min-height: 0;
+}
+
+.dashboard-dynasty-left-column .dashboard-dynasty-champions {
+  flex: unset;
+  min-height: 0;
+}
+
 .dashboard-dynasty-goals {
-  flex: 0 0 228px;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: hidden;
 }
 
 .dashboard-dynasty-goals .dashboard-dynasty-section-heading {
+  flex: 0 0 auto;
   margin-bottom: 6px;
   padding-bottom: 5px;
+}
+
+.dashboard-dynasty-goals .dashboard-dynasty-goal-list {
+  flex: 1 1 auto;
+  justify-content: space-evenly;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dashboard-dynasty-goals .dashboard-dynasty-goal-row {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+  min-height: 0;
+  padding: 5px 0;
+}
+
+.dashboard-dynasty-goals .dashboard-dynasty-goal-row:last-child {
+  border-bottom: 0;
+}
+
+.dashboard-dynasty-goals .dashboard-dynasty-goal-top {
+  align-items: start;
+  gap: 4px;
+  grid-template-columns: 18px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+}
+
+.dashboard-dynasty-goals .dashboard-dynasty-goal-top span {
+  font-size: 0.54rem;
+}
+
+.dashboard-dynasty-goals .dashboard-dynasty-goal-top strong {
+  -webkit-line-clamp: 1;
+  font-size: 0.58rem;
+  line-height: 1.15;
+}
+
+.dashboard-dynasty-goals .dashboard-dynasty-goal-top em {
+  -webkit-line-clamp: 2;
+  display: -webkit-box;
+  font-size: 0.54rem;
+  line-height: 1.2;
+}
+
+.dashboard-dynasty-goals .dashboard-dynasty-progress {
+  flex: 0 0 auto;
+  height: 4px;
 }
 
 .dashboard-dynasty-goal-list {
@@ -832,11 +929,11 @@
 
 .dashboard-dynasty-center-column {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) minmax(188px, 0.28fr);
+  grid-template-rows: minmax(0, 1fr) var(--dashboard-dynasty-bottom-band);
 }
 
-.dashboard-dynasty-center-column:has(.dashboard-dynasty-fallout) {
-  grid-template-rows: minmax(104px, 0.18fr) minmax(0, 1fr) minmax(188px, 0.32fr);
+.dashboard-dynasty-roster-panel {
+  min-height: 0;
 }
 
 .dashboard-dynasty-fallout {
@@ -990,14 +1087,26 @@
   color: inherit;
   display: grid;
   font: inherit;
-  gap: 6px;
-  grid-template-columns: 26px minmax(130px, 1.6fr) 32px 52px 52px 40px 56px 52px 52px;
+  gap: 4px;
+  grid-template-columns: 24px minmax(108px, 1.1fr) 30px 44px 44px 36px 48px 44px 44px;
   min-height: 34px;
-  min-width: 692px;
-  padding: 0 7px;
+  min-width: 640px;
+  padding: 0 5px;
   text-align: left;
   text-transform: uppercase;
   width: 100%;
+}
+
+.dashboard-dynasty-roster-row > :nth-child(1),
+.dashboard-dynasty-roster-row > :nth-child(n + 3) {
+  justify-self: center;
+  text-align: center;
+}
+
+.dashboard-dynasty-roster-row > :nth-child(n + 3) {
+  align-items: center;
+  display: flex;
+  justify-content: center;
 }
 
 .dashboard-dynasty-roster-head {
@@ -1010,15 +1119,26 @@
 }
 
 .dashboard-dynasty-roster-head-btn {
+  align-items: center;
   background: transparent;
   border: 0;
+  border-radius: 0;
   color: inherit;
   cursor: pointer;
+  display: flex;
   font: inherit;
+  justify-content: center;
+  min-height: 0;
   min-width: 0;
   padding: 0;
-  text-align: inherit;
+  text-align: center;
   text-transform: inherit;
+  width: 100%;
+}
+
+.dashboard-dynasty-roster-head > .dashboard-dynasty-roster-head-btn:nth-child(2) {
+  justify-content: flex-start;
+  text-align: left;
 }
 
 .dashboard-dynasty-roster-head-btn:hover,
@@ -1083,10 +1203,13 @@
 .dashboard-dynasty-overall {
   background: linear-gradient(180deg, rgba(var(--dashboard-dynasty-accent-rgb), 0.32), rgba(var(--dashboard-dynasty-accent-rgb), 0.1));
   border: 1px solid rgba(var(--dashboard-dynasty-accent-rgb), 0.42);
+  box-sizing: border-box;
   color: white !important;
   display: inline-flex;
   justify-content: center;
+  min-width: 40px;
   padding: 4px 0;
+  width: 100%;
 }
 
 .dashboard-dynasty-overall .dashboard-dynasty-stat-value strong {
@@ -1323,7 +1446,7 @@
 
 .dashboard-dynasty-right-column {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 0.62fr);
+  grid-template-rows: minmax(0, 1fr) var(--dashboard-dynasty-bottom-band);
 }
 
 .dashboard-dynasty-rivalry-list,
@@ -1524,13 +1647,23 @@
 }
 
 .dashboard-dynasty-alerts {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: hidden;
 }
 
 .dashboard-dynasty-alerts .dashboard-dynasty-section-heading {
+  flex: 0 0 auto;
   margin-bottom: 6px;
   padding-bottom: 5px;
+}
+
+.dashboard-dynasty-alerts .dashboard-dynasty-alert-list {
+  flex: 1 1 auto;
+  justify-content: space-evenly;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .dashboard-dynasty-alert {
@@ -1723,7 +1856,7 @@
   fill: none;
   stroke: rgba(var(--dashboard-dynasty-accent-rgb), 0.25);
   stroke-linecap: round;
-  stroke-width: 8;
+  stroke-width: 6;
 }
 
 .dashboard-dynasty-chart-line {
@@ -1768,8 +1901,8 @@
   }
 
   .dashboard-dynasty-roster-row {
-    grid-template-columns: 24px minmax(118px, 1.4fr) 30px 34px 58px 36px 38px 48px 48px;
-    min-width: 622px;
+    grid-template-columns: 24px minmax(100px, 1fr) 30px 42px 42px 34px 46px 42px 42px;
+    min-width: 580px;
   }
 
   .dashboard-dynasty-center-bottom-grid {

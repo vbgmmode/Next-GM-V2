@@ -147,7 +147,7 @@ export function DashboardDynastyShowScoreChart({ points }: { points: Array<{ lab
   if (!points.length) {
     return (
       <div className="dashboard-dynasty-chart-shell">
-        <svg className="dashboard-dynasty-chart dashboard-dynasty-chart--empty" preserveAspectRatio="xMidYMid meet" viewBox="0 0 280 48" role="img" aria-label="No show history yet">
+        <svg className="dashboard-dynasty-chart dashboard-dynasty-chart--empty" preserveAspectRatio="xMidYMid meet" viewBox="0 0 280 60" role="img" aria-label="No show history yet">
           <text className="dashboard-dynasty-chart-label" x="140" y="28" textAnchor="middle">
             No resolved shows
           </text>
@@ -157,18 +157,23 @@ export function DashboardDynastyShowScoreChart({ points }: { points: Array<{ lab
   }
 
   const width = 280;
-  const height = 92;
-  const padX = 16;
-  const padTop = 18;
-  const padBottom = 18;
+  const height = 60;
+  const padX = 14;
+  const padTop = 14;
+  const padBottom = 10;
   const plotHeight = height - padTop - padBottom;
-  const plotRight = width - 12;
+  const plotRight = width - 14;
+  const plotInset = 0.14;
+  const labelY = height - 4;
+  const gridYs = [padTop, padTop + plotHeight * 0.5, padTop + plotHeight];
   const minValue = Math.min(...points.map((point) => point.value));
   const maxValue = Math.max(...points.map((point) => point.value));
   const range = Math.max(maxValue - minValue, 1);
   const coords = points.map((point, index) => {
     const x = padX + (index / Math.max(points.length - 1, 1)) * (width - padX * 2);
-    const y = padTop + (1 - (point.value - minValue) / range) * plotHeight;
+    const normalized = (point.value - minValue) / range;
+    const y =
+      padTop + plotInset * plotHeight + (1 - normalized) * (1 - plotInset * 2) * plotHeight;
 
     return { label: point.label, x, y };
   });
@@ -176,21 +181,30 @@ export function DashboardDynastyShowScoreChart({ points }: { points: Array<{ lab
 
   return (
     <div className="dashboard-dynasty-chart-shell">
-      <svg className="dashboard-dynasty-chart" preserveAspectRatio="xMidYMid meet" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Recent show score trend">
+      <svg
+        className="dashboard-dynasty-chart"
+        preserveAspectRatio="xMidYMid meet"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label="Recent show score trend"
+      >
         <defs>
           <linearGradient id="dashboardDynastyChartGlow" x1="0" x2="1" y1="0" y2="0">
             <stop offset="0%" stopColor="var(--dashboard-dynasty-accent)" />
             <stop offset="100%" stopColor="var(--dashboard-dynasty-hot)" />
           </linearGradient>
         </defs>
-        <path className="dashboard-dynasty-chart-grid" d={`M12 18H${plotRight}M12 46H${plotRight}M12 74H${plotRight}`} />
+        <path
+          className="dashboard-dynasty-chart-grid"
+          d={gridYs.map((gridY) => `M12 ${gridY}H${plotRight}`).join("")}
+        />
         <path className="dashboard-dynasty-chart-shadow" d={linePath} />
         <path className="dashboard-dynasty-chart-line" d={linePath} />
         {coords.map((point) => (
-          <circle className="dashboard-dynasty-chart-node" cx={point.x} cy={point.y} r="3.8" key={point.label} />
+          <circle className="dashboard-dynasty-chart-node" cx={point.x} cy={point.y} r="3" key={point.label} />
         ))}
         {coords.map((point) => (
-          <text className="dashboard-dynasty-chart-label" x={point.x} y="89" key={`${point.label}-label`} textAnchor="middle">
+          <text className="dashboard-dynasty-chart-label" x={point.x} y={labelY} key={`${point.label}-label`} textAnchor="middle">
             {point.label}
           </text>
         ))}

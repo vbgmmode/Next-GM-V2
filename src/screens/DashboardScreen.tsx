@@ -160,7 +160,11 @@ export function DashboardScreen({
             </div>
             <div className="dashboard-dynasty-goal-list">
               {model.goals.map((goal) => (
-                <div className={goal.complete ? "dashboard-dynasty-goal-row is-complete" : "dashboard-dynasty-goal-row"} key={goal.id}>
+                <div
+                  className={goal.complete ? "dashboard-dynasty-goal-row is-complete" : "dashboard-dynasty-goal-row"}
+                  key={goal.id}
+                  title={goal.complete ? goal.label : `${goal.label} — ${goal.detail}`}
+                >
                   <div className="dashboard-dynasty-goal-top">
                     <span>{goal.complete ? "OK" : "ON"}</span>
                     <strong title={goal.label}>{goal.label}</strong>
@@ -174,35 +178,6 @@ export function DashboardScreen({
         </aside>
 
         <section className="dashboard-dynasty-column dashboard-dynasty-center-column">
-          <article className="dashboard-dynasty-panel dashboard-dynasty-fallout">
-            <div className="dashboard-dynasty-section-heading">
-              <span>Fallout From Last Week</span>
-              <b>{model.falloutFromLastWeek?.weekLabel ?? "No history"}</b>
-            </div>
-            {model.falloutFromLastWeek ? (
-              <>
-                <div className="dashboard-dynasty-fallout-lead">
-                  <strong>{model.falloutFromLastWeek.headline}</strong>
-                  <p>{model.falloutFromLastWeek.detail}</p>
-                </div>
-                <div className="dashboard-dynasty-fallout-grid">
-                  {model.falloutFromLastWeek.items.map((item) => (
-                    <div className={`dashboard-dynasty-fallout-item tone-${item.tone}`} key={item.id}>
-                      <span>{item.label}</span>
-                      <strong title={item.value}>{item.value}</strong>
-                      <p>{item.detail}</p>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="dashboard-dynasty-fallout-lead is-empty">
-                <strong>Nothing to show yet</strong>
-                <p>Run the first show to generate roster, story, social, finance, and rival fallout for this desk.</p>
-              </div>
-            )}
-          </article>
-
           <article className="dashboard-dynasty-panel dashboard-dynasty-roster-panel">
             <div className="dashboard-dynasty-roster-topline">
               <div className="dashboard-dynasty-section-heading">
