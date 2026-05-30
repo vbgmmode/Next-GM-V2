@@ -1610,6 +1610,20 @@
   margin-bottom: 0;
 }
 
+@keyframes draftSnapshotSnap {
+  from {
+    border-color: rgba(246, 193, 86, 0.7);
+    opacity: 0.78;
+    transform: translateY(4px);
+  }
+
+  to {
+    border-color: rgba(246, 193, 86, 0.28);
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .draft-update-feed {
   display: grid;
   gap: 4px;
@@ -1622,6 +1636,174 @@
 .draft-update-latest {
   display: grid;
   gap: 4px;
+}
+
+.draft-snapshot-card {
+  animation: draftSnapshotSnap var(--bc-motion-slow, 260ms) var(--bc-ease-standard, ease-out);
+  background:
+    linear-gradient(135deg, rgba(246, 193, 86, 0.14), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent),
+    rgba(8, 9, 13, 0.94);
+  border: 1px solid rgba(246, 193, 86, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 7px;
+}
+
+.draft-snapshot-player {
+  background:
+    linear-gradient(90deg, rgba(216, 35, 50, 0.22), rgba(14, 17, 24, 0.86)),
+    rgba(14, 17, 24, 0.92);
+  border: 1px solid rgba(255, 83, 97, 0.34);
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 7px;
+}
+
+.draft-snapshot-player-head {
+  align-items: baseline;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  min-width: 0;
+  text-transform: uppercase;
+}
+
+.draft-snapshot-player-head span,
+.draft-snapshot-empty span {
+  color: #f6c156;
+  flex-shrink: 0;
+  font-size: 0.58rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.draft-snapshot-player-head strong {
+  color: #f4f7fb;
+  font-size: 0.74rem;
+  min-width: 0;
+  text-align: right;
+}
+
+.draft-snapshot-player-body {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+}
+
+.draft-snapshot-player-portraits {
+  align-items: end;
+  display: flex;
+  max-width: 126px;
+  min-width: 58px;
+  overflow: hidden;
+}
+
+.draft-snapshot-hero-portrait {
+  border-color: rgba(246, 193, 86, 0.5);
+  box-shadow: 0 0 18px rgba(246, 193, 86, 0.12);
+  font-size: 0.72rem;
+  height: 58px;
+  width: 58px;
+}
+
+.draft-snapshot-hero-portrait + .draft-snapshot-hero-portrait {
+  margin-left: -20px;
+}
+
+.draft-snapshot-more {
+  align-self: end;
+  background: rgba(246, 193, 86, 0.16);
+  border: 1px solid rgba(246, 193, 86, 0.32);
+  color: #f6c156;
+  display: grid;
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 0.84rem;
+  height: 28px;
+  margin-left: -12px;
+  place-items: center;
+  width: 28px;
+  z-index: 1;
+}
+
+.draft-snapshot-player-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.draft-snapshot-player-copy strong {
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  line-height: 0.95;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.draft-snapshot-player-copy small,
+.draft-snapshot-empty small {
+  color: #9ea8ba;
+  display: block;
+  font-size: 0.56rem;
+  font-weight: 800;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.draft-snapshot-rivals {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.draft-snapshot-rival {
+  align-items: center;
+  background: rgba(14, 17, 24, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 34px minmax(0, 1fr);
+  min-height: 40px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 4px 6px;
+}
+
+.draft-snapshot-rival.has-pick {
+  border-color: rgba(111, 226, 212, 0.18);
+}
+
+.draft-snapshot-empty {
+  background: rgba(14, 17, 24, 0.74);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.draft-snapshot-empty strong {
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .draft-update-brand-row,
