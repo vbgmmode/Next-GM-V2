@@ -236,6 +236,9 @@ Open draft availability is the default unless the ticket explicitly asks for res
 | Required | Avoid |
 |----------|-------|
 | Wrestler identity and current status | Raw stat clutter without interpretation |
+| Portrait-led command file with current role first | Long equal-weight accordion stacks as the default profile |
+| Compact visible ratings / condition rows | Hiding core stats behind secondary navigation |
+| Focused report windows for ratings, career, creative, and office context | Making every detail compete on the main screen |
 | TV history | Fabricated hidden truth |
 | Pressure labels | Invented fallout |
 | Championship / rivalry context | |

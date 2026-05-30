@@ -21,7 +21,7 @@ import {
   hasPlePayoff,
 } from "./storyContextReads";
 import { getPrestigeMainEventAnchorSnapshot, getPrestigeMainEventAnchorSnapshotFromResult } from "./championshipPrestigeReads";
-import { getChampionshipDivisionGroup, wrestlerFitsChampionshipDivision } from "./titleCatalog";
+import { getChampionshipDivisionGroup, wrestlerFitsChampionshipDivision, wrestlerFitsInitialTitleRankLane } from "./titleCatalog";
 import { getResolvedShowCauseLinks } from "./causeLinking";
 import type {
   CalendarWeek,
@@ -412,8 +412,10 @@ export function getTitleDivisionScene(championship: Championship, wrestlers: Wre
     .filter((wrestler) => !otherChampionIds.has(wrestler.id))
     .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship, wrestlers))
     .sort((a, b) => getTitleSceneTalentScore(b, championship, rivalries) - getTitleSceneTalentScore(a, championship, rivalries));
+  const automaticLaneRoster = eligibleRoster.filter((wrestler) => wrestlerFitsInitialTitleRankLane(wrestler, championship, wrestlers));
+  const automaticContenderRoster = automaticLaneRoster.length ? automaticLaneRoster : eligibleRoster;
   const automaticContenderPoolSize = Math.min(eligibleRoster.length, Math.max(6, Math.ceil(eligibleRoster.length * 0.5)));
-  const derivedTopContenders = eligibleRoster
+  const derivedTopContenders = automaticContenderRoster
     .filter((wrestler) => !manualContenderIds.has(wrestler.id))
     .slice(0, automaticContenderPoolSize)
     .sort((a, b) => getContenderRotationScore(b, championship, rivalries, currentWeek) - getContenderRotationScore(a, championship, rivalries, currentWeek))

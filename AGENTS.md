@@ -104,8 +104,8 @@ The game currently supports:
 - Deterministic locker room fallout after shows
 - Injury System v1 with deterministic minor/major injuries from fatigue and overuse, major-injury booking blocks, recovery on Advance Week, and persisted injury state
 - Roster command board with compact wrestler cards, selected-superstar dock, morale trend, injury report, and read-only locker-room reads from existing momentum, morale, fatigue, injury, title, rivalry, sentiment, records, and TV-time state
-- Wrestler Profiles v1 with compact stat rows, week-change chips for tracked stat movement, audience heat/trust and season/career record splits, expandable local-state detail panels, pressure labels, GM Read, championship/rivalry/social context, and deterministic read-only decision support
-- Championships with a viewport-fit Champion Wall, selected-title command workspace, collapsed committee support strip, contained panel scrolling, title catalog context, vacant-title assignment, champion revocation, player-edited contender order, title-rank lanes where upper-card singles titles use the top 3 superstars per gender and mid-card singles titles use ranks 4-6 per gender, rotating automatic same-division contender reads when no manual lane is set, selected-title contender board, title scene health, and title history for assigned/revoked/resolved title events
+- Wrestler Profile Command File v1 with portrait-led talent file, compact default ratings under the portrait, current-role workspace, qualitative pressure report highlight, and focused Ratings Report / Career File / Creative Context / Office File popups while preserving existing contract actions inside the Office File
+- Championships with a viewport-fit Champion Wall, selected-title command workspace, collapsed committee support strip, contained panel scrolling, title catalog context, vacant-title assignment, champion revocation, player-edited contender order, initial title-rank lanes where upper-card singles titles start from the top 3 superstars per gender and mid-card singles titles start from ranks 4-6 per gender when no manual lane is set, selected-title contender board, title scene health, and title history for assigned/revoked/resolved title events
 - Rivalries Command Desk with active rivalry rail, selected rivalry spotlight, compact Creative Desk strip, create/end controls, and current-state reads from existing heat, freshness, timing, history, card usage, and PLE context; new player careers do not auto-create starter rivalries after Draft Night
 - Rivalry structure support for Singles, Tag 2v2, and Multi rivalries, with optional persisted `Rivalry.structure`, legacy saves defaulting to singles, participantIds remaining canonical, and no team records, faction records, rankings, or team-level stats
 - Calendar
@@ -188,7 +188,7 @@ The loop must remain playable after every change.
 - Championships should feel prestigious.
 - Rivalries should feel elastic and alive.
 - Rivalries should read as a creative story-room surface using existing heat, freshness, timing, card usage, and resolved history; do not imply hidden story simulation.
-- Automatic contender reads may rotate within the active title-rank lane by title and calendar phase: upper-card singles belts use ranks 1-3 per gender, mid-card singles belts use ranks 4-6 per gender, and manual contender order is player-authored and should remain authoritative.
+- Automatic contender reads may rotate within the initial title-rank lane by title and calendar phase only when no manual lane is set: upper-card singles belts start from ranks 1-3 per gender, mid-card singles belts start from ranks 4-6 per gender, and manual contender order is player-authored and should remain authoritative.
 - Player rivalries should be created by the player or emerge from resolved booking outcomes, not seeded automatically from the initial draft.
 - Championships and rivalries should preserve meaningful history from actual gameplay.
 - History should come from resolved events, not invented offscreen story.
@@ -287,13 +287,15 @@ Completed stabilization passes:
 - Expectation Gap Progression v1 (implemented as internal progression hook only; no UI, persistence, or wider fallout systems)
 - Vite Large Chunk Remediation / Lazy Screen Extraction v1 (implemented with lightweight title/save entry path, lazy gameplay shell, and extracted Dashboard, Championships, Season Review, and Offseason Draft screen modules)
 - Generate Booking Control Pass v1 (implemented with state-aware Generate Booking, confirmed Replace Card, fill-gaps append behavior, intentional title attachment, one-title-per-current-show guard, and no generated finish selection)
+- Wrestler Profile Command File v1 (implemented with portrait-led default profile, compact visible ratings, severity-based qualitative pressure report, and four focused report windows)
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
 - Keep scout/read-only career-memory features bounded while using the active Market desk for free-agent negotiation, trade-wire decisions, and contract pressure; keep roster renewals/releases in the superstar/profile flow unless a future accepted ticket reopens that boundary.
 - Treat season legacy as read-only narrative continuity first; keep the Mid-Career Draft bounded to the current offseason roster-refresh loop.
 - Keep recent context passes read-only and non-predictive: pre-show surfaces may explain existing pressure, but consequences and outcome language stay retrospective after Run Show.
-- Keep automatic championship contender reads as read-only guidance over the current title-rank lane, not persisted rankings, and preserve manual contender lanes when the player sets them.
+- Keep wrestler profiles curated by default: identity/status and current role first, stats visible but compact, deeper ratings/history/creative/office context in focused report windows rather than long expandable page stacks.
+- Keep automatic championship contender reads as read-only opening guidance over the initial title-rank lane, not persisted rankings or hard eligibility, and preserve manual contender lanes when the player sets them.
 - Keep rival brands as summarized ratings-battle and market pressure with deterministic internal CPU simulation; do not expand into rival HQ screens, editable CPU booking, progression locks, firing, or career-ending fail states unless a future accepted ticket explicitly asks for it.
 - Use src/game/gameContextReads.ts or another focused read-model module for pure derived gameplay context when a future slice would otherwise add more helper logic to src/GameApp.tsx.
 - Treat src/GameApp.tsx and src/styles.css as high-risk growth areas; preserve the lightweight src/App.tsx title/save entry path and prefer bounded extraction, verification, or small focused UI fixes over broad screen rewrites.

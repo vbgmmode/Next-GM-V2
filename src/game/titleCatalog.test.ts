@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getTitleDivisionRank, wrestlerFitsChampionshipDivision } from "./titleCatalog";
+import { getTitleDivisionRank, wrestlerFitsChampionshipDivision, wrestlerFitsInitialTitleRankLane } from "./titleCatalog";
 import type { Championship, Wrestler } from "./types";
 
 function rankedWrestlers(division: "Mens" | "Womens", count: number): Wrestler[] {
@@ -36,16 +36,25 @@ function title(titleLevel: "Top" | "Middle", division: "Mens" | "Womens", champi
 }
 
 describe("title catalog division lanes", () => {
-  it("uses ranks 1-3 for top singles titles and ranks 4-6 for middle singles titles", () => {
+  it("keeps hard title eligibility open inside the same gender", () => {
     const roster = rankedWrestlers("Mens", 6);
     const topTitle = title("Top", "Mens");
     const middleTitle = title("Middle", "Mens");
 
     expect(roster.map((wrestler) => getTitleDivisionRank(wrestler, roster))).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(roster.slice(0, 3).every((wrestler) => wrestlerFitsChampionshipDivision(wrestler, topTitle, roster))).toBe(true);
-    expect(roster.slice(3, 6).every((wrestler) => wrestlerFitsChampionshipDivision(wrestler, topTitle, roster))).toBe(false);
-    expect(roster.slice(0, 3).every((wrestler) => wrestlerFitsChampionshipDivision(wrestler, middleTitle, roster))).toBe(false);
-    expect(roster.slice(3, 6).every((wrestler) => wrestlerFitsChampionshipDivision(wrestler, middleTitle, roster))).toBe(true);
+    expect(roster.every((wrestler) => wrestlerFitsChampionshipDivision(wrestler, topTitle, roster))).toBe(true);
+    expect(roster.every((wrestler) => wrestlerFitsChampionshipDivision(wrestler, middleTitle, roster))).toBe(true);
+  });
+
+  it("uses ranks 1-3 for initial top title lanes and ranks 4-6 for initial middle title lanes", () => {
+    const roster = rankedWrestlers("Mens", 6);
+    const topTitle = title("Top", "Mens");
+    const middleTitle = title("Middle", "Mens");
+
+    expect(roster.slice(0, 3).every((wrestler) => wrestlerFitsInitialTitleRankLane(wrestler, topTitle, roster))).toBe(true);
+    expect(roster.slice(3, 6).every((wrestler) => wrestlerFitsInitialTitleRankLane(wrestler, topTitle, roster))).toBe(false);
+    expect(roster.slice(0, 3).every((wrestler) => wrestlerFitsInitialTitleRankLane(wrestler, middleTitle, roster))).toBe(false);
+    expect(roster.slice(3, 6).every((wrestler) => wrestlerFitsInitialTitleRankLane(wrestler, middleTitle, roster))).toBe(true);
   });
 
   it("calculates title ranks separately for each gender", () => {
@@ -56,17 +65,17 @@ describe("title catalog division lanes", () => {
     const womensMiddleTitle = title("Middle", "Womens");
 
     expect(getTitleDivisionRank(womens[0], roster)).toBe(1);
-    expect(wrestlerFitsChampionshipDivision(womens[2], womensTopTitle, roster)).toBe(true);
-    expect(wrestlerFitsChampionshipDivision(womens[3], womensTopTitle, roster)).toBe(false);
-    expect(wrestlerFitsChampionshipDivision(womens[3], womensMiddleTitle, roster)).toBe(true);
+    expect(wrestlerFitsInitialTitleRankLane(womens[2], womensTopTitle, roster)).toBe(true);
+    expect(wrestlerFitsInitialTitleRankLane(womens[3], womensTopTitle, roster)).toBe(false);
+    expect(wrestlerFitsInitialTitleRankLane(womens[3], womensMiddleTitle, roster)).toBe(true);
     expect(wrestlerFitsChampionshipDivision(mens[0], womensTopTitle, roster)).toBe(false);
   });
 
-  it("keeps current champions eligible to defend their own title", () => {
+  it("keeps current champions inside their title's initial lane", () => {
     const roster = rankedWrestlers("Mens", 6);
     const topTitle = title("Top", "Mens", [roster[4].id]);
 
     expect(getTitleDivisionRank(roster[4], roster)).toBe(5);
-    expect(wrestlerFitsChampionshipDivision(roster[4], topTitle, roster)).toBe(true);
+    expect(wrestlerFitsInitialTitleRankLane(roster[4], topTitle, roster)).toBe(true);
   });
 });

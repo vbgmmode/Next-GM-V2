@@ -56,6 +56,8 @@ The player should understand the most important thing on a screen almost immedia
 
 Depth belongs where it helps decision-making: comparisons, tabs, drawers, profiles, scouting reports, expanded cards, and focused detail views. The default experience should be curated and readable, not a wall of equal-weight information.
 
+Profiles should act like command files: a clear identity/status read, the current role, compact evidence, and focused report windows for deeper investigation.
+
 Dense screens are good when comparison matters. Clean screens are better when momentum, drama, or orientation matters.
 
 ### 4. Big Moments Deserve Staging
@@ -187,7 +189,7 @@ The player should be able to read who matters, who is rising, who is frustrated,
 
 Roster cards should carry character and status. Tables should exist for deeper management and comparison.
 
-Championships should feel prestigious. A title screen should spotlight the champion, the reign, the contenders, the current story, and the health of the division. Upper-card singles title lanes should use the top 3 superstars per gender, mid-card singles title lanes should use ranks 4-6 per gender, and automatic contender reads should rotate within those lanes while remaining advisory unless the player manually edits a contender order.
+Championships should feel prestigious. A title screen should spotlight the champion, the reign, the contenders, the current story, and the health of the division. Upper-card singles title lanes should initially use the top 3 superstars per gender, mid-card singles title lanes should initially use ranks 4-6 per gender, and automatic contender reads should rotate within those lanes only while remaining advisory; once the player manually edits a contender order, same-gender GM choice should be authoritative.
 
 Rivalries should feel elastic and alive. They can be started manually, shaped through booking, and emerge from the world over time, but they should not be auto-seeded from the initial draft. The UI should help organize them without making them feel artificially capped or over-systematized.
 

@@ -363,8 +363,11 @@ Roster / Locker Room:
 Wrestler Profile:
 
 - Should support GM decisions with character context.
-- Show TV history, status, championship/rivalry context, social mentions, and a concise GM read.
-- Avoid raw stat dumps without interpretation.
+- Default to a portrait-led talent file: identity/status and current role first, then compact visible ratings/condition rows.
+- Show one qualitative pressure report highlight, chosen from current state, without exposing a severity number.
+- Move deeper ratings, career, creative, and office context into focused report windows instead of long default page stacks.
+- Keep TV history, championship/rivalry context, social mentions, and contract actions available in those focused reports.
+- Avoid raw stat dumps without interpretation, but do not hide core wrestler ratings from the default profile.
 
 Championships:
 
@@ -376,7 +379,7 @@ Championships:
 - Spotlight champion state, vacancy, reign, defenses, current scene pressure, selected-title contenders, division health, and title history.
 - Keep contender boards scoped to the selected title. Do not show every division or every eligible pool when the player is focused on one belt.
 - Contender controls should be direct GM tools: edit, add, remove, and reorder. The game may suggest same-division contenders, but it should not auto-place current champions from other titles into another title's contender lane.
-- Automatic contender suggestions are read-only title-scene guidance. Upper-card singles belts should draw from ranks 1-3 per gender; mid-card singles belts should draw from ranks 4-6 per gender. Suggestions may rotate within that lane by title and calendar phase, but they are not persisted rankings and must not override a manually edited contender lane.
+- Automatic contender suggestions are read-only title-scene guidance for titles without a manually edited lane. Upper-card singles belts should initially draw from ranks 1-3 per gender; mid-card singles belts should initially draw from ranks 4-6 per gender. Suggestions may rotate within that lane by title and calendar phase, but they are not persisted rankings, not hard eligibility, and must not override a manually edited contender lane.
 - Vacant titles should expose assignment as a clear player action. Revocations and assignments should appear in title history.
 - Avoid redundant advisory grids and explanatory copy when the selected title workspace already carries the decision context.
 

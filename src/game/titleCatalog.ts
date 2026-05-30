@@ -377,20 +377,8 @@ export function getTitleDivisionRank(wrestler: Wrestler, roster: Wrestler[]) {
   return index >= 0 ? index + 1 : undefined;
 }
 
-export function wrestlerFitsChampionshipDivision(wrestler: Wrestler | undefined, championship: Championship, roster: Wrestler[] = []) {
-  const titleGroup = getChampionshipDivisionGroup(championship);
-
-  if (!titleGroup) {
-    return true;
-  }
-
-  const wrestlerGroup = getWrestlerDivisionGroup(wrestler);
-
-  if (wrestlerGroup !== titleGroup) {
-    return false;
-  }
-
-  if (!wrestler || championship.championIds.includes(wrestler.id) || !roster.length) {
+export function wrestlerFitsInitialTitleRankLane(wrestler: Wrestler | undefined, championship: Championship, roster: Wrestler[] = []) {
+  if (!wrestler || !roster.length || championship.championIds.includes(wrestler.id)) {
     return true;
   }
 
@@ -404,6 +392,22 @@ export function wrestlerFitsChampionshipDivision(wrestler: Wrestler | undefined,
   const bounds = getTitleRankBounds(championship);
 
   return !bounds || Boolean(rank && rank >= bounds.min && rank <= bounds.max);
+}
+
+export function wrestlerFitsChampionshipDivision(wrestler: Wrestler | undefined, championship: Championship, _roster: Wrestler[] = []) {
+  const titleGroup = getChampionshipDivisionGroup(championship);
+
+  if (!titleGroup) {
+    return true;
+  }
+
+  const wrestlerGroup = getWrestlerDivisionGroup(wrestler);
+
+  if (wrestlerGroup !== titleGroup) {
+    return false;
+  }
+
+  return true;
 }
 
 export function applyChampionshipCatalogDefaults(championship: Championship, brandStyle: BrandStyle): Championship {
