@@ -1,5 +1,5 @@
-import type { MatchRatings, Segment, SegmentType, ShowType, Wrestler } from "./types";
-import { MATCH_CURRENT_STATE_TUNING, MATCH_OUTCOME_TUNING, MATCH_PROGRESSION_TUNING } from "./matchTuning";
+import type { MatchPacing, MatchRatings, Segment, SegmentType, ShowType, Wrestler } from "./types";
+import { MATCH_CURRENT_STATE_TUNING, MATCH_OUTCOME_TUNING, MATCH_PACING_WEIGHT_MULTIPLIERS, MATCH_PROGRESSION_TUNING } from "./matchTuning";
 
 export type MatchRatingKey = keyof MatchRatings;
 
@@ -25,6 +25,7 @@ export type MatchRatingProgressionInput = {
   segmentTypes?: SegmentType[];
   resultScore?: number;
   deltas?: Partial<Record<MatchRatingKey, number>>;
+  positiveRawDeltaMultiplier?: number;
 };
 
 export type MatchOutcomeCardPosition = "opener" | "midcard" | "main_event";
@@ -34,6 +35,7 @@ export type EffectiveMatchPowerContext = Partial<Pick<Segment, "type" | "segment
   cardPosition?: MatchOutcomeCardPosition;
   isTitleMatch?: boolean;
   isRivalryMatch?: boolean;
+  matchPacing?: MatchPacing;
 };
 
 export type MatchContextWeightProfile = {
@@ -365,24 +367,53 @@ function getMatchContextWeightProfile(context: EffectiveMatchPowerContext = {}):
   }
 }
 
+function resolveMatchPacing(pacing?: MatchPacing): MatchPacing {
+  return pacing === "Sprint" || pacing === "Epic" ? pacing : "Normal";
+}
+
+function applyMatchPacingWeights(profile: MatchContextWeightProfile, pacing?: MatchPacing): MatchContextWeightProfile {
+  const resolvedPacing = resolveMatchPacing(pacing);
+  const multipliers: Partial<Record<MatchRatingKey, number>> = MATCH_PACING_WEIGHT_MULTIPLIERS[resolvedPacing];
+
+  if (resolvedPacing === "Normal") {
+    return profile;
+  }
+
+  return {
+    id: `${profile.id}-${resolvedPacing.toLowerCase()}`,
+    weights: matchRatingKeys.reduce<Record<MatchRatingKey, number>>((weights, key) => {
+      weights[key] = getSafeWeight(profile.weights, key) * numberOr(multipliers[key], 1);
+      return weights;
+    }, {} as Record<MatchRatingKey, number>),
+  };
+}
+
+function getEffectiveMatchWeightProfile(context: EffectiveMatchPowerContext = {}): MatchContextWeightProfile {
+  return applyMatchPacingWeights(getMatchContextWeightProfile(context), context.matchPacing);
+}
+
+function getSafeWeight(weights: Partial<Record<MatchRatingKey, number>>, key: MatchRatingKey) {
+  return Math.max(0, numberOr(weights[key], 0));
+}
+
 function getWeightedRatingPower(ratings: MatchRatings, weights: Record<MatchRatingKey, number>) {
-  const totalWeight = matchRatingKeys.reduce((sum, key) => sum + Math.max(0, weights[key]), 0);
+  const totalWeight = matchRatingKeys.reduce((sum, key) => sum + getSafeWeight(weights, key), 0);
 
   if (totalWeight <= 0) {
     return EFFECTIVE_POWER_FLOOR;
   }
 
-  return matchRatingKeys.reduce((sum, key) => sum + ratings[key] * Math.max(0, weights[key]), 0) / totalWeight;
+  return matchRatingKeys.reduce((sum, key) => sum + ratings[key] * getSafeWeight(weights, key), 0) / totalWeight;
 }
 
 function getWeightedModifierPower(modifiers: MatchRatingCurrentModifiers, weights: Record<MatchRatingKey, number>) {
-  const totalWeight = matchRatingKeys.reduce((sum, key) => sum + Math.max(0, weights[key]), 0);
+  const totalWeight = matchRatingKeys.reduce((sum, key) => sum + getSafeWeight(weights, key), 0);
 
   if (totalWeight <= 0) {
     return 0;
   }
 
-  return matchRatingKeys.reduce((sum, key) => sum + (modifiers[key] ?? 0) * Math.max(0, weights[key]), 0) / totalWeight;
+  return matchRatingKeys.reduce((sum, key) => sum + (modifiers[key] ?? 0) * getSafeWeight(weights, key), 0) / totalWeight;
 }
 
 function getAvailabilityModifier(wrestler: Wrestler) {
@@ -466,7 +497,7 @@ export function calculateEffectiveMatchPower(
   context: EffectiveMatchPowerContext = {},
 ): EffectiveMatchPowerBreakdown {
   const wrestlers = Array.isArray(wrestlerOrTeam) ? wrestlerOrTeam : [wrestlerOrTeam];
-  const profile = getMatchContextWeightProfile(context);
+  const profile = getEffectiveMatchWeightProfile(context);
   const members = wrestlers.map<EffectiveMatchPowerMemberBreakdown>((wrestler) => {
     const baseRatings = ensureMatchRatings(wrestler);
     const currentModifiers = deriveMatchRatingCurrentModifiers(wrestler);
@@ -581,7 +612,9 @@ export function resolveMatchOutcomePreview(
 export function applyMatchRatingProgression(wrestler: Wrestler, input: MatchRatingProgressionInput): MatchRatings {
   const current = ensureMatchRatings(wrestler);
   const biases = getStyleBiases(wrestler);
-  const scoreAdjustment = input.resultScore === undefined ? 0 : input.resultScore >= 90 ? 0.6 : input.resultScore >= 75 ? 0.3 : input.resultScore < 55 ? -0.6 : -0.2;
+  const resultScore = numberOr(input.resultScore, 0);
+  const scoreAdjustment = input.resultScore === undefined ? 0 : resultScore >= 90 ? 0.6 : resultScore >= 75 ? 0.3 : resultScore < 55 ? -0.6 : -0.2;
+  const positiveRawDeltaMultiplier = Math.max(1, numberOr(input.positiveRawDeltaMultiplier, 1));
   const segmentDeltas = (input.segmentTypes ?? []).reduce<Partial<Record<MatchRatingKey, number>>>((deltas, type) => {
     if (type === "Match" || type === "Open Challenge") {
       deltas.timing = (deltas.timing ?? 0) + 0.25;
@@ -598,28 +631,32 @@ export function applyMatchRatingProgression(wrestler: Wrestler, input: MatchRati
   }, {});
 
   return matchRatingKeys.reduce<MatchRatings>((ratings, key) => {
-    const requestedDelta = input.deltas?.[key] ?? 0;
-    const segmentDelta = segmentDeltas[key] ?? 0;
+    const requestedDelta = numberOr(input.deltas?.[key], 0);
+    const segmentDelta = numberOr(segmentDeltas[key], 0);
     const styleBias = Math.max(-0.2, Math.min(0.2, (biases[key] ?? 0) / 40));
     const rawDelta = requestedDelta + segmentDelta + scoreAdjustment + (requestedDelta + segmentDelta + scoreAdjustment > 0 ? styleBias : 0);
+    const expectationAdjustedRawDelta = rawDelta > 0 ? rawDelta * positiveRawDeltaMultiplier : rawDelta;
     const lowRatingMultiplier =
-      rawDelta > 0 && current[key] < MATCH_PROGRESSION_TUNING.lowRatingGrowthBiasBelow
+      expectationAdjustedRawDelta > 0 && current[key] < MATCH_PROGRESSION_TUNING.lowRatingGrowthBiasBelow
         ? MATCH_PROGRESSION_TUNING.lowRatingGrowthMultiplier
         : 1;
     const topEndMultiplier =
-      rawDelta > 0 && current[key] >= MATCH_PROGRESSION_TUNING.topEndGrowthDiminishingStrongStart
+      expectationAdjustedRawDelta > 0 && current[key] >= MATCH_PROGRESSION_TUNING.topEndGrowthDiminishingStrongStart
         ? MATCH_PROGRESSION_TUNING.topEndGrowthStrongMultiplier
-        : rawDelta > 0 && current[key] >= MATCH_PROGRESSION_TUNING.topEndGrowthDiminishingStart
+        : expectationAdjustedRawDelta > 0 && current[key] >= MATCH_PROGRESSION_TUNING.topEndGrowthDiminishingStart
           ? MATCH_PROGRESSION_TUNING.topEndGrowthMultiplier
           : 1;
     const lowEndRegressionMultiplier =
-      rawDelta < 0 && current[key] <= MATCH_PROGRESSION_TUNING.lowEndRegressionDiminishingStrongStart
+      expectationAdjustedRawDelta < 0 && current[key] <= MATCH_PROGRESSION_TUNING.lowEndRegressionDiminishingStrongStart
         ? MATCH_PROGRESSION_TUNING.lowEndRegressionStrongMultiplier
-        : rawDelta < 0 && current[key] <= MATCH_PROGRESSION_TUNING.lowEndRegressionDiminishingStart
+        : expectationAdjustedRawDelta < 0 && current[key] <= MATCH_PROGRESSION_TUNING.lowEndRegressionDiminishingStart
           ? MATCH_PROGRESSION_TUNING.lowEndRegressionMultiplier
           : 1;
-    const regressionMultiplier = rawDelta < 0 ? MATCH_PROGRESSION_TUNING.regressionMultiplier : 1;
-    const gradualDelta = Math.max(-2, Math.min(2, rawDelta * lowRatingMultiplier * topEndMultiplier * lowEndRegressionMultiplier * regressionMultiplier));
+    const regressionMultiplier = expectationAdjustedRawDelta < 0 ? MATCH_PROGRESSION_TUNING.regressionMultiplier : 1;
+    const gradualDelta = Math.max(
+      -2,
+      Math.min(2, expectationAdjustedRawDelta * lowRatingMultiplier * topEndMultiplier * lowEndRegressionMultiplier * regressionMultiplier),
+    );
 
     ratings[key] = clampRating(current[key] + gradualDelta);
     return ratings;

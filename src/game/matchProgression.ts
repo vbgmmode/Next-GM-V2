@@ -14,7 +14,15 @@ import {
   type MatchRatingKey,
   matchRatingKeys,
 } from "./matchRatings";
-import { MATCH_PROGRESSION_TUNING, scaleMatchRatingDeltas } from "./matchTuning";
+import {
+  BREAKOUT_PROGRESSION_ACCELERATION,
+  DISAPPOINTMENT_MOMENTUM_PENALTY,
+  DISAPPOINTMENT_RING_METRIC_DROP,
+  EXPECTATION_BREAKOUT_THRESHOLD,
+  EXPECTATION_DISAPPOINTMENT_THRESHOLD,
+  MATCH_PROGRESSION_TUNING,
+  scaleMatchRatingDeltas,
+} from "./matchTuning";
 import { isStandardMultiPersonDeepRatingsSegment } from "./matchOutcomeResolver";
 
 export type PostShowMatchRatingsProgressionInput = {
@@ -31,6 +39,15 @@ type SegmentProgressionContext = {
 };
 
 type MatchRatingProgressionRole = "winner" | "loser" | "fallWinner" | "fallTaker" | "protectedLoser";
+
+type MatchExpectationProgressionContext = {
+  averageParticipantBaseRating: number;
+  expectationGap: number;
+  isBreakout: boolean;
+  isDisappointment: boolean;
+};
+
+const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
 export function applyPostShowMatchRatingsProgression(
   input: PostShowMatchRatingsProgressionInput,
@@ -111,8 +128,9 @@ function applySegmentMatchRatingsProgression(
     return skipped("missingCompetitorData");
   }
 
-  const winnerProgression = progressWrestlerMatchRatings(winner, segment, "winner");
-  const loserProgression = progressWrestlerMatchRatings(loser, segment, "loser");
+  const expectationContext = getMatchExpectationProgressionContext(segment, [winner, loser]);
+  const winnerProgression = progressWrestlerMatchRatings(winner, segment, "winner", expectationContext);
+  const loserProgression = progressWrestlerMatchRatings(loser, segment, "loser", expectationContext);
   const clampEvents = [...(winnerProgression.clampEvents ?? []), ...(loserProgression.clampEvents ?? [])];
   wrestlersById.set(winner.id, winnerProgression.wrestler);
   wrestlersById.set(loser.id, loserProgression.wrestler);
@@ -223,9 +241,10 @@ function applyNonSinglesProgression(
     return undefined;
   }
 
+  const expectationContext = getMatchExpectationProgressionContext(segment, entries.map(({ wrestler }) => wrestler));
   const progressions = entries.map(({ wrestler, role }) => ({
     role,
-    progression: progressWrestlerMatchRatings(wrestler, segment, role),
+    progression: progressWrestlerMatchRatings(wrestler, segment, role, expectationContext),
   }));
   const clampEvents = progressions.flatMap(({ progression }) => progression.clampEvents ?? []);
 
@@ -294,22 +313,71 @@ function progressWrestlerMatchRatings(
   wrestler: Wrestler,
   segment: SegmentResult,
   role: MatchRatingProgressionRole,
+  expectationContext?: MatchExpectationProgressionContext,
 ): { wrestler: Wrestler; actualDeltas: Partial<MatchRatings>; clampEvents?: NonNullable<MatchRatingsProgressionAudit["clampEvents"]> } {
   const before = ensureMatchRatings(wrestler);
-  const requestedDeltas = getMatchRatingProgressionDeltas(wrestler, segment, role);
+  const requestedDeltas = applyExpectationDisappointmentDeltas(
+    getMatchRatingProgressionDeltas(wrestler, segment, role),
+    expectationContext,
+  );
   const after = applyMatchRatingProgression(wrestler, {
     segmentTypes: [segment.type],
     resultScore: segment.score,
     deltas: requestedDeltas,
+    positiveRawDeltaMultiplier: expectationContext?.isBreakout ? BREAKOUT_PROGRESSION_ACCELERATION : undefined,
   });
 
   return {
     wrestler: {
       ...wrestler,
       matchRatings: after,
+      momentum: expectationContext?.isDisappointment ? clamp(wrestler.momentum + DISAPPOINTMENT_MOMENTUM_PENALTY) : wrestler.momentum,
     },
     actualDeltas: getActualMatchRatingDeltas(before, after),
     clampEvents: getMatchRatingClampEvents(wrestler.id, before, after, requestedDeltas),
+  };
+}
+
+function getMatchExpectationProgressionContext(
+  segment: SegmentResult,
+  wrestlers: Wrestler[],
+): MatchExpectationProgressionContext | undefined {
+  if (!wrestlers.length || !Number.isFinite(segment.score)) {
+    return undefined;
+  }
+
+  const participantBaseRatings = wrestlers
+    .map((wrestler) => ratingAverage(ensureMatchRatings(wrestler)))
+    .filter((rating) => Number.isFinite(rating));
+
+  if (!participantBaseRatings.length) {
+    return undefined;
+  }
+
+  const averageParticipantBaseRating =
+    participantBaseRatings.reduce((sum, rating) => sum + rating, 0) / participantBaseRatings.length;
+  const expectationGap = segment.score - averageParticipantBaseRating;
+
+  return {
+    averageParticipantBaseRating,
+    expectationGap,
+    isBreakout: expectationGap > EXPECTATION_BREAKOUT_THRESHOLD,
+    isDisappointment: expectationGap < EXPECTATION_DISAPPOINTMENT_THRESHOLD,
+  };
+}
+
+function applyExpectationDisappointmentDeltas(
+  deltas: Partial<Record<MatchRatingKey, number>>,
+  expectationContext?: MatchExpectationProgressionContext,
+): Partial<Record<MatchRatingKey, number>> {
+  if (!expectationContext?.isDisappointment) {
+    return deltas;
+  }
+
+  return {
+    ...deltas,
+    timing: (deltas.timing ?? 0) + DISAPPOINTMENT_RING_METRIC_DROP,
+    psychology: (deltas.psychology ?? 0) + DISAPPOINTMENT_RING_METRIC_DROP,
   };
 }
 
