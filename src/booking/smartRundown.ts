@@ -308,7 +308,7 @@ function getTitleForSmartRequest(game: GameState, requester: Wrestler) {
         championship.eligibleMatchScope !== "tag_team" &&
         championship.division !== "Tag Team" &&
         championship.championIds.length === 1 &&
-        wrestlerFitsChampionshipDivision(requester, championship),
+        wrestlerFitsChampionshipDivision(requester, championship, game.wrestlers),
     )
     .sort((a, b) => {
       const aContender = (a.contenderIds ?? []).includes(requester.id) ? 1 : 0;
@@ -338,7 +338,7 @@ function chooseSmartTitleOpponent(
       (wrestler) =>
         wrestler.id !== requester.id &&
         (usage[wrestler.id] ?? 0) < maxUsagePerWrestler &&
-        wrestlerFitsChampionshipDivision(wrestler, title) &&
+        wrestlerFitsChampionshipDivision(wrestler, title, game.wrestlers) &&
         canWrestlersShareMatch([requester, wrestler]),
     ),
     game,

@@ -287,7 +287,7 @@ function getTitleRivalries(championship: Championship, wrestlers: Wrestler[], ri
     const hasChampion = rivalry.participantIds.some((id) => championIds.has(id));
     const hasEligibleChallenger = rivalry.participantIds.some((id) => {
       const wrestler = wrestlers.find((talent) => talent.id === id);
-      return Boolean(wrestler && !championIds.has(id) && wrestlerFitsChampionshipDivision(wrestler, championship));
+      return Boolean(wrestler && !championIds.has(id) && wrestlerFitsChampionshipDivision(wrestler, championship, wrestlers));
     });
 
     return hasChampion && hasEligibleChallenger;

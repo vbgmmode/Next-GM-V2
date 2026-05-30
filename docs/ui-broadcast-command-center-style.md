@@ -376,7 +376,7 @@ Championships:
 - Spotlight champion state, vacancy, reign, defenses, current scene pressure, selected-title contenders, division health, and title history.
 - Keep contender boards scoped to the selected title. Do not show every division or every eligible pool when the player is focused on one belt.
 - Contender controls should be direct GM tools: edit, add, remove, and reorder. The game may suggest same-division contenders, but it should not auto-place current champions from other titles into another title's contender lane.
-- Automatic contender suggestions are read-only title-scene guidance. They may rotate within a credible same-division pool by title and calendar phase, but they are not rankings and must not override a manually edited contender lane.
+- Automatic contender suggestions are read-only title-scene guidance. Upper-card singles belts should draw from ranks 1-3 per gender; mid-card singles belts should draw from ranks 4-6 per gender. Suggestions may rotate within that lane by title and calendar phase, but they are not persisted rankings and must not override a manually edited contender lane.
 - Vacant titles should expose assignment as a clear player action. Revocations and assignments should appear in title history.
 - Avoid redundant advisory grids and explanatory copy when the selected title workspace already carries the decision context.
 

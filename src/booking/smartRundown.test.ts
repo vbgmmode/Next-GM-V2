@@ -203,6 +203,45 @@ describe("smartRundown", () => {
     ).toBe(true);
   });
 
+  it("does not book the same championship across multiple generated title matches", () => {
+    const game = makeGame();
+    const title = game.championships.find((championship) => championship.eligibleMatchScope !== "tag_team" && championship.division !== "Tag Team");
+
+    expect(title).toBeDefined();
+
+    const eligible = game.wrestlers.filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, title!));
+
+    expect(eligible.length).toBeGreaterThanOrEqual(3);
+
+    const [champion, firstChallenger, secondChallenger] = eligible;
+    const result = buildSmartRundown({
+      ...game,
+      championships: game.championships.map((championship) =>
+        championship.id === title!.id
+          ? { ...championship, championIds: [champion.id], contenderIds: [firstChallenger.id, secondChallenger.id] }
+          : championship,
+      ),
+      socialInbox: {
+        requests: [firstChallenger, secondChallenger].map((wrestler, index) => ({
+          id: `accepted-title-shot-${index + 1}`,
+          mailId: `mail-title-shot-${index + 1}`,
+          wrestlerId: wrestler.id,
+          wrestlerName: wrestler.name,
+          actionType: "title_shot",
+          askLabel: "Title Shot",
+          createdSeasonNumber: game.seasonNumber,
+          createdWeekNumber: game.currentWeek + index,
+          deadlineSeasonNumber: game.seasonNumber,
+          deadlineWeekNumber: game.currentWeek + 2,
+          status: "accepted",
+        })),
+      },
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.segments.filter((segment) => segment.championshipId === title!.id)).toHaveLength(1);
+  });
+
   it("fills gaps by returning appended segments without reordering existing card segments", () => {
     const game = makeGame();
     const existing = [makePromoSegment(game)];

@@ -1042,7 +1042,7 @@ function getTitleShotCase(wrestler: Wrestler, game: GameState) {
 
     return (
       championship.championIds.length === 1 &&
-      wrestlerFitsChampionshipDivision(wrestler, championship) &&
+      wrestlerFitsChampionshipDivision(wrestler, championship, game.wrestlers) &&
       !recentlyGotTitleMatch &&
       hasCurrentCase &&
       (listedContender || statsCase)

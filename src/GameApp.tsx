@@ -1869,7 +1869,7 @@ function getRivalryTitleRelevance(rivalry: Rivalry, championships: Championship[
       .filter((id) => id !== championId)
       .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
       .filter((wrestler): wrestler is Wrestler => Boolean(wrestler))
-      .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship));
+      .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship, wrestlers));
 
     if (hasChampion && eligibleChallengers.length) {
       return {
@@ -3011,7 +3011,7 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
             }
 
             const wrestler = current.wrestlers.find((talent) => talent.id === id);
-            return Boolean(wrestler && wrestlerFitsChampionshipDivision(wrestler, championship));
+            return Boolean(wrestler && wrestlerFitsChampionshipDivision(wrestler, championship, current.wrestlers));
           });
           return { ...championship, contenderIds };
         }),

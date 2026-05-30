@@ -1335,7 +1335,7 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
 
     const titleDivision = getChampionshipDivisionGroup(championship);
 
-    if (titleDivision && !segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship))) {
+    if (titleDivision && !segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship, wrestlers))) {
       return undefined;
     }
 
@@ -1384,7 +1384,7 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
 
   const titleDivision = getChampionshipDivisionGroup(championship);
 
-  if (titleDivision && !segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship))) {
+  if (titleDivision && !segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship, wrestlers))) {
     return undefined;
   }
 

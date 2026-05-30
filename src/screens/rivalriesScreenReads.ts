@@ -461,7 +461,7 @@ export function getRivalryTitleRelevance(rivalry: Rivalry, championships: Champi
       .filter((id) => id !== championId)
       .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
       .filter((wrestler): wrestler is Wrestler => Boolean(wrestler))
-      .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship));
+      .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship, wrestlers));
 
     if (hasChampion && eligibleChallengers.length) {
       return {
@@ -542,7 +542,7 @@ function buildSinglesFeudSuggestions(game: GameState) {
           const championId = championship.championIds[0];
           const challenger = championId === first.id ? second : championId === second.id ? first : undefined;
 
-          if (challenger && wrestlerFitsChampionshipDivision(challenger, championship)) {
+          if (challenger && wrestlerFitsChampionshipDivision(challenger, championship, game.wrestlers)) {
             score += 140;
             stakes = "title";
             storylineId = getDefaultStorylineIdForStakes("title");
@@ -553,8 +553,8 @@ function buildSinglesFeudSuggestions(game: GameState) {
 
         if (
           isVacantSinglesChampionship(championship) &&
-          wrestlerFitsChampionshipDivision(first, championship) &&
-          wrestlerFitsChampionshipDivision(second, championship)
+          wrestlerFitsChampionshipDivision(first, championship, game.wrestlers) &&
+          wrestlerFitsChampionshipDivision(second, championship, game.wrestlers)
         ) {
           score += 120;
           stakes = "title";

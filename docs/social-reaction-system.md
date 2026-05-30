@@ -70,7 +70,7 @@ Player decisions:
 
 - Accepting a request creates a tracked soft promise with a visible deadline and immediate small morale/trust lift.
 - Declining a request closes it for the week and applies immediate small morale/trust fallout.
-- Accepted requests can influence Generate Matches through existing Booking segment, title, and rivalry rules.
+- Accepted requests can influence Generate Booking through existing Booking segment, title, and rivalry rules.
 - Superstar Mail must not auto-book a card, reveal predicted fallout, reveal hidden Open Challenge opponents, or introduce special segment types unless a future accepted ticket explicitly asks for that.
 
 Profile visibility:

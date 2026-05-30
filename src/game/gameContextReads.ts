@@ -299,7 +299,7 @@ function doSegmentParticipantsFitChampionship(segment: Segment, championship: Ch
     return true;
   }
 
-  return segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship));
+  return segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship, wrestlers));
 }
 
 function isSinglesTitleContestShape(segment: Segment) {
@@ -405,12 +405,12 @@ export function getTitleDivisionScene(championship: Championship, wrestlers: Wre
   const champions = championship.championIds.map((id) => wrestlers.find((wrestler) => wrestler.id === id)).filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
   const manualContenders = (championship.contenderIds ?? [])
     .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
-    .filter((wrestler): wrestler is Wrestler => Boolean(wrestler && !championIds.has(wrestler.id) && wrestlerFitsChampionshipDivision(wrestler, championship)));
+    .filter((wrestler): wrestler is Wrestler => Boolean(wrestler && !championIds.has(wrestler.id) && wrestlerFitsChampionshipDivision(wrestler, championship, wrestlers)));
   const manualContenderIds = new Set(manualContenders.map((wrestler) => wrestler.id));
   const eligibleRoster = wrestlers
     .filter((wrestler) => !championIds.has(wrestler.id))
     .filter((wrestler) => !otherChampionIds.has(wrestler.id))
-    .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship))
+    .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship, wrestlers))
     .sort((a, b) => getTitleSceneTalentScore(b, championship, rivalries) - getTitleSceneTalentScore(a, championship, rivalries));
   const automaticContenderPoolSize = Math.min(eligibleRoster.length, Math.max(6, Math.ceil(eligibleRoster.length * 0.5)));
   const derivedTopContenders = eligibleRoster
@@ -425,7 +425,7 @@ export function getTitleDivisionScene(championship: Championship, wrestlers: Wre
     .filter((wrestler) => wrestler.momentum >= 80 || getWeeksSinceLastBooked(wrestler, currentWeek) >= 2)
     .sort((a, b) => b.momentum - a.momentum || getContenderRotationScore(b, championship, rivalries, currentWeek) - getContenderRotationScore(a, championship, rivalries, currentWeek))
     .slice(0, 3);
-  const outsideDivision = wrestlers.filter((wrestler) => !championIds.has(wrestler.id) && !wrestlerFitsChampionshipDivision(wrestler, championship));
+  const outsideDivision = wrestlers.filter((wrestler) => !championIds.has(wrestler.id) && !wrestlerFitsChampionshipDivision(wrestler, championship, wrestlers));
 
   return {
     champions,
@@ -452,7 +452,7 @@ function getTitleRivalries(championship: Championship, wrestlers: Wrestler[], ri
     const hasChampion = rivalry.participantIds.some((id) => championIds.has(id));
     const hasEligibleChallenger = rivalry.participantIds.some((id) => {
       const wrestler = wrestlers.find((talent) => talent.id === id);
-      return Boolean(wrestler && !championIds.has(id) && wrestlerFitsChampionshipDivision(wrestler, championship));
+      return Boolean(wrestler && !championIds.has(id) && wrestlerFitsChampionshipDivision(wrestler, championship, wrestlers));
     });
 
     return hasChampion && hasEligibleChallenger;
