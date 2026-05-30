@@ -26,6 +26,7 @@ describe("top200DraftPool adapter", () => {
           wrestler.morale <= 72,
       ),
     ).toBe(true);
+    expect(top200DraftPool.every((wrestler) => Boolean(wrestler.matchRatings))).toBe(true);
     expect(top200DraftPool.every((wrestler) => Boolean(getRosterFinanceValueForWrestler(wrestler)))).toBe(true);
   });
 

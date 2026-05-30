@@ -61,6 +61,7 @@ import { normalizeSocialInboxState } from "./socialInboxActions";
 import { DRAFT_CONTRACT_WEEKS, SENTIMENT_NEUTRAL } from "./constants";
 import { createStableDomainId, normalizeOptionalId } from "./domainIds";
 import { createCpuBrandIdentity, createPlayerBrandIdentity, PLAYER_BRAND_ID } from "./brandIdentity";
+import { ensureMatchRatings } from "./matchRatings";
 
 export type GameScreen = Exclude<Screen, "title" | "setup">;
 export type ProfileReturnScreen = Extract<GameScreen, "roster" | "booking" | "dashboard">;
@@ -707,8 +708,7 @@ function isSavedGameCandidate(value: unknown): value is SavedGameCandidate {
 function normalizeWrestlers(wrestlers: unknown): Wrestler[] {
   return (Array.isArray(wrestlers) ? (wrestlers as Partial<Wrestler>[]) : []).map((wrestler) => {
     const wrestlerId = typeof wrestler.id === "string" ? wrestler.id : "unknown-wrestler";
-
-    return {
+    const normalizedBase = {
       ...wrestler,
       ...enrichWrestlerIdentityContext(wrestler as Wrestler),
       alignment: resolveWrestlerAlignment(wrestler.alignment, wrestlerId),
@@ -722,6 +722,11 @@ function normalizeWrestlers(wrestlers: unknown): Wrestler[] {
       injuryDescription: wrestler.injuryDescription,
       injuryWeeksRemaining: wrestler.injuryWeeksRemaining ?? 0,
       injuryOccurredWeek: wrestler.injuryOccurredWeek,
+    } as Wrestler;
+
+    return {
+      ...normalizedBase,
+      matchRatings: ensureMatchRatings(normalizedBase),
     };
   }) as Wrestler[];
 }

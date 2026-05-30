@@ -350,6 +350,96 @@ export type PressureLabel = "Stable" | "Tight" | "Critical" | "Surging";
 
 export type InjuryStatus = "healthy" | "minor" | "major";
 
+export type MatchRatings = {
+  technical: number;
+  submission: number;
+  power: number;
+  aerial: number;
+  brawling: number;
+  hardcore: number;
+  stamina: number;
+  resilience: number;
+  psychology: number;
+  selling: number;
+  timing: number;
+  explosiveness: number;
+  clutch: number;
+};
+
+export type MatchOutcomeModel = "legacy" | "deepRatings";
+
+export type MatchRatingsProgressionMode = "disabled" | "enabled";
+
+export type MatchOutcomeInternalAudit = {
+  model: MatchOutcomeModel;
+  outcomeModel?: MatchOutcomeModel;
+  outcomeStructure?: "singles" | "tag" | "multiPerson";
+  eligible: boolean;
+  fallbackReason?: string;
+  selectedWinnerId?: string;
+  winnerId?: string;
+  selectedWinningSide?: "teamA" | "teamB";
+  competitorAId?: string;
+  competitorBId?: string;
+  competitorAEffectivePower?: number;
+  competitorBEffectivePower?: number;
+  competitorAWinProbability?: number;
+  competitorBWinProbability?: number;
+  winningTeamParticipantIds?: string[];
+  losingTeamParticipantIds?: string[];
+  fallWinnerId?: string;
+  fallTakerId?: string;
+  protectedParticipantIds?: string[];
+  teamPowerBreakdown?: Array<{
+    side: "teamA" | "teamB";
+    participantIds: string[];
+    effectivePower: number;
+    memberEffectivePowers: Record<string, number>;
+  }>;
+  teamWinProbabilityBreakdown?: Array<{
+    side: "teamA" | "teamB";
+    participantIds: string[];
+    winProbability: number;
+  }>;
+  participantPowerBreakdown?: Array<{
+    participantId: string;
+    effectivePower: number;
+  }>;
+  participantWinProbabilityBreakdown?: Array<{
+    participantId: string;
+    winProbability: number;
+  }>;
+  deterministicRoll?: number;
+  seed?: string;
+};
+
+export type MatchRatingsProgressionAudit = {
+  enabled: boolean;
+  eligible: boolean;
+  reason?: string;
+  wrestlerIdsAffected: string[];
+  deltas: Record<string, Partial<MatchRatings>>;
+  context: {
+    winnerId?: string;
+    loserId?: string;
+    score: number;
+    stipulationId?: string;
+    matchOutcomeModel: MatchOutcomeModel;
+    cardPosition?: "opener" | "midcard" | "main_event";
+    titleMatch: boolean;
+    rivalryMatch: boolean;
+    expectedWinnerId?: string;
+    upsetWin?: boolean;
+    highFatigueIds?: string[];
+    injuryLimitedIds?: string[];
+  };
+  clampEvents?: Array<{
+    wrestlerId: string;
+    rating: keyof MatchRatings;
+    boundary: 0 | 100;
+  }>;
+};
+
 export type WrestlerMatchRecordLine = {
   wins: number;
   losses: number;
@@ -387,6 +477,7 @@ export type Wrestler = {
   trust?: number;
   ringSkill: number;
   promoSkill: number;
+  matchRatings?: MatchRatings;
   record?: WrestlerMatchRecord;
   appearancesThisSeason?: number;
   lastBookedWeek?: number;
@@ -614,6 +705,8 @@ export type SegmentResult = {
   segmentCatalogId?: string;
   stipulationId?: string;
   winnerId?: string;
+  internalOutcomeAudit?: MatchOutcomeInternalAudit;
+  internalMatchRatingsProgressionAudit?: MatchRatingsProgressionAudit;
   titleNote?: string;
   rivalryNote?: string;
   recapNote?: string;

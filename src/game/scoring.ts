@@ -5,6 +5,8 @@ import type {
   GameState,
   InjuryFalloutItem,
   LockerRoomFallout,
+  MatchRatingsProgressionMode,
+  MatchOutcomeModel,
   Rivalry,
   RivalryHistoryEvent,
   RivalryStatus,
@@ -29,6 +31,40 @@ import { SENTIMENT_NEUTRAL } from "./constants";
 import { getSharedInjuryRiskScore } from "./injury";
 import { createSegmentResult } from "./segmentModel";
 import { commitResolvedShow } from "./showResolutionCommit";
+import { resolveSegmentWinnerSelection } from "./matchOutcomeResolver";
+import { applyPostShowMatchRatingsProgression } from "./matchProgression";
+
+export type RunShowOptions = {
+  matchOutcomeModel?: MatchOutcomeModel;
+  matchRatingsProgression?: MatchRatingsProgressionMode;
+};
+
+type ResolvedRunShowOptions = Required<RunShowOptions>;
+
+const LEGACY_RUN_SHOW_OPTIONS: ResolvedRunShowOptions = {
+  matchOutcomeModel: "legacy",
+  matchRatingsProgression: "disabled",
+};
+
+const PLAYABLE_RUN_SHOW_OPTIONS: ResolvedRunShowOptions = {
+  matchOutcomeModel: "deepRatings",
+  matchRatingsProgression: "enabled",
+};
+
+export function createLegacyRunShowOptions(): ResolvedRunShowOptions {
+  return { ...LEGACY_RUN_SHOW_OPTIONS };
+}
+
+export function createPlayableRunShowOptions(): ResolvedRunShowOptions {
+  return { ...PLAYABLE_RUN_SHOW_OPTIONS };
+}
+
+function resolveRunShowOptions(options: RunShowOptions): ResolvedRunShowOptions {
+  return {
+    ...LEGACY_RUN_SHOW_OPTIONS,
+    ...options,
+  };
+}
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
@@ -261,7 +297,8 @@ export function getCurrentCalendarWeek(game: GameState): CalendarWeek {
   );
 }
 
-export function runShow(game: GameState): { game: GameState; result: ShowResult } {
+export function runShow(game: GameState, options: RunShowOptions = {}): { game: GameState; result: ShowResult } {
+  const { matchOutcomeModel, matchRatingsProgression } = resolveRunShowOptions(options);
   const protectedRestIds = getProtectedRestWrestlerIds(game);
   const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers, protectedRestIds));
   const calendarWeek = getCurrentCalendarWeek(game);
@@ -295,8 +332,16 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
     const execution = segmentExecutions[index];
     const openChallengeResolution =
       segment.type === "Open Challenge" ? resolveOpenChallenge(segment, game, index, resolvedBookedIds) : undefined;
-    const resolvedSegment = openChallengeResolution?.segment ?? segment;
+    const segmentAfterOpenChallenge = openChallengeResolution?.segment ?? segment;
     const isNoContest = Boolean(openChallengeResolution?.isNoContest);
+    const outcomeResolution = resolveSegmentWinnerSelection(segmentAfterOpenChallenge, game, {
+      segmentIndex: index,
+      segmentCount: validSegments.length,
+      showType: calendarWeek.showType,
+      matchOutcomeModel,
+      isNoContest,
+    });
+    const resolvedSegment = outcomeResolution.segment;
     const overrunSegmentPenalty =
       broadcastOverrunLevel && overrunAffectedSegmentIds.has(segment.id)
         ? getBroadcastOverrunSegmentPenalty(broadcastOverrunLevel, resolvedSegment, game.wrestlers)
@@ -384,6 +429,7 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
         momentumChanges,
         fatigueChanges,
         winnerId,
+        internalOutcomeAudit: outcomeResolution.audit,
         titleNote,
         rivalryNote,
         recapNote: getSegmentRecap(resolvedSegment, game.wrestlers, score, isPle, winnerId, openChallengeResolution?.isNoContest),
@@ -449,17 +495,27 @@ export function runShow(game: GameState): { game: GameState; result: ShowResult 
   const titleSceneFallout = applyTitleSceneStatFallout(recordUpdatedWrestlers, segmentResults, updatedChampionships);
   lockerRoomFallout.titleStatNotes = [...titleEventFallout.notes, ...titleSceneFallout.notes];
   const wrestlersWithTitleStats = titleSceneFallout.wrestlers;
+  const matchRatingsProgressionFallout = applyPostShowMatchRatingsProgression({
+    mode: matchRatingsProgression,
+    wrestlers: wrestlersWithTitleStats,
+    result,
+    matchOutcomeModel,
+  });
+  const resultWithMatchRatingsProgression = {
+    ...result,
+    segmentResults: matchRatingsProgressionFallout.segmentResults,
+  };
   const gameWithSocialInboxResolution = resolveSocialInboxRequestsAfterShow(
     {
       ...game,
-      wrestlers: wrestlersWithTitleStats,
+      wrestlers: matchRatingsProgressionFallout.wrestlers,
     },
-    result,
+    resultWithMatchRatingsProgression,
   );
-  const financeReport = generateFinanceReport(result, game);
+  const financeReport = generateFinanceReport(resultWithMatchRatingsProgression, game);
   const commit = commitResolvedShow({
     game,
-    result,
+    result: resultWithMatchRatingsProgression,
     wrestlers: gameWithSocialInboxResolution.wrestlers,
     socialInbox: gameWithSocialInboxResolution.socialInbox,
     championships: updatedChampionships,
@@ -1582,6 +1638,7 @@ function getTagMatchTeams(segment: Segment) {
     return undefined;
   }
 
+  // M020 stores sides by booking order: [Team A 1, Team A 2, Team B 1, Team B 2].
   return {
     teamAIds: [segment.participantIds[0], segment.participantIds[1]],
     teamBIds: [segment.participantIds[2], segment.participantIds[3]],

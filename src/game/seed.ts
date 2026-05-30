@@ -25,6 +25,7 @@ import { createDefaultMarketState, ensureWeeklyMarketBoard, getCpuBudgetDefault 
 import { createDefaultSocialInboxState } from "./socialInboxActions";
 import { PLE_CYCLE_WEEKS, SEASON_WEEK_COUNT, SENTIMENT_NEUTRAL, STANDARD_BUDGET_AMOUNT, UNLIMITED_BUDGET_AMOUNT } from "./constants";
 import { createCpuBrandIdentity, createPlayerBrandIdentity } from "./brandIdentity";
+import { ensureMatchRatings } from "./matchRatings";
 
 type SeedWrestler = Omit<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek"> &
   Partial<Pick<Wrestler, "injuryStatus" | "injuryDescription" | "injuryWeeksRemaining" | "injuryOccurredWeek">>;
@@ -176,6 +177,7 @@ function cloneWrestlers(wrestlers: SeedWrestler[]) {
     appearancesThisSeason: wrestler.appearancesThisSeason ?? 0,
     lastBookedWeek: wrestler.lastBookedWeek ?? 0,
     consecutiveWeeksBooked: wrestler.consecutiveWeeksBooked ?? 0,
+    matchRatings: ensureMatchRatings(wrestler as Wrestler),
     injuryStatus: wrestler.injuryStatus ?? "healthy",
     injuryDescription: wrestler.injuryDescription,
     injuryWeeksRemaining: wrestler.injuryWeeksRemaining ?? 0,

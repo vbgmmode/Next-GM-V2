@@ -145,6 +145,93 @@
   white-space: nowrap;
 }
 
+/* Fallout command handoff */
+
+.wr-fallout-command {
+  background:
+    linear-gradient(90deg, rgba(246, 193, 86, 0.12), transparent 70%),
+    rgba(8, 9, 13, 0.94);
+  border: 1px solid rgba(246, 193, 86, 0.24);
+  border-left: 3px solid var(--bc-prestige);
+  border-radius: 2px;
+  display: grid;
+  flex: 0 0 auto;
+  gap: 8px;
+  grid-template-columns: minmax(220px, 0.32fr) minmax(0, 1fr);
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.wr-fallout-headline,
+.wr-fallout-beat {
+  background: rgba(6, 7, 10, 0.74);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 2px solid rgba(185, 193, 207, 0.45);
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px;
+}
+
+.wr-fallout-headline.tone-title,
+.wr-fallout-beat.tone-title {
+  border-left-color: var(--bc-prestige);
+}
+
+.wr-fallout-headline.tone-strong,
+.wr-fallout-beat.tone-strong {
+  border-left-color: #00a896;
+}
+
+.wr-fallout-headline.tone-story,
+.wr-fallout-beat.tone-story,
+.wr-fallout-headline.tone-reveal,
+.wr-fallout-beat.tone-reveal {
+  border-left-color: #6fe2d4;
+}
+
+.wr-fallout-headline.tone-danger,
+.wr-fallout-beat.tone-danger {
+  border-left-color: #ff5361;
+}
+
+.wr-fallout-headline > span,
+.wr-fallout-beat > span {
+  color: var(--bc-prestige);
+  font-size: 0.56rem;
+  font-weight: 900;
+}
+
+.wr-fallout-headline strong,
+.wr-fallout-beat strong {
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1.05;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-fallout-headline p,
+.wr-fallout-beat p {
+  color: #b9c1cf;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.25;
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-transform: none;
+}
+
+.wr-fallout-beat-grid {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  min-width: 0;
+}
+
 /* Dashboard: handoff column + roster/ratings stack */
 
 .wr-dashboard {
@@ -394,6 +481,10 @@
   .wr-metric small {
     display: none;
   }
+
+  .wr-fallout-beat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 900px) {
@@ -407,6 +498,11 @@
   }
 
   .wr-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .wr-fallout-command,
+  .wr-fallout-beat-grid {
     grid-template-columns: 1fr;
   }
 
