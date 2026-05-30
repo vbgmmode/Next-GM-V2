@@ -236,6 +236,61 @@ describe("match ratings foundation", () => {
     expect(noDqGap).toBeGreaterThan(standardGap);
   });
 
+  it("weights ladder matches toward aerial and explosive wrestlers", () => {
+    const flyer = baseWrestler({
+      id: "ladder-flyer",
+      matchRatings: explicitRatings({ aerial: 96, explosiveness: 94, timing: 90, resilience: 76, power: 45, submission: 35 }),
+    });
+    const striker = baseWrestler({
+      id: "grounded-striker",
+      matchRatings: explicitRatings({ brawling: 92, power: 86, resilience: 84, technical: 72, aerial: 42, explosiveness: 55 }),
+    });
+    const standardGap = calculateEffectiveMatchPower(flyer, { segmentCatalogId: "M001" }).effectivePower -
+      calculateEffectiveMatchPower(striker, { segmentCatalogId: "M001" }).effectivePower;
+    const ladderGap = calculateEffectiveMatchPower(flyer, { segmentCatalogId: "M001", stipulationId: "ladder_match" }).effectivePower -
+      calculateEffectiveMatchPower(striker, { segmentCatalogId: "M001", stipulationId: "ladder_match" }).effectivePower;
+
+    expect(ladderGap).toBeGreaterThan(standardGap);
+  });
+
+  it("weights iron-man matches toward stamina and resilience specialists", () => {
+    const endurance = baseWrestler({
+      id: "iron-man-specialist",
+      matchRatings: explicitRatings({ stamina: 96, resilience: 94, technical: 88, psychology: 86, explosiveness: 45, hardcore: 38 }),
+    });
+    const sprinter = baseWrestler({
+      id: "short-match-sprinter",
+      matchRatings: explicitRatings({ explosiveness: 94, power: 88, brawling: 84, aerial: 82, stamina: 50, resilience: 52 }),
+    });
+    const standardGap = calculateEffectiveMatchPower(endurance, { segmentCatalogId: "M001" }).effectivePower -
+      calculateEffectiveMatchPower(sprinter, { segmentCatalogId: "M001" }).effectivePower;
+    const ironManGap = calculateEffectiveMatchPower(endurance, { segmentCatalogId: "M001", stipulationId: "iron_man" }).effectivePower -
+      calculateEffectiveMatchPower(sprinter, { segmentCatalogId: "M001", stipulationId: "iron_man" }).effectivePower;
+
+    expect(ironManGap).toBeGreaterThan(standardGap);
+  });
+
+  it("diminishes high-end growth while allowing low-rated wrestlers to learn from strong performances", () => {
+    const elite = baseWrestler({ matchRatings: explicitRatings(Object.fromEntries(matchRatingKeys.map((key) => [key, 96])) as Partial<MatchRatings>) });
+    const prospect = baseWrestler({ matchRatings: explicitRatings(Object.fromEntries(matchRatingKeys.map((key) => [key, 42])) as Partial<MatchRatings>) });
+
+    const eliteAfter = applyMatchRatingProgression(elite, {
+      segmentTypes: ["Match"],
+      resultScore: 95,
+      deltas: { technical: 1.5, stamina: 1.5 },
+    });
+    const prospectAfter = applyMatchRatingProgression(prospect, {
+      segmentTypes: ["Match"],
+      resultScore: 95,
+      deltas: { technical: 1.5, stamina: 1.5 },
+    });
+
+    expect(eliteAfter.technical - ensureMatchRatings(elite).technical).toBeLessThan(prospectAfter.technical - ensureMatchRatings(prospect).technical);
+    expect(prospectAfter.technical).toBeGreaterThan(ensureMatchRatings(prospect).technical);
+    assertBounded(eliteAfter);
+    assertBounded(prospectAfter);
+  });
+
   it("lets current fatigue affect effective power without mutating base matchRatings", () => {
     const baseRatings = explicitRatings({ stamina: 85, resilience: 82, explosiveness: 78 });
     const fresh = baseWrestler({ id: "fresh", fatigue: 5, matchRatings: baseRatings });

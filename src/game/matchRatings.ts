@@ -1,5 +1,5 @@
 import type { MatchRatings, Segment, SegmentType, ShowType, Wrestler } from "./types";
-import { MATCH_CURRENT_STATE_TUNING, MATCH_OUTCOME_TUNING } from "./matchTuning";
+import { MATCH_CURRENT_STATE_TUNING, MATCH_OUTCOME_TUNING, MATCH_PROGRESSION_TUNING } from "./matchTuning";
 
 export type MatchRatingKey = keyof MatchRatings;
 
@@ -415,7 +415,36 @@ function getContextModifierPower(ratings: MatchRatings, context: EffectiveMatchP
   const mainEventBonus = context.cardPosition === "main_event" ? 0.8 + clutchLift : 0;
   const openerBonus = context.cardPosition === "opener" ? Math.max(0, (ratings.explosiveness - 50) * 0.015) : 0;
 
-  return titleBonus + rivalryBonus + pleBonus + mainEventBonus + openerBonus;
+  return titleBonus + rivalryBonus + pleBonus + mainEventBonus + openerBonus + getStipulationFitPower(ratings, context);
+}
+
+function ratingAverage(ratings: MatchRatings) {
+  return matchRatingKeys.reduce((sum, key) => sum + ratings[key], 0) / matchRatingKeys.length;
+}
+
+function getStipulationFitPower(ratings: MatchRatings, context: EffectiveMatchPowerContext = {}) {
+  const average = ratingAverage(ratings);
+  const aboveAverage = (key: MatchRatingKey) => ratings[key] - average;
+  const multiplier = MATCH_OUTCOME_TUNING.stipulationFitPowerMultiplier;
+
+  switch (context.stipulationId) {
+    case "submission_match":
+      return (aboveAverage("submission") * 0.52 + aboveAverage("technical") * 0.24 + aboveAverage("resilience") * 0.14 + aboveAverage("psychology") * 0.1) * multiplier;
+    case "no_dq":
+    case "extreme_rules":
+    case "street_fight":
+    case "table_match":
+    case "steel_cage":
+    case "last_man_standing":
+    case "tlc_match":
+      return (aboveAverage("hardcore") * 0.42 + aboveAverage("brawling") * 0.28 + aboveAverage("resilience") * 0.18 + aboveAverage("power") * 0.12) * multiplier;
+    case "ladder_match":
+      return (aboveAverage("aerial") * 0.4 + aboveAverage("explosiveness") * 0.28 + aboveAverage("timing") * 0.22 + aboveAverage("resilience") * 0.1) * multiplier;
+    case "iron_man":
+      return (aboveAverage("stamina") * 0.34 + aboveAverage("resilience") * 0.28 + aboveAverage("technical") * 0.22 + aboveAverage("psychology") * 0.16) * multiplier;
+    default:
+      return 0;
+  }
 }
 
 function hashString(value: string) {
@@ -573,7 +602,24 @@ export function applyMatchRatingProgression(wrestler: Wrestler, input: MatchRati
     const segmentDelta = segmentDeltas[key] ?? 0;
     const styleBias = Math.max(-0.2, Math.min(0.2, (biases[key] ?? 0) / 40));
     const rawDelta = requestedDelta + segmentDelta + scoreAdjustment + (requestedDelta + segmentDelta + scoreAdjustment > 0 ? styleBias : 0);
-    const gradualDelta = Math.max(-2, Math.min(2, rawDelta));
+    const lowRatingMultiplier =
+      rawDelta > 0 && current[key] < MATCH_PROGRESSION_TUNING.lowRatingGrowthBiasBelow
+        ? MATCH_PROGRESSION_TUNING.lowRatingGrowthMultiplier
+        : 1;
+    const topEndMultiplier =
+      rawDelta > 0 && current[key] >= MATCH_PROGRESSION_TUNING.topEndGrowthDiminishingStrongStart
+        ? MATCH_PROGRESSION_TUNING.topEndGrowthStrongMultiplier
+        : rawDelta > 0 && current[key] >= MATCH_PROGRESSION_TUNING.topEndGrowthDiminishingStart
+          ? MATCH_PROGRESSION_TUNING.topEndGrowthMultiplier
+          : 1;
+    const lowEndRegressionMultiplier =
+      rawDelta < 0 && current[key] <= MATCH_PROGRESSION_TUNING.lowEndRegressionDiminishingStrongStart
+        ? MATCH_PROGRESSION_TUNING.lowEndRegressionStrongMultiplier
+        : rawDelta < 0 && current[key] <= MATCH_PROGRESSION_TUNING.lowEndRegressionDiminishingStart
+          ? MATCH_PROGRESSION_TUNING.lowEndRegressionMultiplier
+          : 1;
+    const regressionMultiplier = rawDelta < 0 ? MATCH_PROGRESSION_TUNING.regressionMultiplier : 1;
+    const gradualDelta = Math.max(-2, Math.min(2, rawDelta * lowRatingMultiplier * topEndMultiplier * lowEndRegressionMultiplier * regressionMultiplier));
 
     ratings[key] = clampRating(current[key] + gradualDelta);
     return ratings;

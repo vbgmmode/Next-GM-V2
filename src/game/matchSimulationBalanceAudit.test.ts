@@ -111,10 +111,35 @@ describe("match simulation balance audit", () => {
     expect(result.progression?.startingAverageRating).toBeGreaterThan(0);
     expect(result.progression?.endingAverageRating).toBeGreaterThan(0);
     expect(result.progression?.averageDelta).toEqual(expect.any(Number));
+    expect(result.progression?.medianDelta).toEqual(expect.any(Number));
     expect(result.progression?.maxIncrease).toEqual(expect.any(Number));
     expect(result.progression?.maxDecrease).toEqual(expect.any(Number));
+    expect(result.progression?.startingRatingsAtHundred).toEqual(expect.any(Number));
+    expect(result.progression?.newRatingsAtHundred).toEqual(expect.any(Number));
+    expect(result.progression?.wrestlersWithAnyRatingAboveNinetyFive).toEqual(expect.any(Number));
+    expect(result.progression?.wrestlersWithFivePlusRatingsAboveNinetyFive).toEqual(expect.any(Number));
+    expect(result.progression?.topGrowers.length).toBeGreaterThan(0);
+    expect(result.progression?.topDecliners.length).toBeGreaterThan(0);
+    expect(result.progression?.tierGrowth.length).toBeGreaterThan(0);
     expect(result.progression?.checkpoints.length).toBeGreaterThan(0);
   });
+
+  it("keeps the 50-week progression audit near neutral without new top-end cap pressure", () => {
+    const result = runMatchSimulationBalanceAudit({
+      scenarioSet: ["progression"],
+      iterationsPerScenario: 20,
+      baseSeed: "progression-v10-health",
+      includeProgressionSeason: true,
+      progressionWeeks: 50,
+    });
+
+    expect(result.progression?.averageDelta ?? 99).toBeGreaterThan(-1);
+    expect(result.progression?.averageDelta ?? 99).toBeLessThan(1);
+    expect(result.progression?.ratingsAtZero).toBe(0);
+    expect(result.progression?.newRatingsAtHundred).toBe(0);
+    expect(result.progression?.lowRatedImprovedCount ?? 0).toBeGreaterThan(0);
+    expect(result.progression?.tierGrowth.some((tier) => tier.tier === "Enhancement" && tier.maxIncrease > 0)).toBe(true);
+  }, 20000);
 
   it("includes fall-taker and protected participant metrics for tag and multi-person scenarios", () => {
     const result = runMatchSimulationBalanceAudit({

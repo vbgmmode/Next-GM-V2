@@ -599,6 +599,10 @@ export function buildResultsViewModel(game: GameState, result: ShowResult): Resu
   const isPleResult = result.showType === "ple";
   const falloutBeats = buildFalloutBeats(result);
   const activeFalloutBeats = falloutBeats.filter((beat) => beat.tone !== "quiet");
+  const displayFalloutBeats = [
+    ...activeFalloutBeats,
+    ...falloutBeats.filter((beat) => !activeFalloutBeats.some((activeBeat) => activeBeat.id === beat.id)),
+  ].slice(0, 4);
 
   return {
     isPleResult,
@@ -624,7 +628,7 @@ export function buildResultsViewModel(game: GameState, result: ShowResult): Resu
     financeProfitDetail: financeReport ? `Balance ${formatMoney(financeReport.endingMoney)}` : "No close",
     attendanceLabel: financeReport ? formatAttendance(financeReport.attendance) : "—",
     headlineBeat: buildHeadlineBeat(result),
-    falloutBeats: (activeFalloutBeats.length ? activeFalloutBeats : falloutBeats.slice(0, 2)).slice(0, 4),
+    falloutBeats: displayFalloutBeats.length >= 2 ? displayFalloutBeats : falloutBeats.slice(0, 2),
     topSocialReaction: buildTopSocialReaction(game, result),
     rivalPressureBeat: buildRivalPressureBeat(game, result),
     nextWeekPressureBeat: buildNextWeekPressureBeat(game, result),

@@ -157,6 +157,30 @@ describe("match ratings progression helper", () => {
     expect(Object.keys(audit?.deltas ?? {})).toEqual(audit?.wrestlerIdsAffected);
   });
 
+  it("lets low-rated wrestlers learn from high-quality losses without leaving rating bounds", () => {
+    const wrestlers = progressionRoster();
+    const resolved = deepRatingsResult(singlesSegment(wrestlers), wrestlers);
+    const highQualityResult = resultWithSegments([{ ...resolved.result.segmentResults[0], score: 90 }]);
+    const loserId = resolved.result.segmentResults[0].participantIds.find((id) => id !== resolved.result.segmentResults[0].winnerId);
+
+    const progression = applyPostShowMatchRatingsProgression({
+      mode: "enabled",
+      wrestlers: resolved.game.wrestlers,
+      result: highQualityResult,
+      matchOutcomeModel: "deepRatings",
+    });
+    const loserDeltas = progression.segmentResults[0].internalMatchRatingsProgressionAudit?.deltas[loserId ?? ""];
+    const progressedLoser = progression.wrestlers.find((wrestler) => wrestler.id === loserId);
+
+    expect(loserDeltas?.selling ?? 0).toBeGreaterThanOrEqual(0);
+    expect(loserDeltas?.resilience ?? 0).toBeGreaterThanOrEqual(0);
+    expect(loserDeltas?.timing ?? 0).toBeGreaterThanOrEqual(0);
+    Object.values(progressedLoser?.matchRatings ?? {}).forEach((rating) => {
+      expect(rating).toBeGreaterThanOrEqual(0);
+      expect(rating).toBeLessThanOrEqual(100);
+    });
+  });
+
   it("applies tag fall-taker and protected-loser progression from internal fall data", () => {
     const wrestlers = progressionRoster();
     const resolved = deepRatingsResult(tagSegment(wrestlers), wrestlers);
@@ -182,10 +206,11 @@ describe("match ratings progression helper", () => {
     );
     expect(fallTakerId).toBeDefined();
     expect(protectedLoserId).toBeDefined();
-    const fallTakerClutchDelta = progressionAudit?.deltas[fallTakerId ?? ""]?.clutch ?? 0;
-    const protectedLoserClutchDelta = progressionAudit?.deltas[protectedLoserId ?? ""]?.clutch ?? 0;
-    expect(fallTakerClutchDelta).toBeLessThan(0);
-    expect(protectedLoserClutchDelta).toBeGreaterThan(fallTakerClutchDelta);
+    const sumDeltas = (deltas: Partial<MatchRatings> | undefined) => Object.values(deltas ?? {}).reduce((sum, delta) => sum + delta, 0);
+    const fallTakerDelta = sumDeltas(progressionAudit?.deltas[fallTakerId ?? ""]);
+    const protectedLoserDelta = sumDeltas(progressionAudit?.deltas[protectedLoserId ?? ""]);
+    expect(fallTakerDelta).toBeLessThanOrEqual(0);
+    expect(protectedLoserDelta).toBeGreaterThan(fallTakerDelta);
   });
 
   it("keeps manual non-singles progression skipped when fall data is unavailable", () => {

@@ -6,6 +6,7 @@ import {
 import {
   matchSimulationLabStructures,
   runMatchSimulationLab,
+  type MatchSimulationLabCurrentStateOverride,
   type MatchSimulationLabDistributionRow,
   type MatchSimulationLabStructure,
 } from "../game/matchSimulationLab";
@@ -44,6 +45,17 @@ type LabStyleFilter =
   | "popularity"
   | "skill";
 type LabSort = "rank" | "overall" | "name";
+type LabStateField = "momentum" | "morale" | "fatigue";
+type MatchSimulationLabRunConfig = {
+  participantIds: string[];
+  matchStructure: MatchSimulationLabStructure;
+  stipulationId?: string;
+  iterations: number;
+  baseSeed: string;
+  model: MatchOutcomeModel;
+  progression: MatchRatingsProgressionMode;
+  currentStateOverrides: MatchSimulationLabCurrentStateOverride[];
+};
 
 function formatPercent(value?: number) {
   return typeof value === "number" ? `${(value * 100).toFixed(1)}%` : "n/a";
@@ -106,6 +118,10 @@ function getDefaultParticipantIds(roster: GameState["wrestlers"]) {
   return defaultGroup.map((wrestler) => wrestler.id);
 }
 
+function clampStateValue(value: number) {
+  return Math.max(0, Math.min(100, Math.round(Number.isFinite(value) ? value : 0)));
+}
+
 function distributionRows(rows: MatchSimulationLabDistributionRow[]) {
   if (!rows.length) {
     return <p className="match-sim-lab-empty">No resolved distribution for this run.</p>;
@@ -152,8 +168,23 @@ export function MatchSimulationLabScreen({ game }: MatchSimulationLabScreenProps
   const [tierFilter, setTierFilter] = useState<LabTierFilter>("all");
   const [styleFilter, setStyleFilter] = useState<LabStyleFilter>("all");
   const [sortMode, setSortMode] = useState<LabSort>("rank");
+  const [currentStateOverrides, setCurrentStateOverrides] = useState<Record<string, Omit<MatchSimulationLabCurrentStateOverride, "wrestlerId">>>({});
+  const [runConfig, setRunConfig] = useState<MatchSimulationLabRunConfig>(() => ({
+    participantIds: getDefaultParticipantIds(roster).slice(0, structureParticipantCount.singles),
+    matchStructure: "singles",
+    stipulationId: undefined,
+    iterations: 1000,
+    baseSeed: "dev-lab",
+    model: "deepRatings",
+    progression: "disabled",
+    currentStateOverrides: [],
+  }));
   const requiredParticipantCount = structureParticipantCount[matchStructure];
   const selectedParticipantIds = participantIds.slice(0, requiredParticipantCount);
+  const selectedWrestlers = useMemo(
+    () => selectedParticipantIds.map((id) => roster.find((wrestler) => wrestler.id === id)).filter((wrestler): wrestler is Wrestler => Boolean(wrestler)),
+    [roster, selectedParticipantIds],
+  );
   const visibleRoster = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
@@ -190,19 +221,33 @@ export function MatchSimulationLabScreen({ game }: MatchSimulationLabScreenProps
     });
     return [...byId.values()];
   }, [roster, selectedParticipantIds, visibleRoster]);
+  const pendingCurrentStateOverrides = useMemo(
+    () =>
+      selectedParticipantIds
+        .map((id) => ({ wrestlerId: id, ...currentStateOverrides[id] }))
+        .filter((override) => currentStateOverrides[override.wrestlerId]),
+    [currentStateOverrides, selectedParticipantIds],
+  );
+  const pendingRunConfig = useMemo<MatchSimulationLabRunConfig>(
+    () => ({
+      participantIds: selectedParticipantIds,
+      matchStructure,
+      stipulationId: stipulationId || undefined,
+      iterations,
+      baseSeed,
+      model,
+      progression,
+      currentStateOverrides: pendingCurrentStateOverrides,
+    }),
+    [baseSeed, iterations, matchStructure, model, pendingCurrentStateOverrides, progression, selectedParticipantIds, stipulationId],
+  );
   const result = useMemo(
     () =>
       runMatchSimulationLab({
         game,
-        participantIds: selectedParticipantIds,
-        matchStructure,
-        stipulationId: stipulationId || undefined,
-        iterations,
-        baseSeed,
-        model,
-        progression,
+        ...runConfig,
       }),
-    [baseSeed, game, iterations, matchStructure, model, participantIds, progression, selectedParticipantIds, stipulationId],
+    [game, runConfig],
   );
 
   function updateParticipant(index: number, wrestlerId: string) {
@@ -222,6 +267,42 @@ export function MatchSimulationLabScreen({ game }: MatchSimulationLabScreenProps
       });
       return next;
     });
+  }
+
+  function stateValue(wrestler: Wrestler, field: LabStateField) {
+    return currentStateOverrides[wrestler.id]?.[field] ?? wrestler[field];
+  }
+
+  function updateCurrentState(wrestlerId: string, field: LabStateField, value: number) {
+    setCurrentStateOverrides((current) => ({
+      ...current,
+      [wrestlerId]: {
+        ...current[wrestlerId],
+        [field]: clampStateValue(value),
+      },
+    }));
+  }
+
+  function updateInjuryStatus(wrestlerId: string, injuryStatus: "healthy" | "minor") {
+    setCurrentStateOverrides((current) => ({
+      ...current,
+      [wrestlerId]: {
+        ...current[wrestlerId],
+        injuryStatus,
+      },
+    }));
+  }
+
+  function resetCurrentState(wrestlerId: string) {
+    setCurrentStateOverrides((current) => {
+      const next = { ...current };
+      delete next[wrestlerId];
+      return next;
+    });
+  }
+
+  function analyzePendingSetup() {
+    setRunConfig(pendingRunConfig);
   }
 
   return (
@@ -287,6 +368,13 @@ export function MatchSimulationLabScreen({ game }: MatchSimulationLabScreenProps
           Base seed
           <input value={baseSeed} onChange={(event) => setBaseSeed(event.target.value)} />
         </label>
+
+        <div className="match-sim-lab-analyze">
+          <button type="button" onClick={analyzePendingSetup}>
+            Analyze
+          </button>
+          <span>{runConfig.iterations} iteration snapshot</span>
+        </div>
       </section>
 
       <section className="match-sim-lab-controls" aria-label="Roster filters">
@@ -349,6 +437,46 @@ export function MatchSimulationLabScreen({ game }: MatchSimulationLabScreenProps
               ))}
             </select>
           </label>
+        ))}
+      </section>
+
+      <section className="match-sim-lab-state-editor" aria-label="Current state overrides">
+        {selectedWrestlers.map((wrestler, index) => (
+          <article key={`${wrestler.id}-${index}`} className="match-sim-lab-state-card">
+            <header>
+              <div>
+                <h2>{wrestler.name}</h2>
+                <p>{wrestler.roleTier ?? "Tier n/a"} · {getAverageRating(wrestler).toFixed(0)} avg</p>
+              </div>
+              <button type="button" onClick={() => resetCurrentState(wrestler.id)}>
+                Reset
+              </button>
+            </header>
+            <div className="match-sim-lab-state-grid">
+              {(["momentum", "morale", "fatigue"] as LabStateField[]).map((field) => (
+                <label key={field}>
+                  {field}
+                  <input
+                    min={0}
+                    max={100}
+                    type="number"
+                    value={stateValue(wrestler, field)}
+                    onChange={(event) => updateCurrentState(wrestler.id, field, Number(event.target.value))}
+                  />
+                </label>
+              ))}
+              <label>
+                Injury
+                <select
+                  value={currentStateOverrides[wrestler.id]?.injuryStatus ?? wrestler.injuryStatus}
+                  onChange={(event) => updateInjuryStatus(wrestler.id, event.target.value as "healthy" | "minor")}
+                >
+                  <option value="healthy">Healthy</option>
+                  <option value="minor">Minor</option>
+                </select>
+              </label>
+            </div>
+          </article>
         ))}
       </section>
 

@@ -350,6 +350,11 @@ function getMatchRatingProgressionDeltas(
     add("selling", MATCH_PROGRESSION_TUNING.highQualityLoserSellingBonus);
     add("resilience", MATCH_PROGRESSION_TUNING.highQualityLoserResilienceBonus);
     add("timing", MATCH_PROGRESSION_TUNING.highQualityLoserTimingBonus);
+    if (ratingAverage(ensureMatchRatings(wrestler)) < MATCH_PROGRESSION_TUNING.lowRatingGrowthBiasBelow) {
+      add("selling", MATCH_PROGRESSION_TUNING.highQualityLossLearningBonus);
+      add("resilience", MATCH_PROGRESSION_TUNING.highQualityLossLearningBonus);
+      add("timing", MATCH_PROGRESSION_TUNING.highQualityLossLearningBonus);
+    }
   }
 
   if (outcomeRole === "loser" && segment.score < 55) {
@@ -385,7 +390,8 @@ function getMatchRatingProgressionDeltas(
   if (role === "protectedLoser") {
     scaleMatchRatingDeltas(deltas, matchRatingKeys, MATCH_PROGRESSION_TUNING.protectedLoserFactor);
     add("selling", segment.score >= 80 ? MATCH_PROGRESSION_TUNING.protectedLoserHighQualitySellingBonus : MATCH_PROGRESSION_TUNING.protectedLoserDefaultSellingBonus);
-    add("resilience", segment.score >= 80 ? MATCH_PROGRESSION_TUNING.protectedLoserHighQualityResilienceBonus : 0);
+    add("resilience", segment.score >= 80 ? MATCH_PROGRESSION_TUNING.protectedLoserHighQualityResilienceBonus : MATCH_PROGRESSION_TUNING.protectedLoserDefaultResilienceBonus);
+    add("timing", segment.score >= 80 ? MATCH_PROGRESSION_TUNING.protectedLoserHighQualityResilienceBonus / 2 : MATCH_PROGRESSION_TUNING.protectedLoserDefaultTimingBonus);
   }
 
   if (wrestler.fatigue >= 80) {
@@ -471,6 +477,10 @@ function scaleProgressionProfile(profile: Partial<Record<MatchRatingKey, number>
 
     return deltas;
   }, {});
+}
+
+function ratingAverage(ratings: MatchRatings) {
+  return matchRatingKeys.reduce((sum, key) => sum + ratings[key], 0) / matchRatingKeys.length;
 }
 
 function getActualMatchRatingDeltas(before: MatchRatings, after: MatchRatings): Partial<MatchRatings> {

@@ -835,6 +835,128 @@
   grid-template-rows: minmax(280px, 1fr) minmax(244px, 0.84fr);
 }
 
+.dashboard-dynasty-center-column:has(.dashboard-dynasty-fallout) {
+  grid-template-rows: minmax(140px, 0.48fr) minmax(230px, 1fr) minmax(220px, 0.78fr);
+}
+
+.dashboard-dynasty-fallout {
+  background:
+    linear-gradient(90deg, rgba(var(--bc-prestige-rgb), 0.12), transparent 70%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent),
+    var(--dashboard-dynasty-panel);
+  border-left: 3px solid var(--dashboard-dynasty-gold);
+  gap: 7px;
+  padding-block: 9px;
+}
+
+.dashboard-dynasty-fallout .dashboard-dynasty-section-heading {
+  margin-bottom: 0;
+  padding-bottom: 6px;
+}
+
+.dashboard-dynasty-fallout-lead {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.dashboard-dynasty-fallout-lead strong {
+  color: white;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1.05;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.dashboard-dynasty-fallout-lead p {
+  color: var(--dashboard-dynasty-soft);
+  display: -webkit-box;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.25;
+  margin: 0;
+  overflow: hidden;
+  text-transform: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.dashboard-dynasty-fallout-grid {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dashboard-dynasty-fallout-item {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 2px solid rgba(185, 193, 207, 0.45);
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 6px 7px;
+  text-transform: uppercase;
+}
+
+.dashboard-dynasty-fallout-item.tone-gold {
+  border-left-color: var(--dashboard-dynasty-gold);
+}
+
+.dashboard-dynasty-fallout-item.tone-red {
+  border-left-color: var(--dashboard-dynasty-danger);
+}
+
+.dashboard-dynasty-fallout-item.tone-green {
+  border-left-color: var(--dashboard-dynasty-green);
+}
+
+.dashboard-dynasty-fallout-item.tone-blue {
+  border-left-color: #6fe2d4;
+}
+
+.dashboard-dynasty-fallout-item span {
+  color: var(--dashboard-dynasty-gold);
+  font-size: 0.54rem;
+  font-weight: 900;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-dynasty-fallout-item strong {
+  color: white;
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.05;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-dynasty-fallout-item p {
+  color: var(--dashboard-dynasty-soft);
+  display: -webkit-box;
+  font-size: 0.56rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0;
+  overflow: hidden;
+  text-transform: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .dashboard-dynasty-roster-table {
   display: flex;
   flex: 1 1 auto;
@@ -1686,6 +1808,7 @@
 
   .dashboard-dynasty-champions,
   .dashboard-dynasty-goals,
+  .dashboard-dynasty-fallout,
   .dashboard-dynasty-rivalries,
   .dashboard-dynasty-metrics,
   .dashboard-dynasty-alerts,
@@ -1708,6 +1831,11 @@
 
   .dashboard-dynasty-roster-panel {
     min-height: 360px;
+  }
+
+  .dashboard-dynasty-fallout-grid {
+    grid-template-columns: 1fr;
+    overflow: visible;
   }
 
   .dashboard-dynasty-center-bottom-grid {

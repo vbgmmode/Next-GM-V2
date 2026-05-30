@@ -5,6 +5,7 @@ import { getStipulationById } from "./stipulationCatalog";
 import { MATCH_OUTCOME_TUNING } from "./matchTuning";
 import type {
   GameState,
+  InjuryStatus,
   MatchOutcomeModel,
   MatchRatingsProgressionMode,
   Segment,
@@ -13,6 +14,14 @@ import type {
 } from "./types";
 
 export type MatchSimulationLabStructure = "singles" | "tag_2v2" | "three_way" | "four_way";
+
+export type MatchSimulationLabCurrentStateOverride = {
+  wrestlerId: string;
+  momentum?: number;
+  morale?: number;
+  fatigue?: number;
+  injuryStatus?: InjuryStatus;
+};
 
 export type MatchSimulationLabInput = {
   game: GameState;
@@ -23,6 +32,7 @@ export type MatchSimulationLabInput = {
   baseSeed?: string;
   model?: MatchOutcomeModel;
   progression?: MatchRatingsProgressionMode;
+  currentStateOverrides?: MatchSimulationLabCurrentStateOverride[];
 };
 
 export type MatchSimulationLabDistributionRow = {
@@ -231,6 +241,43 @@ function round(value: number, precision = 4) {
 
 function cloneGame(game: GameState): GameState {
   return typeof structuredClone === "function" ? structuredClone(game) : JSON.parse(JSON.stringify(game));
+}
+
+function clampCurrentState(value: number | undefined, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : fallback;
+}
+
+export function applyMatchSimulationLabCurrentStateOverrides(
+  game: GameState,
+  overrides: MatchSimulationLabCurrentStateOverride[] = [],
+): GameState {
+  if (!overrides.length) {
+    return game;
+  }
+
+  const byId = new Map(overrides.map((override) => [override.wrestlerId, override]));
+
+  return {
+    ...game,
+    wrestlers: game.wrestlers.map((wrestler) => {
+      const override = byId.get(wrestler.id);
+
+      if (!override) {
+        return wrestler;
+      }
+
+      const injuryStatus = override.injuryStatus ?? wrestler.injuryStatus;
+      return {
+        ...wrestler,
+        momentum: clampCurrentState(override.momentum, wrestler.momentum),
+        morale: clampCurrentState(override.morale, wrestler.morale),
+        fatigue: clampCurrentState(override.fatigue, wrestler.fatigue),
+        injuryStatus,
+        injuryDescription: injuryStatus === "healthy" ? undefined : wrestler.injuryDescription,
+        injuryWeeksRemaining: injuryStatus === "healthy" ? 0 : wrestler.injuryWeeksRemaining,
+      };
+    }),
+  };
 }
 
 function getParticipantCount(matchStructure: MatchSimulationLabStructure) {
@@ -573,6 +620,7 @@ function runSingleIteration(input: MatchSimulationLabInput, iteration: number): 
 
 export function runMatchSimulationLab(input: MatchSimulationLabInput): MatchSimulationLabResult {
   const iterations = clampIterationCount(input.iterations);
+  const simulationGame = applyMatchSimulationLabCurrentStateOverrides(input.game, input.currentStateOverrides);
   const resolvedInput = {
     participantIds: input.participantIds.slice(0, getParticipantCount(input.matchStructure)),
     matchStructure: input.matchStructure,
@@ -582,7 +630,8 @@ export function runMatchSimulationLab(input: MatchSimulationLabInput): MatchSimu
     model: input.model ?? "deepRatings",
     progression: input.progression ?? "disabled",
   };
-  const expectedCompetitors = getExpectedCompetitors({ ...input, ...resolvedInput });
+  const labInput = { ...input, ...resolvedInput, game: simulationGame };
+  const expectedCompetitors = getExpectedCompetitors(labInput);
   const winnerCounts = new Map<string, number>();
   const fallTakerCounts = new Map<string, number>();
   const protectedParticipantCounts = new Map<string, number>();
@@ -590,7 +639,7 @@ export function runMatchSimulationLab(input: MatchSimulationLabInput): MatchSimu
   const summaries: SimulationIterationSummary[] = [];
 
   for (let iteration = 0; iteration < iterations; iteration += 1) {
-    const summary = runSingleIteration({ ...input, ...resolvedInput }, iteration);
+    const summary = runSingleIteration(labInput, iteration);
     summaries.push(summary);
 
     if (summary.fallbackReason) {
@@ -607,9 +656,9 @@ export function runMatchSimulationLab(input: MatchSimulationLabInput): MatchSimu
   const successfulIterations = summaries.filter((summary) => summary.result).length;
   const labelForCompetitor = (id: string) => {
     const expected = expectedCompetitors.find((entry) => entry.id === id);
-    return expected ? { label: expected.label, participantIds: expected.participantIds } : { label: getParticipantName(input.game, id), participantIds: [id] };
+    return expected ? { label: expected.label, participantIds: expected.participantIds } : { label: getParticipantName(simulationGame, id), participantIds: [id] };
   };
-  const labelForParticipant = (id: string) => ({ label: getParticipantName(input.game, id), participantIds: [id] });
+  const labelForParticipant = (id: string) => ({ label: getParticipantName(simulationGame, id), participantIds: [id] });
   const winnerDistribution = createDistributionRows(winnerCounts, successfulIterations, expectedCompetitors, labelForCompetitor);
   const fallTakerDistribution = createDistributionRows(fallTakerCounts, successfulIterations, expectedCompetitors, labelForParticipant);
   const protectedParticipantDistribution = createDistributionRows(protectedParticipantCounts, successfulIterations, expectedCompetitors, labelForParticipant);
@@ -622,7 +671,7 @@ export function runMatchSimulationLab(input: MatchSimulationLabInput): MatchSimu
     input: resolvedInput,
     iterations,
     successfulIterations,
-    participantBreakdown: getParticipantBreakdown({ ...input, ...resolvedInput }, expectedCompetitors),
+    participantBreakdown: getParticipantBreakdown(labInput, expectedCompetitors),
     teamBreakdown: expectedCompetitors.map((competitor) => ({
       id: competitor.id,
       label: competitor.label,

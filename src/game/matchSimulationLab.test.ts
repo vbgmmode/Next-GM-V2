@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createNewGame, draftPool } from "./seed";
 import { runShow } from "./scoring";
-import { createMatchSimulationLabGame, getMatchSimulationLabRoster, runMatchSimulationLab } from "./matchSimulationLab";
+import { applyMatchSimulationLabCurrentStateOverrides, createMatchSimulationLabGame, getMatchSimulationLabRoster, runMatchSimulationLab } from "./matchSimulationLab";
 import type { MatchRatings, Segment, Wrestler } from "./types";
 
 function explicitRatings(overrides: Partial<MatchRatings> = {}): MatchRatings {
@@ -202,6 +202,54 @@ describe("match simulation lab", () => {
     });
 
     expect(JSON.stringify(game.wrestlers.map((wrestler) => ({ id: wrestler.id, matchRatings: wrestler.matchRatings })))).toBe(before);
+  });
+
+  it("applies current-state overrides to cloned lab runs without mutating source wrestlers", () => {
+    const game = gameWithRoster();
+    const participantIds = game.wrestlers.slice(0, 2).map((wrestler) => wrestler.id);
+    const before = JSON.stringify(game.wrestlers.map((wrestler) => ({ id: wrestler.id, momentum: wrestler.momentum, morale: wrestler.morale, fatigue: wrestler.fatigue })));
+    const baseline = runMatchSimulationLab({
+      game,
+      participantIds,
+      matchStructure: "singles",
+      iterations: 100,
+      baseSeed: "current-state-baseline",
+    });
+    const exhausted = runMatchSimulationLab({
+      game,
+      participantIds,
+      matchStructure: "singles",
+      iterations: 100,
+      baseSeed: "current-state-baseline",
+      currentStateOverrides: [{ wrestlerId: participantIds[0], momentum: 0, morale: 0, fatigue: 100, injuryStatus: "minor" }],
+    });
+
+    expect(JSON.stringify(game.wrestlers.map((wrestler) => ({ id: wrestler.id, momentum: wrestler.momentum, morale: wrestler.morale, fatigue: wrestler.fatigue })))).toBe(before);
+    expect(exhausted.participantBreakdown[0].averageEffectivePower).toBeLessThan(baseline.participantBreakdown[0].averageEffectivePower);
+    expect(exhausted.winnerDistribution.find((row) => row.id === participantIds[0])?.expectedProbability).toBeLessThan(
+      baseline.winnerDistribution.find((row) => row.id === participantIds[0])?.expectedProbability ?? 0,
+    );
+  });
+
+  it("exports a pure current-state override helper for dev lab previews", () => {
+    const game = gameWithRoster();
+    const overridden = applyMatchSimulationLabCurrentStateOverrides(game, [
+      { wrestlerId: "lab-a", momentum: 200, morale: -10, fatigue: 49.6, injuryStatus: "minor" },
+    ]);
+
+    expect(overridden).not.toBe(game);
+    expect(overridden.wrestlers.find((wrestler) => wrestler.id === "lab-a")).toMatchObject({
+      momentum: 100,
+      morale: 0,
+      fatigue: 50,
+      injuryStatus: "minor",
+    });
+    expect(game.wrestlers.find((wrestler) => wrestler.id === "lab-a")).toMatchObject({
+      momentum: 60,
+      morale: 65,
+      fatigue: 10,
+      injuryStatus: "healthy",
+    });
   });
 
   it("counts fallback reasons and emits warnings for extreme fallback cases", () => {

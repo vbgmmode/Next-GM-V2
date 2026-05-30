@@ -1,7 +1,6 @@
 import { calculateEffectiveMatchPower, ensureMatchRatings, matchRatingKeys, type MatchRatingKey } from "./matchRatings";
 import {
   getMatchSimulationLabRoster,
-  matchSimulationLabStipulationIds,
   runMatchSimulationLab,
   type MatchSimulationLabResult,
   type MatchSimulationLabStructure,
@@ -82,12 +81,35 @@ export type MatchSimulationProgressionCheckpoint = {
   week: number;
   averageRating: number;
   averageDelta: number;
+  medianDelta: number;
   maxIncrease: number;
   maxDecrease: number;
   ratingsAtZero: number;
   ratingsAtHundred: number;
   ratingsAtOrAboveNinetyNine: number;
+  wrestlersWithAnyRatingAboveNinetyFive: number;
+  wrestlersWithFivePlusRatingsAboveNinetyFive: number;
   lowRatedImprovedCount: number;
+};
+
+export type MatchSimulationProgressionMover = {
+  wrestlerId: string;
+  wrestlerName: string;
+  roleTier?: string;
+  startingAverageRating: number;
+  endingAverageRating: number;
+  delta: number;
+};
+
+export type MatchSimulationProgressionTierGrowth = {
+  tier: string;
+  wrestlerCount: number;
+  startingAverageRating: number;
+  endingAverageRating: number;
+  averageDelta: number;
+  medianDelta: number;
+  maxIncrease: number;
+  maxDecrease: number;
 };
 
 export type MatchSimulationProgressionAuditResult = {
@@ -96,12 +118,21 @@ export type MatchSimulationProgressionAuditResult = {
   startingAverageRating: number;
   endingAverageRating: number;
   averageDelta: number;
+  medianDelta: number;
   maxIncrease: number;
   maxDecrease: number;
+  startingRatingsAtZero: number;
+  startingRatingsAtHundred: number;
   ratingsAtZero: number;
   ratingsAtHundred: number;
+  newRatingsAtHundred: number;
   ratingsAtOrAboveNinetyNine: number;
+  wrestlersWithAnyRatingAboveNinetyFive: number;
+  wrestlersWithFivePlusRatingsAboveNinetyFive: number;
   lowRatedImprovedCount: number;
+  topGrowers: MatchSimulationProgressionMover[];
+  topDecliners: MatchSimulationProgressionMover[];
+  tierGrowth: MatchSimulationProgressionTierGrowth[];
   fallTakerAverageDelta?: number;
   protectedLoserAverageDelta?: number;
   sourceGameMutated: boolean;
@@ -526,17 +557,30 @@ function buildScenarioMatrix(game: GameState, scenarioSet: MatchSimulationBalanc
   }
 
   if (include("stipulation")) {
-    const stipulations = matchSimulationLabStipulationIds.filter((id) => !id || id === "submission_match" || id === "no_dq" || id === "ladder_match" || id === "iron_man");
-    stipulations.forEach((stipulationId) => {
+    [
+      { group: "submission-fit", ids: [talent.submission, talent.powerhouse], stipulationId: "submission_match", label: "Submission specialist sensitivity" },
+      { group: "hardcore-fit", ids: [talent.hardcore, talent.technical], stipulationId: "no_dq", label: "Hardcore/brawler sensitivity" },
+      { group: "ladder-fit", ids: [talent.flyer, talent.brawler], stipulationId: "ladder_match", label: "Aerial ladder sensitivity" },
+      { group: "iron-man-fit", ids: [talent.stamina, talent.powerhouse], stipulationId: "iron_man", label: "Endurance iron-man sensitivity" },
+    ].forEach(({ group, ids, stipulationId, label }) => {
       add({
-        id: `stipulation-${stipulationId ?? "standard"}`,
+        id: `stipulation-${group}-standard`,
         category: "stipulation",
-        label: `${stipulationId ?? "standard"} sensitivity`,
-        description: "Same specialist matchup across stipulation profiles.",
+        label: `${label} standard baseline`,
+        description: "Specialist matchup in a standard match before stipulation context.",
         matchStructure: "singles",
-        participantIds: [talent.submission, talent.hardcore],
+        participantIds: ids,
+        comparisonGroupId: group,
+      });
+      add({
+        id: `stipulation-${group}-${stipulationId}`,
+        category: "stipulation",
+        label,
+        description: "Specialist matchup in the stipulation that should improve context fit.",
+        matchStructure: "singles",
+        participantIds: ids,
         stipulationId,
-        comparisonGroupId: "specialist-stipulation-sweep",
+        comparisonGroupId: group,
       });
     });
   }
@@ -776,6 +820,20 @@ function countRatings(wrestlers: Wrestler[], predicate: (value: number) => boole
   return wrestlers.reduce((count, wrestler) => count + matchRatingKeys.filter((key) => predicate((wrestler.matchRatings ?? explicitRatings())[key])).length, 0);
 }
 
+function countWrestlersByRatingShape(wrestlers: Wrestler[], predicate: (ratings: MatchRatings) => boolean) {
+  return wrestlers.filter((wrestler) => predicate(wrestler.matchRatings ?? explicitRatings())).length;
+}
+
+function median(values: number[]) {
+  if (!values.length) {
+    return 0;
+  }
+
+  const sorted = [...values].sort((left, right) => left - right);
+  const midpoint = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[midpoint - 1] + sorted[midpoint]) / 2 : sorted[midpoint];
+}
+
 function sumRatingDeltas(delta: Partial<MatchRatings> | undefined) {
   if (!delta) {
     return 0;
@@ -801,24 +859,36 @@ type ProgressionRosterIds = {
 };
 
 function resolveProgressionRosterIds(game: GameState): ProgressionRosterIds {
-  const byId = new Map(game.wrestlers.map((wrestler) => [wrestler.id, wrestler.id]));
-  const fallbackIds = game.wrestlers.map((wrestler) => wrestler.id);
-  const idAt = (preferred: string, index: number) => byId.get(preferred) ?? fallbackIds[index % Math.max(1, fallbackIds.length)] ?? preferred;
+  const talent = getScenarioTalent(game);
+  const fallbackIds = game.wrestlers
+    .filter((wrestler) => wrestler.division === "Mens" && wrestler.injuryStatus !== "major")
+    .map((wrestler) => wrestler.id);
+  const assigned = new Set<string>();
+  const pick = (candidates: string[], fallbackIndex: number) => {
+    const selected =
+      candidates.find((id) => id && fallbackIds.includes(id) && !assigned.has(id)) ??
+      fallbackIds.find((id) => !assigned.has(id)) ??
+      fallbackIds[fallbackIndex % Math.max(1, fallbackIds.length)] ??
+      candidates[0] ??
+      "";
+    assigned.add(selected);
+    return selected;
+  };
 
   return {
-    favorite: idAt("audit-favorite", 0),
-    underdog: idAt("audit-underdog", 1),
-    jobber: idAt("audit-jobber", 2),
-    skillHeavy: idAt("audit-skill-heavy", 3),
-    balancedA: idAt("audit-balanced-a", 4),
-    balancedB: idAt("audit-balanced-b", 5),
-    staminaHigh: idAt("audit-stamina-high", 6),
-    momentumHigh: idAt("audit-momentum-high", 7),
-    tiredFavorite: idAt("audit-tired-favorite", 8),
-    freshUnderdog: idAt("audit-fresh-underdog", 9),
-    momentumLow: idAt("audit-momentum-low", 10),
-    submissionSpecialist: idAt("audit-submission-specialist", 11),
-    chaosFlyer: idAt("audit-chaos-flyer", 12),
+    favorite: pick(["audit-favorite", talent.eliteA], 0),
+    underdog: pick(["audit-underdog", talent.midA, talent.midB], 1),
+    jobber: pick(["audit-jobber", talent.lowerA, talent.lowerB], 2),
+    skillHeavy: pick(["audit-skill-heavy", talent.technical, talent.submission], 3),
+    balancedA: pick(["audit-balanced-a", talent.midB, talent.midC], 4),
+    balancedB: pick(["audit-balanced-b", talent.midC, talent.midD], 5),
+    staminaHigh: pick(["audit-stamina-high", talent.stamina, talent.eliteB], 6),
+    momentumHigh: pick(["audit-momentum-high", talent.eliteB, talent.midD], 7),
+    tiredFavorite: pick(["audit-tired-favorite", talent.tiredFavorite], 8),
+    freshUnderdog: pick(["audit-fresh-underdog", talent.freshUnderdog], 9),
+    momentumLow: pick(["audit-momentum-low", talent.lowerB, talent.lowerA], 10),
+    submissionSpecialist: pick(["audit-submission-specialist", talent.submission], 11),
+    chaosFlyer: pick(["audit-chaos-flyer", talent.hardcore, talent.flyer], 12),
   };
 }
 
@@ -828,7 +898,7 @@ function buildProgressionSegments(week: number, ids: ProgressionRosterIds): Segm
     {
       id: `${suffix}-singles`,
       type: "Match",
-      participantIds: week % 2 === 0 ? [ids.favorite, ids.underdog] : [ids.skillHeavy, ids.jobber],
+      participantIds: week % 5 === 0 ? [ids.jobber, ids.momentumLow] : week % 2 === 0 ? [ids.favorite, ids.underdog] : [ids.skillHeavy, ids.jobber],
       segmentCatalogId: "M001",
       segmentDisplayName: "Singles Match",
       durationMinutes: 12,
@@ -883,17 +953,74 @@ function buildProgressionCheckpoint(week: number, startingRatings: Map<string, n
     week,
     averageRating: getRosterAverageRating(wrestlers),
     averageDelta: round(deltas.reduce((sum, delta) => sum + delta, 0) / Math.max(1, deltas.length), 3),
+    medianDelta: round(median(deltas), 3),
     maxIncrease: round(Math.max(0, ...deltas), 3),
     maxDecrease: round(Math.min(0, ...deltas), 3),
     ratingsAtZero: countRatings(wrestlers, (value) => value <= 0),
     ratingsAtHundred: countRatings(wrestlers, (value) => value >= 100),
     ratingsAtOrAboveNinetyNine: countRatings(wrestlers, (value) => value >= 99),
+    wrestlersWithAnyRatingAboveNinetyFive: countWrestlersByRatingShape(wrestlers, (ratings) => matchRatingKeys.some((key) => ratings[key] > 95)),
+    wrestlersWithFivePlusRatingsAboveNinetyFive: countWrestlersByRatingShape(wrestlers, (ratings) => matchRatingKeys.filter((key) => ratings[key] > 95).length >= 5),
     lowRatedImprovedCount: wrestlers.filter((wrestler) => {
       const starting = startingRatings.get(wrestler.id) ?? 0;
       const current = currentRatings.get(wrestler.id) ?? 0;
       return starting < 55 && current > starting;
     }).length,
   };
+}
+
+function buildProgressionMovers(
+  wrestlers: Wrestler[],
+  startingRatings: Map<string, number>,
+  endingRatings: Map<string, number>,
+): MatchSimulationProgressionMover[] {
+  return wrestlers.map((wrestler) => {
+    const startingAverageRating = startingRatings.get(wrestler.id) ?? 0;
+    const endingAverageRating = endingRatings.get(wrestler.id) ?? 0;
+    return {
+      wrestlerId: wrestler.id,
+      wrestlerName: wrestler.name,
+      roleTier: wrestler.roleTier,
+      startingAverageRating: round(startingAverageRating, 3),
+      endingAverageRating: round(endingAverageRating, 3),
+      delta: round(endingAverageRating - startingAverageRating, 3),
+    };
+  });
+}
+
+function buildTierGrowth(
+  wrestlers: Wrestler[],
+  startingRatings: Map<string, number>,
+  endingRatings: Map<string, number>,
+): MatchSimulationProgressionTierGrowth[] {
+  const tierOrder = ["MainEvent", "UpperCard", "Midcard", "Prospect", "Enhancement"];
+  const byTier = new Map<string, Wrestler[]>();
+  wrestlers.forEach((wrestler) => {
+    const tier = wrestler.roleTier ?? "Unspecified";
+    byTier.set(tier, [...(byTier.get(tier) ?? []), wrestler]);
+  });
+
+  return [...byTier.entries()]
+    .map(([tier, entries]) => {
+      const starting = entries.map((wrestler) => startingRatings.get(wrestler.id) ?? 0);
+      const ending = entries.map((wrestler) => endingRatings.get(wrestler.id) ?? 0);
+      const deltas = entries.map((wrestler) => (endingRatings.get(wrestler.id) ?? 0) - (startingRatings.get(wrestler.id) ?? 0));
+      return {
+        tier,
+        wrestlerCount: entries.length,
+        startingAverageRating: round(starting.reduce((sum, value) => sum + value, 0) / Math.max(1, entries.length), 3),
+        endingAverageRating: round(ending.reduce((sum, value) => sum + value, 0) / Math.max(1, entries.length), 3),
+        averageDelta: round(deltas.reduce((sum, value) => sum + value, 0) / Math.max(1, entries.length), 3),
+        medianDelta: round(median(deltas), 3),
+        maxIncrease: round(Math.max(0, ...deltas), 3),
+        maxDecrease: round(Math.min(0, ...deltas), 3),
+      };
+    })
+    .sort((left, right) => {
+      const leftIndex = tierOrder.indexOf(left.tier);
+      const rightIndex = tierOrder.indexOf(right.tier);
+      return (leftIndex === -1 ? 999 : leftIndex) - (rightIndex === -1 ? 999 : rightIndex) || left.tier.localeCompare(right.tier);
+    });
 }
 
 function runProgressionSeasonAudit(sourceGame: GameState, weeks: number, baseSeed: string): MatchSimulationProgressionAuditResult {
@@ -903,6 +1030,8 @@ function runProgressionSeasonAudit(sourceGame: GameState, weeks: number, baseSee
   const progressionIds = resolveProgressionRosterIds(game);
   const startingRatings = getRosterRatingMap(game.wrestlers);
   const startingAverageRating = getRosterAverageRating(game.wrestlers);
+  const startingRatingsAtZero = countRatings(game.wrestlers, (value) => value <= 0);
+  const startingRatingsAtHundred = countRatings(game.wrestlers, (value) => value >= 100);
   const checkpoints: MatchSimulationProgressionCheckpoint[] = [];
   const fallTakerDeltas: number[] = [];
   const protectedLoserDeltas: number[] = [];
@@ -948,6 +1077,7 @@ function runProgressionSeasonAudit(sourceGame: GameState, weeks: number, baseSee
   const deltas = game.wrestlers.map((wrestler) => (endingRatings.get(wrestler.id) ?? 0) - (startingRatings.get(wrestler.id) ?? 0));
   const endingAverageRating = getRosterAverageRating(game.wrestlers);
   const averageDelta = round(endingAverageRating - startingAverageRating, 3);
+  const movers = buildProgressionMovers(game.wrestlers, startingRatings, endingRatings);
   const fallTakerAverageDelta = fallTakerDeltas.length ? round(fallTakerDeltas.reduce((sum, delta) => sum + delta, 0) / fallTakerDeltas.length, 3) : undefined;
   const protectedLoserAverageDelta = protectedLoserDeltas.length
     ? round(protectedLoserDeltas.reduce((sum, delta) => sum + delta, 0) / protectedLoserDeltas.length, 3)
@@ -958,16 +1088,25 @@ function runProgressionSeasonAudit(sourceGame: GameState, weeks: number, baseSee
     startingAverageRating,
     endingAverageRating,
     averageDelta,
+    medianDelta: round(median(deltas), 3),
     maxIncrease: round(Math.max(0, ...deltas), 3),
     maxDecrease: round(Math.min(0, ...deltas), 3),
+    startingRatingsAtZero,
+    startingRatingsAtHundred,
     ratingsAtZero: countRatings(game.wrestlers, (value) => value <= 0),
     ratingsAtHundred: countRatings(game.wrestlers, (value) => value >= 100),
+    newRatingsAtHundred: Math.max(0, countRatings(game.wrestlers, (value) => value >= 100) - startingRatingsAtHundred),
     ratingsAtOrAboveNinetyNine: countRatings(game.wrestlers, (value) => value >= 99),
+    wrestlersWithAnyRatingAboveNinetyFive: countWrestlersByRatingShape(game.wrestlers, (ratings) => matchRatingKeys.some((key) => ratings[key] > 95)),
+    wrestlersWithFivePlusRatingsAboveNinetyFive: countWrestlersByRatingShape(game.wrestlers, (ratings) => matchRatingKeys.filter((key) => ratings[key] > 95).length >= 5),
     lowRatedImprovedCount: game.wrestlers.filter((wrestler) => {
       const starting = startingRatings.get(wrestler.id) ?? 0;
       const current = endingRatings.get(wrestler.id) ?? 0;
       return starting < 55 && current > starting;
     }).length,
+    topGrowers: [...movers].sort((left, right) => right.delta - left.delta || left.wrestlerName.localeCompare(right.wrestlerName)).slice(0, 10),
+    topDecliners: [...movers].sort((left, right) => left.delta - right.delta || left.wrestlerName.localeCompare(right.wrestlerName)).slice(0, 10),
+    tierGrowth: buildTierGrowth(game.wrestlers, startingRatings, endingRatings),
     fallTakerAverageDelta,
     protectedLoserAverageDelta,
     sourceGameMutated: JSON.stringify(sourceGame.wrestlers.map((wrestler) => ({ id: wrestler.id, matchRatings: wrestler.matchRatings }))) !== sourceSnapshot,
@@ -1007,11 +1146,11 @@ function getProgressionWarnings(result: MatchSimulationProgressionAuditResult): 
     });
   }
 
-  if (result.ratingsAtHundred > 0 || result.ratingsAtOrAboveNinetyNine > 0) {
+  if (result.newRatingsAtHundred > 4 || result.ratingsAtOrAboveNinetyNine > result.startingRatingsAtHundred + 12) {
     warnings.push({
       code: "topRatingsApproachCap",
       severity: "warning",
-      message: `${result.ratingsAtOrAboveNinetyNine} ratings reached 99+ and ${result.ratingsAtHundred} reached 100.`,
+      message: `${result.ratingsAtOrAboveNinetyNine} ratings reached 99+, ${result.ratingsAtHundred} reached 100, and ${result.newRatingsAtHundred} ratings newly reached 100.`,
     });
   }
 

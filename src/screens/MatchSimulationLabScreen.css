@@ -79,8 +79,85 @@
   font-size: 0.78rem;
 }
 
+.match-sim-lab-analyze {
+  align-self: end;
+  display: grid;
+  gap: 4px;
+  min-width: 150px;
+}
+
+.match-sim-lab-analyze button {
+  min-height: 36px;
+  border: 1px solid rgba(247, 211, 109, 0.45);
+  border-radius: 4px;
+  padding: 0 14px;
+  color: #101318;
+  background: #f7d36d;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.match-sim-lab-analyze span {
+  color: #9aa5b5;
+  font-size: 0.78rem;
+}
+
 .match-sim-lab-participants {
   margin: 14px 0 18px;
+}
+
+.match-sim-lab-state-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+}
+
+.match-sim-lab-state-card {
+  border: 1px solid rgba(232, 237, 244, 0.14);
+  padding: 12px;
+  background: #141922;
+}
+
+.match-sim-lab-state-card header,
+.match-sim-lab-state-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.match-sim-lab-state-card header {
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  margin-bottom: 10px;
+}
+
+.match-sim-lab-state-card h2 {
+  margin: 0;
+  color: #f7d36d;
+  font-size: 0.95rem;
+}
+
+.match-sim-lab-state-card p {
+  margin: 3px 0 0;
+  color: #9aa5b5;
+  font-size: 0.78rem;
+}
+
+.match-sim-lab-state-card button {
+  min-height: 32px;
+  border: 1px solid rgba(232, 237, 244, 0.2);
+  border-radius: 4px;
+  padding: 0 10px;
+  color: #f5f8fc;
+  background: #171c24;
+}
+
+.match-sim-lab-state-grid {
+  grid-template-columns: repeat(4, minmax(96px, 1fr));
+}
+
+.match-sim-lab-state-grid label {
+  min-width: 0;
 }
 
 .match-sim-lab-grid {
@@ -143,5 +220,9 @@
 
   .match-sim-lab-grid {
     grid-template-columns: 1fr;
+  }
+
+  .match-sim-lab-state-grid {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
   }
 }
