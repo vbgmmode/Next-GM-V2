@@ -143,6 +143,30 @@ export function NewGameSetupScreen({
     .slice()
     .reverse()
     .filter((event) => !rivalLatestPickIds.has(event.wrestler.id));
+  const latestPlayerDraftGroupIds = draftPickGroups[draftPickGroups.length - 1] ?? [];
+  const latestPlayerDraftGroup = latestPlayerDraftGroupIds
+    .map((id) => draftedWrestlers.find((wrestler) => wrestler.id === id))
+    .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
+  const latestPlayerPickEvents = openingDraftState.playerPicks.filter((event) => latestPlayerDraftGroupIds.includes(event.wrestler.id));
+  const latestPlayerOverallPick = latestPlayerPickEvents[0]?.overallPick ?? draftedWrestlers.length;
+  const latestDraftSnapshot = latestPlayerDraftGroup.length
+    ? {
+        key: `${draftPickGroups.length}-${latestPlayerDraftGroupIds.join("-")}-${openingDraftState.cpuPicks.length}`,
+        playerPickLabel: latestPlayerDraftGroup.length > 1 ? `Pick ${latestPlayerOverallPick} · Bundle` : `Pick ${latestPlayerOverallPick}`,
+        playerNames: latestPlayerDraftGroup.map((wrestler) => wrestler.name).join(" / "),
+        playerMeta:
+          latestPlayerDraftGroup.length > 1
+            ? `${latestPlayerDraftGroup.length} talent package · ${formatDraftGenderReadout(latestPlayerDraftGroup)}`
+            : `${getDraftTag(latestPlayerDraftGroup[0].roleTier)} · ${getWrestlerOverall(latestPlayerDraftGroup[0])} OVR`,
+        playerWrestlers: latestPlayerDraftGroup,
+        rivalSlots: rivalLatestPicks.map(({ brand, latestPick, pickCount }) => ({
+          brand,
+          brandPortraitSrc: getBrandChairByStyle(brand.brandKey).portraitSrc,
+          latestPick,
+          pickCount,
+        })),
+      }
+    : undefined;
   const upNextPicks = openingDraftState.upcomingPicks.slice(1, 5);
   const availableWrestlers = draftPool
     .filter((wrestler) => !draftedIds.has(wrestler.id))
@@ -754,30 +778,52 @@ export function NewGameSetupScreen({
                 <div className="draft-update-panel">
                   <p className="eyebrow">War Room Updates</p>
                   <div className="draft-update-feed">
-                    <div className="draft-update-latest">
-                      {rivalLatestPicks.map(({ brand, latestPick, pickCount }) => {
-                        const brandPortraitSrc = getBrandChairByStyle(brand.brandKey).portraitSrc;
-
-                        return (
-                        <div className="draft-update-brand-row" key={brand.id}>
-                          {latestPick ? (
-                            <WrestlerPortrait className="draft-mini-portrait" wrestler={latestPick} />
-                          ) : (
-                            <span aria-hidden="true" className="draft-brand-mini-portrait">
-                              <img alt="" draggable={false} src={brandPortraitSrc} />
-                            </span>
-                          )}
-                          <span className="draft-update-copy">
-                            <strong>{brand.brandName}</strong>
-                            <small>
-                              {latestPick
-                                ? `Latest · ${latestPick.name} · ${pickCount} drafted`
-                                : "Waiting on your first pick"}
-                            </small>
-                          </span>
+                    <div className="draft-snapshot-card" key={latestDraftSnapshot?.key ?? "draft-snapshot-waiting"}>
+                      {latestDraftSnapshot ? (
+                        <>
+                          <div className="draft-snapshot-player">
+                            <div className="draft-snapshot-player-head">
+                              <span>{latestDraftSnapshot.playerPickLabel}</span>
+                              <strong>{signedBrandName}</strong>
+                            </div>
+                            <div className="draft-snapshot-player-body">
+                              <div className="draft-snapshot-player-portraits">
+                                {latestDraftSnapshot.playerWrestlers.slice(0, 3).map((wrestler) => (
+                                  <WrestlerPortrait className="draft-snapshot-hero-portrait" key={wrestler.id} wrestler={wrestler} />
+                                ))}
+                                {latestDraftSnapshot.playerWrestlers.length > 3 ? <span className="draft-snapshot-more">+{latestDraftSnapshot.playerWrestlers.length - 3}</span> : null}
+                              </div>
+                              <span className="draft-snapshot-player-copy">
+                                <strong>{latestDraftSnapshot.playerNames}</strong>
+                                <small>{latestDraftSnapshot.playerMeta}</small>
+                              </span>
+                            </div>
+                          </div>
+                          <div className="draft-snapshot-rivals" aria-label="Latest rival draft picks">
+                            {latestDraftSnapshot.rivalSlots.map(({ brand, brandPortraitSrc, latestPick, pickCount }) => (
+                              <article className={`draft-snapshot-rival${latestPick ? " has-pick" : ""}`} key={brand.id}>
+                                {latestPick ? (
+                                  <WrestlerPortrait className="draft-mini-portrait" wrestler={latestPick} />
+                                ) : (
+                                  <span aria-hidden="true" className="draft-brand-mini-portrait">
+                                    <img alt="" draggable={false} src={brandPortraitSrc} />
+                                  </span>
+                                )}
+                                <span className="draft-update-copy">
+                                  <strong>{brand.brandName}</strong>
+                                  <small>{latestPick ? `${latestPick.name} · ${pickCount} drafted` : `${brand.assignedGMName} waiting`}</small>
+                                </span>
+                              </article>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="draft-snapshot-empty">
+                          <span>Draft Snapshot</span>
+                          <strong>Draft board waiting for the first selection.</strong>
+                          <small>Rival portraits lock in after your pick lands.</small>
                         </div>
-                        );
-                      })}
+                      )}
                     </div>
                     <div className="draft-update-history" aria-label="Previous rival picks">
                       {rivalPickHistory.length ? (
