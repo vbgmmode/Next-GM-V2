@@ -3,6 +3,7 @@ import { formatMoney } from "./formatters";
 import { getDifficultyRules, scaleNegativePressure } from "./difficultyRules";
 import { affiliationCatalog } from "./affiliationCatalog";
 import { DRAFT_CONTRACT_WEEKS, MARKET_CONTRACT_MAX_WEEKS, STANDARD_BUDGET_AMOUNT } from "./constants";
+import { ensureMatchRatings } from "./matchRatings";
 import type {
   GameState,
   MarketContract,
@@ -48,6 +49,18 @@ function hashString(value: string) {
 
 function clamp(value: number, min = 0, max = 100) {
   return Math.min(max, Math.max(min, value));
+}
+
+function normalizeMarketRosterAddition(wrestler: Wrestler): Wrestler {
+  return {
+    ...wrestler,
+    appearancesThisSeason: 0,
+    lastBookedWeek: 0,
+    consecutiveWeeksBooked: 0,
+    matchRatings: ensureMatchRatings(wrestler),
+    injuryStatus: wrestler.injuryStatus ?? "healthy",
+    injuryWeeksRemaining: wrestler.injuryWeeksRemaining ?? 0,
+  };
 }
 
 function getMoneyValue(wrestler: Pick<Wrestler, "id" | "popularity" | "roleTier">) {
@@ -456,14 +469,7 @@ export function signPlayerFreeAgent(game: GameState, wrestlerId: string, draftPo
     money: boardReadyGame.money - offer.dueNow,
     wrestlers: [
       ...boardReadyGame.wrestlers,
-      {
-        ...wrestler,
-        appearancesThisSeason: 0,
-        lastBookedWeek: 0,
-        consecutiveWeeksBooked: 0,
-        injuryStatus: wrestler.injuryStatus ?? "healthy",
-        injuryWeeksRemaining: wrestler.injuryWeeksRemaining ?? 0,
-      },
+      normalizeMarketRosterAddition(wrestler),
     ],
     marketState: {
       ...boardReadyGame.marketState,
@@ -570,14 +576,7 @@ export function signPlayerFreeAgentBundle(game: GameState, affiliationId: string
     money: boardReadyGame.money - bundleOffer.discountedDueNow,
     wrestlers: [
       ...boardReadyGame.wrestlers,
-      ...bundleOffer.wrestlers.map((wrestler) => ({
-        ...wrestler,
-        appearancesThisSeason: 0,
-        lastBookedWeek: 0,
-        consecutiveWeeksBooked: 0,
-        injuryStatus: wrestler.injuryStatus ?? "healthy",
-        injuryWeeksRemaining: wrestler.injuryWeeksRemaining ?? 0,
-      })),
+      ...bundleOffer.wrestlers.map(normalizeMarketRosterAddition),
     ],
     marketState: {
       ...boardReadyGame.marketState,
@@ -729,14 +728,7 @@ export function proposePlayerTrade(game: GameState, outgoingWrestlerId: string, 
     money: game.money - transactionFee,
     wrestlers: [
       ...cleanedGame.wrestlers,
-      {
-        ...target,
-        appearancesThisSeason: 0,
-        lastBookedWeek: 0,
-        consecutiveWeeksBooked: 0,
-        injuryStatus: target.injuryStatus ?? "healthy",
-        injuryWeeksRemaining: target.injuryWeeksRemaining ?? 0,
-      },
+      normalizeMarketRosterAddition(target),
     ],
     rivalBrands: game.rivalBrands.map((brand) =>
       brand.id === rivalBrand.id

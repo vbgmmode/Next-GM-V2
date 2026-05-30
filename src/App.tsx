@@ -68,6 +68,7 @@ import {
   getSegmentParticipantRange,
   type SegmentCatalogOption,
 } from "./game/matchFormatCatalog";
+import { createMatchSimulationLabGame } from "./game/matchSimulationLab";
 import { getStipulationById } from "./game/stipulationCatalog";
 import { CURRENT_SAVE_VERSION, migrateSavedGameState } from "./game/migration";
 import { createUniqueDomainId } from "./game/domainIds";
@@ -124,6 +125,7 @@ import {
   getWrestlerDivisionGroup,
   hasIntergenderMatchParticipants,
   isValidSegment,
+  createPlayableRunShowOptions,
   runShow,
 } from "./game/scoring";
 import { getChampionshipArtworkSrc, getTitleCatalogBrand, wrestlerFitsChampionshipDivision } from "./game/titleCatalog";
@@ -169,6 +171,7 @@ import type { StoredSaveRecord, StoredSaveSummary } from "./gameStorage";
 import { CalendarScreen } from "./screens/CalendarScreen";
 import { FinanceScreen } from "./screens/FinanceScreen";
 import { MarketScreen } from "./screens/MarketScreen";
+import { MatchSimulationLabScreen } from "./screens/MatchSimulationLabScreen";
 import { ResultsScreen } from "./screens/ResultsScreen";
 import { WeekReviewScreen } from "./screens/WeekReviewScreen";
 import { RivalriesScreen, type RivalryCreateInput } from "./screens/RivalriesScreen";
@@ -195,6 +198,7 @@ import { assignChampionshipInGame, revokeChampionshipInGame } from "./game/champ
 import "./screens/CalendarScreen.css";
 import "./screens/ChampionshipsScreen.css";
 import "./screens/FinanceScreen.css";
+import "./screens/MatchSimulationLabScreen.css";
 import "./screens/ResultsScreen.css";
 import "./screens/RivalriesScreen.css";
 import "./screens/WeekReviewScreen.css";
@@ -3359,6 +3363,16 @@ function loadCareerSaves() {
   return loadSaveSummaries().map(normalizeCareerSummary);
 }
 
+function isDevMatchSimulationLabRequested() {
+  const env = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env;
+
+  if (!env?.DEV) {
+    return false;
+  }
+
+  return new URLSearchParams(window.location.search).get("dev") === "match-simulation-lab";
+}
+
 function getMostRecentCareer(careerSaves: CareerSave[]) {
   return careerSaves[0] ?? null;
 }
@@ -3382,6 +3396,8 @@ function App() {
   const latestResult = game?.showHistory[game.showHistory.length - 1];
   const hasCurrentWeekReview = latestResult ? latestResult.week === game?.currentWeek : false;
   const recentCareer = getMostRecentCareer(careerSaves);
+  const isMatchSimulationLab = isDevMatchSimulationLabRequested();
+  const matchSimulationLabGame = useMemo(() => createMatchSimulationLabGame(game ?? undefined), [game]);
 
   useEffect(() => syncAppViewportHeight(), []);
 
@@ -4036,7 +4052,7 @@ function App() {
       return;
     }
 
-    const resolvedShow = runShow(game);
+    const resolvedShow = runShow(game, createPlayableRunShowOptions());
     persistGameSnapshot(resolvedShow.game, "results");
     setGame(resolvedShow.game);
     setScreen("results");
@@ -4249,6 +4265,10 @@ function App() {
       persistGameSnapshot(updatedGame, "rivalries");
       return updatedGame;
     });
+  }
+
+  if (isMatchSimulationLab) {
+    return <MatchSimulationLabScreen game={matchSimulationLabGame} />;
   }
 
   if (screen === "setup") {
@@ -5056,6 +5076,28 @@ function DashboardScreen({
         </aside>
 
         <section className="dashboard-dynasty-column dashboard-dynasty-center-column">
+          {model.falloutFromLastWeek ? (
+            <article className="dashboard-dynasty-panel dashboard-dynasty-fallout">
+              <div className="dashboard-dynasty-section-heading">
+                <span>Fallout From Last Week</span>
+                <b>{model.falloutFromLastWeek.weekLabel}</b>
+              </div>
+              <div className="dashboard-dynasty-fallout-lead">
+                <strong>{model.falloutFromLastWeek.headline}</strong>
+                <p>{model.falloutFromLastWeek.detail}</p>
+              </div>
+              <div className="dashboard-dynasty-fallout-grid">
+                {model.falloutFromLastWeek.items.map((item) => (
+                  <div className={`dashboard-dynasty-fallout-item tone-${item.tone}`} key={item.id}>
+                    <span>{item.label}</span>
+                    <strong title={item.value}>{item.value}</strong>
+                    <p>{item.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ) : null}
+
           <article className="dashboard-dynasty-panel dashboard-dynasty-roster-panel">
             <div className="dashboard-dynasty-roster-topline">
               <div className="dashboard-dynasty-section-heading">

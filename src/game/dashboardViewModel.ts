@@ -11,7 +11,7 @@ import { draftPool } from "./seed";
 import { resolveWrestlerAlignment } from "./wrestlerAlignment";
 import { getCurrentCalendarWeek, getShowGrade, isValidSegment } from "./scoring";
 import { getProtectedRestWrestlerIds } from "./socialInboxActions";
-import type { Championship, GameState, Rivalry, RivalryStructure, Segment, ShowResult, Wrestler } from "./types";
+import type { Championship, GameState, Rivalry, RivalryStructure, Segment, ShowResult, SocialCategory, SocialPost, SocialTone, Wrestler } from "./types";
 
 export type DashboardMoraleLevel = "happy" | "neutral" | "angry";
 export type DashboardAlignmentLevel = "face" | "heel" | "neutral" | "unknown";
@@ -21,6 +21,14 @@ export type DashboardAlert = {
   tone: "red" | "amber" | "gold";
   icon: "injury" | "contract" | "scout" | "power";
   message: string;
+};
+
+export type DashboardFalloutItem = {
+  id: string;
+  label: string;
+  value: string;
+  detail: string;
+  tone: "gold" | "red" | "blue" | "green" | "neutral";
 };
 
 export type DashboardViewModel = {
@@ -39,6 +47,12 @@ export type DashboardViewModel = {
   dateLabel: string;
   draftPool: Array<{ name: string; style: string }>;
   fansLabel: string;
+  falloutFromLastWeek?: {
+    headline: string;
+    detail: string;
+    weekLabel: string;
+    items: DashboardFalloutItem[];
+  };
   gmCrestLabel: string;
   goals: Array<{ complete: boolean; detail: string; id: string; label: string; progress: number }>;
   hasResults: boolean;
@@ -293,6 +307,181 @@ function getLastShowRosterDeltas(game: GameState, lastShow?: ShowResult, previou
   };
 }
 
+function getDashboardSocialTonePriority(tone: SocialTone) {
+  const priorities: Record<SocialTone, number> = {
+    chaotic: 12,
+    angry: 10,
+    excited: 8,
+    impressed: 7,
+    skeptical: 5,
+    analytical: 1,
+  };
+
+  return priorities[tone];
+}
+
+function getDashboardSocialCategoryPriority(category: SocialCategory) {
+  const priorities: Record<SocialCategory, number> = {
+    title_scene: 95,
+    rivalry_heat: 90,
+    ple_reaction: 86,
+    viral_moment: 82,
+    fatigue_concern: 78,
+    push_complaint: 74,
+    dirt_sheet: 70,
+    fan_praise: 64,
+    analyst_take: 58,
+  };
+
+  return priorities[category];
+}
+
+function getDashboardTopSocialPost(game: GameState, result: ShowResult) {
+  return game.socialPosts
+    .filter((post) => post.resultId === result.id)
+    .sort((left, right) => {
+      const leftScore = getDashboardSocialCategoryPriority(left.category) + getDashboardSocialTonePriority(left.tone);
+      const rightScore = getDashboardSocialCategoryPriority(right.category) + getDashboardSocialTonePriority(right.tone);
+
+      return rightScore - leftScore || left.id.localeCompare(right.id);
+    })[0];
+}
+
+function getDashboardSocialLabel(post: SocialPost) {
+  if (post.tone === "chaotic") return "Internet Is Already Yelling";
+  if (post.category === "viral_moment") return "Breakout Clip";
+  if (post.category === "fatigue_concern") return "Workload Discourse";
+  if (post.category === "rivalry_heat") return post.tone === "angry" || post.tone === "skeptical" ? "Fans Are Done Waiting" : "Story Heat Rising";
+  if (post.category === "title_scene") return post.tone === "angry" ? "Title Scene Backlash" : "Title Scene Has Buzz";
+  if (post.tone === "angry") return "Fans Are Heated";
+  return "IWC Pulse";
+}
+
+function getDashboardSocialTone(post: SocialPost): DashboardFalloutItem["tone"] {
+  if (post.tone === "angry" || post.tone === "chaotic") return "red";
+  if (post.category === "title_scene" || post.category === "rivalry_heat") return "gold";
+  if (post.category === "viral_moment" || post.tone === "excited" || post.tone === "impressed") return "green";
+  return "blue";
+}
+
+function buildDashboardFalloutFromLastWeek(
+  game: GameState,
+  result: ShowResult | undefined,
+  ratingsBattle: ReturnType<typeof getRatingsBattleSnapshot>,
+): DashboardViewModel["falloutFromLastWeek"] {
+  if (!result) {
+    return undefined;
+  }
+
+  const items: DashboardFalloutItem[] = [];
+  const injuryNote = result.lockerRoomFallout?.injuryNotes?.[0];
+  const moraleDrop = result.lockerRoomFallout?.moraleDrops?.[0];
+  const moraleBoost = result.lockerRoomFallout?.moraleBoosts?.[0];
+  const titleNote = result.titleNotes[0] ?? result.titleHistoryEvents?.[0]?.note;
+  const rivalryNote = result.rivalryNotes[0] ?? result.rivalryHistoryEvents?.[0]?.note;
+  const socialPost = getDashboardTopSocialPost(game, result);
+  const playerEntry = ratingsBattle?.entries.find((entry) => entry.isPlayer);
+  const topRival = ratingsBattle?.entries
+    .filter((entry) => !entry.isPlayer && entry.latestScore !== undefined)
+    .sort((left, right) => (right.latestScore ?? 0) - (left.latestScore ?? 0) || left.brandName.localeCompare(right.brandName))[0];
+
+  if (result.biggestMomentumGain.amount > 0) {
+    items.push({
+      id: "breakout",
+      label: "Breakout Clip",
+      value: result.biggestMomentumGain.name,
+      detail: `Momentum +${result.biggestMomentumGain.amount}. The next card can either cash in the noise or let it fade.`,
+      tone: "green",
+    });
+  }
+
+  if (result.biggestFatigueIncrease.amount > 0) {
+    items.push({
+      id: "fatigue",
+      label: "Fatigue Concern",
+      value: result.biggestFatigueIncrease.name,
+      detail: `Fatigue +${result.biggestFatigueIncrease.amount}. The medical desk is already part of next week's booking conversation.`,
+      tone: result.biggestFatigueIncrease.amount >= 12 ? "red" : "gold",
+    });
+  }
+
+  if (injuryNote || moraleDrop || moraleBoost) {
+    items.push({
+      id: "locker-room",
+      label: injuryNote || moraleDrop ? "Locker Room Tense" : "Room Bought In",
+      value: injuryNote?.wrestlerName ?? moraleDrop?.wrestlerName ?? moraleBoost?.wrestlerName ?? "Locker Room",
+      detail: injuryNote?.note ?? moraleDrop?.note ?? moraleBoost?.note ?? "The room stayed level after the show.",
+      tone: injuryNote || moraleDrop ? "red" : "green",
+    });
+  }
+
+  if (titleNote || rivalryNote) {
+    items.push({
+      id: titleNote ? "title-story" : "rivalry-story",
+      label: titleNote ? "Champion Protected" : "Story Heat Rising",
+      value: titleNote ? "Title Scene" : "Story Room",
+      detail: compactDashboardRead(titleNote ?? rivalryNote ?? "No story fallout logged.", 118),
+      tone: "gold",
+    });
+  }
+
+  if (socialPost) {
+    items.push({
+      id: "social",
+      label: getDashboardSocialLabel(socialPost),
+      value: socialPost.author,
+      detail: compactDashboardRead(socialPost.text, 128),
+      tone: getDashboardSocialTone(socialPost),
+    });
+  }
+
+  if (playerEntry?.latestScore !== undefined && topRival?.latestScore !== undefined) {
+    const gap = topRival.latestScore - playerEntry.latestScore;
+
+    items.push({
+      id: "rival-desk",
+      label: gap > 0 ? "Rival Desk Won The Night" : gap < 0 ? "You Won The Night" : "Ratings Dead Heat",
+      value: gap > 0 ? `${topRival.brandName} +${gap}` : gap < 0 ? `${game.brandName} +${Math.abs(gap)}` : `${playerEntry.latestScore}`,
+      detail:
+        gap > 0
+          ? `${topRival.brandName} beat you by ${gap}. The ratings argument is no longer theoretical.`
+          : gap < 0
+            ? `${game.brandName} cleared ${topRival.brandName} by ${Math.abs(gap)}. Keep the pressure on the rival desk.`
+            : `${game.brandName} and ${topRival.brandName} finished level. Next week's card owns the argument.`,
+      tone: gap > 0 ? "red" : gap < 0 ? "green" : "gold",
+    });
+  }
+
+  if (!items.length) {
+    items.push({
+      id: "steady",
+      label: "Quiet Receipt",
+      value: getShowGrade(result.totalScore),
+      detail: "No major fallout moved, which makes next week about creating a sharper argument.",
+      tone: "neutral",
+    });
+  }
+
+  const headline = injuryNote
+    ? "Medical Desk Changed The Board"
+    : moraleDrop
+      ? "Locker Room Needs A Reply"
+      : socialPost && (socialPost.tone === "chaotic" || socialPost.tone === "angry")
+        ? getDashboardSocialLabel(socialPost)
+        : topRival && playerEntry?.latestScore !== undefined && topRival.latestScore !== undefined && topRival.latestScore > playerEntry.latestScore
+          ? "Rival Desk Won The Night"
+          : result.biggestMomentumGain.amount > 0
+            ? "Breakout Clip Has Heat"
+            : "Last Week Has A Receipt";
+
+  return {
+    headline,
+    detail: `Week ${result.week} closed at ${result.totalScore} (${getShowGrade(result.totalScore)}). These are the resolved consequences shaping ${getCurrentCalendarWeek(game).showName}.`,
+    weekLabel: `S${result.seasonNumber} W${result.week} · ${result.showName}`,
+    items: items.slice(0, 6),
+  };
+}
+
 function segmentLabel(game: GameState, segment: Segment) {
   const names = segment.participantIds
     .map((id) => game.wrestlers.find((wrestler) => wrestler.id === id)?.name ?? "TBD")
@@ -349,6 +538,7 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
   const weeklyPressure = getWeeklyDecisionPressureSnapshot(game, result);
   const ratingsBattle = getRatingsBattleSnapshot(game, result);
   const lastShow = game.showHistory[game.showHistory.length - 1];
+  const falloutFromLastWeek = buildDashboardFalloutFromLastWeek(game, result ?? lastShow, ratingsBattle);
   const protectedRestIds = getProtectedRestWrestlerIds(game);
   const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers, protectedRestIds));
   const hasWeekReview = Boolean(result && result.week === game.currentWeek);
@@ -498,6 +688,7 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
       style: wrestler.wrestlingStyle ?? wrestler.archetype ?? "-",
     })),
     fansLabel: ratingsBattle ? `#${ratingsBattle.playerRank} / ${game.brandName}` : game.brandName,
+    falloutFromLastWeek,
     gmCrestLabel: game.gmName.slice(0, 1).toUpperCase() || "G",
     goals,
     hasResults: game.showHistory.length > 0,

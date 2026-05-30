@@ -12,7 +12,14 @@ import { formatRivalryEventType, formatRivalryStatus } from "../game/storyContex
 import type { FinanceReport, GameState, Rivalry, ShowResult } from "../game/types";
 import { getSegmentResultParticipantsLabel, getResolvedSegmentStipulationLabel } from "../booking/bookingUtils";
 import { getFinanceReportForResult, getShowTypeLabel } from "./financeScreenReads";
-import { buildFalloutBeats, buildHeadlineBeat, type ResultsRecapBeat } from "./resultsScreenReads";
+import {
+  buildFalloutBeats,
+  buildHeadlineBeat,
+  buildNextWeekPressureBeat,
+  buildRivalPressureBeat,
+  buildTopSocialReaction,
+  type ResultsRecapBeat,
+} from "./resultsScreenReads";
 
 export type WeekReviewFalloutGroup = {
   id: string;
@@ -50,6 +57,9 @@ export type WeekReviewViewModel = {
   advanceLabel: string;
   headline: ResultsRecapBeat;
   activeFalloutBeats: ResultsRecapBeat[];
+  topSocialReaction?: ResultsRecapBeat;
+  rivalPressureBeat?: ResultsRecapBeat;
+  nextWeekPressureBeat: ResultsRecapBeat;
   momentumName: string;
   momentumAmount: number;
   fatigueName: string;
@@ -222,6 +232,9 @@ export function buildWeekReviewViewModel(game: GameState, result: ShowResult): W
     advanceLabel: isFinalWeek ? "Season Review" : "Advance Week",
     headline: buildHeadlineBeat(result),
     activeFalloutBeats: buildFalloutBeats(result).filter((beat) => beat.tone !== "quiet"),
+    topSocialReaction: buildTopSocialReaction(game, result),
+    rivalPressureBeat: buildRivalPressureBeat(game, result),
+    nextWeekPressureBeat: buildNextWeekPressureBeat(game, result),
     momentumName: result.biggestMomentumGain.name,
     momentumAmount: result.biggestMomentumGain.amount,
     fatigueName: result.biggestFatigueIncrease.name,

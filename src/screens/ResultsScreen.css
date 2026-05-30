@@ -179,6 +179,105 @@
   white-space: nowrap;
 }
 
+/* Fallout command receipt */
+
+.rs-fallout-command {
+  background:
+    linear-gradient(90deg, rgba(246, 193, 86, 0.12), transparent 68%),
+    rgba(8, 9, 13, 0.94);
+  border: 1px solid rgba(246, 193, 86, 0.24);
+  border-left: 3px solid var(--bc-prestige);
+  border-radius: 2px;
+  display: grid;
+  flex: 0 0 auto;
+  gap: 8px;
+  grid-template-columns: minmax(210px, 0.34fr) minmax(0, 1fr) minmax(250px, 0.45fr);
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.rs-receipt-headline,
+.rs-fallout-card {
+  background: rgba(6, 7, 10, 0.74);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 2px solid rgba(185, 193, 207, 0.45);
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px;
+}
+
+.rs-receipt-headline.tone-title,
+.rs-fallout-card.tone-title {
+  border-left-color: var(--bc-prestige);
+}
+
+.rs-receipt-headline.tone-strong,
+.rs-fallout-card.tone-strong {
+  border-left-color: #00a896;
+}
+
+.rs-receipt-headline.tone-story,
+.rs-fallout-card.tone-story,
+.rs-receipt-headline.tone-reveal,
+.rs-fallout-card.tone-reveal {
+  border-left-color: #6fe2d4;
+}
+
+.rs-receipt-headline.tone-danger,
+.rs-fallout-card.tone-danger {
+  border-left-color: #ff5361;
+}
+
+.rs-receipt-headline > span,
+.rs-fallout-card > span {
+  color: var(--bc-prestige);
+  font-size: 0.56rem;
+  font-weight: 900;
+}
+
+.rs-receipt-headline strong,
+.rs-fallout-card strong {
+  color: #f4f7fb;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.05;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rs-receipt-headline p,
+.rs-fallout-card p {
+  color: #b9c1cf;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.25;
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-transform: none;
+}
+
+.rs-fallout-beat-grid,
+.rs-reaction-strip {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rs-fallout-beat-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.rs-reaction-strip {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.rs-fallout-card.is-compact {
+  padding: 7px 8px;
+}
+
 /* ── Broadcast rundown (primary surface) ── */
 
 .rs-rundown {
@@ -934,6 +1033,15 @@
   .rs-metric small {
     display: none;
   }
+
+  .rs-fallout-command {
+    grid-template-columns: minmax(180px, 0.34fr) minmax(0, 1fr);
+  }
+
+  .rs-reaction-strip {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 900px) {
@@ -949,7 +1057,10 @@
   .rs-hero,
   .rs-hero.rs-hero-compact,
   .rs-hero-metrics,
-  .rs-hero-metrics-inline {
+  .rs-hero-metrics-inline,
+  .rs-fallout-command,
+  .rs-fallout-beat-grid,
+  .rs-reaction-strip {
     grid-template-columns: 1fr;
   }
 
