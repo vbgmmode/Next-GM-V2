@@ -306,6 +306,21 @@ describe("match ratings foundation", () => {
     expect(tired.matchRatings).toEqual(before);
   });
 
+  it("makes morale and fatigue visible current-state inputs in effective power", () => {
+    const baseRatings = explicitRatings({ stamina: 75, resilience: 75, explosiveness: 75, clutch: 75, timing: 75 });
+    const goodState = baseWrestler({ id: "good-state", momentum: 50, morale: 100, fatigue: 0, matchRatings: baseRatings });
+    const badState = baseWrestler({ id: "bad-state", momentum: 50, morale: 0, fatigue: 100, matchRatings: baseRatings });
+    const goodPower = calculateEffectiveMatchPower(goodState).effectivePower;
+    const badPower = calculateEffectiveMatchPower(badState).effectivePower;
+    const probability = calculateMatchupWinProbability(
+      { competitorId: goodState.id, effectivePower: goodPower },
+      { competitorId: badState.id, effectivePower: badPower },
+    );
+
+    expect(goodPower - badPower).toBeGreaterThan(3.5);
+    expect(probability.competitorAWinProbability).toBeGreaterThan(0.53);
+  });
+
   it("resolves deterministic preview outcomes from a seeded roll", () => {
     const favorite = baseWrestler({ id: "favorite", matchRatings: explicitRatings({ technical: 86, clutch: 82 }) });
     const underdog = baseWrestler({ id: "underdog", matchRatings: explicitRatings({ technical: 55, clutch: 58 }) });

@@ -14,9 +14,10 @@ export const MATCH_OUTCOME_TUNING = {
 
 export const MATCH_CURRENT_STATE_TUNING = {
   momentumModifier: 0.08,
-  moraleModifier: 0.05,
-  fatigueStart: 45,
-  fatiguePenalty: -0.08,
+  // Morale and fatigue need to be visible in the dev lab without overpowering permanent match ratings.
+  moraleModifier: 0.16,
+  fatigueStart: 30,
+  fatiguePenalty: -0.24,
 } as const;
 
 export const MATCH_FALL_TAKER_TUNING = {
