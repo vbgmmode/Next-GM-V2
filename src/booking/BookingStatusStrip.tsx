@@ -9,73 +9,49 @@ type Props = {
 
 export function BookingStatusStrip({ model, onNavigate }: Props) {
   const { runtime } = model;
-  const fillPercent = Math.max(4, Math.min(100, Math.round((runtime.validMinutes / runtime.heatScaleMaxMinutes) * 100)));
-  const minMarkerPercent = Math.max(0, Math.min(100, Math.round((runtime.targetMinMinutes / runtime.heatScaleMaxMinutes) * 100)));
+  const matchMinutes = model.segments.filter((segment) => segment.type === "Match").reduce((total, segment) => total + segment.durationMinutes, 0);
+  const storyMinutes = Math.max(0, runtime.validMinutes - matchMinutes);
+  const matchRuntimePercent = runtime.validMinutes > 0 ? Math.round((matchMinutes / runtime.validMinutes) * 100) : 0;
+  const storyRuntimePercent = runtime.validMinutes > 0 ? Math.max(0, 100 - matchRuntimePercent) : 0;
 
   return (
-    <BookingPanel className="booking-status-strip" kicker="Show Status" title="Production Summary" badge={model.balance.balanceLabel}>
+    <BookingPanel
+      badge={model.balance.balanceLabel}
+      className="booking-status-strip"
+      kicker="Show Status"
+      title={
+        <>
+          Production Summary
+          <span className="booking-status-cost">
+            <span>Planned Cost</span>
+            <b>{model.production.totalCostLabel}</b>
+            <em>Segment production {model.production.bookedFinishCost ? `+ booked finishes` : "only"}</em>
+          </span>
+        </>
+      }
+    >
       <section className="booking-status-totals">
         <strong>
           Runtime {runtime.validMinutes} / {runtime.targetMinMinutes} min
         </strong>
-        <div className="booking-status-cost">
-          <span>Planned Segment Cost</span>
-          <b>{model.production.totalCostLabel}</b>
-          <em>
-            Segment production {model.production.bookedFinishCost ? `+ booked finishes` : "only"}
-          </em>
-        </div>
         <div className="booking-balance-bars">
-          <div className="booking-balance-row">
-            <span>Fights</span>
-            <div className="booking-balance-track">
-              <span style={{ width: `${model.balance.matchPercent}%` }} />
+          <div className="booking-balance-row booking-runtime-share-row">
+            <span className="booking-runtime-share-label is-match">Match {matchRuntimePercent}% / {matchMinutes}m</span>
+            <div className="booking-balance-track booking-runtime-share-track">
+              <span className="is-match-time" style={{ width: `${matchRuntimePercent}%` }} />
+              <span className="is-story-time" style={{ width: `${storyRuntimePercent}%` }} />
             </div>
-            <em>{model.balance.matchCount}</em>
+            <span className="booking-runtime-share-label is-story">Promo {storyRuntimePercent}% / {storyMinutes}m</span>
           </div>
-          <div className="booking-balance-row">
-            <span>Promos</span>
-            <div className="booking-balance-track promo">
-              <span style={{ width: `${model.balance.promoPercent}%` }} />
+          <div className="booking-balance-row booking-off-card-row">
+            <span>Roster Off Card</span>
+            <div className="booking-balance-track off-card">
+              <span style={{ width: `${model.rosterUsage.offCardPercent}%` }} />
             </div>
-            <em>{model.balance.promoCount}</em>
-          </div>
-        </div>
-      </section>
-
-      <section
-        aria-label={`Broadcast heat ${runtime.validMinutes} minutes. ${runtime.heatLabel}. ${runtime.heatDetail}`}
-        className="booking-status-runtime-heat"
-      >
-        <div className="booking-runtime-heat-top">
-          <span className={`booking-runtime-heat-pip is-${runtime.heatTone}`}>{runtime.heatTone === "green" ? "OK" : "GO"}</span>
-          <div className="booking-runtime-heat-copy">
-            <strong>Broadcast Heat</strong>
             <em>
-              {runtime.validMinutes} min · {runtime.heatDetail}
+              {model.rosterUsage.offCardCount}/{model.rosterUsage.totalCount}
             </em>
           </div>
-          <b className={`booking-runtime-heat-status is-${runtime.heatTone}`}>{runtime.heatLabel}</b>
-        </div>
-        <div className="booking-runtime-heat-track-wrap">
-          <div
-            aria-valuemax={runtime.heatScaleMaxMinutes}
-            aria-valuemin={0}
-            aria-valuenow={runtime.validMinutes}
-            className="booking-runtime-heat-track"
-            role="meter"
-          >
-            <span className={`booking-runtime-heat-fill is-${runtime.heatTone}`} style={{ width: `${fillPercent}%` }} />
-          </div>
-          <span
-            aria-hidden="true"
-            className="booking-runtime-heat-marker"
-            style={{ left: `${minMarkerPercent}%` }}
-            title={`${runtime.targetMinMinutes} min broadcast window`}
-          />
-          <span className="booking-runtime-heat-marker-label" style={{ left: `${minMarkerPercent}%` }}>
-            {runtime.targetMinMinutes}
-          </span>
         </div>
       </section>
 

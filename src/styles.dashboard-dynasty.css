@@ -494,10 +494,10 @@
 }
 
 .dashboard-dynasty-brand-status {
-  flex: 0 0 188px;
+  flex: 0 0 158px;
   gap: 0;
   justify-content: space-between;
-  padding-block: 8px;
+  padding-block: 7px;
 }
 
 .dashboard-dynasty-brand-status .dashboard-dynasty-kicker {
@@ -508,14 +508,14 @@
 .dashboard-dynasty-brand-plate {
   display: block;
   line-height: 0;
-  margin: 4px auto 6px;
+  margin: 2px auto 4px;
   max-width: 100%;
   width: fit-content;
 }
 
 .dashboard-dynasty-brand-mark {
   display: block;
-  height: 36px;
+  height: 30px;
   max-width: 100%;
   width: auto;
 }
@@ -525,7 +525,7 @@
   display: flex;
   gap: 8px;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   min-width: 0;
 }
 
@@ -547,7 +547,7 @@
 }
 
 .dashboard-dynasty-brand-status .dashboard-dynasty-mini-stat-grid div {
-  padding: 4px 6px;
+  padding: 3px 5px;
 }
 
 .dashboard-dynasty-brand-status .dashboard-dynasty-mini-stat-grid strong {
@@ -579,7 +579,7 @@
 .dashboard-dynasty-metrics .dashboard-dynasty-metric-grid {
   flex: 0 0 auto;
   gap: 4px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .dashboard-dynasty-metrics .dashboard-dynasty-metric-grid div {
@@ -592,8 +592,8 @@
 
 .dashboard-dynasty-chart-shell {
   flex: 1 1 auto;
-  max-height: 56px;
-  min-height: 0;
+  max-height: 96px;
+  min-height: 76px;
   min-width: 0;
   width: 100%;
 }
@@ -601,7 +601,7 @@
 .dashboard-dynasty-chart {
   display: block;
   height: 100%;
-  max-height: 56px;
+  max-height: 96px;
   min-height: 0;
   width: 100%;
 }
@@ -652,7 +652,7 @@
 }
 
 .dashboard-dynasty-goals {
-  flex: 0 0 188px;
+  flex: 0 0 228px;
   min-height: 0;
   overflow: hidden;
 }
@@ -697,7 +697,7 @@
   gap: 8px;
   grid-template-columns: 24px 36px minmax(0, 1fr) 28px;
   min-width: 0;
-  padding: 5px 0;
+  padding: 3px 0;
 }
 
 .dashboard-dynasty-champion-row.is-tag-team {
@@ -731,13 +731,13 @@
 
 .dashboard-dynasty-champion-copy strong {
   color: var(--dashboard-dynasty-soft);
-  font-size: 0.59rem;
+  font-size: 0.56rem;
   font-weight: 900;
 }
 
 .dashboard-dynasty-champion-copy em {
   color: white;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-style: normal;
   font-weight: 900;
 }
@@ -832,11 +832,11 @@
 
 .dashboard-dynasty-center-column {
   display: grid;
-  grid-template-rows: minmax(280px, 1fr) minmax(244px, 0.84fr);
+  grid-template-rows: minmax(0, 1fr) minmax(188px, 0.28fr);
 }
 
 .dashboard-dynasty-center-column:has(.dashboard-dynasty-fallout) {
-  grid-template-rows: minmax(140px, 0.48fr) minmax(230px, 1fr) minmax(220px, 0.78fr);
+  grid-template-rows: minmax(104px, 0.18fr) minmax(0, 1fr) minmax(188px, 0.32fr);
 }
 
 .dashboard-dynasty-fallout {
@@ -883,6 +883,15 @@
   text-transform: none;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.dashboard-dynasty-fallout-lead.is-empty {
+  align-content: center;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 2px solid rgba(var(--dashboard-dynasty-accent-rgb), 0.55);
+  flex: 1 1 auto;
+  padding: 8px 10px;
 }
 
 .dashboard-dynasty-fallout-grid {
@@ -1314,7 +1323,7 @@
 
 .dashboard-dynasty-right-column {
   display: grid;
-  grid-template-rows: minmax(0, 0.95fr) minmax(0, 1.05fr) minmax(0, 0.85fr) minmax(0, 0.85fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 0.62fr);
 }
 
 .dashboard-dynasty-rivalry-list,

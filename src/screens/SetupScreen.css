@@ -271,88 +271,123 @@
 
 .setup-dynasty-shell .setup-rules-compact {
   display: grid;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   gap: 8px;
+  grid-template-rows: auto;
   min-height: 0;
 }
 
-.setup-dynasty-shell .setup-rules-modes-row {
+.setup-dynasty-shell .setup-rules-selector-row {
   display: grid;
-  gap: 14px;
-  grid-template-columns: minmax(240px, 0.36fr) minmax(0, 1fr);
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   min-height: 0;
 }
 
-.setup-dynasty-shell .setup-rules-difficulty-section,
-.setup-dynasty-shell .setup-rules-budget-section,
-.setup-dynasty-shell .setup-rules-draft-section {
+.setup-dynasty-shell .setup-rules-selector-card {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 42%),
     rgba(8, 10, 14, 0.72);
   border: 1px solid var(--dashboard-dynasty-border);
+  border-left: 3px solid rgba(200, 208, 223, 0.5);
   border-radius: 2px;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
   display: grid;
   gap: 6px;
   grid-template-rows: auto minmax(0, 1fr);
-  min-height: 0;
+  min-height: 152px;
   padding: 10px 12px;
 }
 
-.setup-dynasty-shell .setup-rules-difficulty-section {
-  border-left: 3px solid rgba(200, 208, 223, 0.42);
+.setup-dynasty-shell .setup-rules-selector-card:nth-child(2) {
+  border-left-color: rgba(var(--bc-prestige-rgb), 0.58);
 }
 
-.setup-dynasty-shell .setup-rules-budget-section {
-  border-left: 3px solid rgba(var(--bc-prestige-rgb), 0.58);
-}
-
-.setup-dynasty-shell .setup-rules-draft-section {
-  border-left: 3px solid rgba(200, 208, 223, 0.58);
-}
-
-.setup-dynasty-shell .setup-rules-budget-section .eyebrow,
-.setup-dynasty-shell .setup-rules-draft-section .eyebrow,
-.setup-dynasty-shell .setup-rules-difficulty-section .eyebrow {
+.setup-dynasty-shell .setup-rules-selector-head {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  margin: 0;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  min-width: 0;
   padding-bottom: 6px;
 }
 
-.setup-dynasty-shell .setup-rules-desk .choice-grid {
-  gap: 6px;
-  margin: 4px 0 0;
+.setup-dynasty-shell .setup-rules-selector-head .eyebrow {
+  margin: 0;
 }
 
-.setup-dynasty-shell .setup-rules-desk .identity-grid button {
-  min-height: 54px;
-  padding: 6px 8px;
-}
-
-.setup-dynasty-shell .setup-rules-desk .identity-grid button span {
-  font-size: 0.72rem;
+.setup-dynasty-shell .setup-rules-selector-head span {
+  color: var(--text-muted);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
   line-height: 1;
+  text-transform: uppercase;
 }
 
-.setup-dynasty-shell .setup-rules-desk .identity-grid button small {
+.setup-dynasty-shell .setup-rules-selector-control {
+  align-items: stretch;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  min-height: 104px;
+}
+
+.setup-dynasty-shell .setup-rules-arrow,
+.setup-dynasty-shell .setup-rules-selected-option {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
+    rgba(19, 34, 55, 0.84);
+  border: 1px solid rgba(202, 213, 232, 0.24);
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+}
+
+.setup-dynasty-shell .setup-rules-arrow {
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 900;
+  min-height: 0;
+  padding: 0;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.setup-dynasty-shell .setup-rules-arrow:hover,
+.setup-dynasty-shell .setup-rules-arrow:focus-visible {
+  border-color: rgba(var(--bc-prestige-rgb), 0.72);
+  color: var(--accent-gold);
+  transform: translateY(-1px);
+}
+
+.setup-dynasty-shell .setup-rules-selected-option {
+  border-color: rgba(var(--bc-prestige-rgb), 0.72);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 10px;
+}
+
+.setup-dynasty-shell .setup-rules-selected-option span {
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.setup-dynasty-shell .setup-rules-selected-option small {
   display: -webkit-box;
   font-size: 0.58rem;
   line-height: 1.15;
+  margin-top: 8px;
   overflow: hidden;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.setup-dynasty-shell .setup-rules-difficulty-section .identity-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.setup-dynasty-shell .setup-rules-budget-section .identity-grid {
-  grid-template-columns: 1fr;
-}
-
-.setup-dynasty-shell .setup-rules-draft-section .identity-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  -webkit-line-clamp: 3;
 }
 
 .setup-dynasty-shell .setup-rules-summary.identity-note {
@@ -507,14 +542,17 @@
 }
 
 .setup-dynasty-shell .setup-gm-desk .setup-gm-portrait-grid {
-  align-self: stretch;
-  gap: 6px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-template-rows: repeat(3, minmax(0, 1fr));
-  height: 100%;
-  justify-self: stretch;
+  align-content: center;
+  align-self: center;
+  gap: 8px 18px;
+  grid-template-columns: repeat(4, minmax(150px, 190px));
+  grid-template-rows: repeat(3, auto);
+  height: auto;
+  justify-content: center;
+  justify-self: center;
+  max-height: 100%;
   min-height: 0;
-  width: 100%;
+  width: auto;
 }
 
 .setup-dynasty-shell .setup-gm-desk .setup-gm-portrait-grid button {
@@ -648,19 +686,21 @@
 
 .setup-dynasty-shell .setup-brand-desk .setup-brand-portrait-grid {
   align-content: center;
-  align-self: stretch;
+  align-self: center;
   display: grid;
-  gap: 0;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-template-rows: auto;
-  height: 100%;
-  justify-self: stretch;
+  gap: 10px 14px;
+  grid-template-columns: repeat(2, minmax(300px, 390px));
+  grid-template-rows: repeat(2, auto);
+  height: auto;
+  justify-content: center;
+  justify-self: center;
   min-height: 0;
   overflow: hidden;
-  width: 100%;
+  width: auto;
 }
 
 .setup-dynasty-shell .setup-brand-desk .setup-brand-portrait-grid button {
+  --setup-brand-chair-rgb: var(--bc-brand-secondary-rgb);
   aspect-ratio: 1024 / 384;
   background: #05070b;
   border: 0;
@@ -676,8 +716,28 @@
   width: 100%;
 }
 
-.setup-dynasty-shell .setup-brand-desk .setup-brand-portrait-grid button:hover:not(.is-selected) .setup-brand-portrait-image {
-  filter: brightness(1.05);
+.setup-dynasty-shell .setup-brand-desk .setup-brand-portrait-grid .setup-brand-chair-raw {
+  --setup-brand-chair-rgb: 224, 31, 45;
+}
+
+.setup-dynasty-shell .setup-brand-desk .setup-brand-portrait-grid .setup-brand-chair-smackdown {
+  --setup-brand-chair-rgb: 30, 145, 255;
+}
+
+.setup-dynasty-shell .setup-brand-desk .setup-brand-portrait-grid .setup-brand-chair-nxt {
+  --setup-brand-chair-rgb: 246, 193, 86;
+}
+
+.setup-dynasty-shell .setup-brand-desk .setup-brand-portrait-grid .setup-brand-chair-aew {
+  --setup-brand-chair-rgb: 218, 180, 87;
+}
+
+.setup-dynasty-shell .setup-brand-desk .setup-brand-portrait-grid button:hover .setup-brand-portrait-image,
+.setup-dynasty-shell .setup-brand-desk .setup-brand-portrait-grid button:focus-visible .setup-brand-portrait-image {
+  box-shadow:
+    inset 0 0 0 2px rgba(var(--setup-brand-chair-rgb), 0.92),
+    0 0 18px rgba(var(--setup-brand-chair-rgb), 0.34);
+  filter: brightness(1.08) saturate(1.08);
 }
 
 .setup-dynasty-shell .setup-brand-desk .setup-brand-portrait-grid button.is-selected {
@@ -689,8 +749,8 @@
 
 .setup-dynasty-shell .setup-brand-desk .setup-brand-portrait-grid button.is-selected .setup-brand-portrait-image {
   box-shadow:
-    inset 0 0 0 2px rgba(var(--bc-brand-secondary-rgb), 0.82),
-    0 0 14px rgba(var(--bc-brand-secondary-rgb), 0.22);
+    inset 0 0 0 2px rgba(var(--setup-brand-chair-rgb), 0.9),
+    0 0 16px rgba(var(--setup-brand-chair-rgb), 0.28);
 }
 
 .setup-dynasty-shell .setup-brand-desk .setup-brand-portrait-image {
@@ -828,9 +888,7 @@
     min-height: min-content;
   }
 
-  .setup-dynasty-shell .setup-rules-difficulty-section,
-  .setup-dynasty-shell .setup-rules-budget-section,
-  .setup-dynasty-shell .setup-rules-draft-section {
+  .setup-dynasty-shell .setup-rules-selector-card {
     min-height: 92px;
   }
 
@@ -838,18 +896,37 @@
     grid-template-columns: 160px 1fr 0.8fr 0.8fr minmax(180px, 1fr);
   }
 
-  .setup-dynasty-shell .setup-rules-modes-row {
+  .setup-dynasty-shell .setup-rules-selector-row {
     grid-template-columns: 1fr;
   }
 
-  .setup-dynasty-shell .setup-rules-difficulty-section .identity-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .setup-dynasty-shell .setup-gm-desk .setup-gm-portrait-grid {
+    gap: 6px 12px;
+    grid-template-columns: repeat(4, minmax(130px, 170px));
+    grid-template-rows: repeat(3, auto);
+  }
+}
+
+@media (min-width: 1101px) and (max-height: 760px) {
+  .setup-dynasty-shell .setup-rules-selector-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .setup-dynasty-shell .setup-gm-desk .setup-gm-portrait-grid {
-    gap: 5px;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-template-rows: repeat(3, minmax(0, 1fr));
+  .setup-dynasty-shell .setup-rules-selector-card {
+    min-height: 140px;
+    padding: 8px 10px;
+  }
+
+  .setup-dynasty-shell .setup-rules-selector-control {
+    min-height: 92px;
+  }
+
+  .setup-dynasty-shell .setup-rules-selected-option small {
+    -webkit-line-clamp: 2;
+  }
+
+  .setup-dynasty-shell .setup-rules-summary p:not(.eyebrow) {
+    -webkit-line-clamp: 1;
   }
 }
 

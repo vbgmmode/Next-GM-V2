@@ -174,27 +174,34 @@ export function DashboardScreen({
         </aside>
 
         <section className="dashboard-dynasty-column dashboard-dynasty-center-column">
-          {model.falloutFromLastWeek ? (
-            <article className="dashboard-dynasty-panel dashboard-dynasty-fallout">
-              <div className="dashboard-dynasty-section-heading">
-                <span>Fallout From Last Week</span>
-                <b>{model.falloutFromLastWeek.weekLabel}</b>
+          <article className="dashboard-dynasty-panel dashboard-dynasty-fallout">
+            <div className="dashboard-dynasty-section-heading">
+              <span>Fallout From Last Week</span>
+              <b>{model.falloutFromLastWeek?.weekLabel ?? "No history"}</b>
+            </div>
+            {model.falloutFromLastWeek ? (
+              <>
+                <div className="dashboard-dynasty-fallout-lead">
+                  <strong>{model.falloutFromLastWeek.headline}</strong>
+                  <p>{model.falloutFromLastWeek.detail}</p>
+                </div>
+                <div className="dashboard-dynasty-fallout-grid">
+                  {model.falloutFromLastWeek.items.map((item) => (
+                    <div className={`dashboard-dynasty-fallout-item tone-${item.tone}`} key={item.id}>
+                      <span>{item.label}</span>
+                      <strong title={item.value}>{item.value}</strong>
+                      <p>{item.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="dashboard-dynasty-fallout-lead is-empty">
+                <strong>Nothing to show yet</strong>
+                <p>Run the first show to generate roster, story, social, finance, and rival fallout for this desk.</p>
               </div>
-              <div className="dashboard-dynasty-fallout-lead">
-                <strong>{model.falloutFromLastWeek.headline}</strong>
-                <p>{model.falloutFromLastWeek.detail}</p>
-              </div>
-              <div className="dashboard-dynasty-fallout-grid">
-                {model.falloutFromLastWeek.items.map((item) => (
-                  <div className={`dashboard-dynasty-fallout-item tone-${item.tone}`} key={item.id}>
-                    <span>{item.label}</span>
-                    <strong title={item.value}>{item.value}</strong>
-                    <p>{item.detail}</p>
-                  </div>
-                ))}
-              </div>
-            </article>
-          ) : null}
+            )}
+          </article>
 
           <article className="dashboard-dynasty-panel dashboard-dynasty-roster-panel">
             <div className="dashboard-dynasty-roster-topline">
@@ -257,55 +264,35 @@ export function DashboardScreen({
             </div>
           </article>
 
-          <section className="dashboard-dynasty-center-bottom-grid">
-            <article className="dashboard-dynasty-panel dashboard-dynasty-promo-panel">
-              <div className="dashboard-dynasty-promo-backdrop">
-                <span className="dashboard-dynasty-lower-third">Next Show: {model.promo.showName}</span>
-                <div className="dashboard-dynasty-promo-matchup">
-                  <DashboardDynastyPortrait wrestler={wrestlerOrPlaceholder(model.promo.leftId, model.promo.leftName)} size="lg" />
-                  <span>VS</span>
-                  <DashboardDynastyPortrait wrestler={wrestlerOrPlaceholder(model.promo.rightId, model.promo.rightName)} size="lg" />
-                </div>
-                <div className="dashboard-dynasty-main-event-copy">
-                  <span>{model.promo.stipulation}</span>
-                  <strong title={model.promo.headline}>{model.promo.headline}</strong>
-                  <em title={model.promo.leftName + " vs " + model.promo.rightName}>
-                    {model.promo.leftName} vs {model.promo.rightName}
-                  </em>
-                </div>
+          <article className="dashboard-dynasty-panel dashboard-dynasty-metrics">
+            <div className="dashboard-dynasty-section-heading">
+              <span>Show Metrics ({game.brandName})</span>
+              <b>{chartRangeLabel}</b>
+            </div>
+            <div className="dashboard-dynasty-metric-grid">
+              <div>
+                <span>Viewership</span>
+                <strong>
+                  {model.metrics.viewershipLabel}
+                  {model.metrics.viewershipDelta ? <em>{model.metrics.viewershipDelta}</em> : null}
+                </strong>
               </div>
-            </article>
+              <div>
+                <span>Show Quality</span>
+                <strong>{model.metrics.showQualityLabel}</strong>
+              </div>
+              <div>
+                <span>Match Quality</span>
+                <strong>{model.metrics.matchQualityLabel}</strong>
+              </div>
+              <div>
+                <span>Fan Satisfaction</span>
+                <strong>{model.metrics.fanSatisfactionLabel}</strong>
+              </div>
+            </div>
+            <DashboardDynastyShowScoreChart points={model.metrics.chartPoints} />
+          </article>
 
-            <article className="dashboard-dynasty-panel dashboard-dynasty-show-card">
-              <div className="dashboard-dynasty-section-heading">
-                <span>Current Show Card</span>
-                <b>{model.showCard.length} Segments</b>
-              </div>
-              <div className="dashboard-dynasty-show-card-list">
-                {model.showCard.length ? (
-                  model.showCard.map((entry) => (
-                    <div className={entry.valid ? "dashboard-dynasty-show-card-row" : "dashboard-dynasty-show-card-row is-invalid"} key={entry.id}>
-                      <span>{entry.index}</span>
-                      <strong title={entry.match}>{entry.match}</strong>
-                      <em title={entry.stipulation}>{entry.stipulation}</em>
-                    </div>
-                  ))
-                ) : (
-                  <p className="dashboard-dynasty-empty">No segments booked yet.</p>
-                )}
-              </div>
-              <div className="dashboard-dynasty-action-row">
-                {model.secondaryActions.map((action) => (
-                  <button key={action.label} type="button" onClick={() => onNavigate(action.screen)}>
-                    {action.label}
-                  </button>
-                ))}
-                <button className="dashboard-dynasty-primary-action" type="button" onClick={() => onNavigate(model.primaryAction.screen)}>
-                  {model.primaryAction.label}
-                </button>
-              </div>
-            </article>
-          </section>
         </section>
 
         <aside className="dashboard-dynasty-column dashboard-dynasty-right-column">
@@ -356,35 +343,6 @@ export function DashboardScreen({
             </div>
           </article>
 
-          <article className="dashboard-dynasty-panel dashboard-dynasty-metrics">
-            <div className="dashboard-dynasty-section-heading">
-              <span>Show Metrics ({game.brandName})</span>
-              <b>{chartRangeLabel}</b>
-            </div>
-            <div className="dashboard-dynasty-metric-grid">
-              <div>
-                <span>Viewership</span>
-                <strong>
-                  {model.metrics.viewershipLabel}
-                  {model.metrics.viewershipDelta ? <em>{model.metrics.viewershipDelta}</em> : null}
-                </strong>
-              </div>
-              <div>
-                <span>Show Quality</span>
-                <strong>{model.metrics.showQualityLabel}</strong>
-              </div>
-              <div>
-                <span>Match Quality</span>
-                <strong>{model.metrics.matchQualityLabel}</strong>
-              </div>
-              <div>
-                <span>Fan Satisfaction</span>
-                <strong>{model.metrics.fanSatisfactionLabel}</strong>
-              </div>
-            </div>
-            <DashboardDynastyShowScoreChart points={model.metrics.chartPoints} />
-          </article>
-
           <article className="dashboard-dynasty-panel dashboard-dynasty-alerts">
             <div className="dashboard-dynasty-section-heading">
               <span>GM Alerts</span>
@@ -397,27 +355,6 @@ export function DashboardScreen({
             </div>
           </article>
 
-          <article className="dashboard-dynasty-panel dashboard-dynasty-draft">
-            <div className="dashboard-dynasty-section-heading">
-              <span>Free Agent Pool</span>
-              <b>Top 5</b>
-            </div>
-            <div className="dashboard-dynasty-draft-list">
-              {model.draftPool.length ? (
-                model.draftPool.map((entry) => (
-                  <div className="dashboard-dynasty-draft-row" key={entry.name}>
-                    <strong title={entry.name}>{entry.name}</strong>
-                    <span title={entry.style}>{entry.style}</span>
-                  </div>
-                ))
-              ) : (
-                <p className="dashboard-dynasty-empty">No immediate free-agent targets.</p>
-              )}
-            </div>
-            <button className="dashboard-dynasty-gold-action" type="button" onClick={() => onNavigate("market")}>
-              View Market Desk
-            </button>
-          </article>
         </aside>
       </section>
     </DynastyManagementShell>

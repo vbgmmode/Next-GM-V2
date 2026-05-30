@@ -21,22 +21,22 @@ export type ShowReadiness = ReturnType<typeof getShowReadiness>;
 export type BookingRuntimeHeatTone = "yellow" | "green" | "red";
 
 export function getBookingRuntimeHeat(validMinutes: number) {
-  const scaleMaxMinutes = tvRuntimeWarningMinutes;
+  const scaleMaxMinutes = tvRuntimeWarningMinutes + 15;
 
   if (validMinutes < showRuntimeMinMinutes) {
     return {
-      tone: "yellow" as BookingRuntimeHeatTone,
+      tone: "green" as BookingRuntimeHeatTone,
       label: "Underbuilt Window",
       detail: `${showRuntimeMinMinutes - validMinutes} min to broadcast window`,
-      fillPercent: Math.max(6, Math.round((validMinutes / showRuntimeMinMinutes) * 100)),
+      fillPercent: Math.max(4, Math.round((validMinutes / scaleMaxMinutes) * 100)),
       scaleMaxMinutes,
     };
   }
 
-  if (validMinutes <= showRuntimeOvertimeMinutes) {
+  if (validMinutes <= showRuntimeTargetMinutes) {
     return {
-      tone: "green" as BookingRuntimeHeatTone,
-      label: "Broadcast Window",
+      tone: "yellow" as BookingRuntimeHeatTone,
+      label: "Warning Window",
       detail: `${validMinutes} min in live block`,
       fillPercent: Math.max(8, Math.round((validMinutes / scaleMaxMinutes) * 100)),
       scaleMaxMinutes,
@@ -45,8 +45,8 @@ export function getBookingRuntimeHeat(validMinutes: number) {
 
   return {
     tone: "red" as BookingRuntimeHeatTone,
-    label: "Overrun Risk",
-    detail: `${validMinutes - showRuntimeOvertimeMinutes} min past target block`,
+    label: "Overrun Penalty",
+    detail: `${validMinutes - showRuntimeTargetMinutes} min past production cap`,
     fillPercent: Math.min(100, Math.round((validMinutes / scaleMaxMinutes) * 100)),
     scaleMaxMinutes,
   };

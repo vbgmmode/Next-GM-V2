@@ -15,6 +15,7 @@ import {
   getShowReadiness,
   isMajorEventStar,
   showRuntimeMinMinutes,
+  showRuntimeTargetMinutes,
   tvRuntimeWarningMinutes,
 } from "./bookingUtils";
 
@@ -95,6 +96,7 @@ export type BookingViewModel = {
     validMinutes: number;
     targetMinMinutes: number;
     targetMaxMinutes: number;
+    penaltyMinMinutes: number;
     percent: number;
     heatTone: "yellow" | "green" | "red";
     heatLabel: string;
@@ -123,6 +125,12 @@ export type BookingViewModel = {
     promoPercent: number;
     balanceLabel: string;
   };
+  rosterUsage: {
+    bookedCount: number;
+    offCardCount: number;
+    offCardPercent: number;
+    totalCount: number;
+  };
   warnings: BookingWarning[];
   rivalryCoverage: BookingRivalryCoverage[];
   rosterSnapshot: BookingRosterSnapshot[];
@@ -139,19 +147,19 @@ function isMatchSegment(segment: Segment) {
 }
 
 function buildProducerNote(game: GameState, segment: Segment, titleName?: string, rivalryName?: string) {
-  const participants = getSegmentParticipantsLabel(segment, game.wrestlers);
   const duration = getSegmentDurationMinutes(segment);
+  const segmentLabel = segment.segmentDisplayName ?? segment.type;
 
   if (titleName && rivalryName) {
-    return `${participants} booked for a ${duration}-minute ${segment.type.toLowerCase()} with ${titleName} and ${rivalryName} attached.`;
+    return `${duration}-minute ${segmentLabel.toLowerCase()} carrying ${titleName} stakes and active rivalry heat.`;
   }
   if (titleName) {
-    return `${participants} booked for a ${duration}-minute ${segment.type.toLowerCase()} with ${titleName} attached.`;
+    return `${duration}-minute ${segmentLabel.toLowerCase()} with ${titleName} stakes attached.`;
   }
   if (rivalryName) {
-    return `${participants} booked for a ${duration}-minute ${segment.type.toLowerCase()} with ${rivalryName}.`;
+    return `${duration}-minute ${segmentLabel.toLowerCase()} advancing active rivalry heat.`;
   }
-  return `${participants} booked for a ${duration}-minute ${segment.type.toLowerCase()} on tonight's rundown.`;
+  return `${duration}-minute ${segmentLabel.toLowerCase()} locked into tonight's rundown.`;
 }
 
 function getPlannedSegmentCost(segment: Segment, showType: ShowType) {
@@ -337,6 +345,9 @@ export function buildBookingModel(game: GameState, selectedSegmentId?: string | 
   const selectedIndex = selectedSegment ? segments.indexOf(selectedSegment) : -1;
   const runtimeHeat = getBookingRuntimeHeat(validMinutes);
   const bookedWrestlers = game.wrestlers.filter((wrestler) => bookedIds.has(wrestler.id));
+  const rosterTotalCount = game.wrestlers.length;
+  const rosterBookedCount = bookedWrestlers.length;
+  const rosterOffCardCount = Math.max(0, rosterTotalCount - rosterBookedCount);
   const riskRows = bookedWrestlers
     .map((wrestler) => ({
       reads: getBookingWrestlerRiskReads(wrestler, bookedCounts[wrestler.id] ?? 0),
@@ -372,7 +383,8 @@ export function buildBookingModel(game: GameState, selectedSegmentId?: string | 
       plannedMinutes,
       validMinutes,
       targetMinMinutes: showRuntimeMinMinutes,
-      targetMaxMinutes: tvRuntimeWarningMinutes,
+      targetMaxMinutes: showRuntimeTargetMinutes,
+      penaltyMinMinutes: tvRuntimeWarningMinutes,
       percent: Math.min(100, Math.round((validMinutes / showRuntimeMinMinutes) * 100)),
       heatTone: runtimeHeat.tone,
       heatLabel: runtimeHeat.label,
@@ -397,9 +409,15 @@ export function buildBookingModel(game: GameState, selectedSegmentId?: string | 
       { label: "Valid Segments", value: `${validSegments.length}/${segments.length}` },
       { label: "Runtime", value: `${validMinutes} min`, detail: `of ${showRuntimeMinMinutes}` },
       { label: "Workload Flags", value: String(riskRows.length) },
-      { label: "Off Card", value: String(unbookedCount) },
+      { label: "Off Card", value: String(unbookedCount), detail: `of ${rosterTotalCount} roster` },
     ],
     balance: buildBalance(segments),
+    rosterUsage: {
+      bookedCount: rosterBookedCount,
+      offCardCount: rosterOffCardCount,
+      offCardPercent: rosterTotalCount > 0 ? Math.round((rosterOffCardCount / rosterTotalCount) * 100) : 0,
+      totalCount: rosterTotalCount,
+    },
     warnings: buildWarnings(game, invalidCount, unbookedCount, producerNoteWithPrestige),
     rivalryCoverage: game.rivalries.map((rivalry) => {
       const [leftId, rightId] = rivalry.participantIds;

@@ -15,7 +15,7 @@ export function BookingPanel({
   className?: string;
   kicker?: string;
   onBadgeClick?: () => void;
-  title?: string;
+  title?: ReactNode;
 }) {
   return (
     <article className={`booking-panel ${className}`.trim()}>

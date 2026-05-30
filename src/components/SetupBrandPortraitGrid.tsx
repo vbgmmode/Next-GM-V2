@@ -18,7 +18,7 @@ export function SetupBrandPortraitGrid({
         return (
           <button
             aria-selected={isSelected}
-            className={isSelected ? "is-selected" : ""}
+            className={`setup-brand-chair setup-brand-chair-${chair.style.toLowerCase()}${isSelected ? " is-selected" : ""}`}
             key={chair.style}
             onClick={() => onSelect(chair)}
             role="option"

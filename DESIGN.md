@@ -57,6 +57,8 @@ Build every screen from command-center regions:
 
 Primary gameplay screens are **viewport-first**. Full-page scroll on a core screen is a design failure unless the active ticket explicitly allows it.
 
+UI verification defaults to laptop/desktop viewports. Do **not** check mobile UI unless the active ticket explicitly asks for mobile behavior.
+
 Do **not** add a duplicate bottom control-room footer rail unless the ticket asks for it.
 
 ### Visual system (summary)
@@ -95,7 +97,8 @@ Do **not** add a duplicate bottom control-room footer rail unless the ticket ask
 4. Start from existing screen patterns and the Brand HQ template (`docs/ui/screen-templates/brand-hq-command-center/index.html`).
 5. Implement **only** the active ticket. Smallest clean change. No unrelated refactors.
 6. Preserve deterministic simulation behavior unless explicitly asked to change it.
-7. Keep the next player action obvious within **two seconds**.
+7. Verify UI work on laptop/desktop only unless mobile behavior is explicitly requested.
+8. Keep the next player action obvious within **two seconds**.
 
 ### Default decision rule
 
@@ -154,8 +157,11 @@ Each screen has one job. Match the contract for the screen you are building or r
 | Segment list / rundown | Plain form builder |
 | Selected segment composer | Prediction spam |
 | Runtime target / current runtime | Hidden primary action |
+| Broadcast heat gauge with green/yellow/red runtime zones | Red used before penalty risk |
+| Production summary with planned cost, match/promo time share, and roster off-card coverage | Spreadsheet-like status strip |
 | Talent / rivalry / title context | No selected segment hero |
-| Readiness and warnings | |
+| Rivalry coverage sized for five rivalries with compact matchup labels | Repeated off-card text that crowds names |
+| Readiness and warnings | Predictive fallout language |
 | Save / simulate / advance action clarity | |
 
 **Pre-show rule:** readiness and risk warnings only.
