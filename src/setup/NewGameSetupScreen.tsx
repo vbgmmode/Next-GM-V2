@@ -510,34 +510,25 @@ export function NewGameSetupScreen({
             <CommandPanel className="setup-rules-desk" eyebrow="Game Rules" title="Set The Pressure Level" tone="brand">
               <p className="lede setup-rules-lede">Choose difficulty, budget mode, and draft order before Draft Night.</p>
               <div className="setup-rules-compact">
-                <section className="setup-rules-difficulty-section">
-                  <p className="eyebrow">Difficulty</p>
-                  <ChoiceGrid
+                <div className="setup-rules-selector-row">
+                  <RulesSelectorCard
+                    label="Difficulty"
                     choices={difficultyOptions}
                     selected={difficulty}
                     onSelect={(choice) => setDifficulty(choice as GameDifficulty)}
-                    variant="identity"
                   />
-                </section>
-                <div className="setup-rules-modes-row">
-                  <section className="setup-rules-budget-section">
-                    <p className="eyebrow">Budget Mode</p>
-                    <ChoiceGrid
-                      choices={setupBudgetModeOptions}
-                      selected={getSetupBudgetModeLabel(startingBudgetTier)}
-                      onSelect={(choice) => setStartingBudgetTier(selectSetupBudgetMode(choice))}
-                      variant="identity"
-                    />
-                  </section>
-                  <section className="setup-rules-draft-section">
-                    <p className="eyebrow">Draft Mode</p>
-                    <ChoiceGrid
-                      choices={setupDraftModeOptions}
-                      selected={getSetupDraftModeLabel(draftMode)}
-                      onSelect={(choice) => applyDraftMode(selectSetupDraftMode(choice))}
-                      variant="identity"
-                    />
-                  </section>
+                  <RulesSelectorCard
+                    label="Budget Mode"
+                    choices={setupBudgetModeOptions}
+                    selected={getSetupBudgetModeLabel(startingBudgetTier)}
+                    onSelect={(choice) => setStartingBudgetTier(selectSetupBudgetMode(choice))}
+                  />
+                  <RulesSelectorCard
+                    label="Draft Mode"
+                    choices={setupDraftModeOptions}
+                    selected={getSetupDraftModeLabel(draftMode)}
+                    onSelect={(choice) => applyDraftMode(selectSetupDraftMode(choice))}
+                  />
                 </div>
               </div>
               <div className="identity-note setup-rules-summary">
@@ -956,9 +947,19 @@ export function NewGameSetupScreen({
                 <section aria-labelledby="draft-snapshot-popup-title" aria-modal="true" className="draft-snapshot-popup" role="dialog">
                   <div className="draft-snapshot-popup-kicker">
                     <span>{latestDraftSnapshot.playerPickLabel}</span>
-                    <button aria-label="Close draft snapshot" onClick={() => setDraftSnapshotPopupOpen(false)} type="button">
-                      X
-                    </button>
+                    <div className="draft-snapshot-popup-controls">
+                      <button className="secondary-action" onClick={() => setDraftSnapshotPopupOpen(false)} type="button">
+                        Continue Draft
+                      </button>
+                      {canEnterWeekOne ? (
+                        <button className="primary-action" onClick={startCareer} type="button">
+                          Enter Week 1
+                        </button>
+                      ) : null}
+                      <button aria-label="Close draft snapshot" className="draft-snapshot-popup-close" onClick={() => setDraftSnapshotPopupOpen(false)} type="button">
+                        X
+                      </button>
+                    </div>
                   </div>
                   <div className="draft-snapshot-popup-hero">
                     <div className="draft-snapshot-popup-player">
@@ -989,16 +990,6 @@ export function NewGameSetupScreen({
                       </article>
                     ))}
                   </div>
-                  <div className="draft-snapshot-popup-actions">
-                    <button className="secondary-action" onClick={() => setDraftSnapshotPopupOpen(false)} type="button">
-                      Continue Draft
-                    </button>
-                    {canEnterWeekOne ? (
-                      <button className="primary-action" onClick={startCareer} type="button">
-                        Enter Week 1
-                      </button>
-                    ) : null}
-                  </div>
                 </section>
               </div>
             ) : null}
@@ -1010,6 +1001,51 @@ export function NewGameSetupScreen({
       </section>
       </div>
     </main>
+  );
+}
+
+function RulesSelectorCard({
+  label,
+  choices,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  choices: ChoiceOption[];
+  selected: string;
+  onSelect: (choice: string) => void;
+}) {
+  const selectedIndex = Math.max(
+    0,
+    choices.findIndex((choice) => choice.label === selected),
+  );
+  const selectedOption = choices[selectedIndex] ?? choices[0];
+  const selectRelative = (offset: number) => {
+    const nextIndex = (selectedIndex + offset + choices.length) % choices.length;
+    onSelect(choices[nextIndex].label);
+  };
+
+  return (
+    <section className="setup-rules-selector-card">
+      <header className="setup-rules-selector-head">
+        <p className="eyebrow">{label}</p>
+        <span>
+          {selectedIndex + 1}/{choices.length}
+        </span>
+      </header>
+      <div className="setup-rules-selector-control">
+        <button aria-label={`Previous ${label}`} className="setup-rules-arrow" onClick={() => selectRelative(-1)} type="button">
+          &lt;
+        </button>
+        <div className="setup-rules-selected-option" aria-live="polite">
+          <span>{selectedOption.label}</span>
+          {selectedOption.description ? <small>{selectedOption.description}</small> : null}
+        </div>
+        <button aria-label={`Next ${label}`} className="setup-rules-arrow" onClick={() => selectRelative(1)} type="button">
+          &gt;
+        </button>
+      </div>
+    </section>
   );
 }
 

@@ -51,7 +51,7 @@ The game currently supports:
 - Match Format Metadata Foundation v1 with centralized current segment/match format metadata
 - Match Pacing Context v1 with internal `MatchPacing` support for Sprint/Normal/Epic match-power weighting; Normal is current default behavior and no Booking pacing UI or persistence exists yet
 - Expectation Gap Progression v1 with internal match-ratings progression context comparing resolved match score to average participant base match rating, accelerating positive breakout deltas, and applying bounded disappointment momentum/timing/psychology penalties without UI, persistence, or broader fallout systems
-- Booking Production Rundown / Card Shape v1 with read-only card coverage, readiness, and workload context
+- Booking Production Rundown / Card Shape v1 with read-only card coverage, broadcast heat, rivalry coverage, and workload context
 - Booking Card Board + Focused Segment Setup v1 with numbered card slots and focused segment setup mode inside Booking
 - Booking Default Board Compression v1 with compact board summary and collapsed Production Details context on Booking
 - PLE Readiness Checklist v1 with non-spoiler major-event booking context
@@ -81,6 +81,9 @@ The game currently supports:
 - Save Migration Hardening v1 with centralized defaults for older localStorage saves
 - Dashboard with Living World Pressure / Office Pulse as the primary weekly pressure surface
 - Booking with Match, Promo, Backstage Angle, Contract Signing, and Open Challenge segments
+- Booking production summary with planned cost in the panel header, current runtime, cumulative Match/Promo time share, and roster off-card coverage
+- Booking broadcast heat gauge with semantic runtime zones: green before the minimum live block, yellow from the 90-minute target through 120 minutes, and red only after the 120-minute penalty threshold
+- Booking rivalry coverage panel sized for up to five active rivalries, using compact last-name matchup labels, heat bars, and on-card/off-card state without repeating redundant status text
 - Book Finish creative control with free optional manual winners per match, default simulated winners, tag-side winner selection for tag matches, and Open Challenge pre-show finish control limited to simulate or issuer wins without revealing the hidden opponent
 - Booking Balance Pass v1 with distinct segment scoring, lighter normal fatigue gain, deterministic Open Challenge risk, and tuned rivalry/fallout movement
 - Segment validation and minimum-card requirements
@@ -180,6 +183,7 @@ The loop must remain playable after every change.
 - Dashboard should orient the player through Living World Pressure / Office Pulse, and should not restore a separate duplicate bottom footer or "<Brand> Control Room" rail.
 - Booking should feel like a TV production card.
 - Booking Production Rundown / Card Shape is advisory and must not change validation, Run Show enablement, simulation, or no-spoiler boundaries.
+- Booking broadcast heat and production summary are pre-show status tools only. They may show runtime pressure, planned cost, match/promo time share, and roster off-card coverage, but they must not imply predicted audience, finance, title, rivalry, morale, injury, or social fallout.
 - Results should feel like a broadcast recap plus consequence screen.
 - Roster should feel like a living locker room.
 - Wrestler profiles should support GM decisions with character context, not become spreadsheet clutter.
@@ -368,6 +372,7 @@ These should only be added when the user explicitly asks for them in the active 
 - Keep the current playable loop working.
 - Keep TypeScript passing.
 - Keep the app laptop-friendly and readable.
+- UI verification should default to laptop/desktop viewports only. Do not check mobile UI unless the active ticket explicitly asks for mobile behavior.
 - Use existing game state where possible.
 - Add new state only when the current feature uses it immediately.
 - Preserve deterministic simulation behavior unless explicitly asked to change it.
@@ -388,6 +393,8 @@ When relevant, also smoke-test:
 - Advance Week
 - Refresh persistence
 - Any screen touched by the ticket
+
+Do not perform mobile UI checks unless the active ticket explicitly asks for mobile behavior. Default screen verification should target laptop/desktop viewports.
 
 When touching match power, match pacing, or deep-ratings tag resolution, also run:
 - npm exec vitest -- src/game/matchRatings.test.ts --run

@@ -1961,6 +1961,7 @@
   align-items: center;
   border-bottom: 1px solid rgba(246, 193, 86, 0.24);
   display: flex;
+  gap: 12px;
   justify-content: space-between;
   min-width: 0;
   padding-bottom: 8px;
@@ -1974,7 +1975,20 @@
   text-transform: uppercase;
 }
 
-.draft-snapshot-popup-kicker button {
+.draft-snapshot-popup-controls {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.draft-snapshot-popup-controls button {
+  min-height: 34px;
+  white-space: nowrap;
+}
+
+.draft-snapshot-popup-controls .draft-snapshot-popup-close {
   align-items: center;
   background: rgba(14, 17, 24, 0.84);
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -2134,16 +2148,6 @@
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
-}
-
-.draft-snapshot-popup-actions {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-.draft-snapshot-popup-actions button {
-  min-height: 44px;
 }
 
 .draft-update-brand-row,

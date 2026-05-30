@@ -336,6 +336,11 @@ Booking:
 
 - Should feel like building a live TV production card.
 - Show segment slots, runtime, valid/invalid readiness, participant availability, champion/rivalry context, fatigue/morale/injury warnings, and clear add/edit/remove actions.
+- Use the upper-right context rail for compact live-card pressure: broadcast heat gauge first, rivalry coverage below it, and no separate readiness tile when the same status is already carried by the card state and primary action.
+- Broadcast heat gauge colors are semantic, not brand skin: green before the 90-minute live block, yellow from 90 through 120 minutes, and red only after the 120-minute penalty threshold. Keep the scale readable with 0 minutes on the left and 150 minutes on the right.
+- Production Summary should stay viewport-fit and game-readable: planned cost sits beside the heading, runtime stays visible, match and promo time share use one cumulative line with distinct colors, and roster off-card coverage shows both current and total roster counts.
+- Rivalry Coverage should be sized for the normal five-rivalry case. Use compact last-name matchup labels, heat bars, and on/off-card state without a redundant right-side status label that steals name space.
+- Segment composer summary copy should avoid repeating the wrestler names already shown in the matchup hero; use concise stakes, title, rivalry, and duration language instead.
 - Do not reveal predicted grades, fan reaction, finance fallout, title outcomes, rivalry movement, social buzz, morale fallout, injury outcomes, or Open Challenge opponents before Run Show.
 
 Results:
