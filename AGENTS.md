@@ -50,6 +50,7 @@ The game currently supports:
 - Tag Team Synergy v1 with internal M020 deep-ratings tag power using individual power average, exact source tag-team affiliation context, impromptu MainEvent ego-clash penalty, and no tag XP, tag records, tag management UI, or team persistence
 - Match Format Metadata Foundation v1 with centralized current segment/match format metadata
 - Match Pacing Context v1 with internal `MatchPacing` support for Sprint/Normal/Epic match-power weighting; Normal is current default behavior and no Booking pacing UI or persistence exists yet
+- Expectation Gap Progression v1 with internal match-ratings progression context comparing resolved match score to average participant base match rating, accelerating positive breakout deltas, and applying bounded disappointment momentum/timing/psychology penalties without UI, persistence, or broader fallout systems
 - Booking Production Rundown / Card Shape v1 with read-only card coverage, readiness, and workload context
 - Booking Card Board + Focused Segment Setup v1 with numbered card slots and focused segment setup mode inside Booking
 - Booking Default Board Compression v1 with compact board summary and collapsed Production Details context on Booking
@@ -275,6 +276,7 @@ Completed stabilization passes:
 - Mechanics Review v1 with 50-week seasons, 10 PLE cadence, 52-week prepaid contract cap, no hard roster-count draft/market cap, Mid-Career Draft, singles Open Challenge title resolution, audience heat/trust, and season/career singles/tag records (implemented)
 - Match Pacing Context v1 (implemented as internal simulation hook only; no Booking pacing UI or persistence)
 - Tag Team Synergy v1 (implemented for M020 deep-ratings tag power; positive synergy defaults to zero until an explicit experience source exists)
+- Expectation Gap Progression v1 (implemented as internal progression hook only; no UI, persistence, or wider fallout systems)
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
@@ -288,6 +290,7 @@ Upcoming Direction:
 - Future restricted draft modes must be explicit, optional, and requested by an active ticket.
 - Future data expansion or systems work should remain bounded to an accepted ticket.
 - Future Booking Match Pacing UI, tag-team experience sources, tag-team records, tag management UI, and tag persistence require explicit accepted tickets.
+- Future expectation-gap UI/explanations, social reactions, rivalry/title fallout, analytics, balance tuning, or persisted progression history require explicit accepted tickets.
 - RC bug fixes only when found.
 - Small documentation or QA follow-ups.
 - Consider a data persistence upgrade later, only if explicitly requested.
@@ -367,7 +370,7 @@ These should only be added when the user explicitly asks for them in the active 
 - Use existing game state where possible.
 - Add new state only when the current feature uses it immediately.
 - Preserve deterministic simulation behavior unless explicitly asked to change it.
-- Treat match pacing and tag-team synergy as internal simulation hooks unless the active ticket explicitly asks to expose UI, persistence, or new team state.
+- Treat match pacing, tag-team synergy, and expectation-gap progression as internal simulation hooks unless the active ticket explicitly asks to expose UI, persistence, fallout, or new team/progression state.
 
 ## Testing Expectations
 Before reporting done, run:
@@ -388,6 +391,9 @@ When relevant, also smoke-test:
 When touching match power, match pacing, or deep-ratings tag resolution, also run:
 - npm exec vitest -- src/game/matchRatings.test.ts --run
 - npm exec vitest -- src/game/matchOutcomeResolver.test.ts --run
+
+When touching match-ratings progression or expectation-gap logic, also run:
+- npm exec vitest -- src/game/matchProgression.test.ts --run
 
 When sharing a local app URL:
 - Start the dev server in a persistent session, not a short-lived detached process.
