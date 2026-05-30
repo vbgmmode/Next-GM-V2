@@ -160,8 +160,8 @@ Legend: **P** = Present · **~** = Partial · **—** = Missing
 
 | Dimension | Production | Prototype | Gap |
 |-----------|----------|-----------|-----|
-| **Visual** | Recap package, cause ledger, broadcast fallout, segment breakdown | Hero + ledger rows + ratings summary | Collapsible panels, injury/overrun sections missing |
-| **Layout** | Recap + side panels + collapsible lists | `dynasty-results-grid` | Rival intel / CPU feed rails absent |
+| **Visual** | Recap package, cause ledger, broadcast fallout, rundown reel, focused Segment Receipt window | Hero + ledger rows + ratings summary | Collapsible panels, injury/overrun sections missing |
+| **Layout** | Recap + compact rundown + focused segment window + handoff band | `dynasty-results-grid` | Rival intel / CPU feed rails absent |
 | **Interactions** | Advance Week / Season Review from compact handoff; expand/collapse sections | Nav to dashboard / recap | Direct calendar action wiring |
 | **Data** | `buildResultsRecapPackage`, cause ledger, broadcast fallout snapshots | Fixture `ShowResult` + `getShowGrade` | Requires live post-`runShow` result |
 
@@ -172,7 +172,7 @@ Legend: **P** = Present · **~** = Partial · **—** = Missing
 | Dimension | Production | Prototype | Gap |
 |-----------|----------|-----------|-----|
 | **Visual** | Compact GM handoff inside Show Recap | Handoff panel | Social/rival pressure simplified |
-| **Layout** | Recap + segment inspection + handoff band | `dynasty-results-grid` | Handoff should stay viewport-fit |
+| **Layout** | Recap + rundown reel + segment window + handoff band | `dynasty-results-grid` | Handoff should stay viewport-fit |
 | **Interactions** | Advance Week → `advanceGameWeek`; season review at week 50 | Advance → playthrough toast (no mutation) | Real week advance + save required |
 | **Data** | `getPostShowOfficeSnapshot`, `getPostShowHandoffSnapshot` | Same read models used | Finance rollup from `game.financeReports` — partial |
 
@@ -418,7 +418,7 @@ flowchart TD
 |--------|------|
 | Title | Dynasty layout + wire save CRUD |
 | Dashboard | Port `DashboardScene` layout; complete adapter reads; wire primary CTA routing |
-| Show Recap | Port recap layout; wire cause ledger, fallout, compact GM handoff, and `advanceWeek` / season review branch |
+| Show Recap | Port recap layout; wire cause ledger, fallout, focused Segment Receipt window, compact GM handoff, and `advanceWeek` / season review branch |
 
 **Exit criteria:** New or continued career → book (existing booking UI ok) → run show → Show Recap + GM Handoff → advance week works at 1280×720 with Dynasty chrome on spine screens. No document scroll on spine.
 

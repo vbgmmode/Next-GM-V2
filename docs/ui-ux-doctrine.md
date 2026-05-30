@@ -161,7 +161,7 @@ The first read should focus on the big story:
 - What the crowd cared about.
 - What changed for the brand.
 
-Detailed segment feedback should remain first-class, but the top of the screen should feel like a recap package rather than a spreadsheet.
+Detailed segment feedback should remain first-class through a focused Segment Receipt window opened from the broadcast rundown reel. The main Show Recap page should stay compact enough to keep the recap, rundown, GM Handoff, and calendar action visible without feeling like a spreadsheet.
 
 The compact GM Handoff in Show Recap should complete the loop:
 

@@ -31,5 +31,6 @@ Use this checklist for Next GM player-facing UI changes before reporting a slice
 - New Game / Continue / Reset Save when the shell or setup flow changes.
 - Booking with at least 2 valid segments when Booking, roster availability, or show flow changes.
 - Run Show -> Show Recap + GM Handoff -> Advance Week when loop screens or persistence are touched.
+- On Show Recap, click a broadcast rundown segment chip and verify the focused Segment Receipt window opens, supports close/Escape, and does not push the GM Handoff below the page.
 - Refresh persistence after save-affecting or screen-state changes.
 - Confirm `src/game/aiCommentary.ts` and AI commentary call paths were not changed unless the ticket explicitly requested it.

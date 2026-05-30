@@ -21,7 +21,7 @@ Prioritize bounded improvements that preserve the current loop:
 - Strengthen player-facing UI clarity and command-center presentation.
 - Keep Booking as the primary decision surface.
 - Let Booking feel staged instead of cramped: the player should be able to see the card/rundown as they build, then enter focused setup surfaces for matchups, promos, title context, rivalry context, and other segment details.
-- Keep Show Recap as the consequence reveal surface, with first-class segment inspection and a compact GM Handoff before the calendar advances.
+- Keep Show Recap as the consequence reveal surface, with first-class segment inspection in a focused Segment Receipt window and a compact GM Handoff before the calendar advances.
 - Keep scout, rival visibility, tag, and season-memory features bounded unless a ticket explicitly adds gameplay; finance, contracts, and market pressure are now active gameplay systems.
 - Prefer stabilization, validation, and focused UI polish over broad new systems.
 

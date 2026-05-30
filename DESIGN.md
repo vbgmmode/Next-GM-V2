@@ -174,7 +174,8 @@ Each screen has one job. Match the contract for the screen you are building or r
 |----------|-------|
 | Broadcast recap headline | Dry summary |
 | Show grade | No consequences |
-| Segment / match ratings | Second competing operational headline recap |
+| Segment / match ratings reel | Second competing operational headline recap |
+| Focused Segment Receipt window from reel selection | Inline detail block that crowds the handoff |
 | Fan / business impact | |
 | Title / rivalry fallout | |
 | IWC / social reaction | |

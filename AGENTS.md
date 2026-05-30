@@ -94,7 +94,7 @@ The game currently supports:
 - Title/Rivalry History v1 with lightweight title changes, defenses, rivalry movement, PLE payoffs, profile context, and season story summaries
 - Rivalry context attached to eligible segments
 - Run Show
-- Results / Show Recap with a viewport-fit top broadcast recap package, first-class segment inspection, collapsed post-show support rows, and a compact GM Handoff / Next Week band that carries roster fallout, social/rival pressure, next-show pressure, and the Advance Week or Season Review action
+- Results / Show Recap with a viewport-fit top broadcast recap package, first-class segment inspection through a focused Segment Receipt window opened from the broadcast rundown reel, collapsed post-show support rows, and a compact GM Handoff / Next Week band that carries roster fallout, social/rival pressure, next-show pressure, and the Advance Week or Season Review action
 - Old persisted `weekReview` screen state redirects to merged Show Recap/results when a current reviewable result exists
 - TV-time tracking with appearances this season, last booked week, and consecutive weeks booked
 - Open Challenge resolved opponents count as booked after the show
@@ -143,7 +143,7 @@ The loop must remain playable after every change.
 - Setup frames the player as a hired GM entering a larger GM universe before Draft Night.
 - Dashboard orients the week through Living World Pressure / Office Pulse, next action, and current brand pressure.
 - Booking is the TV production desk for assembling the current card with context and warnings, not predicted fallout.
-- Results / Show Recap is the resolved broadcast recap, first-class segment review, compact GM handoff, and calendar transition surface.
+- Results / Show Recap is the resolved broadcast recap, compact broadcast rundown, first-class Segment Receipt window, compact GM handoff, and calendar transition surface.
 - Roster is the living locker room and wrestler profile surface.
 - Championships is the prestige, contender, title-history, and division-health surface.
 - Rivalries is the creative/story room for active feud temperature, timing, stakes, and payoff pressure from existing state.

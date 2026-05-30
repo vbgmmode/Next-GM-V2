@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DynastyManagementShell, type DynastyManagementCta } from "../components/DynastyManagementShell";
 import { SuperstarPortrait } from "../components/SuperstarPortrait";
 import type { GameScreen } from "../game/migration";
@@ -203,6 +203,7 @@ export function ResultsScreen({
   const model = buildResultsViewModel(game, result);
   const handoffModel = buildPostShowHandoffViewModel(game, result);
   const [selectedSegmentId, setSelectedSegmentId] = useState(model.segmentReads[0]?.segmentId ?? "");
+  const [segmentWindowOpen, setSegmentWindowOpen] = useState(false);
   const selectedIndex = model.segmentReads.findIndex((read) => read.segmentId === selectedSegmentId);
   const activeIndex = selectedIndex >= 0 ? selectedIndex : 0;
   const selectedRead = model.segmentReads[activeIndex] ?? model.segmentReads[0];
@@ -227,6 +228,21 @@ export function ResultsScreen({
     onClick: isCurrentPostShow ? onAdvanceWeek : () => onNavigate("dashboard"),
     tone: isCurrentPostShow ? (handoffModel.advanceLabel === "Season Review" ? "brand" : "positive") : "neutral",
   };
+
+  useEffect(() => {
+    if (!segmentWindowOpen) {
+      return;
+    }
+
+    function closeSegmentWindow(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSegmentWindowOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", closeSegmentWindow);
+    return () => window.removeEventListener("keydown", closeSegmentWindow);
+  }, [segmentWindowOpen]);
 
   return (
     <DynastyManagementShell
@@ -299,7 +315,10 @@ export function ResultsScreen({
                 aria-current={read.segmentId === selectedRead?.segmentId ? "page" : undefined}
                 className={`rs-reel-chip tone-${read.scoreTone}${read.isNoContest ? " is-no-contest" : ""}${read.isCompetitive ? " is-match" : ""}${read.segmentId === selectedRead?.segmentId ? " is-active" : ""}`}
                 key={read.segmentId}
-                onClick={() => setSelectedSegmentId(read.segmentId)}
+                onClick={() => {
+                  setSelectedSegmentId(read.segmentId);
+                  setSegmentWindowOpen(true);
+                }}
                 title={`${read.type} · ${read.score} · ${read.reelSummary}`}
                 type="button"
               >
@@ -312,44 +331,6 @@ export function ResultsScreen({
               </button>
             ))}
           </div>
-
-          {selectedRead ? (
-            <div className="rs-segment-focus">
-              <div className="rs-segment-focus-head">
-                <div>
-                  <span>Segment Receipt</span>
-                  <strong>
-                    {String(selectedRead.index).padStart(2, "0")} · {selectedRead.type}
-                  </strong>
-                </div>
-                <div className="rs-segment-pager">
-                  <button
-                    className="rs-segment-pager-btn"
-                    disabled={!segmentPager.hasPrev}
-                    onClick={() => segmentPager.prevId && setSelectedSegmentId(segmentPager.prevId)}
-                    type="button"
-                  >
-                    Prev
-                  </button>
-                  <span>
-                    {segmentPager.current} / {segmentPager.total}
-                  </span>
-                  <button
-                    className="rs-segment-pager-btn"
-                    disabled={!segmentPager.hasNext}
-                    onClick={() => segmentPager.nextId && setSelectedSegmentId(segmentPager.nextId)}
-                    type="button"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-
-              <div className="rs-segment-focus-body">
-                <SegmentBroadcastCard focused read={selectedRead} wrestlers={game.wrestlers} />
-              </div>
-            </div>
-          ) : null}
 
           <section className="rs-handoff-band" aria-label="GM handoff and next week">
             <article className="rs-handoff-lead">
@@ -389,6 +370,50 @@ export function ResultsScreen({
           </section>
         </section>
       </div>
+
+      {segmentWindowOpen && selectedRead ? (
+        <div className="rs-segment-window-backdrop" aria-labelledby="rs-segment-window-title" aria-modal="true" role="dialog">
+          <button className="rs-segment-window-scrim" aria-label="Close segment receipt" onClick={() => setSegmentWindowOpen(false)} type="button" />
+          <section className="rs-segment-window" role="document">
+            <header className="rs-segment-window-head">
+              <div>
+                <span>Segment Receipt</span>
+                <strong id="rs-segment-window-title">
+                  {String(selectedRead.index).padStart(2, "0")} · {selectedRead.type}
+                </strong>
+              </div>
+              <div className="rs-segment-pager">
+                <button
+                  className="rs-segment-pager-btn"
+                  disabled={!segmentPager.hasPrev}
+                  onClick={() => segmentPager.prevId && setSelectedSegmentId(segmentPager.prevId)}
+                  type="button"
+                >
+                  Prev
+                </button>
+                <span>
+                  {segmentPager.current} / {segmentPager.total}
+                </span>
+                <button
+                  className="rs-segment-pager-btn"
+                  disabled={!segmentPager.hasNext}
+                  onClick={() => segmentPager.nextId && setSelectedSegmentId(segmentPager.nextId)}
+                  type="button"
+                >
+                  Next
+                </button>
+                <button className="rs-segment-pager-btn rs-segment-close-btn" onClick={() => setSegmentWindowOpen(false)} type="button">
+                  Close
+                </button>
+              </div>
+            </header>
+
+            <div className="rs-segment-window-body">
+              <SegmentBroadcastCard focused read={selectedRead} wrestlers={game.wrestlers} />
+            </div>
+          </section>
+        </div>
+      ) : null}
     </DynastyManagementShell>
   );
 }
