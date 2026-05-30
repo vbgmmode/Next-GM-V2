@@ -47,6 +47,7 @@ import {
   type DraftSort,
   type SetupStep,
 } from "./setupReads";
+import "../screens/SetupScreen.css";
 import "./setup.css";
 
 export type StartCareerConfig = {
