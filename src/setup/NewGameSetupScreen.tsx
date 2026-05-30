@@ -102,6 +102,7 @@ export function NewGameSetupScreen({
   const [draftAvailabilityFilter, setDraftAvailabilityFilter] = useState(draftAvailabilityFilters[0]);
   const [draftArchetypeFilter, setDraftArchetypeFilter] = useState(draftArchetypeFilters[0]);
   const [draftFocusId, setDraftFocusId] = useState<string>();
+  const [isDraftSnapshotPopupOpen, setDraftSnapshotPopupOpen] = useState(false);
   const selectedGmPersona = getGmPersonaByStyle(gmStyle);
   const selectedBrandChair = getBrandChairByStyle(brandStyle);
   const selectedDifficulty = difficultyOptions.find((option) => option.label === difficulty) ?? difficultyOptions[1];
@@ -230,6 +231,21 @@ export function NewGameSetupScreen({
     }
   }, [availableWrestlers, draftFocusId]);
 
+  useEffect(() => {
+    if (!isDraftSnapshotPopupOpen) {
+      return;
+    }
+
+    function closeDraftSnapshotPopup(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setDraftSnapshotPopupOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", closeDraftSnapshotPopup);
+    return () => window.removeEventListener("keydown", closeDraftSnapshotPopup);
+  }, [isDraftSnapshotPopupOpen]);
+
   function startCareer() {
     if (!canEnterWeekOne) {
       return;
@@ -263,6 +279,7 @@ export function NewGameSetupScreen({
 
     setDraftedWrestlers((current) => [...current, wrestler]);
     setDraftPickGroups((current) => [...current, [wrestler.id]]);
+    setDraftSnapshotPopupOpen(true);
   }
 
   function draftFocusedWrestler() {
@@ -283,6 +300,7 @@ export function NewGameSetupScreen({
     setDraftedWrestlers((current) => [...current, ...offer.wrestlers]);
     setDraftPickGroups((current) => [...current, offer.wrestlerIds]);
     setDraftBundleDiscountUsd((current) => current + offer.discountAmount);
+    setDraftSnapshotPopupOpen(true);
   }
 
   function resetDraftBoard() {
@@ -300,6 +318,7 @@ export function NewGameSetupScreen({
     setDraftPickGroups([]);
     setDraftBundleDiscountUsd(0);
     setDraftFocusId(undefined);
+    setDraftSnapshotPopupOpen(false);
   }
 
   function applyDraftMode(mode: DraftMode) {
@@ -662,22 +681,38 @@ export function NewGameSetupScreen({
               <section className="draft-clock-stage" aria-label="Selected prospect">
                 <div className="draft-clock-strip">On The Clock</div>
                 {focusedDraftWrestler ? (
-                  <div className="draft-focus-card">
-                    <div className="draft-focus-hero">
-                      <div className="draft-focus-spotlight">
-                        <p className="eyebrow">
-                          {getDraftTag(focusedDraftWrestler.roleTier)} · {getDraftTag(focusedDraftWrestler.archetype)}
+                    <div className="draft-focus-card">
+                      <div className="draft-focus-hero">
+                        <div className="draft-focus-spotlight">
+                          <p className="eyebrow">
+                            {getDraftTag(focusedDraftWrestler.roleTier)} · {getDraftTag(focusedDraftWrestler.archetype)}
                         </p>
                         <WrestlerPortrait className="draft-focus-portrait" wrestler={focusedDraftWrestler} />
                         <h2>{focusedDraftWrestler.name}</h2>
                       </div>
                       <div className="draft-focus-overall">
-                        <span>Overall</span>
-                        <strong>{focusedDraftOverall}</strong>
+                          <span>Overall</span>
+                          <strong>{focusedDraftOverall}</strong>
+                        </div>
                       </div>
-                    </div>
-                    <div className="draft-focus-footer">
-                      <div aria-label="Core ratings" className="draft-focus-stat-strip">
+                      {focusedDraftBundleOffer ? (
+                        <div className="draft-bundle-preview" aria-label={`${focusedDraftBundleOffer.affiliationName} package members`}>
+                          <div className="draft-bundle-preview-head">
+                            <span>{focusedDraftBundleOffer.kind === "tag_team" ? "Team Package" : "Faction Package"}</span>
+                            <strong>{focusedDraftBundleOffer.affiliationName}</strong>
+                          </div>
+                          <div className="draft-bundle-preview-list">
+                            {focusedDraftBundleOffer.wrestlers.map((wrestler) => (
+                              <span key={wrestler.id}>
+                                <WrestlerPortrait className="draft-mini-portrait" wrestler={wrestler} />
+                                <strong>{wrestler.name}</strong>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      <div className="draft-focus-footer">
+                        <div aria-label="Core ratings" className="draft-focus-stat-strip">
                         <div className="draft-focus-stat">
                           <span>Pop</span>
                           <strong>{focusedDraftWrestler.popularity}</strong>
@@ -787,7 +822,7 @@ export function NewGameSetupScreen({
                               <strong>{signedBrandName}</strong>
                             </div>
                             <div className="draft-snapshot-player-body">
-                              <div className="draft-snapshot-player-portraits">
+                              <div className={`draft-snapshot-player-portraits${latestDraftSnapshot.playerWrestlers.length > 1 ? " is-group" : ""}`}>
                                 {latestDraftSnapshot.playerWrestlers.slice(0, 3).map((wrestler) => (
                                   <WrestlerPortrait className="draft-snapshot-hero-portrait" key={wrestler.id} wrestler={wrestler} />
                                 ))}
@@ -908,6 +943,64 @@ export function NewGameSetupScreen({
                 </section>
               </article>
             </section>
+            {latestDraftSnapshot && isDraftSnapshotPopupOpen ? (
+              <div
+                className="draft-snapshot-popup-backdrop"
+                onMouseDown={(event) => {
+                  if (event.target === event.currentTarget) {
+                    setDraftSnapshotPopupOpen(false);
+                  }
+                }}
+              >
+                <section aria-labelledby="draft-snapshot-popup-title" aria-modal="true" className="draft-snapshot-popup" role="dialog">
+                  <div className="draft-snapshot-popup-kicker">
+                    <span>{latestDraftSnapshot.playerPickLabel}</span>
+                    <button aria-label="Close draft snapshot" onClick={() => setDraftSnapshotPopupOpen(false)} type="button">
+                      X
+                    </button>
+                  </div>
+                  <div className="draft-snapshot-popup-hero">
+                    <div className="draft-snapshot-popup-player">
+                      <span>{signedBrandName} selects</span>
+                      <h2 id="draft-snapshot-popup-title">{latestDraftSnapshot.playerNames}</h2>
+                      <small>{latestDraftSnapshot.playerMeta}</small>
+                    </div>
+                    <div className={`draft-snapshot-popup-portraits${latestDraftSnapshot.playerWrestlers.length > 1 ? " is-group" : ""}`}>
+                      {latestDraftSnapshot.playerWrestlers.slice(0, 4).map((wrestler) => (
+                        <WrestlerPortrait className="draft-snapshot-popup-portrait" key={wrestler.id} wrestler={wrestler} />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="draft-snapshot-popup-rivals" aria-label="Rival draft reactions">
+                    {latestDraftSnapshot.rivalSlots.map(({ brand, brandPortraitSrc, latestPick, pickCount }) => (
+                      <article className="draft-snapshot-popup-rival" key={brand.id}>
+                        {latestPick ? (
+                          <WrestlerPortrait className="draft-mini-portrait" wrestler={latestPick} />
+                        ) : (
+                          <span aria-hidden="true" className="draft-brand-mini-portrait">
+                            <img alt="" draggable={false} src={brandPortraitSrc} />
+                          </span>
+                        )}
+                        <span>
+                          <strong>{brand.brandName}</strong>
+                          <small>{latestPick ? `${latestPick.name} · ${pickCount} drafted` : `${brand.assignedGMName} waiting`}</small>
+                        </span>
+                      </article>
+                    ))}
+                  </div>
+                  <div className="draft-snapshot-popup-actions">
+                    <button className="secondary-action" onClick={() => setDraftSnapshotPopupOpen(false)} type="button">
+                      Continue Draft
+                    </button>
+                    {canEnterWeekOne ? (
+                      <button className="primary-action" onClick={startCareer} type="button">
+                        Enter Week 1
+                      </button>
+                    ) : null}
+                  </div>
+                </section>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
