@@ -853,10 +853,23 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
   const profileWrestlerId = shouldRestoreProfile && typeof value.profileWrestlerId === "string" ? value.profileWrestlerId : undefined;
   const latestResult = showHistory[showHistory.length - 1];
   const hasReviewableResult = Boolean(latestResult?.segmentResults.length);
+  const hasCurrentReviewableResult = Boolean(
+    latestResult?.segmentResults.length &&
+      latestResult.week === savedGame.currentWeek &&
+      latestResult.seasonNumber === savedGame.seasonNumber,
+  );
   let screen = requestedScreen === "profile" && !shouldRestoreProfile ? "roster" : requestedScreen;
 
-  if ((screen === "results" || screen === "weekReview") && !hasReviewableResult) {
+  if (screen === "results" && !hasReviewableResult) {
     screen = "dashboard";
+  }
+
+  if (screen === "weekReview" && !hasCurrentReviewableResult) {
+    screen = "dashboard";
+  }
+
+  if (screen === "weekReview" && hasCurrentReviewableResult) {
+    screen = "results";
   }
 
   const brandStyle = typeof savedGame.brandStyle === "string" ? (savedGame.brandStyle as GameState["brandStyle"]) : defaultCareer.brandStyle;

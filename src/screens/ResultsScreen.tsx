@@ -10,6 +10,7 @@ import {
   type SegmentBroadcastRead,
   type SegmentParticipantRead,
 } from "./resultsScreenReads";
+import { buildPostShowHandoffViewModel } from "./postShowHandoffReads";
 import "./ResultsScreen.css";
 
 function getReelTypeLabel(type: SegmentBroadcastRead["type"]) {
@@ -190,22 +191,24 @@ function SegmentBroadcastCard({
 
 export function ResultsScreen({
   game,
-  canContinueWeekReview,
-  onContinueWeekReview,
+  onAdvanceWeek,
   onNavigate,
   result,
 }: {
   game: GameState;
-  canContinueWeekReview: boolean;
-  onContinueWeekReview: () => void;
+  onAdvanceWeek: () => void;
   result: ShowResult;
   onNavigate: (screen: GameScreen) => void;
 }) {
   const model = buildResultsViewModel(game, result);
+  const handoffModel = buildPostShowHandoffViewModel(game, result);
   const [selectedSegmentId, setSelectedSegmentId] = useState(model.segmentReads[0]?.segmentId ?? "");
   const selectedIndex = model.segmentReads.findIndex((read) => read.segmentId === selectedSegmentId);
   const activeIndex = selectedIndex >= 0 ? selectedIndex : 0;
   const selectedRead = model.segmentReads[activeIndex] ?? model.segmentReads[0];
+  const rosterFallout = handoffModel.rosterFalloutGroups[0];
+  const socialOrRivalBeat = handoffModel.topSocialReaction ?? handoffModel.rivalPressureBeat;
+  const isCurrentPostShow = result.week === game.currentWeek && result.seasonNumber === game.seasonNumber;
   const segmentPager = useMemo(
     () => ({
       current: activeIndex + 1,
@@ -219,11 +222,10 @@ export function ResultsScreen({
   );
 
   const resultsCta: DynastyManagementCta = {
-    disabled: !canContinueWeekReview,
-    eyebrow: canContinueWeekReview ? "Fallout Ready" : "Reviewed",
-    label: canContinueWeekReview ? "Continue to Week Review" : "Week Review Complete",
-    onClick: onContinueWeekReview,
-    tone: canContinueWeekReview ? "warning" : "neutral",
+    eyebrow: isCurrentPostShow ? "Calendar Action" : "Archived Recap",
+    label: isCurrentPostShow ? handoffModel.advanceLabel : "Return to Brand HQ",
+    onClick: isCurrentPostShow ? onAdvanceWeek : () => onNavigate("dashboard"),
+    tone: isCurrentPostShow ? (handoffModel.advanceLabel === "Season Review" ? "brand" : "positive") : "neutral",
   };
 
   return (
@@ -348,6 +350,43 @@ export function ResultsScreen({
               </div>
             </div>
           ) : null}
+
+          <section className="rs-handoff-band" aria-label="GM handoff and next week">
+            <article className="rs-handoff-lead">
+              <span>GM Handoff</span>
+              <strong>{handoffModel.handoff.headline}</strong>
+              <p>{handoffModel.handoff.items[0]?.detail ?? handoffModel.headline.detail}</p>
+            </article>
+
+            <div className="rs-handoff-beats">
+              <article>
+                <span>Roster Fallout</span>
+                <strong>{rosterFallout?.label ?? "Locker Room"}</strong>
+                <p>{rosterFallout?.lines[0] ?? "No major roster pressure moved after this show."}</p>
+              </article>
+              {socialOrRivalBeat ? (
+                <article>
+                  <span>{getFalloutBeatDisplayLabel(socialOrRivalBeat)}</span>
+                  <strong title={socialOrRivalBeat.value}>{socialOrRivalBeat.value}</strong>
+                  <p>{socialOrRivalBeat.detail}</p>
+                </article>
+              ) : null}
+              <article>
+                <span>Next Show</span>
+                <strong>{handoffModel.nextWeekName}</strong>
+                <p>
+                  {handoffModel.nextWeekTypeLabel} · {handoffModel.nextPleName} {handoffModel.nextPleDetail}
+                </p>
+              </article>
+            </div>
+
+            <button className="rs-handoff-action" onClick={isCurrentPostShow ? onAdvanceWeek : () => onNavigate("dashboard")} type="button">
+              <span>
+                {isCurrentPostShow ? (handoffModel.advanceLabel === "Season Review" ? "Close Season" : "Calendar Ready") : "Recap Archive"}
+              </span>
+              <strong>{isCurrentPostShow ? handoffModel.advanceLabel : "Brand HQ"}</strong>
+            </button>
+          </section>
         </section>
       </div>
     </DynastyManagementShell>

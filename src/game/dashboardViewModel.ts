@@ -56,7 +56,7 @@ export type DashboardViewModel = {
   gmCrestLabel: string;
   goals: Array<{ complete: boolean; detail: string; id: string; label: string; progress: number }>;
   hasResults: boolean;
-  hasWeekReview: boolean;
+  hasPendingPostShow: boolean;
   metrics: {
     chartPoints: Array<{ label: string; value: number }>;
     fanSatisfactionLabel: string;
@@ -541,7 +541,7 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
   const falloutFromLastWeek = buildDashboardFalloutFromLastWeek(game, result ?? lastShow, ratingsBattle);
   const protectedRestIds = getProtectedRestWrestlerIds(game);
   const validSegments = game.currentShow.filter((segment) => isValidSegment(segment, game.wrestlers, protectedRestIds));
-  const hasWeekReview = Boolean(result && result.week === game.currentWeek);
+  const hasPendingPostShow = Boolean(result && result.week === game.currentWeek);
   const rosterTags = game.wrestlers.flatMap((wrestler) => getRosterPressureTags(wrestler, game.currentWeek));
   const unavailableCount = rosterTags.filter((tag) => tag === "Unavailable").length;
   const injuryCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus !== "healthy").length;
@@ -663,8 +663,8 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
     });
   }
 
-  const primaryAction: DashboardViewModel["primaryAction"] = hasWeekReview
-    ? { label: "Review Fallout", screen: "weekReview" }
+  const primaryAction: DashboardViewModel["primaryAction"] = hasPendingPostShow
+    ? { label: "Show Recap", screen: "results" }
     : validSegments.length >= 2
       ? { label: "Review Card", screen: "booking" }
       : { label: "Book Show", screen: "booking" };
@@ -692,7 +692,7 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
     gmCrestLabel: game.gmName.slice(0, 1).toUpperCase() || "G",
     goals,
     hasResults: game.showHistory.length > 0,
-    hasWeekReview,
+    hasPendingPostShow,
     metrics: {
       chartPoints,
       fanSatisfactionLabel: lastShow ? `${Math.min(99, Math.round(lastShow.totalScore * 0.95))}%` : "-",

@@ -86,8 +86,7 @@ Avoid full-page scrolling for:
 - Booking.
 - Dashboard.
 - Draft Night.
-- Results, unless the top recap and primary next action remain visible before detailed fallout continues below.
-- Week Review.
+- Show Recap, unless the top recap, segment inspection, compact GM handoff, and primary next action remain visible before detailed fallout continues below.
 - Championships.
 - Rivalries.
 - Finance.
@@ -131,7 +130,7 @@ Pre-show UI may show risk, readiness, fatigue, morale pressure, availability, ti
 
 Pre-show UI must not show predicted grades, fan reaction, social buzz, finance fallout, title outcomes, rivalry movement, morale changes, injury outcomes, or Open Challenge opponent identity.
 
-Consequences belong after the player acts. Results, Week Review, Social, Finance, Rivalries, Championships, and Season Review may reveal resolved fallout only after the relevant show or week has been simulated.
+Consequences belong after the player acts. Show Recap, Social, Finance, Rivalries, Championships, and Season Review may reveal resolved fallout only after the relevant show or week has been simulated.
 
 Manual Book Finish controls are player-authored booking intent, not predictions. They should not expose Open Challenge opponents, predicted grades, fan reaction, social buzz, finance fallout, rivalry movement, injury outcomes, or hidden simulation details before Run Show.
 
@@ -216,8 +215,8 @@ Clean staging belongs in:
 - Title screen.
 - Contract/setup beats.
 - Draft selection moments.
-- Show Results hero.
-- Week Review summary.
+- Show Recap hero.
+- Compact GM Handoff summary.
 - PLE framing.
 - Season Review.
 

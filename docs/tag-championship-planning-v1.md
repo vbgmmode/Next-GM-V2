@@ -112,7 +112,7 @@ Conservative behavior rules:
 - Tag title changes only when challenger side wins.
 - Champion pair retains on champion side win (or draw/no contest per general match result flow if applicable).
 - Tag title history records both winning and losing pairs safely.
-- Results and Week Review render team title fallout with explicit side labels.
+- Show Recap renders team title fallout with explicit side labels.
 - Singles title fallout logic remains unchanged in all branches not explicitly scoped to tag titles.
 - Do not alter prestige formula/behavior unless explicitly included in a future scoped ticket.
 - No team records or team-level progression values are added.
@@ -172,7 +172,7 @@ Do not include in Tag Championship Foundation v1:
 - Tag title cannot attach to singles match.
 - Tag title match with duplicate participant is blocked.
 - Tag title changes only when challenger side wins.
-- Results, Week Review, Championships, and Season Review render safely.
+- Show Recap, Championships, and Season Review render safely.
 - Existing saves load.
 - Refresh persistence works.
 - Typecheck/build pass.
@@ -191,7 +191,7 @@ Scope:
 4) Add booking-time validation so tag title can only be attached to Match + M020 with exactly 4 unique participants and with champion+challenger sides.
 5) Ensure tag titles are unavailable for Open Challenge, promos, backstage angles, and contract signings.
 6) Ensure tag titles do not alter open challenge logic, promo/angle behavior, singles title behavior, rivalry movement, injury fallout, and show flow.
-7) Add rendering in Results/Week Review/Championships for safe pair labels where optional fields exist; keep fallback rendering for legacy singles data and old saves.
+7) Add rendering in Show Recap/Championships for safe pair labels where optional fields exist; keep fallback rendering for legacy singles data and old saves.
 
 Explicitly forbidden:
 - Do not add tag rankings, team records, team-level stats, team persistence, faction mechanics, manager mechanics, freebird rule, trios titles, CPU rival tag titles, new screens, broader scoring rewrites, or migration-heavy refactors.

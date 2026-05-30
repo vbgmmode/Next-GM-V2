@@ -79,6 +79,7 @@ describe("durable event ledger", () => {
     const migrated = migrateSavedGameState({ game: resolved.game, screen: "weekReview" });
 
     expect(getResolvedShowEvents(migrated!.game)[0]?.relatedIds.showResultId).toBe(resolved.result.id);
+    expect(migrated?.screen).toBe("results");
 
     const { eventLedger, ...legacyGame } = createNewGame();
     const legacyMigrated = migrateSavedGameState({ game: legacyGame, screen: "dashboard" });

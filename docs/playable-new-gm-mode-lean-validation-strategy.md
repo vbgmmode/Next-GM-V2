@@ -96,8 +96,7 @@ When relevant, verify:
 - Dashboard.
 - Booking with at least two valid segments.
 - Run Show.
-- Results.
-- Week Review.
+- Show Recap + GM Handoff.
 - Advance Week.
 - Refresh persistence.
 - Any touched screen.

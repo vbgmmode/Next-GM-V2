@@ -30,6 +30,6 @@ Use this checklist for Next GM player-facing UI changes before reporting a slice
 - `npm run build`
 - New Game / Continue / Reset Save when the shell or setup flow changes.
 - Booking with at least 2 valid segments when Booking, roster availability, or show flow changes.
-- Run Show -> Results -> Week Review -> Advance Week when loop screens or persistence are touched.
+- Run Show -> Show Recap + GM Handoff -> Advance Week when loop screens or persistence are touched.
 - Refresh persistence after save-affecting or screen-state changes.
 - Confirm `src/game/aiCommentary.ts` and AI commentary call paths were not changed unless the ticket explicitly requested it.

@@ -34,7 +34,7 @@ function formatLocationLabel(screen: GameScreen) {
     roster: "Locker Room",
     seasonReview: "Season Review",
     social: "IWC Pulse",
-    weekReview: "Week Review",
+    weekReview: "Show Recap",
   };
 
   return labels[screen];
@@ -98,7 +98,7 @@ export function DynastyManagementShell({
       </header>
 
       <div className="dashboard-dynasty-nav-bridge dynasty-management-nav-bridge">
-        <GameNav currentScreen={currentScreen} hasResults={model.hasResults} hasWeekReview={model.hasWeekReview} onNavigate={onNavigate} />
+        <GameNav currentScreen={currentScreen} hasResults={model.hasResults} onNavigate={onNavigate} />
       </div>
 
       {children}

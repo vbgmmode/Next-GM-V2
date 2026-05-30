@@ -4,16 +4,12 @@ import type { GameState } from "../game/types";
 export function GameNav({
   currentScreen,
   hasResults,
-  hasWeekReview,
   onNavigate,
 }: {
   currentScreen: GameScreen;
   hasResults: boolean;
-  hasWeekReview?: boolean;
   onNavigate: (screen: GameScreen) => void;
 }) {
-  const showWeekReview = hasWeekReview ?? hasResults;
-
   return (
     <nav className="game-nav" aria-label="Game navigation">
       <button className={currentScreen === "dashboard" ? "active-filter" : ""} onClick={() => onNavigate("dashboard")}>
@@ -46,11 +42,6 @@ export function GameNav({
       {hasResults ? (
         <button className={currentScreen === "results" ? "active-filter" : ""} onClick={() => onNavigate("results")}>
           Show Recap
-        </button>
-      ) : null}
-      {showWeekReview ? (
-        <button className={currentScreen === "weekReview" ? "active-filter" : ""} onClick={() => onNavigate("weekReview")}>
-          Week Review
         </button>
       ) : null}
     </nav>

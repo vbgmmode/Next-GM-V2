@@ -149,9 +149,9 @@ The screen should make creative assembly feel visual and tactile without becomin
 
 Booking should support decisions, not spoil outcomes. It can show availability, conflicts, champions, rivalries, fatigue, morale pressure, and context. It should not reveal simulated creative results before the show runs.
 
-## Show Results And Week Review
+## Show Recap And GM Handoff
 
-Show Results should feel like a broadcast recap plus a consequence screen.
+Show Recap should feel like a broadcast recap plus a consequence screen.
 
 The first read should focus on the big story:
 
@@ -161,13 +161,13 @@ The first read should focus on the big story:
 - What the crowd cared about.
 - What changed for the brand.
 
-Detailed segment feedback can follow, but the top of the screen should feel like a recap package rather than a spreadsheet.
+Detailed segment feedback should remain first-class, but the top of the screen should feel like a recap package rather than a spreadsheet.
 
-Week Review should complete the loop:
+The compact GM Handoff in Show Recap should complete the loop:
 
-Book Show -> Run Show -> Show Results -> Week Review -> Advance Week
+Book Show -> Run Show -> Show Recap + GM Handoff -> Advance Week / Season Review
 
-The review should connect creative, roster, rivalry, social, and business consequences so the player feels the week mattered.
+The handoff should connect creative, roster, rivalry, social, and next-show pressure so the player feels the week mattered without stacking a second full recap screen under Results.
 
 ## Draft And Scouting
 
@@ -280,4 +280,3 @@ This doctrine should protect the soul of Next GM:
 - Game-first navigation and presentation.
 
 It should not become a wall of prohibitions. When a future idea serves the fantasy, improves clarity, or gives the player a better GM story, it belongs in the conversation.
-

@@ -349,12 +349,9 @@ Results:
 - Keep the collapsed state viewport-fit on laptop screens: broadcast recap first, then compact expandable rows for Post-Show Cause Ledger, Operational Fallout, and Broadcast Breakdown.
 - Fold title, rivalry, PLE, business, roster, and Open Challenge aftermath into the resolved recap, cause ledger, or operational fallout instead of duplicating standalone fallout panels.
 - Expanded support rows may scroll internally; the collapsed screen should not require page scrolling.
-
-Week Review:
-
-- Should connect consequences before the calendar advances.
-- Place the Advance Week or Season Review action inside the PLE/week aftermath box so the next step is part of the office handoff, not a detached hero action.
-- Keep Week Review lighter than Results: summarize the aftermath and next-week setup without repeating full Results, Finance, Championship, Brand Pulse, or Post-Show Cause Ledger panels.
+- Keep segment-by-segment review first-class.
+- Place the compact GM Handoff / Next Week band after segment review so the next step is part of the resolved show handoff, not a detached hero action.
+- Keep the handoff lighter than Results: summarize roster fallout, top social/rival pressure, next-show pressure, and the Advance Week or Season Review action without repeating full Finance, Championship, Brand Pulse, or Post-Show Cause Ledger panels.
 
 Roster / Locker Room:
 

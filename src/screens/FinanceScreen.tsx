@@ -106,13 +106,13 @@ export function FinanceScreen({
   const seasonReports = getSeasonFinanceReports(game);
   const totalProfitLoss = seasonReports.reduce((sum, report) => sum + report.profitLoss, 0);
   const pressureLabel = getFinancePressureLabel(game.money, latestReport?.profitLoss ?? 0);
-  const hasCurrentWeekReview = latestResult?.week === game.currentWeek;
+  const hasCurrentPostShow = latestResult?.week === game.currentWeek;
 
-  const financeCta: DynastyManagementCta = hasCurrentWeekReview
+  const financeCta: DynastyManagementCta = hasCurrentPostShow
     ? {
-        eyebrow: "Office Waiting",
-        label: "Week Review",
-        onClick: () => onNavigate("weekReview"),
+        eyebrow: "Recap Waiting",
+        label: "Show Recap",
+        onClick: () => onNavigate("results"),
         tone: "warning",
       }
     : {
