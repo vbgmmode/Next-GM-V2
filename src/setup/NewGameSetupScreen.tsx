@@ -881,9 +881,16 @@ export function NewGameSetupScreen({
                 </div>
               </article>
               <article className="draft-bottom-panel drafted-mini">
-                <p className="eyebrow">
-                  Drafted · {draftedWrestlers.length} · {formatDraftGenderReadout(draftedWrestlers)}
-                </p>
+                <div>
+                  <p className="eyebrow">
+                    Drafted · {draftedWrestlers.length} · {formatDraftGenderReadout(draftedWrestlers)}
+                  </p>
+                  <div className="drafted-mini-actions">
+                    <button className="secondary-action" disabled={!draftedWrestlers.length} onClick={resetDraftSelections} type="button">
+                      Reset Picks
+                    </button>
+                  </div>
+                </div>
                 <section>
                   {draftedWrestlers.length ? (
                     draftedWrestlers.map((wrestler, index) => (

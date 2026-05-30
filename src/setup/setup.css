@@ -1069,7 +1069,7 @@
 }
 
 .draft-rival-panel {
-  grid-template-rows: minmax(0, 1.45fr) minmax(0, 0.85fr);
+  grid-template-rows: minmax(0, 0.9fr) minmax(220px, 1.05fr);
 }
 
 .draft-rival-status {
@@ -1661,10 +1661,10 @@
     rgba(14, 17, 24, 0.92);
   border: 1px solid rgba(255, 83, 97, 0.34);
   display: grid;
-  gap: 6px;
+  gap: 5px;
   min-width: 0;
   overflow: hidden;
-  padding: 7px;
+  padding: 6px;
 }
 
 .draft-snapshot-player-head {
@@ -1696,7 +1696,7 @@
 .draft-snapshot-player-body {
   align-items: center;
   display: grid;
-  gap: 8px;
+  gap: 7px;
   grid-template-columns: auto minmax(0, 1fr);
   min-width: 0;
 }
@@ -1704,8 +1704,8 @@
 .draft-snapshot-player-portraits {
   align-items: end;
   display: flex;
-  max-width: 126px;
-  min-width: 58px;
+  max-width: 108px;
+  min-width: 50px;
   overflow: hidden;
 }
 
@@ -1713,12 +1713,12 @@
   border-color: rgba(246, 193, 86, 0.5);
   box-shadow: 0 0 18px rgba(246, 193, 86, 0.12);
   font-size: 0.72rem;
-  height: 58px;
-  width: 58px;
+  height: 50px;
+  width: 50px;
 }
 
 .draft-snapshot-hero-portrait + .draft-snapshot-hero-portrait {
-  margin-left: -20px;
+  margin-left: -18px;
 }
 
 .draft-snapshot-more {
@@ -1739,7 +1739,7 @@
 
 .draft-snapshot-player-copy {
   display: grid;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
   overflow: hidden;
 }
@@ -1771,20 +1771,28 @@
 .draft-snapshot-rivals {
   display: grid;
   gap: 4px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   min-width: 0;
 }
 
 .draft-snapshot-rival {
-  align-items: center;
+  align-content: start;
+  align-items: start;
   background: rgba(14, 17, 24, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.1);
   display: grid;
-  gap: 8px;
-  grid-template-columns: 34px minmax(0, 1fr);
-  min-height: 40px;
+  gap: 4px;
+  grid-template-columns: 1fr;
+  min-height: 78px;
   min-width: 0;
   overflow: hidden;
-  padding: 4px 6px;
+  padding: 5px;
+}
+
+.draft-snapshot-rival .draft-mini-portrait,
+.draft-snapshot-rival .draft-brand-mini-portrait {
+  height: 32px;
+  width: 32px;
 }
 
 .draft-snapshot-rival.has-pick {
