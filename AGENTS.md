@@ -399,7 +399,7 @@ When touching match-ratings progression or expectation-gap logic, also run:
 When sharing a local app URL:
 - Start the dev server in a persistent session, not a short-lived detached process.
 - Verify the URL returns the app HTML before reporting it.
-- Provide a URL the user can open directly: sandbox `http://localhost:4000/`, prod worktree `http://localhost:5176/` (fixed in each folder's `vite.config.ts`).
+- Provide a URL the user can open directly: sandbox `http://localhost:4000/`, prod worktree `http://localhost:5176/`. The shared `vite.config.ts` should derive the default port from the worktree folder (`Next GM V2 Sandbox` => `4000`, main/prod worktree => `5176`) and allow `NEXT_GM_DEV_PORT` as an explicit override; do not hardcode the prod port into the sandbox path.
 - If a previously shared URL fails, restart the server cleanly and re-verify before sending a replacement link.
 
 ## Completion Report Format

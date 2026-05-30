@@ -1,8 +1,20 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-/** Prod / main worktree dev server. */
+const SANDBOX_DEV_PORT = 4000;
 const PROD_DEV_PORT = 5176;
+
+function getDevPort() {
+  const envPort = Number.parseInt(process.env.NEXT_GM_DEV_PORT ?? "", 10);
+
+  if (Number.isInteger(envPort) && envPort > 0) {
+    return envPort;
+  }
+
+  return process.cwd().endsWith("Next GM V2 Sandbox") ? SANDBOX_DEV_PORT : PROD_DEV_PORT;
+}
+
+const DEV_PORT = getDevPort();
 
 export default defineConfig({
   plugins: [react()],
@@ -44,11 +56,11 @@ export default defineConfig({
     },
   },
   server: {
-    port: PROD_DEV_PORT,
+    port: DEV_PORT,
     strictPort: true,
   },
   preview: {
-    port: PROD_DEV_PORT,
+    port: DEV_PORT,
     strictPort: true,
   },
 });
