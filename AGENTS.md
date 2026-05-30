@@ -199,7 +199,7 @@ Goal:
 Keep the recent gameplay-context passes stable, preserve the playable loop, and reduce large-file risk only through bounded, behavior-preserving slices when requested.
 
 Current priority:
-Protect the current single-screen game while keeping read-only context derived from existing state/result data. src/game/gameContextReads.ts now owns the recent pure derived read-model helpers; future context work should prefer small extracted helpers over expanding src/App.tsx further. src/App.tsx and src/styles.css are still large, so favor verification or narrowly scoped refactors before adding new UI surface.
+Protect the current local-first game loop while keeping read-only context derived from existing state/result data. The Vite large-chunk remediation keeps the title/save entry path lightweight in src/App.tsx, lazy-loads src/GameApp.tsx, and now lazy-loads Dashboard, Championships, Season Review, and Offseason Draft as focused screen modules. src/game/gameContextReads.ts and focused read-model modules own recent pure derived helpers; future context work should prefer small extracted helpers over expanding src/GameApp.tsx further. src/GameApp.tsx and src/styles.css are still large, so favor verification or narrowly scoped refactors before adding new UI surface.
 
 Completed stabilization passes:
 - Save Migration Hardening v1
@@ -277,6 +277,7 @@ Completed stabilization passes:
 - Match Pacing Context v1 (implemented as internal simulation hook only; no Booking pacing UI or persistence)
 - Tag Team Synergy v1 (implemented for M020 deep-ratings tag power; positive synergy defaults to zero until an explicit experience source exists)
 - Expectation Gap Progression v1 (implemented as internal progression hook only; no UI, persistence, or wider fallout systems)
+- Vite Large Chunk Remediation / Lazy Screen Extraction v1 (implemented with lightweight title/save entry path, lazy gameplay shell, and extracted Dashboard, Championships, Season Review, and Offseason Draft screen modules)
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
@@ -284,8 +285,8 @@ Upcoming Direction:
 - Treat season legacy as read-only narrative continuity first; keep the Mid-Career Draft bounded to the current offseason roster-refresh loop.
 - Keep recent context passes read-only and non-predictive: pre-show surfaces may explain existing pressure, but consequences and outcome language stay retrospective after Run Show.
 - Keep rival brands as summarized ratings-battle and market pressure with deterministic internal CPU simulation; do not expand into rival HQ screens, editable CPU booking, progression locks, firing, or career-ending fail states unless a future accepted ticket explicitly asks for it.
-- Use src/game/gameContextReads.ts or another src/game read-model module for pure derived gameplay context when a future slice would otherwise add more helper logic to src/App.tsx.
-- Treat src/App.tsx and src/styles.css as high-risk growth areas; prefer bounded extraction, verification, or small focused UI fixes over broad screen rewrites.
+- Use src/game/gameContextReads.ts or another focused read-model module for pure derived gameplay context when a future slice would otherwise add more helper logic to src/GameApp.tsx.
+- Treat src/GameApp.tsx and src/styles.css as high-risk growth areas; preserve the lightweight src/App.tsx title/save entry path and prefer bounded extraction, verification, or small focused UI fixes over broad screen rewrites.
 - Before content expansion, define the data category, maximum safe content size, allowed files, migration or fallback needs, and required smoke checks.
 - Future restricted draft modes must be explicit, optional, and requested by an active ticket.
 - Future data expansion or systems work should remain bounded to an accepted ticket.
