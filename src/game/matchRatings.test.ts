@@ -270,6 +270,51 @@ describe("match ratings foundation", () => {
     expect(ironManGap).toBeGreaterThan(standardGap);
   });
 
+  it("defaults missing match pacing to Normal without changing effective power", () => {
+    const wrestler = baseWrestler({
+      id: "normal-pacing-default",
+      matchRatings: explicitRatings({ technical: 82, power: 75, stamina: 70, resilience: 73, psychology: 71, explosiveness: 77 }),
+    });
+    const baseContext = { segmentCatalogId: "M001", showType: "tv" as const, cardPosition: "midcard" as const };
+
+    const implicitNormal = calculateEffectiveMatchPower(wrestler, baseContext);
+    const explicitNormal = calculateEffectiveMatchPower(wrestler, { ...baseContext, matchPacing: "Normal" });
+
+    expect(implicitNormal).toEqual(explicitNormal);
+    expect(implicitNormal.profileId).toBe("balanced");
+  });
+
+  it("uses pacing context to favor sprint and epic specialists differently", () => {
+    const sprinter = baseWrestler({
+      id: "pacing-sprinter",
+      matchRatings: explicitRatings({ power: 96, explosiveness: 96, stamina: 35, resilience: 50, psychology: 50 }),
+    });
+    const epicWorker = baseWrestler({
+      id: "pacing-epic-worker",
+      matchRatings: explicitRatings({ power: 50, explosiveness: 45, stamina: 96, resilience: 94, psychology: 92 }),
+    });
+    const normalSprinter = calculateEffectiveMatchPower(sprinter, { segmentCatalogId: "M001", matchPacing: "Normal" });
+    const normalEpicWorker = calculateEffectiveMatchPower(epicWorker, { segmentCatalogId: "M001", matchPacing: "Normal" });
+    const sprintSprinter = calculateEffectiveMatchPower(sprinter, { segmentCatalogId: "M001", matchPacing: "Sprint" });
+    const sprintEpicWorker = calculateEffectiveMatchPower(epicWorker, { segmentCatalogId: "M001", matchPacing: "Sprint" });
+    const epicSprinter = calculateEffectiveMatchPower(sprinter, { segmentCatalogId: "M001", matchPacing: "Epic" });
+    const epicEpicWorker = calculateEffectiveMatchPower(epicWorker, { segmentCatalogId: "M001", matchPacing: "Epic" });
+
+    const normalSprinterGap = normalSprinter.effectivePower - normalEpicWorker.effectivePower;
+    const sprintSprinterGap = sprintSprinter.effectivePower - sprintEpicWorker.effectivePower;
+    const normalEpicGap = normalEpicWorker.effectivePower - normalSprinter.effectivePower;
+    const epicGap = epicEpicWorker.effectivePower - epicSprinter.effectivePower;
+
+    expect(sprintSprinterGap).toBeGreaterThan(normalSprinterGap);
+    expect(epicGap).toBeGreaterThan(normalEpicGap);
+    expect(sprintSprinter.weights.power).toBeGreaterThan(normalSprinter.weights.power);
+    expect(sprintSprinter.weights.explosiveness).toBeGreaterThan(normalSprinter.weights.explosiveness);
+    expect(sprintSprinter.weights.stamina).toBeLessThan(normalSprinter.weights.stamina);
+    expect(epicEpicWorker.weights.stamina).toBeGreaterThan(normalEpicWorker.weights.stamina);
+    expect(epicEpicWorker.weights.psychology).toBeGreaterThan(normalEpicWorker.weights.psychology);
+    expect(epicEpicWorker.weights.resilience).toBeGreaterThan(normalEpicWorker.weights.resilience);
+  });
+
   it("diminishes high-end growth while allowing low-rated wrestlers to learn from strong performances", () => {
     const elite = baseWrestler({ matchRatings: explicitRatings(Object.fromEntries(matchRatingKeys.map((key) => [key, 96])) as Partial<MatchRatings>) });
     const prospect = baseWrestler({ matchRatings: explicitRatings(Object.fromEntries(matchRatingKeys.map((key) => [key, 42])) as Partial<MatchRatings>) });
