@@ -1,0 +1,545 @@
+{
+  "backup_dir": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars.backup-before-white-artifact-cleanup-20260531-115617",
+  "results": [
+    {
+      "id": "aew-aew-bobby-lashley",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 6297,
+          "bbox": [
+            337,
+            274,
+            392,
+            457
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aew-aew-buddy-matthews",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 5152,
+          "bbox": [
+            122,
+            210,
+            187,
+            334
+          ]
+        },
+        {
+          "size": 4478,
+          "bbox": [
+            330,
+            222,
+            394,
+            338
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aew-aew-dr-britt-baker-d-m-d",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 3406,
+          "bbox": [
+            343,
+            279,
+            397,
+            385
+          ]
+        },
+        {
+          "size": 3557,
+          "bbox": [
+            111,
+            291,
+            182,
+            410
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aew-aew-lena-kross",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 5016,
+          "bbox": [
+            323,
+            252,
+            396,
+            386
+          ]
+        },
+        {
+          "size": 1898,
+          "bbox": [
+            115,
+            284,
+            171,
+            353
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aew-aew-megan-bayne",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 2160,
+          "bbox": [
+            131,
+            80,
+            197,
+            154
+          ]
+        },
+        {
+          "size": 2903,
+          "bbox": [
+            327,
+            244,
+            383,
+            332
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aew-aew-pac",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 6372,
+          "bbox": [
+            121,
+            270,
+            171,
+            479
+          ]
+        },
+        {
+          "size": 7636,
+          "bbox": [
+            326,
+            279,
+            383,
+            487
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aew-aew-roderick-strong",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 2080,
+          "bbox": [
+            341,
+            353,
+            382,
+            448
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aew-aew-tommaso-ciampa",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 3525,
+          "bbox": [
+            333,
+            346,
+            390,
+            477
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-nxt-adriana-rizzo",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 6675,
+          "bbox": [
+            297,
+            253,
+            387,
+            386
+          ]
+        },
+        {
+          "size": 3014,
+          "bbox": [
+            109,
+            285,
+            162,
+            384
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-nxt-izzi-dame",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 4731,
+          "bbox": [
+            291,
+            74,
+            380,
+            163
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-nxt-karmen-petrovic",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 1569,
+          "bbox": [
+            374,
+            360,
+            414,
+            426
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-nxt-kendal-grey",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 4177,
+          "bbox": [
+            324,
+            274,
+            400,
+            380
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-nxt-myka-lockwood",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 2577,
+          "bbox": [
+            116,
+            298,
+            160,
+            389
+          ]
+        },
+        {
+          "size": 3451,
+          "bbox": [
+            329,
+            319,
+            360,
+            496
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-nxt-ricky-smokes",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 1225,
+          "bbox": [
+            127,
+            392,
+            148,
+            503
+          ]
+        },
+        {
+          "size": 1212,
+          "bbox": [
+            358,
+            394,
+            383,
+            484
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-nxt-thea-hail",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 10895,
+          "bbox": [
+            292,
+            316,
+            406,
+            484
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-raw-asuka",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 4727,
+          "bbox": [
+            340,
+            238,
+            401,
+            359
+          ]
+        },
+        {
+          "size": 4517,
+          "bbox": [
+            118,
+            240,
+            197,
+            333
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-raw-grayson-waller",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 5865,
+          "bbox": [
+            104,
+            279,
+            149,
+            507
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-raw-roxanne-perez",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 2299,
+          "bbox": [
+            320,
+            330,
+            381,
+            428
+          ]
+        },
+        {
+          "size": 1068,
+          "bbox": [
+            120,
+            395,
+            144,
+            503
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-smackdown-alexa-bliss",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 4225,
+          "bbox": [
+            365,
+            303,
+            422,
+            439
+          ]
+        },
+        {
+          "size": 4216,
+          "bbox": [
+            92,
+            359,
+            195,
+            481
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-smackdown-blake-monroe",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 3924,
+          "bbox": [
+            366,
+            405,
+            434,
+            509
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-smackdown-candice-lerae",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 10685,
+          "bbox": [
+            296,
+            299,
+            389,
+            480
+          ]
+        },
+        {
+          "size": 1571,
+          "bbox": [
+            122,
+            345,
+            135,
+            508
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-smackdown-chelsea-green",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 3475,
+          "bbox": [
+            324,
+            215,
+            398,
+            300
+          ]
+        },
+        {
+          "size": 5507,
+          "bbox": [
+            120,
+            217,
+            203,
+            347
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-smackdown-jade-cargill",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 5096,
+          "bbox": [
+            315,
+            240,
+            393,
+            356
+          ]
+        },
+        {
+          "size": 5360,
+          "bbox": [
+            119,
+            242,
+            200,
+            353
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-smackdown-kiana-james",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 5850,
+          "bbox": [
+            108,
+            207,
+            185,
+            325
+          ]
+        },
+        {
+          "size": 5088,
+          "bbox": [
+            325,
+            225,
+            404,
+            339
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-smackdown-piper-niven",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 4044,
+          "bbox": [
+            363,
+            325,
+            415,
+            445
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-smackdown-r-truth",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 2565,
+          "bbox": [
+            102,
+            275,
+            133,
+            416
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wwe-smackdown-trick-williams",
+      "status": "cleaned",
+      "components": [
+        {
+          "size": 2892,
+          "bbox": [
+            349,
+            266,
+            387,
+            401
+          ]
+        }
+      ]
+    }
+  ]
+}

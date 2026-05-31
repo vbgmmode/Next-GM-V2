@@ -1,0 +1,2138 @@
+{
+  "backup_dir": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars.backup-before-approved-deviantart-20260531-124539",
+  "items": [
+    {
+      "id": "wwe-smackdown-cody-rhodes",
+      "name": "Cody Rhodes",
+      "page_url": "https://www.deviantart.com/wwewomendaily/art/Cody-Rhodes-WWE-Render-PNG-1302106153",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-cody-rhodes.source.png",
+      "status": "saved",
+      "source_size": [
+        777,
+        1028
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-cody-rhodes.png"
+    },
+    {
+      "id": "aew-aew-kazuchika-okada",
+      "name": "Kazuchika Okada",
+      "page_url": "https://www.deviantart.com/mrelijahrend/art/Kazuchika-Okada-AEW-Update-Render-2026-1337199875",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-kazuchika-okada.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-kazuchika-okada.png"
+    },
+    {
+      "id": "aew-aew-chris-jericho",
+      "name": "Chris Jericho",
+      "page_url": "https://www.deviantart.com/xharlott/art/Chris-Jericho-26-Render-1316933972",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-chris-jericho.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-chris-jericho.png"
+    },
+    {
+      "id": "wwe-raw-cm-punk",
+      "name": "CM Punk",
+      "page_url": "https://www.deviantart.com/line2j/art/CM-Punk-2026-Render-WWE-1332086875",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-cm-punk.source.png",
+      "status": "saved",
+      "source_size": [
+        850,
+        940
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-cm-punk.png"
+    },
+    {
+      "id": "wwe-raw-liv-morgan",
+      "name": "Liv Morgan",
+      "page_url": "https://www.deviantart.com/livvonce/art/Liv-Morgan-WWE-Render-by-livsriott-1240126645",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-liv-morgan.source.png",
+      "status": "saved",
+      "source_size": [
+        845,
+        946
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-liv-morgan.png"
+    },
+    {
+      "id": "aew-aew-will-ospreay",
+      "name": "Will Ospreay",
+      "page_url": "https://www.deviantart.com/xcin3kk/art/Will-Ospreay-Render-2024-3-1144185096",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-will-ospreay.source.png",
+      "status": "saved",
+      "source_size": [
+        742,
+        1077
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-will-ospreay.png"
+    },
+    {
+      "id": "wwe-raw-naomi",
+      "name": "Naomi",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Naomi-Render-by-yasuke4u-1317865886",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-naomi.source.png",
+      "status": "saved",
+      "source_size": [
+        892,
+        896
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-naomi.png"
+    },
+    {
+      "id": "wwe-raw-stephanie-vaquer",
+      "name": "Stephanie Vaquer",
+      "page_url": "https://www.deviantart.com/lars125/art/Stephanie-Vaquer-Render-1238293420",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-stephanie-vaquer.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-stephanie-vaquer.png"
+    },
+    {
+      "id": "wwe-raw-asuka",
+      "name": "Asuka",
+      "page_url": "https://www.deviantart.com/livvonce/art/Asuka-WWE-2025-Render-by-livsriott-1240018473",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-asuka.source.png",
+      "status": "saved",
+      "source_size": [
+        785,
+        1018
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-asuka.png"
+    },
+    {
+      "id": "wwe-raw-bron-breakker",
+      "name": "Bron Breakker",
+      "page_url": "https://www.deviantart.com/wweusosfans/art/Bron-breakker-render-1278314964",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-bron-breakker.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-bron-breakker.png"
+    },
+    {
+      "id": "aew-aew-thekla",
+      "name": "Thekla",
+      "page_url": "https://www.deviantart.com/kiddmoxxie/art/Thekla-2026-Render-1283711122",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-thekla.source.png",
+      "status": "saved",
+      "source_size": [
+        784,
+        1019
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-thekla.png"
+    },
+    {
+      "id": "aew-aew-willow-nightingale",
+      "name": "Willow Nightingale",
+      "page_url": "https://www.deviantart.com/wrestlerender/art/Willow-Nightingale-OFFICIAL-AEW-Render-2024-1035808359",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-willow-nightingale.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-willow-nightingale.png"
+    },
+    {
+      "id": "wwe-smackdown-jade-cargill",
+      "name": "Jade Cargill",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Jade-Cargill-Render-by-yasuke4u-1309841992",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-jade-cargill.source.png",
+      "status": "saved",
+      "source_size": [
+        892,
+        896
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-jade-cargill.png"
+    },
+    {
+      "id": "aew-aew-swerve-strickland",
+      "name": "Swerve Strickland",
+      "page_url": "https://www.deviantart.com/wrestlerender/art/Swerve-Strickland-OFFICIAL-AEW-Render-2024-1035805412",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-swerve-strickland.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-swerve-strickland.png"
+    },
+    {
+      "id": "wwe-smackdown-jacob-fatu",
+      "name": "Jacob Fatu",
+      "page_url": "https://www.deviantart.com/danteofshadows/art/Jacob-Fatu-render-1219520781",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-jacob-fatu.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-jacob-fatu.png"
+    },
+    {
+      "id": "aew-aew-jay-white",
+      "name": "Jay White",
+      "page_url": "https://www.deviantart.com/tdg129/art/Jay-White-Bullet-Club-Render-1330602232",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-jay-white.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-jay-white.png"
+    },
+    {
+      "id": "aew-aew-megan-bayne",
+      "name": "Megan Bayne",
+      "page_url": "https://www.deviantart.com/caelaniguess/art/Megan-Bayne-AEW-Render-1158118068",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-megan-bayne.source.png",
+      "status": "saved",
+      "source_size": [
+        910,
+        878
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-megan-bayne.png"
+    },
+    {
+      "id": "aew-aew-eddie-kingston",
+      "name": "Eddie Kingston",
+      "page_url": "https://www.deviantart.com/ihammertg/art/Eddie-Kingston-AEW-Render-2024-1122521655",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-eddie-kingston.source.png",
+      "status": "saved",
+      "source_size": [
+        838,
+        953
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-eddie-kingston.png"
+    },
+    {
+      "id": "aew-aew-adam-copeland",
+      "name": "Adam Copeland",
+      "page_url": "https://www.deviantart.com/wrestlerender/art/Adam-Copeland-OFFICIAL-AEW-Render-2023-1031312574",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-adam-copeland.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-adam-copeland.png"
+    },
+    {
+      "id": "aew-aew-pac",
+      "name": "PAC",
+      "page_url": "https://www.deviantart.com/fandango18002/art/PAC-AEW-Render-1246295560",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-pac.source.png",
+      "status": "saved",
+      "source_size": [
+        888,
+        900
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-pac.png"
+    },
+    {
+      "id": "wwe-raw-jey-uso",
+      "name": "Jey Uso",
+      "page_url": "https://www.deviantart.com/tribalgrafixx/art/Jey-Uso-s-Official-WWE-Render-2026-1328179242",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-jey-uso.source.png",
+      "status": "saved",
+      "source_size": [
+        729,
+        1096
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-jey-uso.png"
+    },
+    {
+      "id": "aew-aew-kyle-o-reilly",
+      "name": "Kyle O'Reilly",
+      "page_url": "https://www.deviantart.com/fandango18002/art/Kyle-O-Reilly-AEW-Render-1251263463",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-kyle-o-reilly.source.png",
+      "status": "saved",
+      "source_size": [
+        909,
+        879
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-kyle-o-reilly.png"
+    },
+    {
+      "id": "aew-aew-samoa-joe",
+      "name": "Samoa Joe",
+      "page_url": "https://www.deviantart.com/remnant74428/art/Samoa-Joe-render-1145630064",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-samoa-joe.source.png",
+      "status": "saved",
+      "source_size": [
+        775,
+        1031
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-samoa-joe.png"
+    },
+    {
+      "id": "wwe-raw-logan-paul",
+      "name": "Logan Paul",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Logan-Paul-Render-by-yasuke4u-1319217947",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-logan-paul.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-logan-paul.png"
+    },
+    {
+      "id": "aew-aew-roderick-strong",
+      "name": "Roderick Strong",
+      "page_url": "https://www.deviantart.com/kiddmoxxie/art/Roderick-Strong-Custom-Render-1268312009",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-roderick-strong.source.png",
+      "status": "saved",
+      "source_size": [
+        1182,
+        676
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-roderick-strong.png"
+    },
+    {
+      "id": "aew-aew-bobby-lashley",
+      "name": "Bobby Lashley",
+      "page_url": "https://www.deviantart.com/dunktheclown/art/Bobby-Lashley-png-Render-1337202120",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-bobby-lashley.source.png",
+      "status": "saved",
+      "source_size": [
+        770,
+        1038
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-bobby-lashley.png"
+    },
+    {
+      "id": "wwe-smackdown-kevin-owens",
+      "name": "Kevin Owens",
+      "page_url": "https://www.deviantart.com/xharlott/art/Kevin-Owen-23-Render-1310573057",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-kevin-owens.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-kevin-owens.png"
+    },
+    {
+      "id": "aew-aew-mark-davis",
+      "name": "Mark Davis",
+      "page_url": "https://www.deviantart.com/sierradzn/art/Mark-Davis-AEW-Render-PNG-2024-1017787022",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-mark-davis.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-mark-davis.png"
+    },
+    {
+      "id": "wwe-raw-la-knight",
+      "name": "LA Knight",
+      "page_url": "https://www.deviantart.com/tdg129/art/La-Knight-Casual-Render-1336216641",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-la-knight.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-la-knight.png"
+    },
+    {
+      "id": "wwe-smackdown-sami-zayn",
+      "name": "Sami Zayn",
+      "page_url": "https://www.deviantart.com/ykprihodilo/art/Sami-Zayn-WWE-Render-2025-1249155198",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-sami-zayn.source.png",
+      "status": "saved",
+      "source_size": [
+        873,
+        868
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-sami-zayn.png"
+    },
+    {
+      "id": "wwe-smackdown-giulia",
+      "name": "Giulia",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Giulia-Render-by-yasuke4u-1318937278",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-giulia.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-giulia.png"
+    },
+    {
+      "id": "wwe-raw-nattie",
+      "name": "Nattie",
+      "page_url": "https://www.deviantart.com/womensvengeance/art/Nattie-Render-2026-1330142789",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-nattie.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-nattie.png"
+    },
+    {
+      "id": "wwe-raw-raquel-rodriguez",
+      "name": "Raquel Rodriguez",
+      "page_url": "https://www.deviantart.com/xlone2k/art/WWE-2K-RENDER-RAQUEL-RODRIGUEZ-1291697151",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-raquel-rodriguez.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-raquel-rodriguez.png"
+    },
+    {
+      "id": "wwe-smackdown-damian-priest",
+      "name": "Damian Priest",
+      "page_url": "https://www.deviantart.com/xthawheat/art/Damian-Priest-Render-1213475622",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-damian-priest.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-damian-priest.png"
+    },
+    {
+      "id": "wwe-raw-sheamus",
+      "name": "Sheamus",
+      "page_url": "https://www.deviantart.com/danteofshadows/art/Sheamus-render-1157315020",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-sheamus.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-sheamus.png"
+    },
+    {
+      "id": "wwe-raw-finn-b-lor",
+      "name": "Finn B\u00e1lor",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Finn-Balor-Render-by-yasuke4u-1319217857",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-finn-b-lor.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "alias_portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-finn-balor.png",
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-finn-b-lor.png"
+    },
+    {
+      "id": "wwe-raw-dominik-mysterio",
+      "name": "Dominik Mysterio",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Dominik-Mysterio-Render-by-yasuke4u-1319217776",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-dominik-mysterio.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-dominik-mysterio.png"
+    },
+    {
+      "id": "aew-aew-lena-kross",
+      "name": "Lena Kross",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Lena-Kross-Render-by-yasuke4u-1313984458",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-lena-kross.source.png",
+      "status": "saved",
+      "source_size": [
+        892,
+        896
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-lena-kross.png"
+    },
+    {
+      "id": "wwe-smackdown-alexa-bliss",
+      "name": "Alexa Bliss",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Alexa-Bliss-Render-by-yasuke4u-1319364023",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-alexa-bliss.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-alexa-bliss.png"
+    },
+    {
+      "id": "wwe-raw-jimmy-uso",
+      "name": "Jimmy Uso",
+      "page_url": "https://www.deviantart.com/afanofbigbrojimmyuso/art/WWE-2K24-Jimmy-Uso-Render-1309402995",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-jimmy-uso.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-jimmy-uso.png"
+    },
+    {
+      "id": "wwe-smackdown-shinsuke-nakamura",
+      "name": "Shinsuke Nakamura",
+      "page_url": "https://www.deviantart.com/xharlott/art/Shinsuke-Nakamura-25-Render-1286229083",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-shinsuke-nakamura.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-shinsuke-nakamura.png"
+    },
+    {
+      "id": "wwe-smackdown-chelsea-green",
+      "name": "Chelsea Green",
+      "page_url": "https://www.deviantart.com/longkissgdnyt/art/Chelsea-Green-Render-1297436492",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-chelsea-green.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-chelsea-green.png"
+    },
+    {
+      "id": "wwe-smackdown-ilja-dragunov",
+      "name": "Ilja Dragunov",
+      "page_url": "https://www.deviantart.com/danteofshadows/art/Ilja-Dragunov-render-1313211020",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-ilja-dragunov.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-ilja-dragunov.png"
+    },
+    {
+      "id": "wwe-raw-roxanne-perez",
+      "name": "Roxanne Perez",
+      "page_url": "https://www.deviantart.com/livvonce/art/Roxanne-Perez-WWE-Render-PNG-by-livsriott-1326973241",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-roxanne-perez.source.png",
+      "status": "saved",
+      "source_size": [
+        851,
+        939
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-roxanne-perez.png"
+    },
+    {
+      "id": "wwe-smackdown-trick-williams",
+      "name": "Trick Williams",
+      "page_url": "https://www.deviantart.com/dillonclay5/art/Wwe-trick-williams-render-1295215268",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-trick-williams.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-trick-williams.png"
+    },
+    {
+      "id": "aew-aew-mark-briscoe",
+      "name": "Mark Briscoe",
+      "page_url": "https://www.deviantart.com/wrestlerender/art/Mark-Briscoe-OFFICIAL-AEW-Render-2025-1181854703",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-mark-briscoe.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-mark-briscoe.png"
+    },
+    {
+      "id": "aew-aew-tommaso-ciampa",
+      "name": "Tommaso Ciampa",
+      "page_url": "https://www.deviantart.com/dmtaco/art/Tommaso-Ciampa-AEW-Render-1302850210",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-tommaso-ciampa.source.png",
+      "status": "saved",
+      "source_size": [
+        500,
+        500
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-tommaso-ciampa.png"
+    },
+    {
+      "id": "aew-aew-christian-cage",
+      "name": "Christian Cage",
+      "page_url": "https://www.deviantart.com/goldystormwwe/art/Christian-Cage-AEW-2025-Render-1213849903",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-christian-cage.source.png",
+      "status": "saved",
+      "source_size": [
+        879,
+        909
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-christian-cage.png"
+    },
+    {
+      "id": "wwe-raw-el-grande-americano",
+      "name": "El Grande Americano",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/El-Grande-Americano-Render-by-yasuke4u-1319217895",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-el-grande-americano.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-el-grande-americano.png"
+    },
+    {
+      "id": "aew-aew-matt-jackson",
+      "name": "Matt Jackson",
+      "page_url": "https://www.deviantart.com/xlone2k/art/WWE-2K-RENDER-MATT-JACKSON-1291701559",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-matt-jackson.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-matt-jackson.png"
+    },
+    {
+      "id": "aew-aew-nick-jackson",
+      "name": "Nick Jackson",
+      "page_url": "https://www.deviantart.com/xlone2k/art/WWE-2K-RENDER-NICK-JACKSON-1291701783",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-nick-jackson.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-nick-jackson.png"
+    },
+    {
+      "id": "wwe-raw-original-el-grande-americano",
+      "name": "Original El Grande Americano",
+      "page_url": "https://www.deviantart.com/dunktheclown/art/Original-El-Grande-Americano-2026-png-Render-1314399551",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-original-el-grande-americano.source.png",
+      "status": "saved",
+      "source_size": [
+        787,
+        1015
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-original-el-grande-americano.png"
+    },
+    {
+      "id": "wwe-smackdown-solo-sikoa",
+      "name": "Solo Sikoa",
+      "page_url": "https://www.deviantart.com/wrestlerender/art/Solo-Sikoa-OFFICIAL-WWE-Render-2025-1203353814",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-solo-sikoa.source.png",
+      "status": "saved",
+      "source_size": [
+        789,
+        1013
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-solo-sikoa.png"
+    },
+    {
+      "id": "wwe-raw-rey-mysterio",
+      "name": "Rey Mysterio",
+      "page_url": "https://www.deviantart.com/yanrtbtn/art/WWE-Rey-Mysterio-PNG-Render-2025-1162713466",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-rey-mysterio.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-rey-mysterio.png"
+    },
+    {
+      "id": "aew-aew-athena",
+      "name": "Athena",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Athena-Render-by-yasuke4u-1302178687",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-athena.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-athena.png"
+    },
+    {
+      "id": "aew-aew-hikaru-shida",
+      "name": "Hikaru Shida",
+      "page_url": "https://www.deviantart.com/2kwomensrenders/art/Hikaru-Shida-WWE-2K25-Render-HQ-PNG-1284036854",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-hikaru-shida.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-hikaru-shida.png"
+    },
+    {
+      "id": "aew-aew-jamie-hayter",
+      "name": "Jamie Hayter",
+      "page_url": "https://www.deviantart.com/elitejoshiarchive/art/Jamie-Hayter-AEW-Render-2026-1327329873",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-jamie-hayter.source.png",
+      "status": "saved",
+      "source_size": [
+        859,
+        930
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-jamie-hayter.png"
+    },
+    {
+      "id": "aew-aew-kris-statlander",
+      "name": "Kris Statlander",
+      "page_url": "https://www.deviantart.com/elitejoshiarchive/art/Kris-Statlander-AEW-Render-2026-1332698451",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-kris-statlander.source.png",
+      "status": "saved",
+      "source_size": [
+        913,
+        875
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-kris-statlander.png"
+    },
+    {
+      "id": "aew-aew-thunder-rosa",
+      "name": "Thunder Rosa",
+      "page_url": "https://www.deviantart.com/dmtaco/art/Thunder-Rosa-New-AEW-Render-1306827521",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-thunder-rosa.source.png",
+      "status": "saved",
+      "source_size": [
+        500,
+        500
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-thunder-rosa.png"
+    },
+    {
+      "id": "wwe-raw-ethan-page",
+      "name": "Ethan Page",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Ethan-Page-Render-by-yasuke4u-1319217973",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-ethan-page.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-ethan-page.png"
+    },
+    {
+      "id": "wwe-smackdown-carmelo-hayes",
+      "name": "Carmelo Hayes",
+      "page_url": "https://www.deviantart.com/1angro/art/Carmelo-Hayes-1321690877",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-carmelo-hayes.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-carmelo-hayes.png"
+    },
+    {
+      "id": "aew-aew-konosuke-takeshita",
+      "name": "Konosuke Takeshita",
+      "page_url": "https://www.deviantart.com/elkr1zbeuve/art/KONOSUKE-TAKESHITA-RENDER-2024-AEW-NJPW-DDT-1099329849",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-konosuke-takeshita.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-konosuke-takeshita.png"
+    },
+    {
+      "id": "wwe-raw-austin-theory",
+      "name": "Austin Theory",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Austin-Theory-Render-by-yasuke4u-1319217960",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-austin-theory.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-austin-theory.png"
+    },
+    {
+      "id": "aew-aew-kyle-fletcher",
+      "name": "Kyle Fletcher",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Kyle-Fletcher-Render-by-yasuke4u-1312123623",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-kyle-fletcher.source.png",
+      "status": "saved",
+      "source_size": [
+        892,
+        896
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-kyle-fletcher.png"
+    },
+    {
+      "id": "aew-aew-shelton-benjamin",
+      "name": "Shelton Benjamin",
+      "page_url": "https://www.deviantart.com/fandango18002/art/Shelton-Benjamin-AEW-Render-1244491184",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-shelton-benjamin.source.png",
+      "status": "saved",
+      "source_size": [
+        899,
+        889
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-shelton-benjamin.png"
+    },
+    {
+      "id": "wwe-smackdown-ricky-saints",
+      "name": "Ricky Saints",
+      "page_url": "https://www.deviantart.com/dillonclay5/art/Wwe-ricky-saints-render-1309416861",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-ricky-saints.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-ricky-saints.png"
+    },
+    {
+      "id": "aew-aew-adam-cole",
+      "name": "Adam Cole",
+      "page_url": "https://www.deviantart.com/wrestlerender/art/Adam-Cole-OFFICIAL-AEW-Render-2025-1181854659",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-adam-cole.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-adam-cole.png"
+    },
+    {
+      "id": "wwe-smackdown-michin",
+      "name": "Michin",
+      "page_url": "https://www.deviantart.com/livvonce/art/Michin-WWE-Render-PNG-by-livsriott-1326968660",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-michin.source.png",
+      "status": "saved",
+      "source_size": [
+        877,
+        911
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-michin.png"
+    },
+    {
+      "id": "wwe-smackdown-r-truth",
+      "name": "R-Truth",
+      "page_url": "https://www.deviantart.com/vlysyuk/art/WWE-R-Truth-render-2024-1031978110",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-r-truth.source.png",
+      "status": "saved",
+      "source_size": [
+        954,
+        837
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-r-truth.png"
+    },
+    {
+      "id": "wwe-smackdown-the-miz",
+      "name": "The Miz",
+      "page_url": "https://www.deviantart.com/showingoffarts/art/The-Miz-NEW-Render-2018-736444112",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-the-miz.source.png",
+      "status": "saved",
+      "source_size": [
+        889,
+        899
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-the-miz.png"
+    },
+    {
+      "id": "wwe-smackdown-jordynne-grace",
+      "name": "Jordynne Grace",
+      "page_url": "https://www.deviantart.com/blacksoulp/art/Jordynne-Grace-render-1332243442",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-jordynne-grace.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-jordynne-grace.png"
+    },
+    {
+      "id": "wwe-smackdown-lash-legend",
+      "name": "Lash Legend",
+      "page_url": "https://www.deviantart.com/annth0nny/art/LASH-LEGEND-1287705981",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-lash-legend.source.png",
+      "status": "saved",
+      "source_size": [
+        1000,
+        708
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-lash-legend.png"
+    },
+    {
+      "id": "aew-aew-dr-britt-baker-d-m-d",
+      "name": "Dr. Britt Baker, D.M.D.",
+      "page_url": "https://www.deviantart.com/wwe2k24renders/art/AEW-Dr-Britt-Baker-D-M-D-WWE-2K23-V3-978831498",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-dr-britt-baker-d-m-d.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-dr-britt-baker-d-m-d.png"
+    },
+    {
+      "id": "aew-aew-timeless-toni-storm",
+      "name": "\"Timeless\" Toni Storm",
+      "page_url": "https://www.deviantart.com/1angro/art/Timeless-Toni-Storm-24-1299929117",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-timeless-toni-storm.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-timeless-toni-storm.png"
+    },
+    {
+      "id": "wwe-raw-montez-ford",
+      "name": "Montez Ford",
+      "page_url": "https://www.deviantart.com/danteofshadows/art/Montez-Ford-render-1202189023",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-montez-ford.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-montez-ford.png"
+    },
+    {
+      "id": "wwe-smackdown-jacy-jayne",
+      "name": "Jacy Jayne",
+      "page_url": "https://www.deviantart.com/livvonce/art/Jacy-Jayne-WWE-2026-Render-PNG-by-livsriott-1328444354",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-jacy-jayne.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-jacy-jayne.png"
+    },
+    {
+      "id": "wwe-nxt-kelani-jordan",
+      "name": "Kelani Jordan",
+      "page_url": "https://www.deviantart.com/babuguuscooties/art/Kelani-Jordan-NEW-NXT-render-26-1332629649",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-kelani-jordan.source.png",
+      "status": "saved",
+      "source_size": [
+        874,
+        915
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-kelani-jordan.png"
+    },
+    {
+      "id": "wwe-raw-dragon-lee",
+      "name": "Dragon Lee",
+      "page_url": "https://www.deviantart.com/xharlott/art/Dragon-Lee-WM42-Render-1326611211",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-dragon-lee.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-dragon-lee.png"
+    },
+    {
+      "id": "wwe-raw-jd-mcdonagh",
+      "name": "JD McDonagh",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/JD-McDonagh-Render-by-yasuke4u-1319217865",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-jd-mcdonagh.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-jd-mcdonagh.png"
+    },
+    {
+      "id": "wwe-nxt-tony-d-angelo",
+      "name": "Tony D'Angelo",
+      "page_url": "https://www.deviantart.com/babuguuscooties/art/Tony-D-Angelo-OFFICIAL-NXT-render-26-1301142405",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-tony-d-angelo.source.png",
+      "status": "saved",
+      "source_size": [
+        920,
+        868
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-tony-d-angelo.png"
+    },
+    {
+      "id": "wwe-raw-angelo-dawkins",
+      "name": "Angelo Dawkins",
+      "page_url": "https://www.deviantart.com/wwewomendaily/art/Angelo-Dawkins-WWE-Render-PNG-1203827638",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-angelo-dawkins.source.png",
+      "status": "saved",
+      "source_size": [
+        826,
+        967
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-angelo-dawkins.png"
+    },
+    {
+      "id": "wwe-raw-je-von-evans",
+      "name": "Je'Von Evans",
+      "page_url": "https://www.deviantart.com/secondxcity/art/Je-von-Evans-1293851671",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-je-von-evans.source.png",
+      "status": "saved",
+      "source_size": [
+        1068,
+        749
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-je-von-evans.png"
+    },
+    {
+      "id": "wwe-smackdown-blake-monroe",
+      "name": "Blake Monroe",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Blake-Monroe-Render-by-yasuke4u-1318413717",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-blake-monroe.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-blake-monroe.png"
+    },
+    {
+      "id": "wwe-smackdown-fallon-henley",
+      "name": "Fallon Henley",
+      "page_url": "https://www.deviantart.com/womensvengeance/art/Fallon-Henley-Render-2026-1320678131",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-fallon-henley.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-fallon-henley.png"
+    },
+    {
+      "id": "wwe-nxt-lola-vice",
+      "name": "Lola Vice",
+      "page_url": "https://www.deviantart.com/xharlott/art/Lola-Vice-26-Render-1316451404",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-lola-vice.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-lola-vice.png"
+    },
+    {
+      "id": "wwe-raw-maxxine-dupri",
+      "name": "Maxxine Dupri",
+      "page_url": "https://www.deviantart.com/wrestlerender/art/MAXXINE-DUPRI-OFFICIAL-WWE-Render-2025-1208964170",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-maxxine-dupri.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-maxxine-dupri.png"
+    },
+    {
+      "id": "wwe-nxt-hank-walker",
+      "name": "Hank Walker",
+      "page_url": "https://www.deviantart.com/xlone2k/art/WWE-2K-RENDER-HANK-WALKER-1291702536",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-hank-walker.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-hank-walker.png"
+    },
+    {
+      "id": "wwe-nxt-tank-ledger",
+      "name": "Tank Ledger",
+      "page_url": "https://www.deviantart.com/yanrtbtn/art/WWE-Tank-Ledger-PNG-Render-2026-1319649844",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-tank-ledger.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-tank-ledger.png"
+    },
+    {
+      "id": "wwe-raw-ivar",
+      "name": "Ivar",
+      "page_url": "https://www.deviantart.com/wrestlingprimespace/art/IVAR-1247854042",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-ivar.source.png",
+      "status": "saved",
+      "source_size": [
+        991,
+        806
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-ivar.png"
+    },
+    {
+      "id": "wwe-nxt-jaida-parker",
+      "name": "Jaida Parker",
+      "page_url": "https://www.deviantart.com/wrestlerender/art/Jaida-Parker-OFFICIAL-WWE-Render-2025-1165684047",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-jaida-parker.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-jaida-parker.png"
+    },
+    {
+      "id": "wwe-raw-sol-ruca",
+      "name": "Sol Ruca",
+      "page_url": "https://www.deviantart.com/danteofshadows/art/Sol-Ruca-render-1202189058",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-sol-ruca.source.png",
+      "status": "saved",
+      "source_size": [
+        894,
+        894
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-sol-ruca.png"
+    },
+    {
+      "id": "wwe-raw-erik",
+      "name": "Erik",
+      "page_url": "https://www.deviantart.com/yanrtbtn/art/WWE-Erik-Render-PNG-2025-1213618964",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-erik.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-erik.png"
+    },
+    {
+      "id": "wwe-nxt-noam-dar",
+      "name": "Noam Dar",
+      "page_url": "https://www.deviantart.com/yanrtbtn/art/WWE-Noam-Dar-PNG-Render-2026-1339094643",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-noam-dar.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-noam-dar.png"
+    },
+    {
+      "id": "wwe-raw-ivy-nile",
+      "name": "Ivy Nile",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Ivy-Nile-Render-by-yasuke4u-1318413788",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-ivy-nile.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-ivy-nile.png"
+    },
+    {
+      "id": "wwe-nxt-izzi-dame",
+      "name": "Izzi Dame",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Izzi-Dame-Render-by-yasuke4u-1317811313",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-izzi-dame.source.png",
+      "status": "saved",
+      "source_size": [
+        1063,
+        752
+      ],
+      "cached": true,
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-izzi-dame.png"
+    },
+    {
+      "id": "aew-aew-hologram",
+      "name": "Hologram",
+      "page_url": "https://www.deviantart.com/xlone2k/art/WWE-2K-RENDER-HOLOGRAM-1294020065",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-hologram.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/30e8f67f-d7c0-4ffb-9cc0-7137f40c4042/dlefc9t-df621e60-111c-47df-9ab1-25f81097b40e.png/v1/fill/w_894,h_894/wwe_2k_render___hologram_by_xlone2k_dlefc9t-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi8zMGU4ZjY3Zi1kN2MwLTRmZmItOWNjMC03MTM3ZjQwYzQwNDIvZGxlZmM5dC1kZjYyMWU2MC0xMTFjLTQ3ZGYtOWFiMS0yNWY4MTA5N2I0MGUucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.ep6tIOg_JwLGqj_-16s7zagcD2dmZWHLFWPGwh9RZoo",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-hologram.png"
+    },
+    {
+      "id": "wwe-raw-brutus-creed",
+      "name": "Brutus Creed",
+      "page_url": "https://www.deviantart.com/annth0nny/art/BRUTUS-CREED-1287077564",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-brutus-creed.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/0c9fec3a-e37f-4cc3-956e-7548910f107c/dlaajek-bbf81173-0457-4b3e-bb9a-6a98a8b43218.png/v1/fill/w_1000,h_708/brutus_creed_by_annth0nny_dlaajek-fullview.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9NzA4IiwicGF0aCI6Ii9mLzBjOWZlYzNhLWUzN2YtNGNjMy05NTZlLTc1NDg5MTBmMTA3Yy9kbGFhamVrLWJiZjgxMTczLTA0NTctNGIzZS1iYjlhLTZhOThhOGI0MzIxOC5wbmciLCJ3aWR0aCI6Ijw9MTAwMCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.RiBo8BL5ytNJ9pHs2uMTiSTcP5JDnSdyQOehWOI5q_8",
+      "source_size": [
+        1000,
+        708
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-brutus-creed.png"
+    },
+    {
+      "id": "wwe-smackdown-johnny-gargano",
+      "name": "Johnny Gargano",
+      "page_url": "https://www.deviantart.com/danteofshadows/art/Johnny-Gargano-render-1155960608",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-johnny-gargano.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/1cb425e3-c8e4-45f9-aed2-07c758e4dfa6/dj488ww-b3b50771-7de4-4425-bda8-852bf8b44608.png/v1/fill/w_894,h_894/johnny_gargano_render_by_danteofshadows_dj488ww-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi8xY2I0MjVlMy1jOGU0LTQ1ZjktYWVkMi0wN2M3NThlNGRmYTYvZGo0ODh3dy1iM2I1MDc3MS03ZGU0LTQ0MjUtYmRhOC04NTJiZjhiNDQ2MDgucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.Tv7f_xLKkdoUFLKnbKyn941Kp0MkLIBeNWREYblksAc",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-johnny-gargano.png"
+    },
+    {
+      "id": "wwe-nxt-charlie-dempsey",
+      "name": "Charlie Dempsey",
+      "page_url": "https://www.deviantart.com/yanrtbtn/art/WWE-Charlie-Dempsey-PNG-Render-2026-1339094783",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-charlie-dempsey.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/aae6b078-d89a-44e0-befe-571173bead13/dm59g5b-21d3b935-f665-45d6-a61b-de2c9bee8324.png/v1/fill/w_1063,h_752/wwe_charlie_dempsey_png_render_2026_by_yanrtbtn_dm59g5b-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9ODQ5IiwicGF0aCI6Ii9mL2FhZTZiMDc4LWQ4OWEtNDRlMC1iZWZlLTU3MTE3M2JlYWQxMy9kbTU5ZzViLTIxZDNiOTM1LWY2NjUtNDVkNi1hNjFiLWRlMmM5YmVlODMyNC5wbmciLCJ3aWR0aCI6Ijw9MTIwMCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.S2je4dFFO4_cyVtaQq-BDTt93rlbOhmNVuhq9YivnQ8",
+      "source_size": [
+        1063,
+        752
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-charlie-dempsey.png"
+    },
+    {
+      "id": "aew-aew-buddy-matthews",
+      "name": "Buddy Matthews",
+      "page_url": "https://www.deviantart.com/dunktheclown/art/Buddy-Matthews-2026-Render-png-1286184034",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-buddy-matthews.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/9d0ec099-4a20-469d-98ed-2203317e4c30/dl9rdya-47014c26-6222-46f8-aaae-7321b3dc39f3.png/v1/fill/w_932,h_857/buddy_matthews_2026_render_png_by_dunktheclown_dl9rdya-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAxMSIsInBhdGgiOiIvZi85ZDBlYzA5OS00YTIwLTQ2OWQtOThlZC0yMjAzMzE3ZTRjMzAvZGw5cmR5YS00NzAxNGMyNi02MjIyLTQ2ZjgtYWFhZS03MzIxYjNkYzM5ZjMucG5nIiwid2lkdGgiOiI8PTExMDAifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.1fKTfRdlRN0V2vHf0jIEpG4cWMLn-QmLEMDjQQiTzsw",
+      "source_size": [
+        932,
+        857
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-buddy-matthews.png"
+    },
+    {
+      "id": "aew-aew-jake-doyle",
+      "name": "Jake Doyle",
+      "page_url": "https://www.deviantart.com/licho4030/art/Jake-Doyle-1295949145",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-jake-doyle.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/84de611b-d867-4533-bbfa-2ccd5d17f800/dlfkord-92ff3b3b-705a-4c44-96f8-22e3f4985d59.png/v1/fill/w_499,h_499/jake_doyle_by_licho4030_dlfkord-fullview.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9NDk5IiwicGF0aCI6Ii9mLzg0ZGU2MTFiLWQ4NjctNDUzMy1iYmZhLTJjY2Q1ZDE3ZjgwMC9kbGZrb3JkLTkyZmYzYjNiLTcwNWEtNGM0NC05NmY4LTIyZTNmNDk4NWQ1OS5wbmciLCJ3aWR0aCI6Ijw9NDk5In1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLm9wZXJhdGlvbnMiXX0.enMUA7wTcjugXigH8u-wdRWKpDiYrlVAMVcrfC7MFCo",
+      "source_size": [
+        499,
+        499
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-jake-doyle.png"
+    },
+    {
+      "id": "aew-aew-kota-ibushi",
+      "name": "Kota Ibushi",
+      "page_url": "https://www.deviantart.com/xharlott/art/Kota-Ibushi-Render-1285939014",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/aew-aew-kota-ibushi.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/90056224-5579-408e-91fb-aea3efc7ad54/dl9m4w6-2a4dde89-83fc-4b08-b5ed-9f30a615222e.png/v1/fill/w_894,h_894/kota_ibushi_render_by_xharlott_dl9m4w6-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi85MDA1NjIyNC01NTc5LTQwOGUtOTFmYi1hZWEzZWZjN2FkNTQvZGw5bTR3Ni0yYTRkZGU4OS04M2ZjLTRiMDgtYjVlZC05ZjMwYTYxNTIyMmUucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.6bYNIsly8EMd8cA4iQ1iUOGggJsAB5QZuOgwvfXRYf4",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/aew-aew-kota-ibushi.png"
+    },
+    {
+      "id": "wwe-nxt-myles-borne",
+      "name": "Myles Borne",
+      "page_url": "https://www.deviantart.com/1angro/art/Myles-Borne-1325658878",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-myles-borne.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/229d7b3c-1f3e-4391-9971-11deedb2fa40/dlx9gxq-8d7fa9e9-1299-47c3-9ebe-98519da18d52.png/v1/fill/w_894,h_894/myles_borne_by_1angro_dlx9gxq-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi8yMjlkN2IzYy0xZjNlLTQzOTEtOTk3MS0xMWRlZWRiMmZhNDAvZGx4OWd4cS04ZDdmYTllOS0xMjk5LTQ3YzMtOWViZS05ODUxOWRhMThkNTIucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.0yKEEs6ayrP51CyL9wUPJYDzY4TYWlMMTInQgK2RyMA",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-myles-borne.png"
+    },
+    {
+      "id": "wwe-smackdown-nathan-frazer",
+      "name": "Nathan Frazer",
+      "page_url": "https://www.deviantart.com/annth0nny/art/NATHAN-FRAZER-1287712240",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-nathan-frazer.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/0c9fec3a-e37f-4cc3-956e-7548910f107c/dlao54g-6157162d-9071-4d08-a20b-9bf769fd18b1.png/v1/fill/w_1000,h_707/nathan_frazer_by_annth0nny_dlao54g-fullview.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9NzA3IiwicGF0aCI6Ii9mLzBjOWZlYzNhLWUzN2YtNGNjMy05NTZlLTc1NDg5MTBmMTA3Yy9kbGFvNTRnLTYxNTcxNjJkLTkwNzEtNGQwOC1hMjBiLTliZjc2OWZkMThiMS5wbmciLCJ3aWR0aCI6Ijw9MTAwMCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.7YURjUr7T6hwwSDDJUGHZHT8AJ3poQXpcrcFl_5368w",
+      "source_size": [
+        1000,
+        707
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-nathan-frazer.png"
+    },
+    {
+      "id": "wwe-smackdown-axiom",
+      "name": "Axiom",
+      "page_url": "https://www.deviantart.com/babuguuscooties/art/Axiom-OFFICIAL-WWE-render-26-1285602422",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-axiom.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/99e761c0-d992-41b8-a0e4-0062612879c2/dl9ex6e-9f807e7c-e3c9-40a7-a8ae-5daf721607da.png/v1/fill/w_798,h_1002/axiom__official__wwe_render__26_by_babuguuscooties_dl9ex6e-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTU5MCIsInBhdGgiOiIvZi85OWU3NjFjMC1kOTkyLTQxYjgtYTBlNC0wMDYyNjEyODc5YzIvZGw5ZXg2ZS05ZjgwN2U3Yy1lM2M5LTQwYTctYThhZS01ZGFmNzIxNjA3ZGEucG5nIiwid2lkdGgiOiI8PTEyNjYifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.IySRlDRvmQjtsrHV5tMA4byx80ZB3EoiwX394lWHhSE",
+      "source_size": [
+        798,
+        1002
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-axiom.png"
+    },
+    {
+      "id": "wwe-nxt-josh-briggs",
+      "name": "Josh Briggs",
+      "page_url": "https://www.deviantart.com/annth0nny/art/JOSH-BRIGGS-1287701512",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-josh-briggs.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/0c9fec3a-e37f-4cc3-956e-7548910f107c/dlanwug-8fc120c4-e43a-4bf7-bd9b-6e16e479ed05.png/v1/fill/w_912,h_876/josh_briggs_by_annth0nny_dlanwug-fullview.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9ODc2IiwicGF0aCI6Ii9mLzBjOWZlYzNhLWUzN2YtNGNjMy05NTZlLTc1NDg5MTBmMTA3Yy9kbGFud3VnLThmYzEyMGM0LWU0M2EtNGJmNy1iZDliLTZlMTZlNDc5ZWQwNS5wbmciLCJ3aWR0aCI6Ijw9OTEyIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLm9wZXJhdGlvbnMiXX0.YL5zLWMEM14DajjHQIA3G2zh3O3ewnGH4MB7XUo_9H8",
+      "source_size": [
+        912,
+        876
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-josh-briggs.png"
+    },
+    {
+      "id": "wwe-nxt-nikkita-lyons",
+      "name": "Nikkita Lyons",
+      "page_url": "https://www.deviantart.com/yanrtbtn/art/WWE-Nikkita-Lyons-PNG-Render-2026-1332696072",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-nikkita-lyons.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/aae6b078-d89a-44e0-befe-571173bead13/dm1gavc-e26a898d-a8ad-4b5d-ab2e-12280bd3164a.png/v1/fill/w_1063,h_752/wwe_nikkita_lyons_png_render_2026_by_yanrtbtn_dm1gavc-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9ODQ5IiwicGF0aCI6Ii9mL2FhZTZiMDc4LWQ4OWEtNDRlMC1iZWZlLTU3MTE3M2JlYWQxMy9kbTFnYXZjLWUyNmE4OThkLWE4YWQtNGI1ZC1hYjJlLTEyMjgwYmQzMTY0YS5wbmciLCJ3aWR0aCI6Ijw9MTIwMCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.p9ynbMboE_hlIAmU_0J2h68ZiXY6ZnCXWLtQGYWI1yY",
+      "source_size": [
+        1063,
+        752
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-nikkita-lyons.png"
+    },
+    {
+      "id": "wwe-smackdown-kit-wilson",
+      "name": "Kit Wilson",
+      "page_url": "https://www.deviantart.com/dillonclay5/art/Wwe-kit-wilson-render-1295215333",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-kit-wilson.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/2811fe29-73ab-4a3c-8574-438bed343181/dlf4yjp-205b733e-01dd-45ad-9a48-944de8857516.png/v1/fill/w_894,h_894/wwe_kit_wilson_render_by_dillonclay5_dlf4yjp-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MzQ2NCIsInBhdGgiOiIvZi8yODExZmUyOS03M2FiLTRhM2MtODU3NC00MzhiZWQzNDMxODEvZGxmNHlqcC0yMDViNzMzZS0wMWRkLTQ1YWQtOWE0OC05NDRkZTg4NTc1MTYucG5nIiwid2lkdGgiOiI8PTM0NjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.YX6chNyR692n80nJpmjFVkrwUSR4SjsgEdJ4g4uYcz4",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-kit-wilson.png"
+    },
+    {
+      "id": "wwe-smackdown-royce-keys",
+      "name": "Royce Keys",
+      "page_url": "https://www.deviantart.com/babuguuscooties/art/Royce-Keys-OFFICIAL-WWE-render-1324398049",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-royce-keys.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/99e761c0-d992-41b8-a0e4-0062612879c2/dlwig2p-9f7b01e8-5c9f-4ac2-b88f-ad739fde371a.png/v1/fill/w_958,h_834/royce_keys__official__wwe_render_by_babuguuscooties_dlwig2p-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTQ1NiIsInBhdGgiOiIvZi85OWU3NjFjMC1kOTkyLTQxYjgtYTBlNC0wMDYyNjEyODc5YzIvZGx3aWcycC05ZjdiMDFlOC01YzlmLTRhYzItYjg4Zi1hZDczOWZkZTM3MWEucG5nIiwid2lkdGgiOiI8PTE2NzIifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.dLzn8SGdqH-pKRmW2hHXXZ40dtkwzfRCO7VjcFOcRX4",
+      "source_size": [
+        958,
+        834
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-royce-keys.png"
+    },
+    {
+      "id": "wwe-raw-rusev",
+      "name": "Rusev",
+      "page_url": "https://www.deviantart.com/xharlott/art/Rusev-26-Render-1337931181",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-rusev.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/90056224-5579-408e-91fb-aea3efc7ad54/dm4kib1-c45df5d9-37d0-46dd-a5b8-20d65484ab35.png/v1/fill/w_894,h_894/rusev__26_render_by_xharlott_dm4kib1-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi85MDA1NjIyNC01NTc5LTQwOGUtOTFmYi1hZWEzZWZjN2FkNTQvZG00a2liMS1jNDVkZjVkOS0zN2QwLTQ2ZGQtYTViOC0yMGQ2NTQ4NGFiMzUucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.Kgi-ces7-tAdfPK1sWvZK1kol8GCG_g7kQrkDlAsgGo",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-rusev.png"
+    },
+    {
+      "id": "wwe-smackdown-tama-tonga",
+      "name": "Tama Tonga",
+      "page_url": "https://www.deviantart.com/xlone2k/art/WWE-2K-RENDER-TAMA-TONGA-1291700782",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-tama-tonga.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/30e8f67f-d7c0-4ffb-9cc0-7137f40c4042/dld1mpa-d5d5e64c-78ee-475c-ae2b-e742ea440cdf.png/v1/fill/w_894,h_894/wwe_2k_render___tama_tonga_by_xlone2k_dld1mpa-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi8zMGU4ZjY3Zi1kN2MwLTRmZmItOWNjMC03MTM3ZjQwYzQwNDIvZGxkMW1wYS1kNWQ1ZTY0Yy03OGVlLTQ3NWMtYWUyYi1lNzQyZWE0NDBjZGYucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.OyoALylBeCdj0cGqfEGQf4uAJry0JZX3wnE0yuuFvaA",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-tama-tonga.png"
+    },
+    {
+      "id": "wwe-raw-otis",
+      "name": "Otis",
+      "page_url": "https://www.deviantart.com/yanrtbtn/art/WWE-Otis-Render-2024-1073521732",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-otis.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/aae6b078-d89a-44e0-befe-571173bead13/dhr5ao4-8c0c92d5-1c61-4c7c-a786-c9cb44b44381.png/v1/fill/w_1063,h_752/wwe_otis_render_2024_by_yanrtbtn_dhr5ao4-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9ODQ5IiwicGF0aCI6Ii9mL2FhZTZiMDc4LWQ4OWEtNDRlMC1iZWZlLTU3MTE3M2JlYWQxMy9kaHI1YW80LThjMGM5MmQ1LTFjNjEtNGM3Yy1hNzg2LWM5Y2I0NGI0NDM4MS5wbmciLCJ3aWR0aCI6Ijw9MTIwMCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.gd7QeMQjuIs-dMENLtwm3krQ92gyRN3ny1jkFPJ1_oA",
+      "source_size": [
+        1063,
+        752
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-otis.png"
+    },
+    {
+      "id": "wwe-nxt-bronco-nima",
+      "name": "Bronco Nima",
+      "page_url": "https://www.deviantart.com/xthawheat/art/Bronco-Nima-Render-1213472962",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-bronco-nima.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/e789b520-5cba-4f17-a402-197888efed35/dk2gxqa-4c99645a-dc7d-40df-b1b4-85c8dcbbefe7.png/v1/fill/w_894,h_894/bronco_nima_render_by_xthawheat_dk2gxqa-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi9lNzg5YjUyMC01Y2JhLTRmMTctYTQwMi0xOTc4ODhlZmVkMzUvZGsyZ3hxYS00Yzk5NjQ1YS1kYzdkLTQwZGYtYjFiNC04NWM4ZGNiYmVmZTcucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.wp1iRzqsQkVhBGaa6gVsP7XjbAZ4ie_jWX4xX7BMdmQ",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-bronco-nima.png"
+    },
+    {
+      "id": "wwe-nxt-kali-armstrong",
+      "name": "Kali Armstrong",
+      "page_url": "https://www.deviantart.com/yanrtbtn/art/WWE-Kali-Armstrong-PNG-Render-2026-1322873770",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-kali-armstrong.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/aae6b078-d89a-44e0-befe-571173bead13/dlvlrxm-7cb75bea-a1f3-454a-abd5-48d79ece8f61.png/v1/fill/w_1063,h_752/wwe_kali_armstrong_png_render_2026_by_yanrtbtn_dlvlrxm-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9ODQ5IiwicGF0aCI6Ii9mL2FhZTZiMDc4LWQ4OWEtNDRlMC1iZWZlLTU3MTE3M2JlYWQxMy9kbHZscnhtLTdjYjc1YmVhLWExZjMtNDU0YS1hYmQ1LTQ4ZDc5ZWNlOGY2MS5wbmciLCJ3aWR0aCI6Ijw9MTIwMCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.Ba1Yp8GlBIgUfJ94ygjazS8KXhGMukV0RqhhQcUmCl0",
+      "source_size": [
+        1063,
+        752
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-kali-armstrong.png"
+    },
+    {
+      "id": "wwe-nxt-adriana-rizzo",
+      "name": "Adriana Rizzo",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Adriana-Rizzo-Render-by-yasuke4u-1318413767",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-adriana-rizzo.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/c3c840c0-d3bc-42bd-bdbb-9facf2d4a69e/dlsy6kn-08013373-c879-4032-aa1d-93fbf4a4f5b4.png/v1/fill/w_1063,h_752/adriana_rizzo_render_by_yasuke4u_by_yasuke4u_dlsy6kn-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9OTA1IiwicGF0aCI6Ii9mL2MzYzg0MGMwLWQzYmMtNDJiZC1iZGJiLTlmYWNmMmQ0YTY5ZS9kbHN5NmtuLTA4MDEzMzczLWM4NzktNDAzMi1hYTFkLTkzZmJmNGE0ZjViNC5wbmciLCJ3aWR0aCI6Ijw9MTI4MCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.LOfMi3tzBtzDGWD-MItPxMZmhavHWjpefIuwNVCZQOA",
+      "source_size": [
+        1063,
+        752
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-adriana-rizzo.png"
+    },
+    {
+      "id": "wwe-nxt-arianna-grace",
+      "name": "Arianna Grace",
+      "page_url": "https://www.deviantart.com/2kwomensrenders/art/Arianna-Grace-WWE-2K25-Render-HQ-PNG-1282777117",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-arianna-grace.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/8c39f496-4d0d-4090-a7b7-e0b39b15968c/dl7qd5p-6944f3dd-e129-4320-afae-acbb153cf8b4.png/v1/fill/w_894,h_894/arianna_grace___wwe_2k25_render___hq_png_by_2kwomensrenders_dl7qd5p-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTA4MCIsInBhdGgiOiIvZi84YzM5ZjQ5Ni00ZDBkLTQwOTAtYTdiNy1lMGIzOWIxNTk2OGMvZGw3cWQ1cC02OTQ0ZjNkZC1lMTI5LTQzMjAtYWZhZS1hY2JiMTUzY2Y4YjQucG5nIiwid2lkdGgiOiI8PTEwODAifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.o6h6lC_SbkGi6unUlPUlKwo5IL6KPw6kxI7mE1OVeCg",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-arianna-grace.png"
+    },
+    {
+      "id": "wwe-nxt-karmen-petrovic",
+      "name": "Karmen Petrovic",
+      "page_url": "https://www.deviantart.com/1angro/art/Karmen-Petrovic-1292197599",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-karmen-petrovic.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/229d7b3c-1f3e-4391-9971-11deedb2fa40/dldca1r-4d865116-294c-4bce-af4d-47d083578923.png/v1/fill/w_894,h_894/karmen_petrovic_by_1angro_dldca1r-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi8yMjlkN2IzYy0xZjNlLTQzOTEtOTk3MS0xMWRlZWRiMmZhNDAvZGxkY2Exci00ZDg2NTExNi0yOTRjLTRiY2UtYWY0ZC00N2QwODM1Nzg5MjMucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.nIqu4_k_QLJBidjpbZ2hQl5Ett6hHYMfQiJTiHgSHj0",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-karmen-petrovic.png"
+    },
+    {
+      "id": "wwe-nxt-kendal-grey",
+      "name": "Kendal Grey",
+      "page_url": "https://www.deviantart.com/womensvengeance/art/Kendal-Grey-Render-2026-1304721821",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-kendal-grey.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/7cdc0588-8f44-49d0-893f-09b00cbe35a6/dlkspst-2b26fc2a-0ee2-4695-ac00-b13f83589a26.png/v1/fill/w_894,h_894/kendal_grey_render__2026__by_womensvengeance_dlkspst-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MzQ2NCIsInBhdGgiOiIvZi83Y2RjMDU4OC04ZjQ0LTQ5ZDAtODkzZi0wOWIwMGNiZTM1YTYvZGxrc3BzdC0yYjI2ZmMyYS0wZWUyLTQ2OTUtYWMwMC1iMTNmODM1ODlhMjYucG5nIiwid2lkdGgiOiI8PTM0NjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ._McbNe--qtRypaleD_WEC1zoMF7GPlEA_xsfQXjaqs8",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-kendal-grey.png"
+    },
+    {
+      "id": "wwe-smackdown-kiana-james",
+      "name": "Kiana James",
+      "page_url": "https://www.deviantart.com/longkissgdnyt/art/Kiana-James-Render-1288066615",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-kiana-james.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/704fb12c-f63e-4bdd-b5cf-b5b8c1b98abe/dlavqk7-20b9acff-7d17-443f-ba64-a5e7d02044f9.png/v1/fill/w_894,h_894/kiana_james_render__by_longkissgdnyt_dlavqk7-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MjUwMCIsInBhdGgiOiIvZi83MDRmYjEyYy1mNjNlLTRiZGQtYjVjZi1iNWI4YzFiOThhYmUvZGxhdnFrNy0yMGI5YWNmZi03ZDE3LTQ0M2YtYmE2NC1hNWU3ZDAyMDQ0ZjkucG5nIiwid2lkdGgiOiI8PTI1MDAifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.DRJrz5tz3Xu1kG5Pr2LkqitL1MLa66B66CNNd4hwong",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-kiana-james.png"
+    },
+    {
+      "id": "wwe-smackdown-lainey-reid",
+      "name": "Lainey Reid",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Lainey-Reid-Render-by-yasuke4u-1288964660",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-lainey-reid.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/c3c840c0-d3bc-42bd-bdbb-9facf2d4a69e/dlbezhw-ed52d1bc-939d-42ee-ab41-4e5aa1b6248a.png/v1/fill/w_894,h_894/lainey_reid_render_by_yasuke4u_by_yasuke4u_dlbezhw-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTI4MCIsInBhdGgiOiIvZi9jM2M4NDBjMC1kM2JjLTQyYmQtYmRiYi05ZmFjZjJkNGE2OWUvZGxiZXpody1lZDUyZDFiYy05MzlkLTQyZWUtYWI0MS00ZTVhYTFiNjI0OGEucG5nIiwid2lkdGgiOiI8PTEyODAifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.TcT6gQXsevKf8oAi9_ixXTS_swUpnfvH8NYAMq9EQZU",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-lainey-reid.png"
+    },
+    {
+      "id": "wwe-nxt-lizzy-rain",
+      "name": "Lizzy Rain",
+      "page_url": "https://www.deviantart.com/xharlott/art/Lizzy-Rain-Render-1333856906",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-lizzy-rain.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/90056224-5579-408e-91fb-aea3efc7ad54/dm256kq-d8eee327-16f4-41ec-b3e5-a26a69f7eb47.png/v1/fill/w_894,h_894/lizzy_rain_render_by_xharlott_dm256kq-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi85MDA1NjIyNC01NTc5LTQwOGUtOTFmYi1hZWEzZWZjN2FkNTQvZG0yNTZrcS1kOGVlZTMyNy0xNmY0LTQxZWMtYjNlNS1hMjZhNjlmN2ViNDcucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.Bj4xngT8tzxSqciO6Zhi7H_PqYKKVGUwHKrLVLaRCOo",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-lizzy-rain.png"
+    },
+    {
+      "id": "wwe-nxt-myka-lockwood",
+      "name": "Myka Lockwood",
+      "page_url": "https://www.deviantart.com/womensvengeance/art/Myka-Lockwood-Render-2026-1338837252",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-myka-lockwood.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/7cdc0588-8f44-49d0-893f-09b00cbe35a6/dm53xfo-aae16cc1-b647-4389-a5c7-69ed565cccd8.png/v1/fill/w_894,h_894/myka_lockwood_render__2026__by_womensvengeance_dm53xfo-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTI5MCIsInBhdGgiOiIvZi83Y2RjMDU4OC04ZjQ0LTQ5ZDAtODkzZi0wOWIwMGNiZTM1YTYvZG01M3hmby1hYWUxNmNjMS1iNjQ3LTQzODktYTVjNy02OWVkNTY1Y2NjZDgucG5nIiwid2lkdGgiOiI8PTEyOTAifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.VsUR4HuF34Fvxok2WMRtZrB_e8J0be-F_bEAKFzTCuo",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-myka-lockwood.png"
+    },
+    {
+      "id": "wwe-smackdown-piper-niven",
+      "name": "Piper Niven",
+      "page_url": "https://www.deviantart.com/danteofshadows/art/Piper-Niven-render-1085234682",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-piper-niven.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/1cb425e3-c8e4-45f9-aed2-07c758e4dfa6/dhy4cfu-4096acb3-66f4-4595-a362-b6542c5a6276.png/v1/fill/w_894,h_894/piper_niven_render_by_danteofshadows_dhy4cfu-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi8xY2I0MjVlMy1jOGU0LTQ1ZjktYWVkMi0wN2M3NThlNGRmYTYvZGh5NGNmdS00MDk2YWNiMy02NmY0LTQ1OTUtYTM2Mi1iNjU0MmM1YTYyNzYucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.GhbgGuos7isSurkVIhF-vwcnfC32aqMzkiPHnNs3rN4",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-piper-niven.png"
+    },
+    {
+      "id": "wwe-nxt-skylar-raye",
+      "name": "Skylar Raye",
+      "page_url": "https://www.deviantart.com/yanrtbtn/art/WWE-Skylar-Raye-PNG-Render-2026-1314861286",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-skylar-raye.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/aae6b078-d89a-44e0-befe-571173bead13/dlqu1gm-e535fbf0-fd0c-45f4-96d8-13e170a46d5f.png/v1/fill/w_1063,h_752/wwe_skylar_raye_png_render_2026_by_yanrtbtn_dlqu1gm-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9ODQ5IiwicGF0aCI6Ii9mL2FhZTZiMDc4LWQ4OWEtNDRlMC1iZWZlLTU3MTE3M2JlYWQxMy9kbHF1MWdtLWU1MzVmYmYwLWZkMGMtNDVmNC05NmQ4LTEzZTE3MGE0NmQ1Zi5wbmciLCJ3aWR0aCI6Ijw9MTIwMCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.VdpoEktFlq913DZU7OY4UitKtvHFEIRfKU5FkEVovVs",
+      "source_size": [
+        1063,
+        752
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-skylar-raye.png"
+    },
+    {
+      "id": "wwe-nxt-tatum-paxley",
+      "name": "Tatum Paxley",
+      "page_url": "https://www.deviantart.com/danteofshadows/art/Tatum-Paxley-render-Comics1-1306126364",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-tatum-paxley.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/1cb425e3-c8e4-45f9-aed2-07c758e4dfa6/dllmtjw-a3ea1c20-50ea-4d41-883f-634d20f4012f.png/v1/fill/w_500,h_500/tatum_paxley_render__comics1__by_danteofshadows_dllmtjw-fullview.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9NTAwIiwicGF0aCI6Ii9mLzFjYjQyNWUzLWM4ZTQtNDVmOS1hZWQyLTA3Yzc1OGU0ZGZhNi9kbGxtdGp3LWEzZWExYzIwLTUwZWEtNGQ0MS04ODNmLTYzNGQyMGY0MDEyZi5wbmciLCJ3aWR0aCI6Ijw9NTAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLm9wZXJhdGlvbnMiXX0.ePdQsG2IOUyDHgG3QLXOnlcx-LEAJ-ZjialHOKDV-Dc",
+      "source_size": [
+        500,
+        500
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-tatum-paxley.png"
+    },
+    {
+      "id": "wwe-nxt-thea-hail",
+      "name": "Thea Hail",
+      "page_url": "https://www.deviantart.com/blacksoulp/art/Thea-Hail-render-1331693613",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-thea-hail.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/c03f100a-93e6-4b37-8ffa-70e78287029e/dm0utd9-6f8cfd74-6b2e-4b68-aa56-ece9bd1b9cd4.png/v1/fill/w_1000,h_707/thea_hail_render_by_blacksoulp_dm0utd9-fullview.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9NzA3IiwicGF0aCI6Ii9mL2MwM2YxMDBhLTkzZTYtNGIzNy04ZmZhLTcwZTc4Mjg3MDI5ZS9kbTB1dGQ5LTZmOGNmZDc0LTZiMmUtNGI2OC1hYTU2LWVjZTliZDFiOWNkNC5wbmciLCJ3aWR0aCI6Ijw9MTAwMCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.lQyGADsBIUGvoHWb0ITE13ExNNLfOeY8GYi7J75cZQg",
+      "source_size": [
+        1000,
+        707
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-thea-hail.png"
+    },
+    {
+      "id": "wwe-nxt-wendy-choo",
+      "name": "Wendy Choo",
+      "page_url": "https://www.deviantart.com/yanrtbtn/art/WWE-Wendy-Choo-PNG-Render-2026-1300947886",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-wendy-choo.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/aae6b078-d89a-44e0-befe-571173bead13/dlijtta-85c96c8f-e200-4615-b133-9b7276522018.png/v1/fill/w_1063,h_752/wwe_wendy_choo_png_render_2026_by_yanrtbtn_dlijtta-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9ODQ5IiwicGF0aCI6Ii9mL2FhZTZiMDc4LWQ4OWEtNDRlMC1iZWZlLTU3MTE3M2JlYWQxMy9kbGlqdHRhLTg1Yzk2YzhmLWUyMDAtNDYxNS1iMTMzLTliNzI3NjUyMjAxOC5wbmciLCJ3aWR0aCI6Ijw9MTIwMCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.iQwflYqA2TBh7WLTX31ExRUYj6yVImEOXlpchqpWSo4",
+      "source_size": [
+        1063,
+        752
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-wendy-choo.png"
+    },
+    {
+      "id": "wwe-nxt-wren-sinclair",
+      "name": "Wren Sinclair",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Wren-Sinclair-Render-by-yasuke4u-1316537743",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-wren-sinclair.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/c3c840c0-d3bc-42bd-bdbb-9facf2d4a69e/dlrtz0v-c5886f27-aca1-4315-8f66-3ef9225fbc27.png/v1/fill/w_892,h_896/wren_sinclair_render_by_yasuke4u_by_yasuke4u_dlrtz0v-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTI4NSIsInBhdGgiOiIvZi9jM2M4NDBjMC1kM2JjLTQyYmQtYmRiYi05ZmFjZjJkNGE2OWUvZGxydHowdi1jNTg4NmYyNy1hY2ExLTQzMTUtOGY2Ni0zZWY5MjI1ZmJjMjcucG5nIiwid2lkdGgiOiI8PTEyODAifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.CvH1qydZ9vGozg_Orf3FfsV_xqIk-LRr2kr7kbQvuiE",
+      "source_size": [
+        892,
+        896
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-wren-sinclair.png"
+    },
+    {
+      "id": "wwe-nxt-zaria",
+      "name": "Zaria",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Zaria-Render-by-yasuke4u-1316537765",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-zaria.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/c3c840c0-d3bc-42bd-bdbb-9facf2d4a69e/dlrtz1h-93bae4c9-2f6a-4183-a1b3-8e5d00036104.png/v1/fill/w_892,h_896/zaria_render_by_yasuke4u_by_yasuke4u_dlrtz1h-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTI4NSIsInBhdGgiOiIvZi9jM2M4NDBjMC1kM2JjLTQyYmQtYmRiYi05ZmFjZjJkNGE2OWUvZGxydHoxaC05M2JhZTRjOS0yZjZhLTQxODMtYTFiMy04ZTVkMDAwMzYxMDQucG5nIiwid2lkdGgiOiI8PTEyODAifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.HAKmiG_Nw0V9IflFTXZDw79g2nAdpsG4VUOcuZgsTNg",
+      "source_size": [
+        892,
+        896
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-zaria.png"
+    },
+    {
+      "id": "wwe-raw-cruz-del-toro",
+      "name": "Cruz Del Toro",
+      "page_url": "https://www.deviantart.com/babuguuscooties/art/Cruz-Del-Toro-OFFICIAL-WWE-render-25-1200628633",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-cruz-del-toro.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/99e761c0-d992-41b8-a0e4-0062612879c2/djutmzd-8aa8446e-9850-4254-8a8c-ab5e8b15a282.png/v1/fill/w_902,h_886/cruz_del_toro__official__wwe_render__25_by_babuguuscooties_djutmzd-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MjA3OSIsInBhdGgiOiIvZi85OWU3NjFjMC1kOTkyLTQxYjgtYTBlNC0wMDYyNjEyODc5YzIvZGp1dG16ZC04YWE4NDQ2ZS05ODUwLTQyNTQtOGE4Yy1hYjVlOGIxNWEyODIucG5nIiwid2lkdGgiOiI8PTIxMTgifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.xTdKM69-koa6TsdC2XPoUqu-iZfsaIKYjRvaVqrjdRw",
+      "source_size": [
+        902,
+        886
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-cruz-del-toro.png"
+    },
+    {
+      "id": "wwe-smackdown-talla-tonga",
+      "name": "Talla Tonga",
+      "page_url": "https://www.deviantart.com/xharlott/art/Talla-Tonga-Render-1285941815",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-talla-tonga.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/90056224-5579-408e-91fb-aea3efc7ad54/dl9m71z-d1a77831-76eb-4e47-ad54-ba49e174ac17.png/v1/fill/w_894,h_894/talla_tonga_render_by_xharlott_dl9m71z-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi85MDA1NjIyNC01NTc5LTQwOGUtOTFmYi1hZWEzZWZjN2FkNTQvZGw5bTcxei1kMWE3NzgzMS03NmViLTRlNDctYWQ1NC1iYTQ5ZTE3NGFjMTcucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.-jXg69n4ssut_Ajwo378Nr1-3h6e1Mne3mBMuSMH_Lc",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-talla-tonga.png"
+    },
+    {
+      "id": "wwe-smackdown-angel",
+      "name": "Angel",
+      "page_url": "https://www.deviantart.com/babuguuscooties/art/Angel-OFFICIAL-WWE-render-1232394597",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-angel.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/99e761c0-d992-41b8-a0e4-0062612879c2/dkdqhr9-a90651df-e338-4172-98e6-4931d118fa15.png/v1/fill/w_865,h_924/angel__official__wwe_render_by_babuguuscooties_dkdqhr9-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTgyMiIsInBhdGgiOiIvZi85OWU3NjFjMC1kOTkyLTQxYjgtYTBlNC0wMDYyNjEyODc5YzIvZGtkcWhyOS1hOTA2NTFkZi1lMzM4LTQxNzItOThlNi00OTMxZDExOGZhMTUucG5nIiwid2lkdGgiOiI8PTE3MDcifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.JpgTmsMDX8R-ZdGKABrceZ1vzvtj7bxgSgpgyw76AF0",
+      "source_size": [
+        865,
+        924
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-angel.png"
+    },
+    {
+      "id": "wwe-smackdown-berto",
+      "name": "Berto",
+      "page_url": "https://www.deviantart.com/babuguuscooties/art/Berto-OFFICIAL-WWE-render-1232394348",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-berto.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/99e761c0-d992-41b8-a0e4-0062612879c2/dkdqhkc-e57f045f-6b50-4368-8fcd-237bf8e72098.png/v1/fill/w_817,h_978/berto__official__wwe_render_by_babuguuscooties_dkdqhkc-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTc5NSIsInBhdGgiOiIvZi85OWU3NjFjMC1kOTkyLTQxYjgtYTBlNC0wMDYyNjEyODc5YzIvZGtkcWhrYy1lNTdmMDQ1Zi02YjUwLTQzNjgtOGZjZC0yMzdiZjhlNzIwOTgucG5nIiwid2lkdGgiOiI8PTE0OTkifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.HV5xLmzZYxiyjWOvJYIkR5wTlGAFgGVPdgHKTWQfV9w",
+      "source_size": [
+        817,
+        978
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-berto.png"
+    },
+    {
+      "id": "wwe-raw-bravo-americano",
+      "name": "Bravo Americano",
+      "page_url": "https://www.deviantart.com/vlysyuk/art/WWE-Bravo-Americano-2026-render-1313717661",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-bravo-americano.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/8aa31cae-6bc0-45e3-b190-dc937bd1b827/dlq5j19-ce7e6623-83d8-4df9-9d7e-b8e031a49aec.png/v1/fill/w_1038,h_770/wwe_bravo_americano_2026_render_by_vlysyuk_dlq5j19-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9OTQ5IiwicGF0aCI6Ii9mLzhhYTMxY2FlLTZiYzAtNDVlMy1iMTkwLWRjOTM3YmQxYjgyNy9kbHE1ajE5LWNlN2U2NjIzLTgzZDgtNGRmOS05ZDdlLWI4ZTAzMWE0OWFlYy5wbmciLCJ3aWR0aCI6Ijw9MTI4MCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.c0fpH37Ft-V3i7J8msrztlAade6muI4DyAK4Q51Svro",
+      "source_size": [
+        1038,
+        770
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-bravo-americano.png"
+    },
+    {
+      "id": "wwe-raw-grayson-waller",
+      "name": "Grayson Waller",
+      "page_url": "https://www.deviantart.com/babuguuscooties/art/Grayson-Waller-OFFICIAL-WWE-render-25-1188922733",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-grayson-waller.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/99e761c0-d992-41b8-a0e4-0062612879c2/djnuqnh-16a02970-4b6d-4139-825b-c80105d7a65c.png/v1/fill/w_832,h_960/grayson_waller__official__wwe_render__25_by_babuguuscooties_djnuqnh-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MjA3OSIsInBhdGgiOiIvZi85OWU3NjFjMC1kOTkyLTQxYjgtYTBlNC0wMDYyNjEyODc5YzIvZGpudXFuaC0xNmEwMjk3MC00YjZkLTQxMzktODI1Yi1jODAxMDVkN2E2NWMucG5nIiwid2lkdGgiOiI8PTE4MDMifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.gQXfxhLwpuH-Mc43KDJC_yymoYrrUWWyyWm5NeCh0fw",
+      "source_size": [
+        832,
+        960
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-grayson-waller.png"
+    },
+    {
+      "id": "wwe-raw-joaquin-wilde",
+      "name": "Joaquin Wilde",
+      "page_url": "https://www.deviantart.com/vlysyuk/art/WWE-Joaquin-Wilde-render-1172964527",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-joaquin-wilde.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/8aa31cae-6bc0-45e3-b190-dc937bd1b827/djecp7z-1ddd0292-87f1-410b-92a4-a769df05a860.png/v1/fill/w_804,h_994/wwe_joaquin_wilde_render_by_vlysyuk_djecp7z-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTU4MSIsInBhdGgiOiIvZi84YWEzMWNhZS02YmMwLTQ1ZTMtYjE5MC1kYzkzN2JkMWI4MjcvZGplY3A3ei0xZGRkMDI5Mi04N2YxLTQxMGItOTJhNC1hNzY5ZGYwNWE4NjAucG5nIiwid2lkdGgiOiI8PTEyODAifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.S_ZP8ytjtvDIvfE7mmORYP73rlX0wwdST9i-vR_O1z4",
+      "source_size": [
+        804,
+        994
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-joaquin-wilde.png"
+    },
+    {
+      "id": "wwe-smackdown-matt-cardona",
+      "name": "Matt Cardona",
+      "page_url": "https://www.deviantart.com/dmtaco/art/Matt-Cardona-WWE-Render-1338943354",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-matt-cardona.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/26eab5eb-0e9d-43ed-90dc-73fd0cb0be03/dm567ay-d57f13f3-fb08-40e3-8b08-39a1b77874dd.png/v1/fill/w_473,h_528/matt_cardona_wwe_render__by_dmtaco_dm567ay-fullview.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9NTI4IiwicGF0aCI6Ii9mLzI2ZWFiNWViLTBlOWQtNDNlZC05MGRjLTczZmQwY2IwYmUwMy9kbTU2N2F5LWQ1N2YxM2YzLWZiMDgtNDBlMy04YjA4LTM5YTFiNzc4NzRkZC5wbmciLCJ3aWR0aCI6Ijw9NDczIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLm9wZXJhdGlvbnMiXX0.gU3GrEl7UWaAJTIRPM940vSlucabXY5e7MC7v5j0nD4",
+      "source_size": [
+        473,
+        528
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-matt-cardona.png"
+    },
+    {
+      "id": "wwe-nxt-brad-baylor",
+      "name": "Brad Baylor",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Brad-Baylor-Render-by-yasuke4u-1319217989",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-brad-baylor.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/c3c840c0-d3bc-42bd-bdbb-9facf2d4a69e/dltff45-e069066c-9aa6-4278-a5ef-533066aa87e0.png/v1/fill/w_1063,h_752/brad_baylor_render_by_yasuke4u_by_yasuke4u_dltff45-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9OTA1IiwicGF0aCI6Ii9mL2MzYzg0MGMwLWQzYmMtNDJiZC1iZGJiLTlmYWNmMmQ0YTY5ZS9kbHRmZjQ1LWUwNjkwNjZjLTlhYTYtNDI3OC1hNWVmLTUzMzA2NmFhODdlMC5wbmciLCJ3aWR0aCI6Ijw9MTI4MCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.WRAxjuROzeWi3BQLCk8-0dF1pWHnY1qQq0cp-wveMTA",
+      "source_size": [
+        1063,
+        752
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-brad-baylor.png"
+    },
+    {
+      "id": "wwe-nxt-cutler-james",
+      "name": "Cutler James",
+      "page_url": "https://www.deviantart.com/xthawheat/art/Cutler-James-Render-1213473130",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-cutler-james.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/e789b520-5cba-4f17-a402-197888efed35/dk2gxuy-8a016110-5558-438b-add9-4cf3e2c73281.png/v1/fill/w_894,h_894/cutler_james_render_by_xthawheat_dk2gxuy-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTE1MSIsInBhdGgiOiIvZi9lNzg5YjUyMC01Y2JhLTRmMTctYTQwMi0xOTc4ODhlZmVkMzUvZGsyZ3h1eS04YTAxNjExMC01NTU4LTQzOGItYWRkOS00Y2YzZTJjNzMyODEucG5nIiwid2lkdGgiOiI8PTExNTEifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.2Qbk6C8Pyx0o7GyYftbAomoTlglext6SC-zw3SFJnCc",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-cutler-james.png"
+    },
+    {
+      "id": "wwe-nxt-dion-lennox",
+      "name": "Dion Lennox",
+      "page_url": "https://www.deviantart.com/xthawheat/art/Dion-Lennox-Render-1213473230",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-dion-lennox.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/e789b520-5cba-4f17-a402-197888efed35/dk2gxxq-bfe34b22-5989-4d9a-8f93-cf02585adb79.png/v1/fill/w_894,h_894/dion_lennox_render_by_xthawheat_dk2gxxq-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTY0MCIsInBhdGgiOiIvZi9lNzg5YjUyMC01Y2JhLTRmMTctYTQwMi0xOTc4ODhlZmVkMzUvZGsyZ3h4cS1iZmUzNGIyMi01OTg5LTRkOWEtOGY5My1jZjAyNTg1YWRiNzkucG5nIiwid2lkdGgiOiI8PTE2NDAifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.J1CettiF6cn3xj3LIalxDrDWH4KGjlud3TaJVs4Cnng",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-dion-lennox.png"
+    },
+    {
+      "id": "wwe-nxt-ek-prosper",
+      "name": "EK Prosper",
+      "page_url": "https://www.deviantart.com/wwestarrender/art/EK-Prosper-WWE-NXT-2026-1297565996",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-ek-prosper.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/8f6d0cb1-82fa-48f9-abbe-3a72efcba428/dlgjcbw-1ada51e5-7e82-4e34-8f05-e72c2396dca3.png/v1/fill/w_629,h_1270/ek_prosper_wwe_nxt_2026_by_wwestarrender_dlgjcbw-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTUzMSIsInBhdGgiOiIvZi84ZjZkMGNiMS04MmZhLTQ4ZjktYWJiZS0zYTcyZWZjYmE0MjgvZGxnamNidy0xYWRhNTFlNS03ZTgyLTRlMzQtOGYwNS1lNzJjMjM5NmRjYTMucG5nIiwid2lkdGgiOiI8PTc1OSJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.1fPWU-XaJJt7cpwq5HHY89KiIBZrciR9VZu368DKy_0",
+      "source_size": [
+        629,
+        1270
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-ek-prosper.png"
+    },
+    {
+      "id": "wwe-nxt-jackson-drake",
+      "name": "Jackson Drake",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Jackson-Drake-Render-by-yasuke4u-1319217982",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-jackson-drake.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/c3c840c0-d3bc-42bd-bdbb-9facf2d4a69e/dltff3y-03747485-f5ba-4f0b-aa47-5364018baef6.png/v1/fill/w_1063,h_752/jackson_drake_render_by_yasuke4u_by_yasuke4u_dltff3y-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9OTA1IiwicGF0aCI6Ii9mL2MzYzg0MGMwLWQzYmMtNDJiZC1iZGJiLTlmYWNmMmQ0YTY5ZS9kbHRmZjN5LTAzNzQ3NDg1LWY1YmEtNGYwYi1hYTQ3LTUzNjQwMThiYWVmNi5wbmciLCJ3aWR0aCI6Ijw9MTI4MCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.13qj4it7UWGAtFcjuvAkjOIoQbkCGc49VNgdwzCRmOc",
+      "source_size": [
+        1063,
+        752
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-jackson-drake.png"
+    },
+    {
+      "id": "wwe-nxt-jasper-troy",
+      "name": "Jasper Troy",
+      "page_url": "https://www.deviantart.com/xlone2k/art/WWE-2K-RENDER-JASPER-TROY-1291702384",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-jasper-troy.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/30e8f67f-d7c0-4ffb-9cc0-7137f40c4042/dld1nxs-9c4df33a-7f05-4cd4-8bb5-6602471ab7da.png/v1/fill/w_894,h_894/wwe_2k_render___jasper_troy_by_xlone2k_dld1nxs-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi8zMGU4ZjY3Zi1kN2MwLTRmZmItOWNjMC03MTM3ZjQwYzQwNDIvZGxkMW54cy05YzRkZjMzYS03ZjA1LTRjZDQtOGJiNS02NjAyNDcxYWI3ZGEucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.2YLNk0cP-J0K40REEwFSS4J6vbHy0yTLLb_PLz-wZfA",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-jasper-troy.png"
+    },
+    {
+      "id": "wwe-nxt-kale-dixon",
+      "name": "Kale Dixon",
+      "page_url": "https://www.deviantart.com/wrestlerender/art/Kale-Dixon-OFFICIAL-WWE-Render-2025-1200415102",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-kale-dixon.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/7405138d-81a0-44ad-9d20-c24e1903a1db/djup27y-d8f46601-9c17-4f45-84b3-65d50264f8f4.png/v1/fill/w_954,h_838/kale_dixon__official__wwe_render_2025_by_wrestlerender_djup27y-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAxNiIsInBhdGgiOiIvZi83NDA1MTM4ZC04MWEwLTQ0YWQtOWQyMC1jMjRlMTkwM2ExZGIvZGp1cDI3eS1kOGY0NjYwMS05YzE3LTRmNDUtODRiMy02NWQ1MDI2NGY4ZjQucG5nIiwid2lkdGgiOiI8PTExNTYifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.TC3F7aLNg2aSRiJKCZ_1BKeAVl_b-wNNEg6J-hk65JY",
+      "source_size": [
+        954,
+        838
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-kale-dixon.png"
+    },
+    {
+      "id": "wwe-nxt-kam-hendrix",
+      "name": "Kam Hendrix",
+      "page_url": "https://www.deviantart.com/wwestarrender/art/Kam-Hendrix-WWE-NXT-EVOLVE-2025-1214198691",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-kam-hendrix.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/8f6d0cb1-82fa-48f9-abbe-3a72efcba428/dk2whpf-7c0e18cf-e050-4f65-a1b1-78cd5a406fa2.png/v1/fill/w_667,h_1197/kam_hendrix_wwe_nxt_evolve_2025_by_wwestarrender_dk2whpf-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTQ3NiIsInBhdGgiOiIvZi84ZjZkMGNiMS04MmZhLTQ4ZjktYWJiZS0zYTcyZWZjYmE0MjgvZGsyd2hwZi03YzBlMThjZi1lMDUwLTRmNjUtYTFiMS03OGNkNWE0MDZmYTIucG5nIiwid2lkdGgiOiI8PTgyMyJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.i_TL8DIfrm_jXuM7jgZZtXapNEWbkt4n21HlOx4dDUY",
+      "source_size": [
+        667,
+        1197
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-kam-hendrix.png"
+    },
+    {
+      "id": "wwe-nxt-lexis-king",
+      "name": "Lexis King",
+      "page_url": "https://www.deviantart.com/danteofshadows/art/Lexis-King-render-1194854544",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-lexis-king.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/1cb425e3-c8e4-45f9-aed2-07c758e4dfa6/djrdvo0-5821e26a-16e1-4563-ab51-cbdf5ce6c28e.png/v1/fill/w_894,h_894/lexis_king_render_by_danteofshadows_djrdvo0-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi8xY2I0MjVlMy1jOGU0LTQ1ZjktYWVkMi0wN2M3NThlNGRmYTYvZGpyZHZvMC01ODIxZTI2YS0xNmUxLTQ1NjMtYWI1MS1jYmRmNWNlNmMyOGUucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.C1-JgT1Duv4xS_YtGtR4KHtGyFytmkc3r5PFMjalxcQ",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-lexis-king.png"
+    },
+    {
+      "id": "wwe-nxt-lucien-price",
+      "name": "Lucien Price",
+      "page_url": "https://www.deviantart.com/xthawheat/art/Lucien-Price-Render-1213473035",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-lucien-price.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/e789b520-5cba-4f17-a402-197888efed35/dk2gxsb-7e290627-0a59-4559-b4fd-5a7c6f5b5dae.png/v1/fill/w_894,h_894/lucien_price_render_by_xthawheat_dk2gxsb-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi9lNzg5YjUyMC01Y2JhLTRmMTctYTQwMi0xOTc4ODhlZmVkMzUvZGsyZ3hzYi03ZTI5MDYyNy0wYTU5LTQ1NTktYjRmZC01YTdjNmY1YjVkYWUucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.mTkR9DYNGu_7AJsQShtpBSEbUOIGrWtkJryTKmgz73c",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-lucien-price.png"
+    },
+    {
+      "id": "wwe-nxt-naraku",
+      "name": "Naraku",
+      "page_url": "https://www.deviantart.com/vlysyuk/art/WWE-NXT-Naraku-2026-render-1333462757",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-naraku.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/8aa31cae-6bc0-45e3-b190-dc937bd1b827/dm1wqg5-a069e3d4-65fb-48d6-b9b6-85d7f59ca180.png/v1/fill/w_880,h_908/wwe_nxt_naraku_2026_render_by_vlysyuk_dm1wqg5-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTMyMCIsInBhdGgiOiIvZi84YWEzMWNhZS02YmMwLTQ1ZTMtYjE5MC1kYzkzN2JkMWI4MjcvZG0xd3FnNS1hMDY5ZTNkNC02NWZiLTQ4ZDYtYjliNi04NWQ3ZjU5Y2ExODAucG5nIiwid2lkdGgiOiI8PTEyODAifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.fgqOSeOPTwv_PNQPbXPz_kLS4yA-oW59MqeHjPCnSz0",
+      "source_size": [
+        880,
+        908
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-naraku.png"
+    },
+    {
+      "id": "wwe-nxt-niko-vance",
+      "name": "Niko Vance",
+      "page_url": "https://www.deviantart.com/xthawheat/art/Niko-Vance-Render-1213464792",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-niko-vance.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/e789b520-5cba-4f17-a402-197888efed35/dk2grfc-f9bc900f-4062-4df4-af00-a5d67f99f188.png/v1/fill/w_894,h_894/niko_vance_render_by_xthawheat_dk2grfc-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MjE2MCIsInBhdGgiOiIvZi9lNzg5YjUyMC01Y2JhLTRmMTctYTQwMi0xOTc4ODhlZmVkMzUvZGsyZ3JmYy1mOWJjOTAwZi00MDYyLTRkZjQtYWYwMC1hNWQ2N2Y5OWYxODgucG5nIiwid2lkdGgiOiI8PTIxNjAifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.TVUs2HfNoGW6_qTq3eMatixyoyy3CjYCEQ2GgLVMc3Y",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-niko-vance.png"
+    },
+    {
+      "id": "wwe-nxt-osiris-griffin",
+      "name": "Osiris Griffin",
+      "page_url": "https://www.deviantart.com/xthawheat/art/Osiris-Griffin-Render-1213473313",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-osiris-griffin.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/e789b520-5cba-4f17-a402-197888efed35/dk2gy01-ee789477-8fe5-4fe3-a406-0b8ef1fdf108.png/v1/fill/w_894,h_894/osiris_griffin_render_by_xthawheat_dk2gy01-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTMzNiIsInBhdGgiOiIvZi9lNzg5YjUyMC01Y2JhLTRmMTctYTQwMi0xOTc4ODhlZmVkMzUvZGsyZ3kwMS1lZTc4OTQ3Ny04ZmU1LTRmZTMtYTQwNi0wYjhlZjFmZGYxMDgucG5nIiwid2lkdGgiOiI8PTEzMzYifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.8Org6ngLSzYhD06ovqxG0F1l7mThVOenekHwHDwBHWo",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-osiris-griffin.png"
+    },
+    {
+      "id": "wwe-nxt-ricky-smokes",
+      "name": "Ricky Smokes",
+      "page_url": "https://www.deviantart.com/yasuke4u/art/Ricky-Smokes-Render-by-yasuke4u-1319218001",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-ricky-smokes.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/c3c840c0-d3bc-42bd-bdbb-9facf2d4a69e/dltff4h-92bd5acd-7012-499f-b421-399c106c1d6b.png/v1/fill/w_1063,h_752/ricky_smokes_render_by_yasuke4u_by_yasuke4u_dltff4h-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9OTA1IiwicGF0aCI6Ii9mL2MzYzg0MGMwLWQzYmMtNDJiZC1iZGJiLTlmYWNmMmQ0YTY5ZS9kbHRmZjRoLTkyYmQ1YWNkLTcwMTItNDk5Zi1iNDIxLTM5OWMxMDZjMWQ2Yi5wbmciLCJ3aWR0aCI6Ijw9MTI4MCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.Hs2axfBGhk4XtWsfGEN79kESPsprGMBP-7shYebp-dY",
+      "source_size": [
+        1063,
+        752
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-ricky-smokes.png"
+    },
+    {
+      "id": "wwe-nxt-saquon-shugars",
+      "name": "Saquon Shugars",
+      "page_url": "https://www.deviantart.com/xthawheat/art/Saquon-Shugars-Render-1213473387",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-saquon-shugars.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/e789b520-5cba-4f17-a402-197888efed35/dk2gy23-6c06f01f-f10e-47c2-9fad-2ff9fb578389.png/v1/fill/w_894,h_894/saquon_shugars_render_by_xthawheat_dk2gy23-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTMxNyIsInBhdGgiOiIvZi9lNzg5YjUyMC01Y2JhLTRmMTctYTQwMi0xOTc4ODhlZmVkMzUvZGsyZ3kyMy02YzA2ZjAxZi1mMTBlLTQ3YzItOWZhZC0yZmY5ZmI1NzgzODkucG5nIiwid2lkdGgiOiI8PTEzMTcifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.Z4kSvUe2C7Q_fl_s-0uIi-GYFrVA2qtsqrc-hzKnjMY",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-saquon-shugars.png"
+    },
+    {
+      "id": "wwe-nxt-sean-legacy",
+      "name": "Sean Legacy",
+      "page_url": "https://www.deviantart.com/xlone2k/art/WWE-2K-RENDER-SEAN-LEGACY-1296349234",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-sean-legacy.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/30e8f67f-d7c0-4ffb-9cc0-7137f40c4042/dlft9gy-1c5f10a4-33e1-4480-a169-b72ffc1dd427.png/v1/fill/w_894,h_894/wwe_2k_render___sean_legacy_by_xlone2k_dlft9gy-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi8zMGU4ZjY3Zi1kN2MwLTRmZmItOWNjMC03MTM3ZjQwYzQwNDIvZGxmdDlneS0xYzVmMTBhNC0zM2UxLTQ0ODAtYTE2OS1iNzJmZmMxZGQ0MjcucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.7NHAfB3L1bBn3nPlh_C_7-6uVvxfBYz90cPHoa_x-3g",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-sean-legacy.png"
+    },
+    {
+      "id": "wwe-nxt-shawn-spears",
+      "name": "Shawn Spears",
+      "page_url": "https://www.deviantart.com/danteofshadows/art/Shawn-Spears-render-1219406299",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-shawn-spears.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/1cb425e3-c8e4-45f9-aed2-07c758e4dfa6/dk603x7-c515f249-3705-4a7c-a19a-9601b99dd587.png/v1/fill/w_894,h_894/shawn_spears_render__by_danteofshadows_dk603x7-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi8xY2I0MjVlMy1jOGU0LTQ1ZjktYWVkMi0wN2M3NThlNGRmYTYvZGs2MDN4Ny1jNTE1ZjI0OS0zNzA1LTRhN2MtYTE5YS05NjAxYjk5ZGQ1ODcucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.-RGiCNdPLCNDZhRM5WzG2FSFSUjqvEeQgnwevkt1s9o",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-shawn-spears.png"
+    },
+    {
+      "id": "wwe-nxt-shiloh-hill",
+      "name": "Shiloh Hill",
+      "page_url": "https://www.deviantart.com/yanrtbtn/art/WWE-Shiloh-Hill-PNG-Render-2026-1314861170",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-shiloh-hill.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/aae6b078-d89a-44e0-befe-571173bead13/dlqu1de-f11b5ee8-b1d5-4f23-894b-bf6b98c1e96d.png/v1/fill/w_1063,h_752/wwe_shiloh_hill_png_render_2026_by_yanrtbtn_dlqu1de-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9ODQ5IiwicGF0aCI6Ii9mL2FhZTZiMDc4LWQ4OWEtNDRlMC1iZWZlLTU3MTE3M2JlYWQxMy9kbHF1MWRlLWYxMWI1ZWU4LWIxZDUtNGYyMy04OTRiLWJmNmI5OGMxZTk2ZC5wbmciLCJ3aWR0aCI6Ijw9MTIwMCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.nmcfQPoZnOew5hqw8fSGuQEpwnvEzfF5yzAiMVz-Npw",
+      "source_size": [
+        1063,
+        752
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-shiloh-hill.png"
+    },
+    {
+      "id": "wwe-nxt-tate-wilder",
+      "name": "Tate Wilder",
+      "page_url": "https://www.deviantart.com/brodigy69/art/Tate-Wilder-1253397365",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-tate-wilder.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/5ab51f03-aa68-4829-8308-5540f4dc690f/dkq8nlh-621faa61-5d0d-42e4-b8e0-3a29383f1726.png/v1/fill/w_878,h_910/tate_wilder__by_brodigy69_dkq8nlh-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTIyMiIsInBhdGgiOiIvZi81YWI1MWYwMy1hYTY4LTQ4MjktODMwOC01NTQwZjRkYzY5MGYvZGtxOG5saC02MjFmYWE2MS01ZDBkLTQyZTQtYjhlMC0zYTI5MzgzZjE3MjYucG5nIiwid2lkdGgiOiI8PTExNzkifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.86bXBu_eIROZa2Um0Nm81gRE9iXmxISErSAy0fTLN6Q",
+      "source_size": [
+        878,
+        910
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-tate-wilder.png"
+    },
+    {
+      "id": "wwe-nxt-tavion-heights",
+      "name": "Tavion Heights",
+      "page_url": "https://www.deviantart.com/yanrtbtn/art/WWE-NXT-Tavion-Heights-PNG-Render-2024-1090894177",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-tavion-heights.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/aae6b078-d89a-44e0-befe-571173bead13/di1hnc1-f4ff4518-3314-45f0-a074-098d29da4431.png/v1/fill/w_1063,h_752/wwe_nxt_tavion_heights_png_render_2024_by_yanrtbtn_di1hnc1-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9ODQ5IiwicGF0aCI6Ii9mL2FhZTZiMDc4LWQ4OWEtNDRlMC1iZWZlLTU3MTE3M2JlYWQxMy9kaTFobmMxLWY0ZmY0NTE4LTMzMTQtNDVmMC1hMDc0LTA5OGQyOWRhNDQzMS5wbmciLCJ3aWR0aCI6Ijw9MTIwMCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.uRrkDLzc0iTAFXjj6kgP6KDhjOICtJeNpGyiyFT_0m0",
+      "source_size": [
+        1063,
+        752
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-tavion-heights.png"
+    },
+    {
+      "id": "wwe-nxt-tristan-angels",
+      "name": "Tristan Angels",
+      "page_url": "https://www.deviantart.com/wwestarrender/art/Tristan-Angels-WWE-NXT-ROOKIE-2026-1310153240",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-nxt-tristan-angels.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/8f6d0cb1-82fa-48f9-abbe-3a72efcba428/dlo14pk-2cd41506-f8cf-4d41-ae6e-8441552034a8.png/v1/fill/w_702,h_1138/tristan_angels_wwe_nxt_rookie_2026_by_wwestarrender_dlo14pk-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTQwOSIsInBhdGgiOiIvZi84ZjZkMGNiMS04MmZhLTQ4ZjktYWJiZS0zYTcyZWZjYmE0MjgvZGxvMTRway0yY2Q0MTUwNi1mOGNmLTRkNDEtYWU2ZS04NDQxNTUyMDM0YTgucG5nIiwid2lkdGgiOiI8PTg3MCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.y_8opVG2p0biEwBeFxvAGHCUddQeGLGbmOa8osQZh3g",
+      "source_size": [
+        702,
+        1138
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-nxt-tristan-angels.png"
+    },
+    {
+      "id": "wwe-smackdown-rey-fenix",
+      "name": "Rey Fenix",
+      "page_url": "https://www.deviantart.com/kiddmoxxie/art/Rey-Fenix-Aew-Render-2023-1284557459",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-rey-fenix.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/80b8d3c3-c395-4c7f-a72a-f6dd3f5380de/dl8sivn-52ae452a-e703-4659-b2ac-fc8f5ba1fe11.png/v1/fill/w_840,h_951/rey_fenix_aew_render_2023_by_kiddmoxxie_dl8sivn-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTQ1MCIsInBhdGgiOiIvZi84MGI4ZDNjMy1jMzk1LTRjN2YtYTcyYS1mNmRkM2Y1MzgwZGUvZGw4c2l2bi01MmFlNDUyYS1lNzAzLTQ2NTktYjJhYy1mYzhmNWJhMWZlMTEucG5nIiwid2lkdGgiOiI8PTEyODAifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.oYGDEkubZSK6-ERRJbGHK4d5rrz-vpm5qN-F5SXAayM",
+      "source_size": [
+        840,
+        951
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-rey-fenix.png"
+    },
+    {
+      "id": "wwe-raw-julius-creed",
+      "name": "Julius Creed",
+      "page_url": "https://www.deviantart.com/annth0nny/art/JULIUS-CREED-1287701799",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-julius-creed.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/0c9fec3a-e37f-4cc3-956e-7548910f107c/dlanx2f-31c15dea-c35f-4885-9f7b-445bd63e3b6b.png/v1/fill/w_1063,h_752/julius_creed_by_annth0nny_dlanx2f-fullview.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9NzUyIiwicGF0aCI6Ii9mLzBjOWZlYzNhLWUzN2YtNGNjMy05NTZlLTc1NDg5MTBmMTA3Yy9kbGFueDJmLTMxYzE1ZGVhLWMzNWYtNDg4NS05ZjdiLTQ0NWJkNjNlM2I2Yi5wbmciLCJ3aWR0aCI6Ijw9MTA2MyJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.WXD3Jz7FS1TSoJfT7UykbcQysFEZp4kiHg7SPIma21I",
+      "source_size": [
+        1063,
+        752
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-julius-creed.png"
+    },
+    {
+      "id": "wwe-smackdown-elton-prince",
+      "name": "Elton Prince",
+      "page_url": "https://www.deviantart.com/annth0nny/art/ELTON-PRINCE-1287125942",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-elton-prince.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/0c9fec3a-e37f-4cc3-956e-7548910f107c/dlabkqe-c6196775-bf08-4e81-993d-3f1e540f6bfe.png/v1/fill/w_1000,h_707/elton_prince_by_annth0nny_dlabkqe-fullview.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9NzA3IiwicGF0aCI6Ii9mLzBjOWZlYzNhLWUzN2YtNGNjMy05NTZlLTc1NDg5MTBmMTA3Yy9kbGFia3FlLWM2MTk2Nzc1LWJmMDgtNGU4MS05OTNkLTNmMWU1NDBmNmJmZS5wbmciLCJ3aWR0aCI6Ijw9MTAwMCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.Yzp9Aifc3yP1uzQJVNw9LdA5UFmZyhec6qOHQHPujgY",
+      "source_size": [
+        1000,
+        707
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-elton-prince.png"
+    },
+    {
+      "id": "wwe-smackdown-candice-lerae",
+      "name": "Candice LeRae",
+      "page_url": "https://www.deviantart.com/sttormzero/art/Candice-Lerae-Render-by-sttormzero-1285526864",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-candice-lerae.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/a2f48654-fd07-4dfb-81ac-8371ee6ef8f9/dl9davk-d70d9273-2873-48d9-8563-32cf5ceab7d9.png/v1/fill/w_894,h_894/candice_lerae_render_by_sttormzero_by_sttormzero_dl9davk-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiIvZi9hMmY0ODY1NC1mZDA3LTRkZmItODFhYy04MzcxZWU2ZWY4ZjkvZGw5ZGF2ay1kNzBkOTI3My0yODczLTQ4ZDktODU2My0zMmNmNWNlYWI3ZDkucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.55G9LLNcbFPKaA4z0BaEXZ9L-V-9FcAX1_EL4orOskg",
+      "source_size": [
+        894,
+        894
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-candice-lerae.png"
+    },
+    {
+      "id": "wwe-raw-akira-tozawa",
+      "name": "Akira Tozawa",
+      "page_url": "https://www.deviantart.com/edgerulz17/art/WWE-Akira-Tozawa-2023-Render-1207248520",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-raw-akira-tozawa.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/7552fb65-d99f-4eea-a4b1-e8b84f6e16c2/djyrix4-07155192-107c-4e14-907e-a9b88ca11a51.png/v1/fill/w_1063,h_752/wwe_akira_tozawa_2023_render_by_edgerulz17_djyrix4-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MjA4MCIsInBhdGgiOiIvZi83NTUyZmI2NS1kOTlmLTRlZWEtYTRiMS1lOGI4NGY2ZTE2YzIvZGp5cml4NC0wNzE1NTE5Mi0xMDdjLTRlMTQtOTA3ZS1hOWI4OGNhMTFhNTEucG5nIiwid2lkdGgiOiI8PTI5NDAifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.TePAPUfxS3MWicl_A02vo2kWakXii4I9T54QqV363Fc",
+      "source_size": [
+        1063,
+        752
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-raw-akira-tozawa.png"
+    },
+    {
+      "id": "wwe-smackdown-b-fab",
+      "name": "B-Fab",
+      "page_url": "https://www.deviantart.com/yanrtbtn/art/WWE-B-Fab-Render-PNG-2025-1206438140",
+      "raw_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/source-portraits/deviantart/approved-replacements/wwe-smackdown-b-fab.source.png",
+      "status": "saved",
+      "image_url": "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/aae6b078-d89a-44e0-befe-571173bead13/djya5mk-08c3419c-298b-45eb-aa06-34c568affcb5.png/v1/fill/w_1063,h_752/wwe_b_fab_render_png_2025_by_yanrtbtn_djya5mk-pre.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9ODQ5IiwicGF0aCI6Ii9mL2FhZTZiMDc4LWQ4OWEtNDRlMC1iZWZlLTU3MTE3M2JlYWQxMy9kanlhNW1rLTA4YzM0MTljLTI5OGItNDVlYi1hYTA2LTM0YzU2OGFmZmNiNS5wbmciLCJ3aWR0aCI6Ijw9MTIwMCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.WsmcO7T8dvhqO0PuhS7g3HDbJKmo2aKV8rY4S9PmWBM",
+      "source_size": [
+        1063,
+        752
+      ],
+      "portrait_path": "/Users/vbahmad/Documents/AI/Next GM V2 Sandbox/public/superstars/wwe-smackdown-b-fab.png"
+    }
+  ]
+}
