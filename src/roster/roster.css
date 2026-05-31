@@ -1781,10 +1781,36 @@
 }
 
 .roster-profile-quiet-tags {
+  gap: 6px;
   margin-top: 2px;
 }
 
-.roster-profile-quiet-tags span,
+.roster-profile-quiet-tags span {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  color: var(--text-soft, var(--bc-text-secondary));
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  opacity: 1;
+  padding: 4px 8px;
+  text-transform: uppercase;
+}
+
+.roster-profile-quiet-tags .identity-chip,
+.roster-profile-quiet-tags .value-tier-chip {
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--text-soft, var(--bc-text-secondary));
+}
+
+.roster-profile-quiet-tags .value-tier-chip-missing {
+  border-style: dashed;
+  color: var(--text-muted, var(--bc-text-muted));
+}
+
 .roster-profile-role-tags span {
   font-size: 0.66rem;
   letter-spacing: 0.02em;
@@ -1848,10 +1874,11 @@
   color: var(--text-soft, var(--bc-text-secondary));
   font-size: 1rem;
   font-weight: 800;
+  letter-spacing: 0.02em;
   line-height: 1.45;
   margin: 0;
   padding-left: 12px;
-  text-transform: none;
+  text-transform: uppercase;
 }
 
 .roster-profile-evidence-grid {

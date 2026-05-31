@@ -163,13 +163,19 @@ The first read should focus on the big story:
 - What the crowd cared about.
 - What changed for the brand.
 
-Detailed segment feedback should remain first-class through a focused Segment Receipt window opened from the broadcast rundown reel. The main Show Recap page should stay compact enough to keep the recap, rundown, GM Handoff, and calendar action visible without feeling like a spreadsheet.
+Detailed segment feedback should remain first-class through a focused Segment Receipt window opened from the broadcast rundown reel. The main Show Recap page should stay compact enough to keep the recap, rundown, Show Fallout Desk, GM Handoff footer, and calendar action visible without feeling like a spreadsheet.
 
-The compact GM Handoff in Show Recap should complete the loop:
+The Show Fallout Desk should read as one row with three jobs:
+
+- Headline Beat on the left.
+- A 2x2 fallout beat grid in the middle for story, locker room, title scene, and Open Challenge reads.
+- A reaction strip on the right for player-brand trending topics and rival ratings pressure.
+
+The compact GM Handoff footer in Show Recap should complete the loop:
 
 Book Show -> Run Show -> Show Recap + GM Handoff -> Advance Week / Season Review
 
-The handoff should connect creative, roster, rivalry, social, and next-show pressure so the player feels the week mattered without stacking a second full recap screen under Results.
+The handoff footer should summarize roster-wide carry-forward pressure from resolved fallout and state, then hand off directly to Calendar Ready / Advance Week. Do not restack separate handoff beat cards for roster fallout, IWC, or next-show context when those reads already live in the fallout desk above.
 
 ## Draft And Scouting
 

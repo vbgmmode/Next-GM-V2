@@ -86,7 +86,7 @@ Avoid full-page scrolling for:
 - Booking.
 - Dashboard.
 - Draft Night.
-- Show Recap, unless the top recap, broadcast rundown reel, compact GM handoff, and primary next action remain visible before detailed fallout continues below. Detailed segment inspection should open in a focused Segment Receipt window instead of consuming permanent page height.
+- Show Recap, unless the top recap, two-row broadcast rundown reel, Show Fallout Desk, compact GM Handoff footer, and primary next action remain visible before detailed fallout continues below. Detailed segment inspection should open in a focused Segment Receipt window instead of consuming permanent page height.
 - Championships.
 - Rivalries.
 - Finance.

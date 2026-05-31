@@ -3,6 +3,8 @@ import { getRatingsBattleSnapshot } from "../game/cpuRivalLoop";
 import { formatAttendance, formatMoney } from "../game/formatters";
 import { getBestSegment, getShowGrade } from "../game/scoring";
 import type { GameState, SegmentResult, ShowResult, SocialCategory, SocialPost, SocialTone, Wrestler } from "../game/types";
+import { getPlayerBrandTrendingTopics } from "../social/socialReads";
+import type { IwcTrendingTopic } from "../social/socialTypes";
 import { getFinanceReportForResult, getShowTypeLabel } from "./financeScreenReads";
 
 export type SegmentParticipantRead = {
@@ -209,6 +211,7 @@ export type ResultsRecapBeat = {
   label: string;
   value: string;
   detail: string;
+  topicLines?: string[];
   tone: ResultsRecapTone;
 };
 
@@ -329,7 +332,30 @@ function getRecapToneFromSocial(post: SocialPost): ResultsRecapTone {
   return "steady";
 }
 
+function stripTrendingHashtags(label: string): string {
+  return label.replace(/#\S+/g, "").replace(/\s+/g, " ").trim();
+}
+
+function formatTopTrendingTopicsDetail(topics: IwcTrendingTopic[]): string[] {
+  return topics.slice(0, 3).map((topic, index) => `${index + 1}. ${stripTrendingHashtags(topic.label)}`);
+}
+
 export function buildTopSocialReaction(game: GameState, result: ShowResult): ResultsRecapBeat | undefined {
+  const trendingTopics = getPlayerBrandTrendingTopics(game, 3);
+
+  if (trendingTopics.length) {
+    const topicLines = formatTopTrendingTopicsDetail(trendingTopics);
+
+    return {
+      id: "top-social-reaction",
+      label: "Trending On Your Brand",
+      value: game.brandName,
+      detail: topicLines.join(" "),
+      topicLines,
+      tone: "danger",
+    };
+  }
+
   const post = getTopResolvedSocialPost(game, result);
 
   if (!post) {

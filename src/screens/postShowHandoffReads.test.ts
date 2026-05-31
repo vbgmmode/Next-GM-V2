@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createNewGame } from "../game/seed";
 import { runShow } from "../game/scoring";
 import type { GameState, Segment } from "../game/types";
-import { buildPostShowHandoffViewModel } from "./postShowHandoffReads";
+import { buildPostShowHandoffViewModel, buildRosterHandoffLead } from "./postShowHandoffReads";
 
 function createPostShowHandoffGame(week: number): GameState {
   const game = createNewGame();
@@ -37,5 +37,16 @@ describe("buildPostShowHandoffViewModel", () => {
     expect(penultimateWeek.calendar).toHaveLength(50);
     expect(buildPostShowHandoffViewModel(penultimateResult.game, penultimateResult.result).advanceLabel).toBe("Advance Week");
     expect(buildPostShowHandoffViewModel(finalResult.game, finalResult.result).advanceLabel).toBe("Season Review");
+  });
+
+  it("builds roster-wide handoff lead copy without spotlighting one wrestler", () => {
+    const game = createPostShowHandoffGame(1);
+    const { game: nextGame, result } = runShow(game);
+    const lead = buildRosterHandoffLead(nextGame, result);
+
+    expect(lead.headline.length).toBeGreaterThan(0);
+    expect(lead.detail.length).toBeGreaterThan(0);
+    expect(lead.detail.toLowerCase()).toContain("wrestler");
+    expect(lead.detail).not.toMatch(/left with \+\d+ momentum/i);
   });
 });

@@ -7,6 +7,7 @@ import type { GameState, RivalBrandWeeklyResult, Rivalry, SegmentResult, ShowRes
 import type {
   IwcMoodSummary,
   IwcMoodTone,
+  IwcTrendingTopic,
   IwcTrendingTopicsSnapshot,
   SocialPostEngagement,
   SuperstarMailItem,
@@ -707,6 +708,28 @@ export function getWeeklyIwcTrendingTopics(game: GameState, limit = 10): IwcTren
 
 export function getTrendingTopics(game: GameState, limit = 10) {
   return getWeeklyIwcTrendingTopics(game, limit)?.topics ?? [];
+}
+
+export function getPlayerBrandTrendingTopics(game: GameState, limit = 3): IwcTrendingTopic[] {
+  const latestPost = game.socialPosts.at(-1);
+  const seasonNumber = latestPost?.seasonNumber ?? game.seasonNumber;
+  const weekNumber = latestPost?.weekNumber ?? Math.max(1, game.currentWeek - 1);
+  const weekPosts = game.socialPosts.filter((post) => post.seasonNumber === seasonNumber && post.weekNumber === weekNumber);
+
+  if (!weekPosts.length) {
+    return [];
+  }
+
+  return dedupeTopicCandidates(buildPlayerPostTopics(game, weekPosts))
+    .sort((left, right) => right.heat - left.heat || left.label.localeCompare(right.label))
+    .slice(0, limit)
+    .map((candidate, index) => ({
+      id: candidate.id,
+      rank: index + 1,
+      brandName: candidate.brandName,
+      label: candidate.label,
+      volumeLabel: formatTopicVolume(candidate.postVolume),
+    }));
 }
 
 type WrestlerJabCandidate = WrestlerJabItem & {

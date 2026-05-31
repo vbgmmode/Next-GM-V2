@@ -86,6 +86,7 @@ Do **not** add a duplicate bottom control-room footer rail unless the ticket ask
 ### Assets
 
 - Use real asset slots for portraits, belts, brand logos, show art, badges. CSS dummy portraits are not the production answer.
+- Superstar portraits resolve from `/superstars/{portraitId}.png` through `src/game/wrestlerPortraits.ts`; keep the square gold-framed portrait format consistent when replacing or adding Top 200 assets.
 - Do not copy real-world logos, trademarks, or broadcast packages. Borrow category language, not protected assets.
 - Do not add image assets, fonts, dependencies, or external services unless the ticket explicitly asks.
 
@@ -158,6 +159,7 @@ Each screen has one job. Match the contract for the screen you are building or r
 | Selected segment composer | Prediction spam |
 | Runtime target / current runtime | Hidden primary action |
 | Broadcast heat gauge with green/yellow/red runtime zones | Red used before penalty risk |
+| Non-spoiler Story Flow / setup coherence context | Predicted grades or fallout |
 | Production summary with planned cost, match/promo time share, and roster off-card coverage | Spreadsheet-like status strip |
 | Talent / rivalry / title context | No selected segment hero |
 | Rivalry coverage sized for five rivalries with compact matchup labels | Repeated off-card text that crowds names |
@@ -174,14 +176,17 @@ Each screen has one job. Match the contract for the screen you are building or r
 |----------|-------|
 | Broadcast recap headline | Dry summary |
 | Show grade | No consequences |
-| Segment / match ratings reel | Second competing operational headline recap |
+| Two-row segment / match ratings reel with Details CTA into Segment Receipt | Second competing operational headline recap |
 | Focused Segment Receipt window from reel selection | Inline detail block that crowds the handoff |
+| Show Fallout Desk: Headline Beat, 2x2 fallout beats, player-brand trending + rival ratings reaction | Cross-brand trending clutter or duplicate next-week pressure cards |
 | Fan / business impact | |
 | Title / rivalry fallout | |
 | IWC / social reaction | |
 | Injuries / morale changes | |
-| Compact GM handoff / next-week pressure | |
+| Compact GM Handoff footer with roster-wide carry-forward copy | |
 | Advance Week / Season Review action | |
+
+Show Recap body copy should stay all caps to match the broadcast command-center tone.
 
 ### Show Recap Handoff
 
@@ -189,13 +194,12 @@ Each screen has one job. Match the contract for the screen you are building or r
 
 | Required | Avoid |
 |----------|-------|
-| GM handoff | Invented offscreen story |
-| What changed this week | |
-| Roster fallout | |
-| Title / rivalry updates | |
-| Social buzz | |
-| Next-week pressure | |
+| GM handoff with roster-wide carry-forward copy | Invented offscreen story |
+| Aggregate roster pressure from resolved fallout | Single-wrestler spotlight copy |
 | Clear Advance Week / Season Review action | Full second recap screen |
+| Compact footer band beside the calendar action | Duplicate handoff beat cards for roster fallout, IWC, or next-show context already covered above |
+
+Social buzz and rival ratings pressure belong in the Show Fallout Desk reaction strip, not as extra handoff beat cards.
 
 Consequence language must be tied to **resolved events**.
 

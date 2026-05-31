@@ -303,7 +303,7 @@ export function WrestlerProfileScreen({
 
   const profileCta: DynastyManagementCta = {
     eyebrow: "Talent Profile",
-    label: returnScreen === "booking" ? "Back to Booking" : returnScreen === "dashboard" ? "Back to Dashboard" : "Back to Roster",
+    label: returnScreen === "booking" ? "Back to Booking" : returnScreen === "dashboard" ? "Back to Branch HQ" : "Back to Roster",
     onClick: returnScreen === "booking" ? onBackToBooking : returnScreen === "dashboard" ? onBackToDashboard : onBackToRoster,
     tone: "brand",
   };

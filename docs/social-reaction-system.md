@@ -16,6 +16,7 @@ The Social screen separates three related surfaces:
 - Fan/IWC feed: audience posts generated from resolved show facts and optional external commentary. These use `SocialPost` metadata and should feel like wrestling Twitter discourse.
 - Superstars feed: wrestler-authored posts generated from current wrestler context. These are not forced back-and-forth reply chains. They should come from rivalry mood, title pressure, momentum, fatigue, morale, TV-time pressure, and post-show receipts.
 - Superstar Mail: sparse direct asks from roster pressure. Mail is not a feed and not ambient flavor; it is a player-facing decision surface.
+- Show Recap fallout reaction strip: a compact player-brand trending card built from `getPlayerBrandTrendingTopics()` in `src/social/socialReads.ts`, showing up to three resolved IWC topic lines for the player's brand only. This is a recap summary, not a cross-brand timeline feed.
 
 Superstar posts should read like public mood/status posts. They can reference a rivalry, title, show, or pressure context, but they should not default to direct `@target` callouts or paired replies. A wrestler can post because a rivalry is heating up, because their title reign has pressure, because they are gaining momentum, because they are underused, or because a show result changed their week.
 

@@ -38,11 +38,54 @@ function RsMetric({ detail, label, value }: { detail?: string; label: string; va
 
 function RsFalloutCard({ beat, compact = false }: { beat: ResultsRecapBeat; compact?: boolean }) {
   return (
-    <article className={`rs-fallout-card tone-${beat.tone}${compact ? " is-compact" : ""}`}>
+    <article
+      className={`rs-fallout-card tone-${beat.tone}${beat.id === "top-social-reaction" ? " is-trending-topics" : ""}${compact ? " is-compact" : ""}`}
+    >
       <span>{getFalloutBeatDisplayLabel(beat)}</span>
       <strong title={beat.value}>{beat.value}</strong>
-      <p>{beat.detail}</p>
+      {beat.topicLines?.length ? (
+        <ul className="rs-fallout-topic-list">
+          {beat.topicLines.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>{beat.detail}</p>
+      )}
     </article>
+  );
+}
+
+function ReelSegmentChip({
+  read,
+  selectedRead,
+  segmentWindowOpen,
+  onSelect,
+}: {
+  read: SegmentBroadcastRead;
+  onSelect: (segmentId: string) => void;
+  segmentWindowOpen: boolean;
+  selectedRead?: SegmentBroadcastRead;
+}) {
+  const isSelectedReceipt = read.segmentId === selectedRead?.segmentId && segmentWindowOpen;
+
+  return (
+    <button
+      aria-current={read.segmentId === selectedRead?.segmentId ? "page" : undefined}
+      aria-label={`View details for segment ${read.index}: ${read.type}, score ${read.score}, ${read.reelSummary}`}
+      className={`rs-reel-chip tone-${read.scoreTone}${read.isNoContest ? " is-no-contest" : ""}${read.isCompetitive ? " is-match" : ""}${read.segmentId === selectedRead?.segmentId ? " is-active" : ""}${isSelectedReceipt ? " is-open" : ""}`}
+      onClick={() => onSelect(read.segmentId)}
+      title={`${read.type} · ${read.score} · ${read.reelSummary}`}
+      type="button"
+    >
+      <span className="rs-reel-chip-top">
+        <span className="rs-reel-slot">{String(read.index).padStart(2, "0")}</span>
+        <strong className="rs-reel-type">{getReelTypeLabel(read.type)}</strong>
+        <strong className="rs-reel-score">{read.score}</strong>
+      </span>
+      <em className="rs-reel-summary">{read.reelSummary}</em>
+      <span className="rs-reel-chip-cta">{isSelectedReceipt ? "Details Open" : "Details"}</span>
+    </button>
   );
 }
 
@@ -207,8 +250,6 @@ export function ResultsScreen({
   const selectedIndex = model.segmentReads.findIndex((read) => read.segmentId === selectedSegmentId);
   const activeIndex = selectedIndex >= 0 ? selectedIndex : 0;
   const selectedRead = model.segmentReads[activeIndex] ?? model.segmentReads[0];
-  const rosterFallout = handoffModel.rosterFalloutGroups[0];
-  const socialOrRivalBeat = handoffModel.topSocialReaction ?? handoffModel.rivalPressureBeat;
   const isCurrentPostShow = result.week === game.currentWeek && result.seasonNumber === game.seasonNumber;
   const segmentPager = useMemo(
     () => ({
@@ -221,6 +262,10 @@ export function ResultsScreen({
     }),
     [activeIndex, model.segmentReads],
   );
+  const falloutReadCount =
+    model.falloutBeats.length + (model.topSocialReaction ? 1 : 0) + (model.rivalPressureBeat ? 1 : 0);
+  const primaryReelReads = model.segmentReads.slice(0, 5);
+  const overflowReelReads = model.segmentReads.slice(5, 10);
 
   const resultsCta: DynastyManagementCta = {
     eyebrow: isCurrentPostShow ? "Calendar Action" : "Archived Recap",
@@ -253,7 +298,8 @@ export function ResultsScreen({
       latestResult={result}
       onNavigate={onNavigate}
     >
-      <div className="rs-desk-body">
+      <>
+        <div className="rs-desk-body">
         <section className={`rs-hero rs-hero-compact${model.isPleResult ? " is-ple" : ""}`} aria-label="Broadcast recap">
           <div className="rs-score-plate">
             <span>
@@ -276,100 +322,98 @@ export function ResultsScreen({
           </div>
         </section>
 
-        <section className="rs-fallout-command" aria-label="Week 1 receipt">
-          <article className={`rs-receipt-headline tone-${model.headlineBeat.tone}`}>
-            <span>Week {model.week} Receipt</span>
-            <strong>{model.headlineBeat.value}</strong>
-            <p>{model.headlineBeat.detail}</p>
-          </article>
-
-          <div className="rs-fallout-beat-grid">
-            {model.falloutBeats.map((beat) => (
-              <RsFalloutCard beat={beat} compact key={beat.id} />
-            ))}
-          </div>
-
-          <div className="rs-reaction-strip">
-            {model.topSocialReaction ? <RsFalloutCard beat={model.topSocialReaction} compact /> : null}
-            {model.rivalPressureBeat ? <RsFalloutCard beat={model.rivalPressureBeat} compact /> : null}
-            <RsFalloutCard beat={model.nextWeekPressureBeat} compact />
-          </div>
-        </section>
-
         <section className="rs-rundown" aria-label="Broadcast rundown">
           <header className="rs-rundown-head">
             <div>
               <span>Primary Readout</span>
               <strong>Broadcast Rundown</strong>
             </div>
-            <b>{model.segmentReads.length} Segments</b>
+            <div className="rs-rundown-head-meta">
+              <em>Select segment for details</em>
+              <b>{model.segmentReads.length} Segments</b>
+            </div>
           </header>
 
-          <div
-            className="rs-rundown-reel"
-            aria-label="Segment score reel"
-            style={{ gridTemplateColumns: `repeat(${Math.min(Math.max(model.segmentReads.length, 1), 5)}, minmax(0, 1fr))` }}
-          >
-            {model.segmentReads.map((read) => (
-              <button
-                aria-current={read.segmentId === selectedRead?.segmentId ? "page" : undefined}
-                className={`rs-reel-chip tone-${read.scoreTone}${read.isNoContest ? " is-no-contest" : ""}${read.isCompetitive ? " is-match" : ""}${read.segmentId === selectedRead?.segmentId ? " is-active" : ""}`}
-                key={read.segmentId}
-                onClick={() => {
-                  setSelectedSegmentId(read.segmentId);
-                  setSegmentWindowOpen(true);
-                }}
-                title={`${read.type} · ${read.score} · ${read.reelSummary}`}
-                type="button"
-              >
-                <span className="rs-reel-chip-top">
-                  <span className="rs-reel-slot">{String(read.index).padStart(2, "0")}</span>
-                  <strong className="rs-reel-type">{getReelTypeLabel(read.type)}</strong>
-                  <strong className="rs-reel-score">{read.score}</strong>
-                </span>
-                <em className="rs-reel-summary">{read.reelSummary}</em>
-              </button>
-            ))}
-          </div>
-
-          <section className="rs-handoff-band" aria-label="GM handoff and next week">
-            <article className="rs-handoff-lead">
-              <span>GM Handoff</span>
-              <strong>{handoffModel.handoff.headline}</strong>
-              <p>{handoffModel.handoff.items[0]?.detail ?? handoffModel.headline.detail}</p>
-            </article>
-
-            <div className="rs-handoff-beats">
-              <article>
-                <span>Roster Fallout</span>
-                <strong>{rosterFallout?.label ?? "Locker Room"}</strong>
-                <p>{rosterFallout?.lines[0] ?? "No major roster pressure moved after this show."}</p>
-              </article>
-              {socialOrRivalBeat ? (
-                <article>
-                  <span>{getFalloutBeatDisplayLabel(socialOrRivalBeat)}</span>
-                  <strong title={socialOrRivalBeat.value}>{socialOrRivalBeat.value}</strong>
-                  <p>{socialOrRivalBeat.detail}</p>
-                </article>
-              ) : null}
-              <article>
-                <span>Next Show</span>
-                <strong>{handoffModel.nextWeekName}</strong>
-                <p>
-                  {handoffModel.nextWeekTypeLabel} · {handoffModel.nextPleName} {handoffModel.nextPleDetail}
-                </p>
-              </article>
+          <div className="rs-rundown-board">
+            <div className="rs-rundown-reel rs-rundown-reel-primary" aria-label="Primary segment score reel">
+              {primaryReelReads.map((read) => (
+                <ReelSegmentChip
+                  key={read.segmentId}
+                  onSelect={(segmentId) => {
+                    setSelectedSegmentId(segmentId);
+                    setSegmentWindowOpen(true);
+                  }}
+                  read={read}
+                  segmentWindowOpen={segmentWindowOpen}
+                  selectedRead={selectedRead}
+                />
+              ))}
             </div>
 
-            <button className="rs-handoff-action" onClick={isCurrentPostShow ? onAdvanceWeek : () => onNavigate("dashboard")} type="button">
-              <span>
-                {isCurrentPostShow ? (handoffModel.advanceLabel === "Season Review" ? "Close Season" : "Calendar Ready") : "Recap Archive"}
-              </span>
-              <strong>{isCurrentPostShow ? handoffModel.advanceLabel : "Brand HQ"}</strong>
-            </button>
-          </section>
+            <div
+              className={`rs-rundown-reel rs-rundown-reel-overflow${overflowReelReads.length ? " has-segments" : " is-empty"}`}
+              aria-label="Overflow segment score reel"
+            >
+              {overflowReelReads.map((read) => (
+                <ReelSegmentChip
+                  key={read.segmentId}
+                  onSelect={(segmentId) => {
+                    setSelectedSegmentId(segmentId);
+                    setSegmentWindowOpen(true);
+                  }}
+                  read={read}
+                  segmentWindowOpen={segmentWindowOpen}
+                  selectedRead={selectedRead}
+                />
+              ))}
+            </div>
+          </div>
         </section>
-      </div>
+        </div>
+
+        <section className="rs-fallout-command" aria-label={`Week ${model.week} receipt`}>
+          <header className="rs-fallout-head">
+            <div>
+              <span>Show Fallout Desk</span>
+              <strong>Week {model.week} Receipt</strong>
+            </div>
+            <b>{falloutReadCount} Reads</b>
+          </header>
+
+          <div className="rs-fallout-body">
+            <article className={`rs-receipt-headline tone-${model.headlineBeat.tone}`}>
+              <span>Headline Beat</span>
+              <strong>{model.headlineBeat.value}</strong>
+              <p>{model.headlineBeat.detail}</p>
+            </article>
+
+            <div className="rs-fallout-beat-grid">
+              {model.falloutBeats.map((beat) => (
+                <RsFalloutCard beat={beat} key={beat.id} />
+              ))}
+            </div>
+
+            <div className="rs-reaction-strip">
+              {model.topSocialReaction ? <RsFalloutCard beat={model.topSocialReaction} /> : null}
+              {model.rivalPressureBeat ? <RsFalloutCard beat={model.rivalPressureBeat} /> : null}
+            </div>
+          </div>
+        </section>
+
+        <section className="rs-handoff-band rs-handoff-footer" aria-label="GM handoff and next week">
+          <article className="rs-handoff-lead">
+            <span>GM Handoff</span>
+            <strong>{handoffModel.rosterHandoffLead.headline}</strong>
+            <p>{handoffModel.rosterHandoffLead.detail}</p>
+          </article>
+
+          <button className="rs-handoff-action" onClick={isCurrentPostShow ? onAdvanceWeek : () => onNavigate("dashboard")} type="button">
+            <span>
+              {isCurrentPostShow ? (handoffModel.advanceLabel === "Season Review" ? "Close Season" : "Calendar Ready") : "Recap Archive"}
+            </span>
+            <strong>{isCurrentPostShow ? handoffModel.advanceLabel : "Brand HQ"}</strong>
+          </button>
+        </section>
 
       {segmentWindowOpen && selectedRead ? (
         <div className="rs-segment-window-backdrop" aria-labelledby="rs-segment-window-title" aria-modal="true" role="dialog">
@@ -414,6 +458,7 @@ export function ResultsScreen({
           </section>
         </div>
       ) : null}
+      </>
     </DynastyManagementShell>
   );
 }
