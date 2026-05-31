@@ -16,7 +16,6 @@ import {
   formatRivalryStakes,
   formatRivalryStructure,
   getDefaultRivalryComposerParticipantIds,
-  getActiveRivalryParticipantIds,
   getPreferredTagPartnerId,
   getRivalryCreationBlockReason,
   getRivalryParticipants,
@@ -41,14 +40,12 @@ export type RivalryCreateInput = {
 };
 
 function RivalryComposerTalentSlot({
-  activeRivalryParticipantIds,
   index,
   onChange,
   slotLabel,
   value,
   wrestlers,
 }: {
-  activeRivalryParticipantIds: Set<string>;
   index: number;
   onChange: (index: number, wrestlerId: string) => void;
   slotLabel: string;
@@ -74,13 +71,11 @@ function RivalryComposerTalentSlot({
           onChange={(event) => onChange(index, event.target.value)}
         >
           <option value="">Choose wrestler</option>
-          {wrestlers
-            .filter((wrestler) => !activeRivalryParticipantIds.has(wrestler.id) || wrestler.id === value)
-            .map((wrestler) => (
-              <option key={wrestler.id} value={wrestler.id}>
-                {wrestler.name}
-              </option>
-            ))}
+          {wrestlers.map((wrestler) => (
+            <option key={wrestler.id} value={wrestler.id}>
+              {wrestler.name}
+            </option>
+          ))}
         </select>
       </div>
     </label>
@@ -171,11 +166,6 @@ export function RivalriesScreen({
   const selectedGmRead = selectedRivalry ? buildRivalryGmRead(game, selectedRivalry, currentWeek.isGoHome, currentWeek.showType === "ple") : "";
   const wallEntries = rivalrySnapshots.filter(({ rivalry }) => !onClockIds.has(rivalry.id));
   const feudSuggestions = useMemo(() => buildRivalryFeudSuggestions(game, 3), [game]);
-  const activeRivalryParticipantIds = useMemo(() => getActiveRivalryParticipantIds(game.rivalries), [game.rivalries]);
-
-  useEffect(() => {
-    setParticipantIds((current) => current.map((id) => (id && activeRivalryParticipantIds.has(id) ? "" : id)));
-  }, [activeRivalryParticipantIds]);
 
   useEffect(() => {
     if (initialSelectedRivalryId && game.rivalries.some((rivalry) => rivalry.id === initialSelectedRivalryId)) {
@@ -206,7 +196,7 @@ export function RivalriesScreen({
         if (!next[partnerIndex]) {
           const partnerId = getPreferredTagPartnerId(wrestlerId, game.wrestlers, next);
 
-          if (partnerId && !activeRivalryParticipantIds.has(partnerId)) {
+          if (partnerId) {
             next[partnerIndex] = partnerId;
           }
         }
@@ -337,7 +327,6 @@ export function RivalriesScreen({
 
             return (
               <RivalryComposerTalentSlot
-                activeRivalryParticipantIds={activeRivalryParticipantIds}
                 index={index}
                 key={`composer-slot-${index}`}
                 onChange={updateParticipantSlot}

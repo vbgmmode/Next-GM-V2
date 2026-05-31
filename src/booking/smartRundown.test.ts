@@ -156,6 +156,30 @@ describe("smartRundown", () => {
     expect(result.segments.some((segment) => segment.rivalryId === rivalry.id && segment.segmentCatalogId === "M020")).toBe(true);
   });
 
+  it("does not auto-book major spectacle stipulations for hot regular-TV rivalries", () => {
+    const wrestlers = getSameDivisionWrestlers(12);
+    const game = makeGame(wrestlers);
+    const rivalry: Rivalry = {
+      id: "test-hot-tv-rivalry",
+      name: "Test Hot TV Rivalry",
+      participantIds: wrestlers.slice(0, 2).map((wrestler) => wrestler.id),
+      heat: 90,
+      freshness: 80,
+      weeksActive: 2,
+      lastAdvancedWeek: 0,
+      status: "rising",
+      stakes: "revenge",
+      structure: "singles",
+    };
+
+    const result = buildSmartRundown({ ...game, rivalries: [rivalry] }, 5);
+    const rivalrySegment = result.segments.find((segment) => segment.rivalryId === rivalry.id && segment.type === "Match");
+
+    expect(result.error).toBeUndefined();
+    expect(rivalrySegment?.stipulationId).toBe("street_fight");
+    expect(["steel_cage", "last_man_standing", "ladder_match", "tlc_match", "iron_man"]).not.toContain(rivalrySegment?.stipulationId);
+  });
+
   it("prioritizes an accepted title-shot promise in the generated rundown", () => {
     const game = makeGame();
     const title = game.championships.find((championship) => championship.eligibleMatchScope !== "tag_team" && championship.division !== "Tag Team");

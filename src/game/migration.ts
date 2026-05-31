@@ -34,6 +34,7 @@ import type {
   SeasonArchiveSummary,
   ShowResult,
   StartingBudgetTier,
+  SegmentAiRecap,
   WrestlerSocialPost,
   DraftMode,
   Wrestler,
@@ -967,6 +968,9 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
       socialPosts: Array.isArray(savedGame.socialPosts) ? savedGame.socialPosts : [],
       wrestlerSocialPosts: Array.isArray((savedGame as { wrestlerSocialPosts?: unknown }).wrestlerSocialPosts)
         ? (savedGame as { wrestlerSocialPosts: WrestlerSocialPost[] }).wrestlerSocialPosts
+        : [],
+      segmentAiRecaps: Array.isArray((savedGame as { segmentAiRecaps?: unknown }).segmentAiRecaps)
+        ? (savedGame as { segmentAiRecaps: SegmentAiRecap[] }).segmentAiRecaps
         : [],
       financeReports: Array.isArray(savedGame.financeReports) ? savedGame.financeReports : [],
       marketState: normalizeMarketState(savedGame.marketState, wrestlers),

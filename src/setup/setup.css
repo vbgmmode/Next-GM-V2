@@ -2313,6 +2313,10 @@
   grid-template-rows: auto minmax(0, 1fr);
 }
 
+.draft-bottom-panel.up-next {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
 .draft-bottom-panel.up-next div,
 .drafted-mini section {
   display: grid;
@@ -2321,6 +2325,10 @@
   overflow: auto;
   overscroll-behavior: contain;
   padding-right: 2px;
+}
+
+.draft-bottom-panel.up-next div {
+  gap: 3px;
 }
 
 .drafted-mini .eyebrow {
@@ -2336,13 +2344,13 @@
   color: #f4f7fb;
   display: flex;
   font-family: var(--font-ui);
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 1;
-  min-height: 24px;
+  min-height: 20px;
   overflow: hidden;
-  padding: 6px 10px;
+  padding: 4px 8px;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;

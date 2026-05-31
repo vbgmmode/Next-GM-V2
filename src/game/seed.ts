@@ -371,6 +371,7 @@ export function createNewGame(options: NewCareerOptions = {}): GameState {
     calendar: createSeasonCalendar(),
     socialPosts: [],
     wrestlerSocialPosts: [],
+    segmentAiRecaps: [],
     financeReports: [],
     marketState: createDefaultMarketState(startingRoster),
     seasonArchives: [],

@@ -1983,17 +1983,6 @@ function getRivalryCreationBlockReason(
     return "Each wrestler can only appear once in a rivalry.";
   }
 
-  const activeRivalryParticipantIds = new Set(rivalries.flatMap((rivalry) => rivalry.participantIds));
-  const busyParticipants = selectedIds.filter((id) => activeRivalryParticipantIds.has(id));
-
-  if (busyParticipants.length) {
-    const busyNames = getWrestlerNames(busyParticipants, wrestlers);
-
-    return busyNames
-      ? `${busyNames} ${busyParticipants.length === 1 ? "is" : "are"} already locked into an active feud.`
-      : "One or more selected wrestlers are already locked into an active feud.";
-  }
-
   if (structure === "tag_team" && selectedIds.length !== 4) {
     return "Tag rivalries need exactly two wrestlers on each side.";
   }
@@ -3214,8 +3203,8 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
     persistGameSnapshot(resolvedShow.game, "results");
     setGame(resolvedShow.game);
     setScreen("results");
-    void generateExternalAiSocialContent(resolvedShow.result, resolvedShow.game).then(({ fanPosts, wrestlerPosts }) => {
-      if (!fanPosts.length && !wrestlerPosts.length) {
+    void generateExternalAiSocialContent(resolvedShow.result, resolvedShow.game).then(({ fanPosts, wrestlerPosts, segmentRecaps }) => {
+      if (!fanPosts.length && !wrestlerPosts.length && !segmentRecaps.length) {
         return;
       }
 
@@ -3226,10 +3215,12 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
 
         const existingFanIds = new Set(current.socialPosts.map((post) => post.id));
         const existingWrestlerIds = new Set(current.wrestlerSocialPosts.map((post) => post.id));
+        const existingRecapIds = new Set(current.segmentAiRecaps.map((recap) => recap.id));
         const newFanPosts = fanPosts.filter((post) => !existingFanIds.has(post.id));
         const newWrestlerPosts = wrestlerPosts.filter((post) => !existingWrestlerIds.has(post.id));
+        const newSegmentRecaps = segmentRecaps.filter((recap) => !existingRecapIds.has(recap.id));
 
-        if (!newFanPosts.length && !newWrestlerPosts.length) {
+        if (!newFanPosts.length && !newWrestlerPosts.length && !newSegmentRecaps.length) {
           return current;
         }
 
@@ -3239,6 +3230,7 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
           wrestlerSocialPosts: newWrestlerPosts.length
             ? [...current.wrestlerSocialPosts, ...newWrestlerPosts]
             : current.wrestlerSocialPosts,
+          segmentAiRecaps: newSegmentRecaps.length ? [...current.segmentAiRecaps, ...newSegmentRecaps] : current.segmentAiRecaps,
         };
 
         persistGameSnapshot(updatedGame, "results");

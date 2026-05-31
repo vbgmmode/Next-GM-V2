@@ -204,6 +204,18 @@ function getSmartRivalryStipulationId(game: GameState, rivalry: Rivalry) {
     return rivalry.heat >= 88 ? "tlc_match" : "ladder_match";
   }
 
+  if (calendarWeek.showType !== "ple") {
+    if (rivalry.heat >= 75) {
+      return rivalry.stakes === "respect" ? "submission_match" : "street_fight";
+    }
+
+    if (rivalry.heat >= 65) {
+      return rivalry.stakes === "respect" ? "submission_match" : "no_dq";
+    }
+
+    return undefined;
+  }
+
   if (stage.id === "blowoff" || rivalry.heat >= 82) {
     return rivalry.heat >= 88 ? "last_man_standing" : "steel_cage";
   }

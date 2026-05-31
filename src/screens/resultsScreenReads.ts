@@ -1,4 +1,5 @@
 import { getResolvedSegmentStipulationLabel, getSegmentResultParticipantsLabel } from "../booking/bookingUtils";
+import { getSegmentAiRecapNote } from "../game/aiCommentary";
 import { getRatingsBattleSnapshot } from "../game/cpuRivalLoop";
 import { formatAttendance, formatMoney } from "../game/formatters";
 import { getBestSegment, getShowGrade } from "../game/scoring";
@@ -162,7 +163,7 @@ export function getSegmentOutcomeHeadline(segment: SegmentResult, wrestlers: Wre
   return undefined;
 }
 
-export function buildSegmentBroadcastReads(result: ShowResult, wrestlers: Wrestler[]): SegmentBroadcastRead[] {
+export function buildSegmentBroadcastReads(result: ShowResult, wrestlers: Wrestler[], game: GameState): SegmentBroadcastRead[] {
   return result.segmentResults.map((segment, index) => {
     const isCompetitiveSegment = segment.type === "Match" || segment.type === "Open Challenge";
     const competitiveRead = isCompetitiveSegment ? buildCompetitiveRead(segment, wrestlers) : null;
@@ -193,7 +194,7 @@ export function buildSegmentBroadcastReads(result: ShowResult, wrestlers: Wrestl
       stipulation,
       titleNote: segment.titleNote,
       rivalryNote: segment.rivalryNote,
-      recapNote: segment.recapNote,
+      recapNote: getSegmentAiRecapNote(game, result.id, segment.segmentId) ?? segment.recapNote,
       falloutLine: `Momentum +${momentumTotal} · Fatigue +${fatigueTotal}${segment.overrunAffected ? " · Closing block compressed" : ""}`,
       reelSummary: competitiveRead?.isNoContest
         ? "No Contest"
@@ -662,7 +663,7 @@ export function buildResultsViewModel(game: GameState, result: ShowResult): Resu
     bestSegmentDetail: getSegmentResultParticipantsLabel(bestSegment, game.wrestlers),
     runtimeLabel: result.actualRuntimeMinutes !== undefined ? `${result.actualRuntimeMinutes} min` : "Legacy",
     runtimeDetail: result.plannedRuntimeMinutes !== undefined ? `Planned ${result.plannedRuntimeMinutes} min` : "No runtime record",
-    segmentReads: buildSegmentBroadcastReads(result, game.wrestlers),
+    segmentReads: buildSegmentBroadcastReads(result, game.wrestlers, game),
   };
 }
 

@@ -699,6 +699,16 @@ export type WrestlerSocialPost = {
   tone: WrestlerSocialPostTone;
 };
 
+export type SegmentAiRecap = {
+  id: string;
+  weekNumber: number;
+  seasonNumber: number;
+  showName: string;
+  resultId: string;
+  segmentId: string;
+  text: string;
+};
+
 export type FinanceReportBreakdownItem = {
   id: string;
   label: string;
@@ -952,6 +962,7 @@ export type GameState = {
   calendar: CalendarWeek[];
   socialPosts: SocialPost[];
   wrestlerSocialPosts: WrestlerSocialPost[];
+  segmentAiRecaps: SegmentAiRecap[];
   financeReports: FinanceReport[];
   marketState: MarketState;
   seasonArchives: SeasonArchiveSummary[];

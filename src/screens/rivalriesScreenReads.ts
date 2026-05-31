@@ -394,17 +394,6 @@ export function getRivalryCreationBlockReason(
     return "Each wrestler can only appear once in a rivalry.";
   }
 
-  const activeRivalryParticipantIds = getActiveRivalryParticipantIds(rivalries);
-  const busyParticipants = selectedIds.filter((id) => activeRivalryParticipantIds.has(id));
-
-  if (busyParticipants.length) {
-    const busyNames = getWrestlerNames(busyParticipants, wrestlers);
-
-    return busyNames
-      ? `${busyNames} ${busyParticipants.length === 1 ? "is" : "are"} already locked into an active feud.`
-      : "One or more selected wrestlers are already locked into an active feud.";
-  }
-
   if (structure === "tag_team" && selectedIds.length !== 4) {
     return "Tag rivalries need exactly two wrestlers on each side.";
   }
