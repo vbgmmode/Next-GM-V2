@@ -1,4 +1,4 @@
 difficulty_id,display_name,starting_budget_usd,draft_budget_guidance_usd,booking_reserve_guidance_usd,target_opening_roster_count,target_roster_mix,expected_budget_feel
-easy,Easy / Comfortable,4000000,2200000,1800000,18,"3-4 MainEvent, 4-5 UpperCard, 6-7 Midcard, 3-4 Prospect/Enhancement","Comfortable room for a rounded roster, premium weekly production, and several market moves."
-medium,Medium / Standard,2000000,1500000,500000,16,"2 MainEvent, 3 UpperCard, 7 Midcard, 3 Prospect, 1 Enhancement",Standard baseline: a diverse 16-person roster with about $450k-$600k left for production and market flexibility.
-hard_legend,Hard / Legend,1000000,700000,300000,12,"1 MainEvent, 2 UpperCard, 5 Midcard, 2-4 Prospect/Enhancement","Tight from day one; a lean roster can work, but reserve discipline matters every week."
+easy,Easy / Comfortable,4000000,2600000,1400000,24,"3-4 MainEvent, 5 UpperCard, 8-9 Midcard, 5-6 Prospect/Enhancement","Comfortable room for a deep roster, premium weekly production, support systems, and several market moves."
+medium,Medium / Standard,2000000,1400000,600000,20,"2 MainEvent, 4 UpperCard, 8 Midcard, 4 Prospect, 2 Enhancement","Standard baseline: a diverse 20-person roster with about $600k-$700k left for production, support systems, and market flexibility."
+hard_legend,Hard / Legend,1000000,700000,300000,16,"1 MainEvent, 3 UpperCard, 6 Midcard, 4 Prospect, 2 Enhancement","Tight from day one; a lean roster can work, but reserve discipline matters every week."

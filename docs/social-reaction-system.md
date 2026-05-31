@@ -1,20 +1,33 @@
 # Social Reaction System
 
-Next GM social posts are post-show reactions generated from resolved simulation facts. The system is deterministic: the same `ShowResult` and `GameState` produce the same IWC feed.
+Next GM social posts are post-show reactions generated from resolved simulation facts. Deterministic fan posts always land first; optional AI commentary can append fan and superstar posts when configured.
 
 ## Where Reactions Are Generated
 
 - `src/game/scoring.ts` resolves the show, finance, titles, rivalries, fatigue, morale, injuries, CPU pressure, and event ledger links.
-- `src/game/social.ts` converts the resolved show into deterministic IWC posts.
-- `src/game/aiCommentary.ts` can append optional external commentary when a configured endpoint or DeepSeek key exists. Those posts are still normalized into the same `SocialPost` shape.
+- `src/game/social.ts` converts the resolved show into deterministic IWC fan posts stored in `game.socialPosts`.
+- `src/game/aiCommentary.ts` can append optional external commentary when `VITE_DEEPSEEK_API_KEY` or `VITE_AI_COMMENTARY_ENDPOINT` is configured. One post-show request returns both:
+  - fan posts normalized into `SocialPost` and appended to `game.socialPosts`
+  - superstar posts normalized into `WrestlerSocialPost` and appended to `game.wrestlerSocialPosts`
 - `src/social/socialReads.ts` builds read-only Social screen feed models, including IWC Pulse fan posts, superstar mood posts, trending topics, and Superstar Mail.
+
+## Post-Show AI Flow
+
+After Run Show:
+
+1. Deterministic fan posts are written during show resolution in `src/game/scoring.ts`.
+2. `generateExternalAiSocialContent()` in `src/game/aiCommentary.ts` runs asynchronously from `src/GameApp.tsx`.
+3. When AI is configured and succeeds, new fan and superstar posts append to the save without replacing deterministic posts.
+4. When AI is unavailable, fails, or times out, the Social screen keeps deterministic fan posts and deterministic superstar fallback templates.
+
+AI posts must stay retrospective, grounded in the resolved payload, and safe for in-universe wrestling discourse. They must not predict future outcomes, reveal hidden mechanics, mention real AI, or invent offscreen facts.
 
 ## IWC Pulse Surfaces
 
 The Social screen separates three related surfaces:
 
-- Fan/IWC feed: audience posts generated from resolved show facts and optional external commentary. These use `SocialPost` metadata and should feel like wrestling Twitter discourse.
-- Superstars feed: wrestler-authored posts generated from current wrestler context. These are not forced back-and-forth reply chains. They should come from rivalry mood, title pressure, momentum, fatigue, morale, TV-time pressure, and post-show receipts.
+- Fan/IWC feed: audience posts generated from resolved show facts plus optional AI fan posts. These use `SocialPost` metadata and should feel like wrestling Twitter discourse.
+- Superstars feed: wrestler-authored mood/status posts for the resolved week. When AI is configured, `getWrestlerJabFeed()` prefers persisted `game.wrestlerSocialPosts` for that week. When AI is unavailable, it falls back to deterministic templates in `src/social/socialReads.ts`.
 - Superstar Mail: sparse direct asks from roster pressure. Mail is not a feed and not ambient flavor; it is a player-facing decision surface.
 - Show Recap fallout reaction strip: a compact player-brand trending card built from `getPlayerBrandTrendingTopics()` in `src/social/socialReads.ts`, showing up to three resolved IWC topic lines for the player's brand only. This is a recap summary, not a cross-brand timeline feed.
 
@@ -82,15 +95,22 @@ Profile visibility:
 
 ## Superstar Feed Templates
 
-Add superstar feed templates in `src/social/socialReads.ts`, not `src/game/social.ts`.
+Deterministic superstar templates in `src/social/socialReads.ts` are the offline/no-AI fallback only. Do not treat them as the primary authoring path when AI commentary is configured.
 
-When adding a superstar post:
+When adding or updating fallback superstar templates:
 
 1. Use only current `GameState`, latest resolved `ShowResult`, roster pressure, title state, rivalry state, or wrestler stats already available to the UI.
 2. Prefer standalone mood/status language over callouts.
 3. Set a clear `contextLabel`, such as `Rivalry mood`, `Title pressure`, `Momentum mood`, `TV-time pressure`, or the resolved show name.
 4. Keep `targetName` optional. Use it for context labels like a rivalry or title, not as a required opponent mention.
 5. Add or update tests in `src/social/socialReads.test.ts`.
+
+When changing AI superstar generation:
+
+1. Update prompt/schema handling in `src/game/aiCommentary.ts` only.
+2. Keep superstar posts in first-person wrestler voice as public mood/status posts, not fan discourse.
+3. Persist through `game.wrestlerSocialPosts`; do not add a second superstar feed store.
+4. Add or update tests in `src/game/aiCommentary.test.ts` and `src/social/socialReads.test.ts`.
 
 ## Adding New Templates
 

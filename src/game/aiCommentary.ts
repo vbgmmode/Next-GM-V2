@@ -1,4 +1,15 @@
-import type { GameState, ShowResult, SocialCategory, SocialPost, SocialReactionPersona, SocialReactionSentiment, SocialReactionTriggerType, SocialTone } from "./types";
+import type {
+  GameState,
+  ShowResult,
+  SocialCategory,
+  SocialPost,
+  SocialReactionPersona,
+  SocialReactionSentiment,
+  SocialReactionTriggerType,
+  SocialTone,
+  WrestlerSocialPost,
+  WrestlerSocialPostTone,
+} from "./types";
 import { getSegmentCatalogOption } from "./matchFormatCatalog";
 import { getRosterPressureTags, getWeeksSinceLastBooked, type RosterPressureTag } from "./rosterContextReads";
 import { getRivalryRelationship, getRivalryStoryline } from "./rivalryCatalog";
@@ -12,11 +23,26 @@ type AiCommentaryPostInput = {
   relatedWrestlerNames?: unknown;
 };
 
+type AiWrestlerPostInput = {
+  wrestlerName?: unknown;
+  contextLabel?: unknown;
+  intentLabel?: unknown;
+  tone?: unknown;
+  text?: unknown;
+  targetName?: unknown;
+};
+
 type AiCommentaryResponse = {
   posts?: unknown;
+  wrestlerPosts?: unknown;
   commentary?: unknown;
   output_text?: unknown;
   text?: unknown;
+};
+
+export type ExternalAiSocialContent = {
+  fanPosts: SocialPost[];
+  wrestlerPosts: WrestlerSocialPost[];
 };
 
 const AI_COMMENTARY_TIMEOUT_MS = 10000;
@@ -34,6 +60,7 @@ const SOCIAL_CATEGORIES: SocialCategory[] = [
   "ple_reaction",
 ];
 const SOCIAL_TONES: SocialTone[] = ["excited", "angry", "skeptical", "impressed", "chaotic", "analytical"];
+const WRESTLER_SOCIAL_TONES: WrestlerSocialPostTone[] = ["heated", "petty", "challenge", "title", "mood", "pressure"];
 
 function getAiCommentaryEndpoint() {
   return import.meta.env.VITE_AI_COMMENTARY_ENDPOINT?.trim();
@@ -61,6 +88,39 @@ function normalizeCategory(value: unknown): SocialCategory {
 
 function normalizeTone(value: unknown): SocialTone {
   return typeof value === "string" && SOCIAL_TONES.includes(value as SocialTone) ? (value as SocialTone) : "skeptical";
+}
+
+function normalizeWrestlerTone(value: unknown): WrestlerSocialPostTone {
+  return typeof value === "string" && WRESTLER_SOCIAL_TONES.includes(value as WrestlerSocialPostTone)
+    ? (value as WrestlerSocialPostTone)
+    : "mood";
+}
+
+function getWrestlerPostInputs(response: AiCommentaryResponse): AiWrestlerPostInput[] {
+  if (!Array.isArray(response.wrestlerPosts)) {
+    return [];
+  }
+
+  return response.wrestlerPosts.filter((item): item is AiWrestlerPostInput => Boolean(item && typeof item === "object"));
+}
+
+function findWrestlerByName(name: unknown, game: GameState) {
+  if (typeof name !== "string") {
+    return undefined;
+  }
+
+  const normalized = name.trim().toLowerCase();
+  return game.wrestlers.find((wrestler) => wrestler.name.toLowerCase() === normalized);
+}
+
+function normalizeWrestlerIntentLabel(contextLabel: string, intentLabel: unknown) {
+  const normalizedIntent = sanitizeText(intentLabel, "").toUpperCase();
+
+  if (normalizedIntent) {
+    return normalizedIntent.slice(0, 40);
+  }
+
+  return contextLabel ? `${contextLabel.toUpperCase()} READ`.slice(0, 40) : "STATUS READ";
 }
 
 function getAiReactionPersona(category: SocialCategory, tone: SocialTone): SocialReactionPersona {
@@ -359,7 +419,7 @@ export function buildAiPromptPayload(result: ShowResult, game: GameState) {
   return {
     task: "next-gm-social-commentary-v2",
     instructions:
-      "Generate fictional in-universe Social/IWC commentary for a wrestling GM game. Use only the resolved facts in this payload. Keep it retrospective. Do not predict future outcomes, reveal hidden mechanics, mention real AI, or add new gameplay facts. Use enriched segment, stipulation, rivalry, title, finance, roster-pressure, and existing-feed context to find sharp angles, but do not repeat the existing deterministic posts verbatim. Stipulation costs are visible production costs, not secret penalties. Roster pressure can include who was off the card, who has not been booked recently, who looks overpushed or overused, morale risk, injury risk, and protected stars. Write like messy wrestling internet posts, not a recap: first-person reactions, quote-tweet energy, agenda posting, dramatic overreactions, suspicion, jokes, tribal arguments, and fans acting like one segment changed the industry. Use contractions, fragments, rhetorical questions, and specific names. Be sharper, pettier, and more emotional than corporate analysis, while staying safe: no slurs, protected-class insults, real-world harassment, sexual content, or threats. Avoid robotic phrases like 'the office better have a plan', 'the discourse is heating up', 'roster depth is insane', or clean summary sentences. Do not cite numeric segment scores, show scores, momentum deltas, fatigue values, letter grades, or other hidden sim stats in post text. Fans react to what they saw on TV, not spreadsheet numbers. Rumors must be framed as fan speculation about resolved facts, not new canon. Return JSON only: {\"posts\":[{\"author\":\"...\",\"category\":\"dirt_sheet|analyst_take|fan_praise|push_complaint|title_scene|rivalry_heat|viral_moment|fatigue_concern|ple_reaction\",\"tone\":\"excited|angry|skeptical|impressed|chaotic|analytical\",\"text\":\"...\",\"relatedWrestlerNames\":[\"...\"]}]} with 2 to 4 posts.",
+      "Generate fictional in-universe Social/IWC commentary for a wrestling GM game. Use only the resolved facts in this payload. Keep it retrospective. Do not predict future outcomes, reveal hidden mechanics, mention real AI, or add new gameplay facts. Use enriched segment, stipulation, rivalry, title, finance, roster-pressure, and existing-feed context to find sharp angles, but do not repeat the existing deterministic posts verbatim. Stipulation costs are visible production costs, not secret penalties. Roster pressure can include who was off the card, who has not been booked recently, who looks overpushed or overused, morale risk, injury risk, and protected stars. Write like messy wrestling internet posts, not a recap: first-person reactions, quote-tweet energy, agenda posting, dramatic overreactions, suspicion, jokes, tribal arguments, and fans acting like one segment changed the industry. Use contractions, fragments, rhetorical questions, and specific names. Be sharper, pettier, and more emotional than corporate analysis, while staying safe: no slurs, protected-class insults, real-world harassment, sexual content, or threats. Avoid robotic phrases like 'the office better have a plan', 'the discourse is heating up', 'roster depth is insane', or clean summary sentences. Do not cite numeric segment scores, show scores, momentum deltas, fatigue values, letter grades, or other hidden sim stats in post text. Fans react to what they saw on TV, not spreadsheet numbers. Rumors must be framed as fan speculation about resolved facts, not new canon. Also generate superstar posts in first person from booked wrestlers, champions, rivalry participants, and roster-pressure cases. Superstar posts should read like public mood/status posts, not fan discourse and not direct @ callouts. Return JSON only: {\"posts\":[{\"author\":\"...\",\"category\":\"dirt_sheet|analyst_take|fan_praise|push_complaint|title_scene|rivalry_heat|viral_moment|fatigue_concern|ple_reaction\",\"tone\":\"excited|angry|skeptical|impressed|chaotic|analytical\",\"text\":\"...\",\"relatedWrestlerNames\":[\"...\"]}],\"wrestlerPosts\":[{\"wrestlerName\":\"...\",\"contextLabel\":\"Rivalry mood|Title pressure|Momentum mood|TV-time pressure|Post-show receipt\",\"intentLabel\":\"MOMENTUM READ\",\"tone\":\"heated|petty|challenge|title|mood|pressure\",\"text\":\"...\",\"targetName\":\"optional rivalry/title context name\"}]} with 2 to 4 fan posts and 3 to 6 wrestler posts.",
     show: {
       brandName: result.brandName,
       showName: result.showName,
@@ -423,7 +483,7 @@ function buildDeepSeekRequestBody(result: ShowResult, game: GameState) {
       {
         role: "system",
         content:
-          "You are the Social/IWC commentary desk for Next GM, a fictional wrestling GM game. Return JSON only. Use only resolved facts provided by the user. Write like messy wrestling internet discourse, not a recap: hot takes, agenda posting, quote-tweet energy, rumor-board suspicion, armchair booking complaints, dramatic praise, fandom tribalism, and people acting like the show personally attacked them. Use first-person reactions, contractions, fragments, rhetorical questions, and specific names. Avoid corporate/robotic recap phrasing such as 'the office better have a plan', 'the discourse is heating up', 'roster depth is insane', or clean neutral summaries. Use enriched resolved context for specificity, especially stipulations, rivalry premises, title stakes, fatigue, finance receipts, underused talent, off-card notable names, overused or overpushed wrestlers, and locker-room pressure. Do not predict outcomes, invent injuries, invent title changes, mention real AI, reveal hidden mechanics, quote existing feed posts verbatim, or add hidden offscreen events. Do not cite numeric segment scores, show scores, momentum deltas, fatigue values, letter grades, or other hidden sim stats in post text. Do not use slurs, protected-class insults, real-world harassment, sexual content, or threats.",
+          "You are the Social/IWC commentary desk for Next GM, a fictional wrestling GM game. Return JSON only. Use only resolved facts provided by the user. Write fan posts like messy wrestling internet discourse, not a recap: hot takes, agenda posting, quote-tweet energy, rumor-board suspicion, armchair booking complaints, dramatic praise, fandom tribalism, and people acting like the show personally attacked them. Write wrestlerPosts in first person from the named wrestler's voice as public mood/status posts about resolved fallout, rivalry mood, title pressure, momentum, TV-time pressure, or post-show receipts. Wrestler posts must not read like fan accounts, must not mention real AI, and should avoid direct @ callouts. Use first-person reactions, contractions, fragments, rhetorical questions, and specific names where grounded. Avoid corporate/robotic recap phrasing such as 'the office better have a plan', 'the discourse is heating up', 'roster depth is insane', or clean neutral summaries. Use enriched resolved context for specificity, especially stipulations, rivalry premises, title stakes, fatigue, finance receipts, underused talent, off-card notable names, overused or overpushed wrestlers, and locker-room pressure. Do not predict outcomes, invent injuries, invent title changes, mention real AI, reveal hidden mechanics, quote existing feed posts verbatim, or add hidden offscreen events. Do not cite numeric segment scores, show scores, momentum deltas, fatigue values, letter grades, or other hidden sim stats in post text. Do not use slurs, protected-class insults, real-world harassment, sexual content, or threats.",
       },
       {
         role: "user",
@@ -432,7 +492,7 @@ function buildDeepSeekRequestBody(result: ShowResult, game: GameState) {
     ],
     response_format: { type: "json_object" },
     thinking: { type: "disabled" },
-    max_tokens: 650,
+    max_tokens: 1200,
     stream: false,
   };
 }
@@ -483,9 +543,9 @@ async function fetchAiCommentaryPayload(result: ShowResult, game: GameState, con
   return typeof content === "string" ? content : completion;
 }
 
-export async function generateExternalAiSocialCommentary(result: ShowResult, game: GameState) {
+export async function generateExternalAiSocialContent(result: ShowResult, game: GameState): Promise<ExternalAiSocialContent> {
   if (!getAiCommentaryEndpoint() && !getDeepSeekApiKey()) {
-    return [];
+    return { fanPosts: [], wrestlerPosts: [] };
   }
 
   const controller = new AbortController();
@@ -494,7 +554,7 @@ export async function generateExternalAiSocialCommentary(result: ShowResult, gam
   try {
     const payload = await fetchAiCommentaryPayload(result, game, controller);
     const rawResponse = normalizeAiResponse(payload);
-    const posts = getPostInputs(rawResponse)
+    const fanPosts = getPostInputs(rawResponse)
       .map((post, index): SocialPost | undefined => {
         const text = sanitizeText(post.text);
 
@@ -534,13 +594,49 @@ export async function generateExternalAiSocialCommentary(result: ShowResult, gam
           tags: [category.replace("_", "-"), getAiReactionPersona(category, tone).replaceAll("_", "-")],
         };
       })
-      .filter((post): post is SocialPost => Boolean(post));
+      .filter((post): post is SocialPost => Boolean(post))
+      .slice(0, 4);
+    const wrestlerPosts = getWrestlerPostInputs(rawResponse)
+      .map((post, index): WrestlerSocialPost | undefined => {
+        const author = findWrestlerByName(post.wrestlerName, game);
+        const text = sanitizeText(post.text);
 
-    return posts.slice(0, 4);
+        if (!author || !text) {
+          return undefined;
+        }
+
+        const contextLabel = sanitizeText(post.contextLabel, "Post-show receipt").slice(0, 48);
+        const target = findWrestlerByName(post.targetName, game);
+
+        return {
+          id: `${result.id}-ai-wrestler-${index + 1}`,
+          weekNumber: result.week,
+          seasonNumber: result.seasonNumber,
+          showName: result.showName,
+          resultId: result.id,
+          authorId: author.id,
+          authorName: author.name,
+          targetId: target?.id,
+          targetName: target?.name,
+          contextLabel,
+          jab: text,
+          intentLabel: normalizeWrestlerIntentLabel(contextLabel, post.intentLabel),
+          tone: normalizeWrestlerTone(post.tone),
+        };
+      })
+      .filter((post): post is WrestlerSocialPost => Boolean(post))
+      .slice(0, 6);
+
+    return { fanPosts, wrestlerPosts };
   } catch (error) {
     console.warn("AI commentary unavailable.", error);
-    return [];
+    return { fanPosts: [], wrestlerPosts: [] };
   } finally {
     window.clearTimeout(timeoutId);
   }
+}
+
+export async function generateExternalAiSocialCommentary(result: ShowResult, game: GameState) {
+  const content = await generateExternalAiSocialContent(result, game);
+  return content.fanPosts;
 }

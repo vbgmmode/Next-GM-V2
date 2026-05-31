@@ -18,7 +18,7 @@ import {
   updateSaveRecord,
 } from "./gameStorage";
 import { advanceGameWeek } from "./game/advanceWeek";
-import { generateExternalAiSocialCommentary } from "./game/aiCommentary";
+import { generateExternalAiSocialContent } from "./game/aiCommentary";
 import { getRosterAffiliations, getWrestlerAffiliations } from "./game/affiliationCatalog";
 import { getFinancePressureLabel } from "./game/finance";
 import { getRosterFinanceValueForWrestler } from "./game/financeCatalog";
@@ -3214,8 +3214,8 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
     persistGameSnapshot(resolvedShow.game, "results");
     setGame(resolvedShow.game);
     setScreen("results");
-    void generateExternalAiSocialCommentary(resolvedShow.result, resolvedShow.game).then((posts) => {
-      if (!posts.length) {
+    void generateExternalAiSocialContent(resolvedShow.result, resolvedShow.game).then(({ fanPosts, wrestlerPosts }) => {
+      if (!fanPosts.length && !wrestlerPosts.length) {
         return;
       }
 
@@ -3224,16 +3224,21 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
           return current;
         }
 
-        const existingIds = new Set(current.socialPosts.map((post) => post.id));
-        const newPosts = posts.filter((post) => !existingIds.has(post.id));
+        const existingFanIds = new Set(current.socialPosts.map((post) => post.id));
+        const existingWrestlerIds = new Set(current.wrestlerSocialPosts.map((post) => post.id));
+        const newFanPosts = fanPosts.filter((post) => !existingFanIds.has(post.id));
+        const newWrestlerPosts = wrestlerPosts.filter((post) => !existingWrestlerIds.has(post.id));
 
-        if (!newPosts.length) {
+        if (!newFanPosts.length && !newWrestlerPosts.length) {
           return current;
         }
 
         const updatedGame = {
           ...current,
-          socialPosts: [...current.socialPosts, ...newPosts],
+          socialPosts: newFanPosts.length ? [...current.socialPosts, ...newFanPosts] : current.socialPosts,
+          wrestlerSocialPosts: newWrestlerPosts.length
+            ? [...current.wrestlerSocialPosts, ...newWrestlerPosts]
+            : current.wrestlerSocialPosts,
         };
 
         persistGameSnapshot(updatedGame, "results");

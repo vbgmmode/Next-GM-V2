@@ -120,7 +120,7 @@ The game currently supports:
 - Season Review
 - Mid-Career Draft between Season Review and Start Next Season
 - Start Next Season
-- Social/IWC with existing post feed, filters, read-only resolved-state IWC mood summary, and sparse Superstar Mail direct asks driven by firm/urgent roster pressure
+- Social/IWC with deterministic post-show fan posts, optional AI-generated fan and superstar posts when DeepSeek or a custom commentary endpoint is configured, read-only resolved-state IWC mood summary, and sparse Superstar Mail direct asks driven by firm/urgent roster pressure
 - Finance & Brand Pressure with active contract/market pressure, GM Office Pressure derived from current money, latest finance report, season finance history, best/worst business weeks, and closed-report show cost context, with finance summary metrics under nav and expandable support panels for talent value, latest report, season reads, and finance history
 - FinanceReport legacy-compatible v2 optional fields for future detailed revenue and expense categories
 - Read-only gameplay context helpers extracted into src/game/gameContextReads.ts for recent derived UI snapshots while React screen components remain in src/App.tsx
@@ -154,7 +154,7 @@ The loop must remain playable after every change.
 - Roster is the living locker room and wrestler profile surface.
 - Championships is the prestige, contender, title-history, and division-health surface.
 - Rivalries is the creative/story room for active feud temperature, timing, stakes, and payoff pressure from existing state.
-- Social/IWC is the resolved audience mood, post-show reaction, and sparse direct-roster-ask surface.
+- Social/IWC is the resolved audience mood, post-show fan reaction, optional AI superstar mood posts, and sparse direct-roster-ask surface.
 - Finance is the GM office pressure surface for current money, latest closed business result, season trend, and readable report context.
 - Calendar is the season clock, PLE cadence, and upcoming-show context.
 - Season Review is the end-of-season legacy and continuity recap before the Mid-Career Draft.

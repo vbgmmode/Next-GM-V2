@@ -404,6 +404,8 @@ Social / IWC:
 
 - Should feel like a reactive wrestling internet feed.
 - Posts should reflect actual outcomes after they happen.
+- Fan posts and Superstars posts stay separate lanes; superstar posts should read as first-person mood/status, not fan discourse.
+- When AI commentary is configured, post-show generation can populate both fan and superstar feeds asynchronously after Run Show.
 - Use source/category labeling and keep spicy copy contained.
 
 Finance:

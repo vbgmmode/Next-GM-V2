@@ -56,6 +56,11 @@ export function BookingStatusStrip({ model, onNavigate }: Props) {
       </section>
 
       <section className="booking-status-actions-column">
+        <div className="booking-story-flow-read">
+          <span>Story Flow</span>
+          <strong>{model.storyFlow.label}</strong>
+          <em>{model.storyFlow.detail}</em>
+        </div>
         <button className="booking-btn booking-btn-secondary" onClick={() => onNavigate("dashboard")} type="button">
           Back To HQ
         </button>

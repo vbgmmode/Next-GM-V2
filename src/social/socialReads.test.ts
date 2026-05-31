@@ -47,4 +47,34 @@ describe("superstar social feed", () => {
     expect(feed?.items.every((item) => item.contextLabel && !item.jab.startsWith("hey "))).toBe(true);
     expect(feed?.items.some((item) => item.contextLabel === "Rivalry mood")).toBe(true);
   });
+
+  it("prefers persisted AI superstar posts for the resolved week", () => {
+    const game = createNewGame();
+    const [first] = game.wrestlers;
+
+    const feed = getWrestlerJabFeed(
+      {
+        ...game,
+        wrestlerSocialPosts: [
+          {
+            id: "ai-wrestler-1",
+            weekNumber: 1,
+            seasonNumber: 1,
+            showName: "Test TV",
+            authorId: first.id,
+            authorName: first.name,
+            contextLabel: "Momentum mood",
+            jab: "the building felt different when my name kept getting louder.",
+            intentLabel: "MOMENTUM READ",
+            tone: "mood",
+          },
+        ],
+      },
+      6,
+    );
+
+    expect(feed?.items).toHaveLength(1);
+    expect(feed?.items[0]?.jab).toContain("building felt different");
+    expect(feed?.detail).toContain("generated from resolved show fallout");
+  });
 });

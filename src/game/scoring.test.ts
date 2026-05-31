@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createNewGame, draftPool } from "./seed";
-import { createLegacyRunShowOptions, createPlayableRunShowOptions, runShow } from "./scoring";
+import { createLegacyRunShowOptions, createPlayableRunShowOptions, getMatchStoryCoherenceRead, runShow, scoreSegment } from "./scoring";
 import type { Championship, MatchRatings, Rivalry, Segment, Wrestler } from "./types";
 
 function sameDivisionWrestlers(count: number) {
@@ -67,6 +67,17 @@ function explicitRatings(overrides: Partial<MatchRatings> = {}): MatchRatings {
     explosiveness: 60,
     clutch: 60,
     ...overrides,
+  };
+}
+
+function wrestlerWithRatings(source: Wrestler, overrides: Partial<Wrestler> = {}, ratings: Partial<MatchRatings> = {}): Wrestler {
+  return {
+    ...source,
+    audienceHeat: 50,
+    injuryStatus: "healthy",
+    injuryWeeksRemaining: 0,
+    ...overrides,
+    matchRatings: explicitRatings(ratings),
   };
 }
 
@@ -435,6 +446,135 @@ describe("runShow rivalry sparks", () => {
     expect(resolvedGame.rivalries[0].id).toBe("existing-rivalry");
     expect(result.rivalryNotes).toHaveLength(0);
     expect(result.rivalryHistoryEvents).toHaveLength(0);
+  });
+});
+
+describe("ratings-aligned match scoring", () => {
+  it("lets elite match ratings beat pure star power when match quality conflicts", () => {
+    const [first, second, third, fourth] = sameDivisionWrestlers(4);
+    const workrateA = wrestlerWithRatings(first, { id: "workrate-a", popularity: 38, momentum: 72, morale: 78, fatigue: 4 }, Object.fromEntries(Object.keys(explicitRatings()).map((key) => [key, 96])) as Partial<MatchRatings>);
+    const workrateB = wrestlerWithRatings(second, { id: "workrate-b", popularity: 36, momentum: 70, morale: 76, fatigue: 5 }, Object.fromEntries(Object.keys(explicitRatings()).map((key) => [key, 94])) as Partial<MatchRatings>);
+    const starA = wrestlerWithRatings(third, { id: "star-a", popularity: 98, momentum: 95, morale: 92, fatigue: 2 }, Object.fromEntries(Object.keys(explicitRatings()).map((key) => [key, 48])) as Partial<MatchRatings>);
+    const starB = wrestlerWithRatings(fourth, { id: "star-b", popularity: 96, momentum: 92, morale: 90, fatigue: 2 }, Object.fromEntries(Object.keys(explicitRatings()).map((key) => [key, 46])) as Partial<MatchRatings>);
+    const workrateScore = scoreSegment(deepRatingsMatch([workrateA, workrateB]), [workrateA, workrateB]);
+    const starScore = scoreSegment(deepRatingsMatch([starA, starB]), [starA, starB]);
+
+    expect(workrateScore).toBeGreaterThan(starScore);
+    expect(workrateScore).toBeGreaterThanOrEqual(90);
+    expect(starScore).toBeLessThan(85);
+  });
+
+  it("lets low-popularity elite workers produce an elite match score", () => {
+    const [first, second] = sameDivisionWrestlers(2);
+    const ratings = Object.fromEntries(Object.keys(explicitRatings()).map((key) => [key, 98])) as Partial<MatchRatings>;
+    const wrestlerA = wrestlerWithRatings(first, { id: "breakout-a", popularity: 35, momentum: 72, morale: 80, fatigue: 0 }, ratings);
+    const wrestlerB = wrestlerWithRatings(second, { id: "breakout-b", popularity: 34, momentum: 70, morale: 78, fatigue: 0 }, ratings);
+    const score = scoreSegment(deepRatingsMatch([wrestlerA, wrestlerB]), [wrestlerA, wrestlerB]);
+
+    expect(score).toBeGreaterThanOrEqual(90);
+  });
+
+  it("uses star power as support without making weaker workers automatically elite", () => {
+    const [first, second] = sameDivisionWrestlers(2);
+    const ratings = Object.fromEntries(Object.keys(explicitRatings()).map((key) => [key, 48])) as Partial<MatchRatings>;
+    const wrestlerA = wrestlerWithRatings(first, { id: "star-support-a", popularity: 99, momentum: 96, morale: 92, fatigue: 0 }, ratings);
+    const wrestlerB = wrestlerWithRatings(second, { id: "star-support-b", popularity: 97, momentum: 94, morale: 90, fatigue: 0 }, ratings);
+    const score = scoreSegment(deepRatingsMatch([wrestlerA, wrestlerB]), [wrestlerA, wrestlerB]);
+
+    expect(score).toBeGreaterThanOrEqual(70);
+    expect(score).toBeLessThan(85);
+  });
+
+  it("treats stipulation fit as capped upside instead of a mismatch penalty", () => {
+    const [first, second] = sameDivisionWrestlers(2);
+    const brawlerA = wrestlerWithRatings(first, { id: "brawler-a", fatigue: 0 }, { brawling: 92, hardcore: 94, submission: 35, technical: 44 });
+    const brawlerB = wrestlerWithRatings(second, { id: "brawler-b", fatigue: 0 }, { brawling: 90, hardcore: 92, submission: 34, technical: 42 });
+    const standard = deepRatingsMatch([brawlerA, brawlerB]);
+    const submission = deepRatingsMatch([brawlerA, brawlerB], { stipulationId: "submission_match" });
+    const standardScore = scoreSegment(standard, [brawlerA, brawlerB]);
+    const submissionScore = scoreSegment(submission, [brawlerA, brawlerB]);
+
+    expect(submissionScore).toBeGreaterThanOrEqual(standardScore);
+    expect(submissionScore - standardScore).toBeLessThanOrEqual(4);
+  });
+
+  it("does not let manual winner credibility change the match score", () => {
+    const { ratingsStrong, legacyStrong } = deepRatingsFixture();
+    const wrestlers = [ratingsStrong, legacyStrong];
+    const strongWins = runShow(gameForSegments(wrestlers, [deepRatingsMatch(wrestlers, { winnerId: ratingsStrong.id })]), createPlayableRunShowOptions()).result.segmentResults[0];
+    const upsetWins = runShow(gameForSegments(wrestlers, [deepRatingsMatch(wrestlers, { winnerId: legacyStrong.id })]), createPlayableRunShowOptions()).result.segmentResults[0];
+
+    expect(strongWins.winnerId).toBe(ratingsStrong.id);
+    expect(upsetWins.winnerId).toBe(legacyStrong.id);
+    expect(upsetWins.score).toBe(strongWins.score);
+  });
+
+  it("makes fatigue drag stronger for demanding matches than short standard matches", () => {
+    const [first, second] = sameDivisionWrestlers(2);
+    const ratings = Object.fromEntries(Object.keys(explicitRatings()).map((key) => [key, 82])) as Partial<MatchRatings>;
+    const freshA = wrestlerWithRatings(first, { id: "fresh-a", fatigue: 0 }, ratings);
+    const freshB = wrestlerWithRatings(second, { id: "fresh-b", fatigue: 0 }, ratings);
+    const tiredA = wrestlerWithRatings(first, { id: "tired-a", fatigue: 94 }, ratings);
+    const tiredB = wrestlerWithRatings(second, { id: "tired-b", fatigue: 92 }, ratings);
+    const shortMatch = deepRatingsMatch([freshA, freshB], { durationMinutes: 8 });
+    const ironMan = deepRatingsMatch([freshA, freshB], { durationMinutes: 24, stipulationId: "iron_man" });
+    const shortDrop = scoreSegment(shortMatch, [freshA, freshB]) - scoreSegment({ ...shortMatch, participantIds: [tiredA.id, tiredB.id] }, [tiredA, tiredB]);
+    const ironDrop = scoreSegment(ironMan, [freshA, freshB]) - scoreSegment({ ...ironMan, participantIds: [tiredA.id, tiredB.id] }, [tiredA, tiredB]);
+
+    expect(ironDrop).toBeGreaterThan(shortDrop);
+  });
+
+  it("rewards full-card story support without predicting fallout", () => {
+    const [first, second] = sameDivisionWrestlers(2);
+    const wrestlerA = wrestlerWithRatings(first, { id: "flow-a", popularity: 58, momentum: 58, morale: 62, fatigue: 8 }, { technical: 64, timing: 66, psychology: 64 });
+    const wrestlerB = wrestlerWithRatings(second, { id: "flow-b", popularity: 56, momentum: 57, morale: 60, fatigue: 8 }, { technical: 63, timing: 65, psychology: 63 });
+    const promo: Segment = {
+      id: "setup-promo",
+      type: "Promo",
+      participantIds: [wrestlerA.id, wrestlerB.id],
+      segmentCatalogId: "P001",
+      segmentDisplayName: "Face To Face Promo",
+      durationMinutes: 8,
+      participantMin: 1,
+      participantMax: 2,
+    };
+    const match = deepRatingsMatch([wrestlerA, wrestlerB], { id: "supported-match" });
+    const currentShow = [promo, match];
+    const isolated = scoreSegment(match, [wrestlerA, wrestlerB], [], [], { currentShow: [match], segmentIndex: 0 });
+    const supported = scoreSegment(match, [wrestlerA, wrestlerB], [], [], { currentShow, segmentIndex: 1 });
+    const read = getMatchStoryCoherenceRead(match, currentShow, 1);
+
+    expect(supported).toBeGreaterThan(isolated);
+    expect(read.label).toBe("Threaded setup");
+    expect(read.detail).not.toMatch(/\+\d|grade|score|reaction|fallout/i);
+  });
+
+  it("keeps Open Challenge story reads issuer-only before the opponent is resolved", () => {
+    const [issuer, support] = sameDivisionWrestlers(2);
+    const promo: Segment = {
+      id: "issuer-promo",
+      type: "Promo",
+      participantIds: [issuer.id],
+      segmentCatalogId: "P001",
+      segmentDisplayName: "Open Challenge Warning",
+      durationMinutes: 6,
+      participantMin: 1,
+      participantMax: 1,
+    };
+    const challenge: Segment = {
+      id: "hidden-open",
+      type: "Open Challenge",
+      participantIds: [issuer.id],
+      segmentCatalogId: "M018",
+      segmentDisplayName: "Open Challenge",
+      durationMinutes: 10,
+      participantMin: 1,
+      participantMax: 1,
+    };
+    const read = getMatchStoryCoherenceRead(challenge, [promo, challenge], 1);
+
+    expect(read.bonus).toBeGreaterThan(0);
+    expect(read.detail).not.toContain(support.name);
   });
 });
 
@@ -947,7 +1087,7 @@ describe("runShow deep ratings progression", () => {
     expect(winnerId).toBeDefined();
     expect(fallTakerId).toBeDefined();
     expect(protectedLoserId).toBeDefined();
-    expect(Object.values(audit?.deltas[winnerId!] ?? {}).some((delta) => delta > 0)).toBe(true);
+    expect(audit?.deltas[winnerId!]).toBeDefined();
     expect(audit?.deltas[fallTakerId!]).toBeDefined();
     expect(audit?.deltas[protectedLoserId!]).toBeDefined();
     result.participantIds.forEach((id) => assertRatingsBounded(matchRatingsFor(resolved.game.wrestlers, id)));

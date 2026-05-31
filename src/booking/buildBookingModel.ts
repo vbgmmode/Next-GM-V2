@@ -1,7 +1,7 @@
 import { getBookedFinishProductionCostForShow, getSegmentProductionCostForShow, getSegmentStipulationProductionCostForShow } from "../game/finance";
 import { getPrestigeMainEventAnchorSnapshot } from "../game/championshipPrestigeReads";
 import { formatMoney } from "../game/formatters";
-import { getCurrentCalendarWeek, isValidSegment } from "../game/scoring";
+import { getCurrentCalendarWeek, getMatchStoryCoherenceRead, isValidSegment } from "../game/scoring";
 import { getProtectedRestWrestlerIds } from "../game/socialInboxActions";
 import type { GameState, Segment, ShowType } from "../game/types";
 import {
@@ -110,6 +110,10 @@ export type BookingViewModel = {
     bookedFinishCost: number;
     totalCost: number;
     totalCostLabel: string;
+  };
+  storyFlow: {
+    label: string;
+    detail: string;
   };
   readiness: {
     status: string;
@@ -370,6 +374,21 @@ export function buildBookingModel(game: GameState, selectedSegmentId?: string | 
     prestigeAnchor.isSeasonFinalePle && prestigeAnchor.status !== "anchored"
       ? `${producerNote} ${prestigeAnchor.detail}`
       : producerNote;
+  const storyFlowReads = segments
+    .map((segment, index) => getMatchStoryCoherenceRead(segment, segments, index))
+    .filter((read) => read.bonus > 0);
+  const strongestStoryFlow = storyFlowReads.sort((a, b) => b.bonus - a.bonus || b.supportedSegmentCount - a.supportedSegmentCount)[0];
+  const storyFlow = strongestStoryFlow
+    ? {
+        label: strongestStoryFlow.label,
+        detail: strongestStoryFlow.detail,
+      }
+    : {
+        label: segments.some((segment) => segment.type === "Match" || segment.type === "Open Challenge") ? "Isolated match" : "No match thread",
+        detail: segments.some((segment) => segment.type === "Match" || segment.type === "Open Challenge")
+          ? "No same-card setup is attached to the booked matches."
+          : "Add a match to start reading story flow.",
+      };
   const segmentProductionCost = segmentRows.reduce((total, row) => total + row.segmentProductionCost, 0);
   const stipulationProductionCost = segmentRows.reduce((total, row) => total + row.stipulationProductionCost, 0);
   const bookedFinishCost = segmentRows.reduce((total, row) => total + row.bookedFinishCost, 0);
@@ -399,6 +418,7 @@ export function buildBookingModel(game: GameState, selectedSegmentId?: string | 
       totalCost: totalProductionCost,
       totalCostLabel: formatMoney(totalProductionCost),
     },
+    storyFlow,
     readiness: {
       status: readiness.status,
       tone: readiness.tone,
@@ -408,6 +428,7 @@ export function buildBookingModel(game: GameState, selectedSegmentId?: string | 
     metrics: [
       { label: "Valid Segments", value: `${validSegments.length}/${segments.length}` },
       { label: "Runtime", value: `${validMinutes} min`, detail: `of ${showRuntimeMinMinutes}` },
+      { label: "Story Flow", value: storyFlow.label, detail: storyFlow.detail },
       { label: "Workload Flags", value: String(riskRows.length) },
       { label: "Off Card", value: String(unbookedCount), detail: `of ${rosterTotalCount} roster` },
     ],

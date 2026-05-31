@@ -681,6 +681,24 @@ export type SocialPost = {
   tags?: string[];
 };
 
+export type WrestlerSocialPostTone = "heated" | "petty" | "challenge" | "title" | "mood" | "pressure";
+
+export type WrestlerSocialPost = {
+  id: string;
+  weekNumber: number;
+  seasonNumber: number;
+  showName: string;
+  resultId?: string;
+  authorId: string;
+  authorName: string;
+  targetId?: string;
+  targetName?: string;
+  contextLabel?: string;
+  jab: string;
+  intentLabel: string;
+  tone: WrestlerSocialPostTone;
+};
+
 export type FinanceReportBreakdownItem = {
   id: string;
   label: string;
@@ -933,6 +951,7 @@ export type GameState = {
   rivalryHistory: RivalryHistoryEvent[];
   calendar: CalendarWeek[];
   socialPosts: SocialPost[];
+  wrestlerSocialPosts: WrestlerSocialPost[];
   financeReports: FinanceReport[];
   marketState: MarketState;
   seasonArchives: SeasonArchiveSummary[];

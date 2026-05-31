@@ -953,6 +953,19 @@ export function getWrestlerJabFeed(game: GameState, limit = 8): WrestlerJabFeedS
   }
 
   const { seasonNumber, weekNumber } = getResolvedSocialWeek(game);
+  const aiItems = (game.wrestlerSocialPosts ?? [])
+    .filter((post) => post.seasonNumber === seasonNumber && post.weekNumber === weekNumber)
+    .slice(0, limit)
+    .map(({ weekNumber: _weekNumber, seasonNumber: _seasonNumber, showName: _showName, resultId: _resultId, ...item }) => item);
+
+  if (aiItems.length) {
+    return {
+      weekLabel: `Season ${seasonNumber} · Week ${weekNumber}`,
+      detail: "Superstar posts generated from resolved show fallout and current roster state.",
+      items: aiItems,
+    };
+  }
+
   const result = game.showHistory.find((show) => show.seasonNumber === seasonNumber && show.week === weekNumber);
   const candidates = dedupeJabCandidates([
     ...game.rivalries.flatMap((rivalry) => buildRivalryJabs(game, rivalry)),

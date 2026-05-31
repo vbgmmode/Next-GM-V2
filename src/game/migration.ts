@@ -34,6 +34,7 @@ import type {
   SeasonArchiveSummary,
   ShowResult,
   StartingBudgetTier,
+  WrestlerSocialPost,
   DraftMode,
   Wrestler,
 } from "./types";
@@ -964,6 +965,9 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
         Array.isArray(savedGame.calendar) && savedGame.calendar.length ? savedGame.calendar : createSeasonCalendar(),
       ),
       socialPosts: Array.isArray(savedGame.socialPosts) ? savedGame.socialPosts : [],
+      wrestlerSocialPosts: Array.isArray((savedGame as { wrestlerSocialPosts?: unknown }).wrestlerSocialPosts)
+        ? (savedGame as { wrestlerSocialPosts: WrestlerSocialPost[] }).wrestlerSocialPosts
+        : [],
       financeReports: Array.isArray(savedGame.financeReports) ? savedGame.financeReports : [],
       marketState: normalizeMarketState(savedGame.marketState, wrestlers),
       seasonArchives: normalizeSeasonArchives((savedGame as { seasonArchives?: unknown }).seasonArchives),

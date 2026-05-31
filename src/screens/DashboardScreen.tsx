@@ -234,9 +234,6 @@ export function DashboardScreen({
                 })}
               </div>
             </div>
-            <div className="dashboard-dynasty-roster-footer">
-              <span>{model.rosterSizeLabel}</span>
-            </div>
           </article>
 
           <article className="dashboard-dynasty-panel dashboard-dynasty-metrics">

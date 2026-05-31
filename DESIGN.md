@@ -291,6 +291,8 @@ Only **Match** title matches can change championships.
 |----------|-------|
 | Source / category labels | Pre-show buzz before reaction exists |
 | Posts tied to actual resolved events | Infinite unstructured feed noise |
+| Fan feed plus Superstars feed separation | Forced reply chains between wrestlers |
+| Optional AI posts after Run Show when configured | Mentioning real AI in player-facing copy |
 | Contained scroll | |
 | Spicy but readable copy | |
 

@@ -1624,10 +1624,43 @@
 .booking-status-actions-column {
   align-items: end;
   display: flex;
+  gap: 8px;
   grid-column: 2;
   grid-row: 3;
   justify-content: flex-end;
   min-width: 0;
+}
+
+.booking-story-flow-read {
+  border-left: 2px solid rgba(255, 215, 0, 0.55);
+  display: grid;
+  gap: 2px;
+  max-width: 230px;
+  min-width: 0;
+  padding-left: 8px;
+}
+
+.booking-story-flow-read span,
+.booking-story-flow-read em {
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.booking-story-flow-read strong {
+  color: var(--accent-gold-bright);
+  font-size: 0.76rem;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .booking-status-actions-column .booking-btn {

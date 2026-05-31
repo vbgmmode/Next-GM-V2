@@ -102,7 +102,6 @@ export type DashboardViewModel = {
     stamina: number;
     staminaDelta?: number;
   }>;
-  rosterSizeLabel: string;
   seasonWeekLabel: string;
   secondaryActions: Array<{ label: string; screen: GameScreen }>;
   showCard: Array<{ id: string; index: number; match: string; stipulation: string; valid: boolean }>;
@@ -713,7 +712,6 @@ export function buildDashboardViewModel(game: GameState, result?: ShowResult): D
     rankingLabel: ratingsBattle ? `#${ratingsBattle.playerRank} of ${ratingsBattle.entries.length}` : "Brand HQ",
     rivalries,
     roster,
-    rosterSizeLabel: `Roster Size ${game.wrestlers.length} / 20`,
     seasonWeekLabel: `Season ${game.seasonNumber} / Week ${game.currentWeek}`,
     secondaryActions: [
       { label: "Edit Card", screen: "booking" },

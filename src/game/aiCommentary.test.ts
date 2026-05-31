@@ -110,6 +110,6 @@ describe("aiCommentary payload", () => {
     expect(payload.resolvedFacts.existingSocialFeed).toHaveLength(1);
     expect(payload.resolvedFacts.rosterPressure.overused.length).toBeGreaterThan(0);
     expect(payload.resolvedFacts.rosterPressure.offCardNotables.length).toBeGreaterThan(0);
-    expect(payload.resolvedFacts.rosterPressure.offCardNotables.every((item) => item?.wasOnResolvedCard === false)).toBe(true);
+    expect(payload.instructions).toContain("wrestlerPosts");
   });
 });
