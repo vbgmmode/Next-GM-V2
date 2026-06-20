@@ -6,7 +6,11 @@ const sourceBrandDraftCaps: Record<string, number> = {
   AEW: 35,
 };
 
-const top200RosterCandidates: Wrestler[] = top200RosterCandidatesRaw as Wrestler[];
+type CalibratedWrestler = Wrestler & {
+  statCalibrationVersion?: string;
+};
+
+const top200RosterCandidates: CalibratedWrestler[] = top200RosterCandidatesRaw as CalibratedWrestler[];
 
 
 function applySourceBrandDraftCaps(wrestlers: Wrestler[]) {
@@ -177,7 +181,17 @@ function applyMaddenLikeStatDistribution(wrestlers: Wrestler[]): Wrestler[] {
   });
 }
 
-export const top200DraftPool: Wrestler[] = applyMaddenLikeStatDistribution(applySourceBrandDraftCaps(top200RosterCandidates)).map((wrestler) => ({
+function needsLegacyStatDistribution(wrestlers: CalibratedWrestler[]) {
+  return wrestlers.some((wrestler) => wrestler.statCalibrationVersion !== "initial_stats_recalibration_v1");
+}
+
+const shouldUseLegacyStatDistribution = needsLegacyStatDistribution(top200RosterCandidates);
+const sourceCappedDraftPool = shouldUseLegacyStatDistribution ? applySourceBrandDraftCaps(top200RosterCandidates) : top200RosterCandidates;
+const statCalibratedDraftPool = shouldUseLegacyStatDistribution
+  ? applyMaddenLikeStatDistribution(sourceCappedDraftPool)
+  : sourceCappedDraftPool;
+
+export const top200DraftPool: Wrestler[] = statCalibratedDraftPool.map((wrestler) => ({
   ...wrestler,
   matchRatings: ensureMatchRatings(wrestler),
 }));

@@ -1,17 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { getRosterFinanceValueForWrestler } from "./financeCatalog";
+import { createFinanceRosterMappingReport } from "./financeCatalog";
 import { simulateOpeningDraft } from "./openingDraft";
 import { createRivalBrandUniverse, createRivalGMAssignments } from "./seed";
 import { top200DraftPool } from "./top200DraftPool";
 
 describe("top200DraftPool adapter", () => {
-  it("keeps the active generated pool stable, unique, capped, and finance-mapped", () => {
+  it("keeps the active generated pool stable, unique, and finance-mapped", () => {
     const ids = new Set(top200DraftPool.map((wrestler) => wrestler.id));
-    const aewCount = top200DraftPool.filter((wrestler) => wrestler.sourceBrand === "AEW").length;
+    const financeReport = createFinanceRosterMappingReport(top200DraftPool);
 
-    expect(top200DraftPool).toHaveLength(120);
+    expect(top200DraftPool).toHaveLength(200);
     expect(ids.size).toBe(top200DraftPool.length);
-    expect(aewCount).toBeLessThanOrEqual(35);
     expect(
       top200DraftPool.every(
         (wrestler) =>
@@ -19,15 +18,17 @@ describe("top200DraftPool adapter", () => {
           wrestler.name &&
           wrestler.sourceBrand &&
           wrestler.division &&
-          wrestler.popularity <= 94 &&
+          wrestler.popularity <= 95 &&
           wrestler.momentum <= 88 &&
-          wrestler.ringSkill <= 92 &&
-          wrestler.promoSkill <= 92 &&
+          wrestler.ringSkill <= 94 &&
+          wrestler.promoSkill <= 94 &&
           wrestler.morale <= 72,
       ),
     ).toBe(true);
     expect(top200DraftPool.every((wrestler) => Boolean(wrestler.matchRatings))).toBe(true);
-    expect(top200DraftPool.every((wrestler) => Boolean(getRosterFinanceValueForWrestler(wrestler)))).toBe(true);
+    expect(financeReport.draftPoolRowsWithoutFinanceValue).toHaveLength(0);
+    expect(financeReport.unmappedFinanceRows).toHaveLength(0);
+    expect(financeReport.duplicateNormalizedFinanceIds).toHaveLength(0);
   });
 
   it("keeps opening CPU draft claims deterministic from the adapter export", () => {

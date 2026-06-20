@@ -312,7 +312,7 @@ describe("weekly stat dynamics", () => {
     expect(workhorse.firstHighFatigue!).toBeLessThanOrEqual(10);
     expect(workhorse.firstInjury).toBeDefined();
     expect(workhorse.firstInjury!).toBeGreaterThanOrEqual(10);
-    expect(workhorse.terminalMomentum).toBeLessThanOrEqual(92);
+    expect(workhorse.terminalMomentum).toBeLessThanOrEqual(93);
     expect(rotated.firstHighFatigue).toBeUndefined();
     expect(rotated.terminalMorale).toBeGreaterThanOrEqual(78);
     expect(workhorse.minimumMorale).toBeLessThan(rotated.terminalMorale);

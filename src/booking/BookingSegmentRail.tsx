@@ -7,14 +7,18 @@ type Props = {
   canRunShow: boolean;
   model: BookingViewModel;
   pendingClearCard: boolean;
+  pendingReplaceCard: boolean;
   selectedSegmentId?: string;
   onAddSegment: () => void;
   onCancelClearCard: () => void;
+  onCancelReplaceCard: () => void;
   onClearCard: () => void;
   onGenerateSmartRundown: () => void;
   onRemoveSegment: (segmentId: string) => void;
+  onReplaceSmartRundown: () => void;
   onReorderSegments: (draggedSegmentId: string, targetSegmentId: string) => void;
   onRequestClearCard: () => void;
+  onRequestReplaceCard: () => void;
   onRunShow: () => void;
   onSelectSegment: (segmentId: string) => void;
 };
@@ -136,14 +140,18 @@ export function BookingSegmentRail({
   canRunShow,
   model,
   pendingClearCard,
+  pendingReplaceCard,
   selectedSegmentId,
   onAddSegment,
   onCancelClearCard,
+  onCancelReplaceCard,
   onClearCard,
   onGenerateSmartRundown,
   onRemoveSegment,
+  onReplaceSmartRundown,
   onReorderSegments,
   onRequestClearCard,
+  onRequestReplaceCard,
   onRunShow,
   onSelectSegment,
 }: Props) {
@@ -205,7 +213,7 @@ export function BookingSegmentRail({
           </>
         ) : (
           <div className="booking-empty-rundown">
-            <p className="booking-empty-copy">No segments booked. Add a segment or generate a smart rundown.</p>
+            <p className="booking-empty-copy">No segments booked. Add a segment or generate booking.</p>
             <button className="booking-btn booking-btn-secondary" onClick={onAddSegment} type="button">
               + Add Segment
             </button>
@@ -224,13 +232,27 @@ export function BookingSegmentRail({
             Keep Card
           </button>
         </div>
+      ) : pendingReplaceCard ? (
+        <div className="booking-clear-confirm" aria-label="Confirm replace card with generated booking">
+          <strong>Replace Card?</strong>
+          <span>Regenerates the full rundown and removes current segments.</span>
+          <button className="booking-btn booking-btn-danger" onClick={onReplaceSmartRundown} type="button">
+            Confirm Replace
+          </button>
+          <button className="booking-btn booking-btn-secondary" onClick={onCancelReplaceCard} type="button">
+            Cancel
+          </button>
+        </div>
       ) : (
         <div className="booking-rail-actions">
-          <button className="booking-btn booking-btn-secondary" onClick={onGenerateSmartRundown} title="Generate Smart Rundown" type="button">
-            Smart Rundown
+          <button className="booking-btn booking-btn-secondary" onClick={onGenerateSmartRundown} title="Generate Booking" type="button">
+            Generate Booking
           </button>
           <button className="booking-btn booking-btn-primary" disabled={!canRunShow} onClick={onRunShow} type="button">
             Run Show
+          </button>
+          <button className="booking-btn booking-btn-ghost" disabled={!model.segmentCount} onClick={onRequestReplaceCard} type="button">
+            Replace Card
           </button>
           <button className="booking-btn booking-btn-ghost booking-rail-clear" disabled={!model.segmentCount} onClick={onRequestClearCard} type="button">
             Remove All

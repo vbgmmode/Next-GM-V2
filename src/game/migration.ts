@@ -34,12 +34,13 @@ import type {
   SeasonArchiveSummary,
   ShowResult,
   StartingBudgetTier,
+  SegmentAiRecap,
+  WrestlerSocialPost,
   DraftMode,
   Wrestler,
 } from "./types";
 import {
   createDefaultChampionships,
-  createDefaultRivalries,
   createDefaultWrestlerRecord,
   createRivalBrandUniverse,
   createRivalGMAssignments,
@@ -410,8 +411,35 @@ function normalizeWeeklyMarketBoard(value: unknown): WeeklyMarketBoard | undefin
       .map((entry) => {
         const boardEntry = entry as Partial<WeeklyMarketBoard["entries"][number]>;
         const status =
-          boardEntry.status === "rival_signed" || boardEntry.status === "player_signed" || boardEntry.status === "available"
+          boardEntry.status === "rival_signed" || boardEntry.status === "player_signed" || boardEntry.status === "available" || boardEntry.status === "offer_declined"
             ? boardEntry.status
+            : undefined;
+        const rawOffer = boardEntry.offer;
+        const offer =
+          rawOffer &&
+          typeof rawOffer.contractWeeks === "number" &&
+          typeof rawOffer.weeklySalary === "number" &&
+          typeof rawOffer.dueNow === "number" &&
+          (rawOffer.interestRead === "Cold" ||
+            rawOffer.interestRead === "Listening" ||
+            rawOffer.interestRead === "Serious Interest" ||
+            rawOffer.interestRead === "Near Agreement" ||
+            rawOffer.interestRead === "Deal Feels Ready") &&
+          (rawOffer.personality === "money_first" ||
+            rawOffer.personality === "security_seeker" ||
+            rawOffer.personality === "spotlight_driven" ||
+            rawOffer.personality === "momentum_chaser" ||
+            rawOffer.personality === "rival_leverage") &&
+          (rawOffer.outcome === "accepted" || rawOffer.outcome === "return_next_week" || rawOffer.outcome === "cooldown" || rawOffer.outcome === "rival_signed")
+            ? {
+                contractWeeks: rawOffer.contractWeeks,
+                weeklySalary: rawOffer.weeklySalary,
+                dueNow: rawOffer.dueNow,
+                interestRead: rawOffer.interestRead,
+                personality: rawOffer.personality,
+                outcome: rawOffer.outcome,
+                note: typeof rawOffer.note === "string" ? rawOffer.note : "Negotiation restored.",
+              }
             : undefined;
 
         return typeof boardEntry.wrestlerId === "string" && status
@@ -419,6 +447,7 @@ function normalizeWeeklyMarketBoard(value: unknown): WeeklyMarketBoard | undefin
               wrestlerId: boardEntry.wrestlerId,
               status,
               weeklyAsk: typeof boardEntry.weeklyAsk === "number" ? boardEntry.weeklyAsk : 0,
+              offer,
               rivalBrandId: typeof boardEntry.rivalBrandId === "string" ? boardEntry.rivalBrandId : undefined,
               rivalBrandName: typeof boardEntry.rivalBrandName === "string" ? boardEntry.rivalBrandName : undefined,
               transactionId: typeof boardEntry.transactionId === "string" ? boardEntry.transactionId : undefined,
@@ -785,7 +814,16 @@ function normalizeChampionships(championships: unknown, wrestlers: Wrestler[], b
 }
 
 function normalizeRivalries(rivalries: unknown, wrestlers: Wrestler[]) {
-  return Array.isArray(rivalries) ? (rivalries as Rivalry[]).map(applyRivalryCatalogDefaults) : createDefaultRivalries(wrestlers);
+  const wrestlerIds = new Set(wrestlers.map((wrestler) => wrestler.id));
+  return Array.isArray(rivalries)
+    ? (rivalries as Rivalry[])
+        .map((rivalry) => ({
+          ...rivalry,
+          participantIds: Array.isArray(rivalry.participantIds) ? rivalry.participantIds.filter((id) => wrestlerIds.has(id)) : [],
+        }))
+        .filter((rivalry) => rivalry.participantIds.length >= 2)
+        .map(applyRivalryCatalogDefaults)
+    : [];
 }
 
 function normalizeCurrentShow(currentShow: unknown): Segment[] {
@@ -928,6 +966,12 @@ export function migrateSavedGameState(value: unknown): SavedGameState | null {
         Array.isArray(savedGame.calendar) && savedGame.calendar.length ? savedGame.calendar : createSeasonCalendar(),
       ),
       socialPosts: Array.isArray(savedGame.socialPosts) ? savedGame.socialPosts : [],
+      wrestlerSocialPosts: Array.isArray((savedGame as { wrestlerSocialPosts?: unknown }).wrestlerSocialPosts)
+        ? (savedGame as { wrestlerSocialPosts: WrestlerSocialPost[] }).wrestlerSocialPosts
+        : [],
+      segmentAiRecaps: Array.isArray((savedGame as { segmentAiRecaps?: unknown }).segmentAiRecaps)
+        ? (savedGame as { segmentAiRecaps: SegmentAiRecap[] }).segmentAiRecaps
+        : [],
       financeReports: Array.isArray(savedGame.financeReports) ? savedGame.financeReports : [],
       marketState: normalizeMarketState(savedGame.marketState, wrestlers),
       seasonArchives: normalizeSeasonArchives((savedGame as { seasonArchives?: unknown }).seasonArchives),

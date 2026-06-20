@@ -56,6 +56,8 @@ The player should understand the most important thing on a screen almost immedia
 
 Depth belongs where it helps decision-making: comparisons, tabs, drawers, profiles, scouting reports, expanded cards, and focused detail views. The default experience should be curated and readable, not a wall of equal-weight information.
 
+Profiles should act like command files: a clear identity/status read, the current role, compact evidence, and focused report windows for deeper investigation.
+
 Dense screens are good when comparison matters. Clean screens are better when momentum, drama, or orientation matters.
 
 ### 4. Big Moments Deserve Staging
@@ -161,13 +163,19 @@ The first read should focus on the big story:
 - What the crowd cared about.
 - What changed for the brand.
 
-Detailed segment feedback should remain first-class through a focused Segment Receipt window opened from the broadcast rundown reel. The main Show Recap page should stay compact enough to keep the recap, rundown, GM Handoff, and calendar action visible without feeling like a spreadsheet.
+Detailed segment feedback should remain first-class through a focused Segment Receipt window opened from the broadcast rundown reel. The main Show Recap page should stay compact enough to keep the recap, rundown, Show Fallout Desk, GM Handoff footer, and calendar action visible without feeling like a spreadsheet.
 
-The compact GM Handoff in Show Recap should complete the loop:
+The Show Fallout Desk should read as one row with three jobs:
+
+- Headline Beat on the left.
+- A 2x2 fallout beat grid in the middle for story, locker room, title scene, and Open Challenge reads.
+- A reaction strip on the right for player-brand trending topics and rival ratings pressure.
+
+The compact GM Handoff footer in Show Recap should complete the loop:
 
 Book Show -> Run Show -> Show Recap + GM Handoff -> Advance Week / Season Review
 
-The handoff should connect creative, roster, rivalry, social, and next-show pressure so the player feels the week mattered without stacking a second full recap screen under Results.
+The handoff footer should summarize roster-wide carry-forward pressure from resolved fallout and state, then hand off directly to Calendar Ready / Advance Week. Do not restack separate handoff beat cards for roster fallout, IWC, or next-show context when those reads already live in the fallout desk above.
 
 ## Draft And Scouting
 
@@ -187,9 +195,9 @@ The player should be able to read who matters, who is rising, who is frustrated,
 
 Roster cards should carry character and status. Tables should exist for deeper management and comparison.
 
-Championships should feel prestigious. A title screen should spotlight the champion, the reign, the contenders, the current story, and the health of the division.
+Championships should feel prestigious. A title screen should spotlight the champion, the reign, the contenders, the current story, and the health of the division. Upper-card singles title lanes should initially use the top 3 superstars per gender, mid-card singles title lanes should initially use ranks 4-6 per gender, and automatic contender reads should rotate within those lanes only while remaining advisory; once the player manually edits a contender order, same-gender GM choice should be authoritative.
 
-Rivalries should feel elastic and alive. They can be started manually, shaped through booking, and emerge from the world over time. The UI should help organize them without making them feel artificially capped or over-systematized.
+Rivalries should feel elastic and alive. They can be started manually, shaped through booking, and emerge from the world over time, but they should not be auto-seeded from the initial draft. The UI should help organize them without making them feel artificially capped or over-systematized.
 
 ## Social And IWC
 

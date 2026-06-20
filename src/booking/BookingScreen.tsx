@@ -22,7 +22,7 @@ import {
   maxBookingSegments,
   trimParticipantsForCatalogOption,
 } from "./bookingUtils";
-import { buildSmartRundown, buildSmartSingleSegment } from "./smartRundown";
+import { buildSmartFillGaps, buildSmartRundown, buildSmartSingleSegment } from "./smartRundown";
 
 export function BookingScreen({
   focusSegmentId,
@@ -45,6 +45,7 @@ export function BookingScreen({
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | undefined>(game.currentShow[0]?.id);
   const [smartRundownError, setSmartRundownError] = useState("");
   const [pendingClearCard, setPendingClearCard] = useState(false);
+  const [pendingReplaceCard, setPendingReplaceCard] = useState(false);
   const [typePickerOpen, setTypePickerOpen] = useState(false);
   const [segmentTypePickerOpen, setSegmentTypePickerOpen] = useState(false);
   const smartRundownVariantRef = useRef(0);
@@ -93,6 +94,7 @@ export function BookingScreen({
     onAddSegment(type, segmentId);
     setSelectedSegmentId(segmentId);
     setPendingClearCard(false);
+    setPendingReplaceCard(false);
     setSmartRundownError("");
     setTypePickerOpen(false);
   }
@@ -102,6 +104,7 @@ export function BookingScreen({
     const nextSegment = game.currentShow.find((segment) => segment.id !== segmentId);
     setSelectedSegmentId(nextSegment?.id);
     setPendingClearCard(false);
+    setPendingReplaceCard(false);
   }
 
   function applySegmentType(segment: Segment, type: SegmentType) {
@@ -152,10 +155,37 @@ export function BookingScreen({
 
   function generateSmartRundown() {
     smartRundownVariantRef.current += 1;
+    const result = game.currentShow.length
+      ? buildSmartFillGaps(game, game.currentShow, smartRundownVariantRef.current)
+      : buildSmartRundown(game, smartRundownVariantRef.current);
+
+    if (result.segments.length) {
+      const nextShow = game.currentShow.length ? [...game.currentShow, ...result.segments] : result.segments;
+      onReplaceCurrentShow(nextShow);
+      setSelectedSegmentId(result.segments[0]?.id);
+    }
+
+    if (result.error) {
+      setSmartRundownError(result.error);
+      setPendingClearCard(false);
+      setPendingReplaceCard(false);
+      setTypePickerOpen(false);
+      return;
+    }
+
+    setSmartRundownError("");
+    setPendingClearCard(false);
+    setPendingReplaceCard(false);
+    setTypePickerOpen(false);
+  }
+
+  function replaceSmartRundown() {
+    smartRundownVariantRef.current += 1;
     const result = buildSmartRundown(game, smartRundownVariantRef.current);
 
     if (result.error) {
       setSmartRundownError(result.error);
+      setPendingReplaceCard(false);
       return;
     }
 
@@ -163,6 +193,7 @@ export function BookingScreen({
     setSelectedSegmentId(result.segments[0]?.id);
     setSmartRundownError("");
     setPendingClearCard(false);
+    setPendingReplaceCard(false);
     setTypePickerOpen(false);
   }
 
@@ -186,6 +217,7 @@ export function BookingScreen({
     setSelectedSegmentId(segment.id);
     setSmartRundownError("");
     setPendingClearCard(false);
+    setPendingReplaceCard(false);
     setTypePickerOpen(false);
   }
 
@@ -194,6 +226,7 @@ export function BookingScreen({
     setSelectedSegmentId(undefined);
     setSmartRundownError("");
     setPendingClearCard(false);
+    setPendingReplaceCard(false);
     setTypePickerOpen(false);
   }
 
@@ -227,18 +260,29 @@ export function BookingScreen({
             canRunShow={readiness.canRun}
             model={model}
             pendingClearCard={pendingClearCard}
+            pendingReplaceCard={pendingReplaceCard}
             selectedSegmentId={selectedSegment?.id}
             onAddSegment={() => setTypePickerOpen(true)}
             onCancelClearCard={() => setPendingClearCard(false)}
+            onCancelReplaceCard={() => setPendingReplaceCard(false)}
             onClearCard={confirmClearCard}
             onGenerateSmartRundown={generateSmartRundown}
             onRemoveSegment={removeAndClose}
+            onReplaceSmartRundown={replaceSmartRundown}
             onReorderSegments={reorderSegments}
-            onRequestClearCard={() => setPendingClearCard(true)}
+            onRequestClearCard={() => {
+              setPendingClearCard(true);
+              setPendingReplaceCard(false);
+            }}
+            onRequestReplaceCard={() => {
+              setPendingReplaceCard(true);
+              setPendingClearCard(false);
+            }}
             onRunShow={onRunShow}
             onSelectSegment={(segmentId) => {
               setSelectedSegmentId(segmentId);
               setPendingClearCard(false);
+              setPendingReplaceCard(false);
               setTypePickerOpen(false);
               setSegmentTypePickerOpen(false);
             }}

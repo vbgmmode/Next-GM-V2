@@ -103,13 +103,14 @@ describe("aiCommentary payload", () => {
     const payload = buildAiPromptPayload(result, game);
     const segment = payload.segments[0];
 
-    expect(payload.task).toBe("next-gm-social-commentary-v2");
+    expect(payload.task).toBe("next-gm-social-commentary-v3");
     expect(segment.stipulation?.label).toBe("Steel Cage");
     expect(segment.stipulation?.specialtyProductionCost).toBeGreaterThan(0);
     expect(payload.resolvedFacts.finance?.stipulationProductionCost).toBeGreaterThan(0);
     expect(payload.resolvedFacts.existingSocialFeed).toHaveLength(1);
     expect(payload.resolvedFacts.rosterPressure.overused.length).toBeGreaterThan(0);
     expect(payload.resolvedFacts.rosterPressure.offCardNotables.length).toBeGreaterThan(0);
-    expect(payload.resolvedFacts.rosterPressure.offCardNotables.every((item) => item?.wasOnResolvedCard === false)).toBe(true);
+    expect(payload.instructions).toContain("wrestlerPosts");
+    expect(payload.instructions).toContain("segmentRecaps");
   });
 });

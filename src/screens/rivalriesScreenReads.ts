@@ -394,17 +394,6 @@ export function getRivalryCreationBlockReason(
     return "Each wrestler can only appear once in a rivalry.";
   }
 
-  const activeRivalryParticipantIds = getActiveRivalryParticipantIds(rivalries);
-  const busyParticipants = selectedIds.filter((id) => activeRivalryParticipantIds.has(id));
-
-  if (busyParticipants.length) {
-    const busyNames = getWrestlerNames(busyParticipants, wrestlers);
-
-    return busyNames
-      ? `${busyNames} ${busyParticipants.length === 1 ? "is" : "are"} already locked into an active feud.`
-      : "One or more selected wrestlers are already locked into an active feud.";
-  }
-
   if (structure === "tag_team" && selectedIds.length !== 4) {
     return "Tag rivalries need exactly two wrestlers on each side.";
   }
@@ -461,7 +450,7 @@ export function getRivalryTitleRelevance(rivalry: Rivalry, championships: Champi
       .filter((id) => id !== championId)
       .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
       .filter((wrestler): wrestler is Wrestler => Boolean(wrestler))
-      .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship));
+      .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship, wrestlers));
 
     if (hasChampion && eligibleChallengers.length) {
       return {
@@ -542,7 +531,7 @@ function buildSinglesFeudSuggestions(game: GameState) {
           const championId = championship.championIds[0];
           const challenger = championId === first.id ? second : championId === second.id ? first : undefined;
 
-          if (challenger && wrestlerFitsChampionshipDivision(challenger, championship)) {
+          if (challenger && wrestlerFitsChampionshipDivision(challenger, championship, game.wrestlers)) {
             score += 140;
             stakes = "title";
             storylineId = getDefaultStorylineIdForStakes("title");
@@ -553,8 +542,8 @@ function buildSinglesFeudSuggestions(game: GameState) {
 
         if (
           isVacantSinglesChampionship(championship) &&
-          wrestlerFitsChampionshipDivision(first, championship) &&
-          wrestlerFitsChampionshipDivision(second, championship)
+          wrestlerFitsChampionshipDivision(first, championship, game.wrestlers) &&
+          wrestlerFitsChampionshipDivision(second, championship, game.wrestlers)
         ) {
           score += 120;
           stakes = "title";

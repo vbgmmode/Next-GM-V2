@@ -2,9 +2,9 @@ import { SuperstarPortrait } from "../components/SuperstarPortrait";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { GameState, Wrestler } from "../game/types";
-import { getActiveSocialInboxRequest } from "../game/socialInboxActions";
+import { getCurrentSocialInboxRequest } from "../game/socialInboxActions";
 import { getSuperstarMailSnapshot } from "./socialReads";
-import type { SuperstarMailItem } from "./socialTypes";
+import type { SuperstarMailDecision, SuperstarMailItem } from "./socialTypes";
 
 function getSuperstarMailDetail(wrestler?: Wrestler) {
   if (!wrestler) {
@@ -18,6 +18,42 @@ function getSuperstarMailDetail(wrestler?: Wrestler) {
     stats: `Fatigue ${wrestler.fatigue} · Morale ${wrestler.morale} · Momentum ${wrestler.momentum}`,
     disclaimer: "Booking still runs through your card — this is a direct ask, not an auto-book.",
   };
+}
+
+function isRequestRepresentedOnCard(game: GameState, item: SuperstarMailItem) {
+  return game.currentShow.some((segment) => {
+    if (!segment.participantIds.includes(item.wrestlerId)) {
+      return false;
+    }
+
+    if (item.action?.type === "title_shot") {
+      return Boolean(segment.championshipId);
+    }
+
+    if (item.action?.type === "story_spot") {
+      return Boolean(segment.rivalryId) || segment.type === "Promo" || segment.type === "Backstage Angle" || segment.type === "Contract Signing";
+    }
+
+    return item.action?.type === "tv_time";
+  });
+}
+
+function getDecisionImpactText(decision: SuperstarMailDecision) {
+  return decision === "accept" ? "Immediate reaction: morale +1, trust +2." : "Immediate reaction: morale -3, trust -2.";
+}
+
+function getRequestDeadlineText(game: GameState, item: SuperstarMailItem) {
+  const request = getCurrentSocialInboxRequest(game, item.id, item.wrestlerId);
+
+  if (!request || request.status !== "accepted") {
+    return undefined;
+  }
+
+  if (request.actionType === "rest") {
+    return "Must do: keep them off this week's card.";
+  }
+
+  return `Must do by Week ${request.deadlineWeekNumber}: ${request.note ?? "represent this ask on the card."}`;
 }
 
 function SocialTrendCard({ children, title }: { children: ReactNode; title: string }) {
@@ -42,13 +78,24 @@ function SuperstarMailRow({
   expanded: boolean;
   item: SuperstarMailItem;
   onSelect: () => void;
-  onSuperstarMailAction?: (item: SuperstarMailItem) => void;
+  onSuperstarMailAction?: (item: SuperstarMailItem, decision: SuperstarMailDecision) => void;
   read: boolean;
   wrestler?: Wrestler;
 }) {
   const mailDetail = getSuperstarMailDetail(wrestler);
-  const activeRequest = getActiveSocialInboxRequest(game, item.id, item.wrestlerId);
-  const actionDisabled = Boolean(activeRequest);
+  const currentRequest = getCurrentSocialInboxRequest(game, item.id, item.wrestlerId);
+  const actionDisabled = Boolean(currentRequest);
+  const accepted = currentRequest?.status === "accepted";
+  const declined = currentRequest?.status === "declined";
+  const decisionStatus = accepted
+    ? isRequestRepresentedOnCard(game, item)
+      ? "Accepted. Represented on current card."
+      : "Accepted. Still pending on current card."
+    : declined
+      ? "Declined. Request closed for this week."
+      : item.action?.detail;
+  const deadlineText = getRequestDeadlineText(game, item);
+  const impactText = currentRequest ? getDecisionImpactText(currentRequest.status === "accepted" ? "accept" : "decline") : undefined;
 
   return (
     <article
@@ -80,10 +127,17 @@ function SuperstarMailRow({
       </button>
       {expanded && item.action ? (
         <div className="social-mail-action-row">
-          <button className="social-mail-action" disabled={actionDisabled} onClick={() => onSuperstarMailAction?.(item)} type="button">
-            {actionDisabled ? "Accepted" : item.action.label}
+          <button className="social-mail-action" disabled={actionDisabled} onClick={() => onSuperstarMailAction?.(item, "accept")} type="button">
+            {accepted ? "Accepted" : declined ? "Accept Closed" : item.action.label}
           </button>
-          <small>{actionDisabled ? "Request is active on the GM desk." : item.action.detail}</small>
+          <button className="social-mail-action social-mail-action-decline" disabled={actionDisabled} onClick={() => onSuperstarMailAction?.(item, "decline")} type="button">
+            {declined ? "Declined" : accepted ? "Decline Closed" : "Decline"}
+          </button>
+          <small>
+            {decisionStatus}
+            {impactText ? ` ${impactText}` : ""}
+            {deadlineText ? ` ${deadlineText}` : ""}
+          </small>
         </div>
       ) : null}
     </article>
@@ -95,9 +149,9 @@ export function SocialTrendsPanel({
   onSuperstarMailAction,
 }: {
   game: GameState;
-  onSuperstarMailAction?: (item: SuperstarMailItem) => void;
+  onSuperstarMailAction?: (item: SuperstarMailItem, decision: SuperstarMailDecision) => void;
 }) {
-  const mailSnapshot = useMemo(() => getSuperstarMailSnapshot(game, 6), [game]);
+  const mailSnapshot = useMemo(() => getSuperstarMailSnapshot(game, 3), [game]);
   const mailIds = useMemo(() => mailSnapshot?.items.map((item) => item.id) ?? [], [mailSnapshot]);
   const [expandedMailId, setExpandedMailId] = useState<string | null>(null);
   const [readMailIds, setReadMailIds] = useState<Set<string>>(() => new Set());
@@ -136,18 +190,25 @@ export function SocialTrendsPanel({
             <b>{unreadCount} Unread</b>
           </div>
           <div className="social-mail-list" aria-label="Superstar inbox">
-            {mailSnapshot.items.map((item) => (
-              <SuperstarMailRow
-                game={game}
-                expanded={expandedMailId === item.id}
-                item={item}
-                key={item.id}
-                onSelect={() => handleMailSelect(item.id)}
-                onSuperstarMailAction={onSuperstarMailAction}
-                read={readMailIds.has(item.id)}
-                wrestler={game.wrestlers.find((wrestler) => wrestler.id === item.wrestlerId)}
-              />
-            ))}
+            {mailSnapshot.items.length ? (
+              mailSnapshot.items.map((item) => (
+                <SuperstarMailRow
+                  game={game}
+                  expanded={expandedMailId === item.id}
+                  item={item}
+                  key={item.id}
+                  onSelect={() => handleMailSelect(item.id)}
+                  onSuperstarMailAction={onSuperstarMailAction}
+                  read={readMailIds.has(item.id)}
+                  wrestler={game.wrestlers.find((wrestler) => wrestler.id === item.wrestlerId)}
+                />
+              ))
+            ) : (
+              <div className="social-mail-empty">
+                <strong>No active asks</strong>
+                <span>Nothing needs a direct promise from the GM desk this week.</span>
+              </div>
+            )}
           </div>
         </SocialTrendCard>
       ) : null}

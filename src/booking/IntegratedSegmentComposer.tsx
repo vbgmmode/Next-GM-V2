@@ -18,6 +18,7 @@ import {
   getStageLayout,
   getTalentPickerHints,
   getTalentPickerPressureLine,
+  getTalentPickerTagPartnerHighlightIds,
   removeParticipantAtIndex,
   replaceParticipantAtIndex,
   sortTalentPickerRows,
@@ -340,7 +341,15 @@ export function IntegratedSegmentComposer({
     closeOverlay();
   }
 
-  const pickerRows = sortTalentPickerRows(wrestlers, segment, game, bookedCounts);
+  const pickerSlotIndex = overlay.type === "talent" ? overlay.slotIndex : undefined;
+  const tagPartnerHighlightIds = useMemo(
+    () => (pickerSlotIndex === undefined ? new Set<string>() : getTalentPickerTagPartnerHighlightIds(segment, pickerSlotIndex, wrestlers)),
+    [pickerSlotIndex, segment, wrestlers],
+  );
+  const pickerRows = useMemo(
+    () => sortTalentPickerRows(wrestlers, segment, game, bookedCounts, pickerSlotIndex),
+    [bookedCounts, game, pickerSlotIndex, segment, wrestlers],
+  );
 
   return (
     <div className="booking-integrated-composer">
@@ -502,9 +511,13 @@ export function IntegratedSegmentComposer({
             {pickerRows.map((wrestler) => {
               const disabled = wrestler.injuryStatus === "major" || isWrestlerProtectedRest(game, wrestler.id) || wouldCreateIntergenderMatch(segment, wrestler, wrestlers);
               const inRivalry = activeRivalryParticipantIds.has(wrestler.id);
-              const hints = getTalentPickerHints(segment, wrestler, game, bookedCounts[wrestler.id] ?? 0);
+              const isTagPartner = tagPartnerHighlightIds.has(wrestler.id);
+              const hints = getTalentPickerHints(segment, wrestler, game, bookedCounts[wrestler.id] ?? 0, tagPartnerHighlightIds);
               return (
-                <div className={`booking-picker-row ${disabled ? "is-disabled" : ""} ${inRivalry ? "is-in-rivalry" : ""}`.trim()} key={wrestler.id}>
+                <div
+                  className={`booking-picker-row ${disabled ? "is-disabled" : ""} ${inRivalry ? "is-in-rivalry" : ""} ${isTagPartner ? "is-tag-partner" : ""}`.trim()}
+                  key={wrestler.id}
+                >
                   <button className="booking-picker-main" disabled={disabled} onClick={() => assignTalent(wrestler.id, overlay.slotIndex)} type="button">
                     <DashboardDynastyPortrait size="sm" wrestler={wrestler} />
                     <span className="booking-picker-copy">
@@ -513,7 +526,7 @@ export function IntegratedSegmentComposer({
                       {hints.length ? (
                         <span className="booking-picker-hints">
                           {hints.map((hint) => (
-                            <b className={hint === "In feud" || hint === "Rivalry cast" ? "is-feud" : undefined} key={hint}>
+                            <b className={hint === "In feud" || hint === "Rivalry cast" ? "is-feud" : hint === "Tag partner" ? "is-tag-partner" : undefined} key={hint}>
                               {hint}
                             </b>
                           ))}

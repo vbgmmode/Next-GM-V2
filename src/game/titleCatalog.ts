@@ -336,17 +336,78 @@ export function getChampionshipDivisionGroup(championship: Championship) {
   return undefined;
 }
 
-export function wrestlerFitsChampionshipDivision(wrestler: Wrestler | undefined, championship: Championship) {
+function getWrestlerDivisionGroup(wrestler: Wrestler | undefined) {
+  const wrestlerDivision = wrestler?.division?.toLowerCase() ?? "";
+  return wrestlerDivision.includes("women") || wrestlerDivision.includes("female") ? "womens" : wrestlerDivision.includes("men") || wrestlerDivision.includes("male") ? "mens" : undefined;
+}
+
+function getTitleRankBounds(championship: Championship) {
+  if (championship.eligibleMatchScope === "tag_team" || championship.titleLevel === "Tag") {
+    return undefined;
+  }
+
+  if (championship.titleLevel === "Middle" || championship.prestigeTier?.toLowerCase().includes("midcard") || championship.titleType?.toLowerCase().includes("midcard")) {
+    return { min: 4, max: 6 };
+  }
+
+  if (championship.titleLevel === "Top" || championship.prestigeTier?.toLowerCase().includes("world") || championship.titleType?.toLowerCase().includes("world")) {
+    return { min: 1, max: 3 };
+  }
+
+  return undefined;
+}
+
+function getRankedGenderPool(wrestler: Wrestler, roster: Wrestler[]) {
+  const wrestlerGroup = getWrestlerDivisionGroup(wrestler);
+  return roster
+    .filter((candidate) => getWrestlerDivisionGroup(candidate) === wrestlerGroup)
+    .sort(
+      (a, b) =>
+        b.popularity + b.momentum - (a.popularity + a.momentum) ||
+        b.popularity - a.popularity ||
+        b.momentum - a.momentum ||
+        a.name.localeCompare(b.name) ||
+        a.id.localeCompare(b.id),
+    );
+}
+
+export function getTitleDivisionRank(wrestler: Wrestler, roster: Wrestler[]) {
+  const rankedPool = getRankedGenderPool(wrestler, roster);
+  const index = rankedPool.findIndex((candidate) => candidate.id === wrestler.id);
+  return index >= 0 ? index + 1 : undefined;
+}
+
+export function wrestlerFitsInitialTitleRankLane(wrestler: Wrestler | undefined, championship: Championship, roster: Wrestler[] = []) {
+  if (!wrestler || !roster.length || championship.championIds.includes(wrestler.id)) {
+    return true;
+  }
+
+  const rankedPool = getRankedGenderPool(wrestler, roster);
+
+  if (rankedPool.length < 6) {
+    return true;
+  }
+
+  const rank = getTitleDivisionRank(wrestler, roster);
+  const bounds = getTitleRankBounds(championship);
+
+  return !bounds || Boolean(rank && rank >= bounds.min && rank <= bounds.max);
+}
+
+export function wrestlerFitsChampionshipDivision(wrestler: Wrestler | undefined, championship: Championship, _roster: Wrestler[] = []) {
   const titleGroup = getChampionshipDivisionGroup(championship);
 
   if (!titleGroup) {
     return true;
   }
 
-  const wrestlerDivision = wrestler?.division?.toLowerCase() ?? "";
-  const wrestlerGroup = wrestlerDivision.includes("women") || wrestlerDivision.includes("female") ? "womens" : wrestlerDivision.includes("men") || wrestlerDivision.includes("male") ? "mens" : undefined;
+  const wrestlerGroup = getWrestlerDivisionGroup(wrestler);
 
-  return wrestlerGroup === titleGroup;
+  if (wrestlerGroup !== titleGroup) {
+    return false;
+  }
+
+  return true;
 }
 
 export function applyChampionshipCatalogDefaults(championship: Championship, brandStyle: BrandStyle): Championship {

@@ -4,8 +4,9 @@ import { migrateSavedGameState } from "./migration";
 import { isValidSegment, runShow } from "./scoring";
 import { createNewGame } from "./seed";
 import {
+  acceptSocialInboxPromise,
   acceptSocialInboxRest,
-  acceptSocialInboxTvTime,
+  declineSocialInboxRequest,
   getProtectedRestWrestlerIds,
   isWrestlerProtectedRest,
 } from "./socialInboxActions";
@@ -70,21 +71,33 @@ describe("social inbox actions", () => {
     expect(isWrestlerProtectedRest(advanced, wrestler.id)).toBe(false);
   });
 
-  it("creates a valid solo promo for TV time requests", () => {
+  it("tracks TV time requests as promises without auto-booking", () => {
     const game = createNewGame();
     const item = mailItem(game, "TV Time");
-    const result = acceptSocialInboxTvTime(game, item);
-    const segment = result.game.currentShow.find((entry) => entry.id === result.segmentId);
+    const result = acceptSocialInboxPromise(game, item, "tv_time");
 
-    expect(segment).toMatchObject({
-      type: "Promo",
-      participantIds: [item.wrestlerId],
-    });
-    expect(segment ? isValidSegment(segment, result.game.wrestlers) : false).toBe(true);
-    expect(result.game.socialInbox.requests.at(-1)).toMatchObject({
+    expect(result.currentShow).toHaveLength(game.currentShow.length);
+    expect(result.wrestlers.find((wrestler) => wrestler.id === item.wrestlerId)?.morale).toBe(game.wrestlers[0].morale + 1);
+    expect(result.wrestlers.find((wrestler) => wrestler.id === item.wrestlerId)?.trust).toBe((game.wrestlers[0].trust ?? 50) + 2);
+    expect(result.socialInbox.requests.at(-1)).toMatchObject({
       actionType: "tv_time",
       status: "accepted",
-      segmentId: result.segmentId,
+      segmentId: undefined,
+    });
+  });
+
+  it("declines a request with immediate morale and trust fallout", () => {
+    const game = createNewGame();
+    const item = mailItem(game, "Title Shot");
+    const result = declineSocialInboxRequest(game, item, "title_shot");
+    const wrestler = result.wrestlers.find((entry) => entry.id === item.wrestlerId);
+
+    expect(wrestler?.morale).toBe(game.wrestlers[0].morale - 3);
+    expect(wrestler?.trust).toBe((game.wrestlers[0].trust ?? 50) - 2);
+    expect(result.socialInbox.requests.at(-1)).toMatchObject({
+      actionType: "title_shot",
+      status: "declined",
+      note: expect.stringContaining("heard the no"),
     });
   });
 });

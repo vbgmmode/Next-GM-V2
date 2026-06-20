@@ -136,7 +136,22 @@
   font-weight: 900;
   height: 48px;
   justify-content: center;
+  overflow: hidden;
+  position: relative;
   width: 48px;
+}
+
+.social-timeline-avatar img {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transform: scale(1.16);
+  width: 100%;
+}
+
+.social-timeline-avatar.has-image span {
+  display: none;
 }
 
 .social-timeline-portrait {
@@ -147,6 +162,12 @@
   height: 48px;
   overflow: hidden;
   width: 48px;
+}
+
+.social-timeline-portrait img {
+  object-fit: cover;
+  object-position: center;
+  transform: scale(1.2);
 }
 
 .social-timeline-post.tone-chaotic .social-timeline-avatar,
@@ -448,6 +469,30 @@
   padding-right: 2px;
 }
 
+.social-mail-empty {
+  background: rgba(6, 8, 12, 0.54);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-sizing: border-box;
+  display: grid;
+  gap: 5px;
+  min-height: 72px;
+  padding: 14px;
+}
+
+.social-mail-empty strong {
+  color: #f4f7fb;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.social-mail-empty span {
+  color: rgba(219, 226, 236, 0.72);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
 .social-mail-row {
   background: rgba(6, 8, 12, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -714,6 +759,7 @@
 .social-mail-action-row {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin: 0.35rem 12px 12px 66px;
   min-width: 0;
@@ -741,6 +787,12 @@
   cursor: default;
 }
 
+.social-mail-action-decline {
+  background: rgba(10, 13, 18, 0.82);
+  border-color: rgba(209, 213, 219, 0.22);
+  color: rgba(241, 245, 249, 0.86);
+}
+
 .social-mail-action-row small {
   color: #8f99ad;
   flex: 1 1 auto;
@@ -749,11 +801,9 @@
   font-weight: 650;
   line-height: 1.25;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   text-transform: none;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  width: 100%;
 }
 
 .social-jab-list {

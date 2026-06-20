@@ -14,6 +14,7 @@ import type {
   SegmentResult,
   SegmentType,
   ShowResult,
+  ShowType,
   Wrestler,
 } from "./types";
 import { generateFinanceReport } from "./finance";
@@ -33,10 +34,25 @@ import { createSegmentResult } from "./segmentModel";
 import { commitResolvedShow } from "./showResolutionCommit";
 import { resolveSegmentWinnerSelection } from "./matchOutcomeResolver";
 import { applyPostShowMatchRatingsProgression } from "./matchProgression";
+import { calculateEffectiveMatchPower, type MatchOutcomeCardPosition } from "./matchRatings";
 
 export type RunShowOptions = {
   matchOutcomeModel?: MatchOutcomeModel;
   matchRatingsProgression?: MatchRatingsProgressionMode;
+};
+
+export type SegmentScoringContext = {
+  showType?: ShowType;
+  cardPosition?: MatchOutcomeCardPosition;
+  currentShow?: Segment[];
+  segmentIndex?: number;
+};
+
+export type MatchStoryCoherenceRead = {
+  label: "Story support" | "Threaded setup" | "Isolated match";
+  detail: string;
+  bonus: number;
+  supportedSegmentCount: number;
 };
 
 type ResolvedRunShowOptions = Required<RunShowOptions>;
@@ -107,6 +123,17 @@ const SHOW_BALANCE = {
   pleMomentumBonus: 2,
   pleFatigueBonus: 1,
 };
+
+const MATCH_SCORE_BALANCE = {
+  matchPower: 0.86,
+  popularity: 0.07,
+  momentum: 0.04,
+  morale: 0.03,
+  audienceHeat: 0.02,
+  starSupportCap: 14,
+  stipulationLiftCap: 4,
+  storyCoherenceCap: 6,
+} as const;
 
 const SEGMENT_FATIGUE_GAIN: Record<SegmentType, number> = {
   Match: 8,
@@ -255,13 +282,95 @@ export function hasIntergenderMatchParticipants(segment: Segment, wrestlers: Wre
   return groups.length > 1;
 }
 
-export function scoreSegment(segment: Segment, wrestlers: Wrestler[], championships: Championship[] = [], rivalries: Rivalry[] = []) {
+function getCardPosition(index: number, total: number): MatchOutcomeCardPosition {
+  if (index === 0) {
+    return "opener";
+  }
+
+  return index === total - 1 ? "main_event" : "midcard";
+}
+
+export function getMatchStoryCoherenceRead(segment: Segment, currentShow: Segment[] = [], segmentIndex = currentShow.indexOf(segment)): MatchStoryCoherenceRead {
+  if ((segment.type !== "Match" && segment.type !== "Open Challenge") || segmentIndex < 0 || !currentShow.length) {
+    return {
+      label: "Isolated match",
+      detail: "No same-card story support is attached to this match.",
+      bonus: 0,
+      supportedSegmentCount: 0,
+    };
+  }
+
+  const participantIds = new Set(segment.participantIds);
+  const relatedSegments = currentShow
+    .map((candidate, index) => ({ candidate, index }))
+    .filter(({ candidate, index }) => {
+      if (index === segmentIndex || !isStorySupportSegment(candidate)) {
+        return false;
+      }
+
+      return Boolean(
+        (segment.rivalryId && candidate.rivalryId === segment.rivalryId) ||
+          (segment.championshipId && candidate.championshipId === segment.championshipId) ||
+          candidate.participantIds.some((id) => participantIds.has(id)),
+      );
+    });
+
+  const rawBonus = relatedSegments.reduce((total, { candidate, index }) => {
+    const isSetup = index < segmentIndex;
+    const relationshipStrength =
+      (segment.rivalryId && candidate.rivalryId === segment.rivalryId ? 1.2 : 0) +
+      (segment.championshipId && candidate.championshipId === segment.championshipId ? 1 : 0) +
+      (candidate.participantIds.some((id) => participantIds.has(id)) ? 0.8 : 0);
+    const timingWeight = isSetup ? 1.2 : 0.65;
+
+    return total + Math.min(3.25, Math.max(1, relationshipStrength) * timingWeight);
+  }, 0);
+  const bonus = Math.round(Math.min(MATCH_SCORE_BALANCE.storyCoherenceCap, rawBonus) * 10) / 10;
+  const supportedSegmentCount = relatedSegments.length;
+
+  if (bonus >= 4) {
+    return {
+      label: "Story support",
+      detail: `${supportedSegmentCount} same-card beat${supportedSegmentCount === 1 ? "" : "s"} support this match thread.`,
+      bonus,
+      supportedSegmentCount,
+    };
+  }
+
+  if (bonus > 0) {
+    return {
+      label: "Threaded setup",
+      detail: `${supportedSegmentCount} related beat${supportedSegmentCount === 1 ? "" : "s"} connect to this match.`,
+      bonus,
+      supportedSegmentCount,
+    };
+  }
+
+  return {
+    label: "Isolated match",
+    detail: "No same-card story support is attached to this match.",
+    bonus: 0,
+    supportedSegmentCount: 0,
+  };
+}
+
+export function scoreSegment(
+  segment: Segment,
+  wrestlers: Wrestler[],
+  championships: Championship[] = [],
+  rivalries: Rivalry[] = [],
+  context: SegmentScoringContext = {},
+) {
   const participants = segment.participantIds
     .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
     .filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
 
   if (!participants.length) {
     return 0;
+  }
+
+  if (segment.type === "Match" || segment.type === "Open Challenge") {
+    return scoreMatchSegment(segment, participants, championships, rivalries, context);
   }
 
   const profile = SEGMENT_SCORE_PROFILES[segment.type];
@@ -283,6 +392,99 @@ export function scoreSegment(segment: Segment, wrestlers: Wrestler[], championsh
   return Math.round(
     clamp(total / participants.length + chemistryBonus + getOpenChallengeMomentModifier(segment, participants) + getSegmentContextBonus(segment, championships, rivalries)),
   );
+}
+
+function scoreMatchSegment(
+  segment: Segment,
+  participants: Wrestler[],
+  championships: Championship[],
+  rivalries: Rivalry[],
+  context: SegmentScoringContext,
+) {
+  const average = (score: (wrestler: Wrestler) => number) => participants.reduce((sum, wrestler) => sum + score(wrestler), 0) / participants.length;
+  const cardPosition = context.cardPosition ?? getCardPosition(context.segmentIndex ?? 0, context.currentShow?.length ?? 1);
+  const basePower = average((wrestler) =>
+    calculateEffectiveMatchPower(wrestler, {
+      type: segment.type,
+      segmentCatalogId: segment.segmentCatalogId,
+      showType: context.showType,
+      cardPosition,
+    }).effectivePower,
+  );
+  const stipulationPower = segment.stipulationId
+    ? average((wrestler) =>
+        calculateEffectiveMatchPower(wrestler, {
+          type: segment.type,
+          segmentCatalogId: segment.segmentCatalogId,
+          stipulationId: segment.stipulationId,
+          showType: context.showType,
+          cardPosition,
+        }).effectivePower,
+      )
+    : basePower;
+  const stipulationLift = Math.min(MATCH_SCORE_BALANCE.stipulationLiftCap, Math.max(0, stipulationPower - basePower));
+  const popularity = average((wrestler) => wrestler.popularity);
+  const momentum = average((wrestler) => wrestler.momentum);
+  const morale = average((wrestler) => wrestler.morale);
+  const audienceHeat = average((wrestler) => wrestler.audienceHeat ?? SENTIMENT_NEUTRAL);
+  const starSupport = clamp((popularity - 70) * 0.35 + (momentum - 70) * 0.18, 0, MATCH_SCORE_BALANCE.starSupportCap);
+  const conditionDrag = getMatchConditionDemandDrag(segment, participants);
+  const chemistryBonus = participants.length > 1 ? SEGMENT_CHEMISTRY_BONUS[segment.type] : 0;
+  const storyCoherence = getMatchStoryCoherenceRead(segment, context.currentShow, context.segmentIndex).bonus;
+
+  return Math.round(
+    clamp(
+      basePower * MATCH_SCORE_BALANCE.matchPower +
+        popularity * MATCH_SCORE_BALANCE.popularity +
+        momentum * MATCH_SCORE_BALANCE.momentum +
+        morale * MATCH_SCORE_BALANCE.morale +
+        audienceHeat * MATCH_SCORE_BALANCE.audienceHeat +
+        starSupport +
+        stipulationLift +
+        chemistryBonus +
+        storyCoherence +
+        getOpenChallengeMomentModifier(segment, participants) +
+        getSegmentContextBonus(segment, championships, rivalries) -
+        conditionDrag,
+    ),
+  );
+}
+
+function isStorySupportSegment(segment: Segment) {
+  return segment.type === "Promo" || segment.type === "Backstage Angle" || segment.type === "Contract Signing";
+}
+
+function getMatchConditionDemandDrag(segment: Segment, participants: Wrestler[]) {
+  const duration = segment.durationMinutes ?? SEGMENT_EXECUTION_FALLBACKS[segment.type].minimumMinutes;
+  const demandMultiplier = getMatchDemandMultiplier(segment, duration);
+  const fatigueDrag = participants.reduce((total, wrestler) => total + Math.max(0, wrestler.fatigue - 65) * 0.045 * demandMultiplier, 0) / participants.length;
+  const injuryDrag =
+    participants.reduce((total, wrestler) => {
+      if (wrestler.injuryStatus === "major") {
+        return total + 4 * demandMultiplier;
+      }
+      if (wrestler.injuryStatus === "minor") {
+        return total + 1.4 * demandMultiplier;
+      }
+      return total;
+    }, 0) / participants.length;
+
+  return fatigueDrag + injuryDrag;
+}
+
+function getMatchDemandMultiplier(segment: Segment, duration: number) {
+  const durationDemand = duration >= 20 ? 0.45 : duration >= 16 ? 0.25 : duration <= 8 ? -0.15 : 0;
+  const stipulationDemand =
+    segment.stipulationId === "iron_man"
+      ? 0.55
+      : segment.stipulationId === "ladder_match"
+        ? 0.35
+        : ["no_dq", "extreme_rules", "street_fight", "table_match", "steel_cage", "last_man_standing", "tlc_match"].includes(segment.stipulationId ?? "")
+          ? 0.3
+          : 0;
+  const openChallengeDemand = segment.type === "Open Challenge" ? 0.15 : 0;
+
+  return Math.max(0.75, 1 + durationDemand + stipulationDemand + openChallengeDemand);
 }
 
 export function getCurrentCalendarWeek(game: GameState): CalendarWeek {
@@ -350,7 +552,12 @@ export function runShow(game: GameState, options: RunShowOptions = {}): { game: 
     const score = isNoContest
       ? 0
       : clamp(
-          scoreSegment(resolvedSegment, game.wrestlers, updatedChampionships, updatedRivalries) +
+          scoreSegment(resolvedSegment, game.wrestlers, updatedChampionships, updatedRivalries, {
+            showType: calendarWeek.showType,
+            cardPosition: getCardPosition(index, validSegments.length),
+            currentShow: validSegments,
+            segmentIndex: index,
+          }) +
             (stipulation?.scoreBonus ?? 0) +
             (isPle ? SHOW_BALANCE.pleScoreBonus : 0) -
             overrunSegmentPenalty,
@@ -1335,7 +1542,7 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
 
     const titleDivision = getChampionshipDivisionGroup(championship);
 
-    if (titleDivision && !segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship))) {
+    if (titleDivision && !segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship, wrestlers))) {
       return undefined;
     }
 
@@ -1384,7 +1591,7 @@ function resolveTitleMatch(segment: Segment, championships: Championship[], wres
 
   const titleDivision = getChampionshipDivisionGroup(championship);
 
-  if (titleDivision && !segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship))) {
+  if (titleDivision && !segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship, wrestlers))) {
     return undefined;
   }
 

@@ -56,5 +56,25 @@ describe("buildBookingModel production costs", () => {
     expect(model.production.stipulationCost).toBe(expectedStipulationCost);
     expect(model.production.bookedFinishCost).toBe(0);
     expect(model.production.totalCost).toBe(expectedSegmentCost + expectedStipulationCost);
+    expect(model.storyFlow).toMatchObject({
+      label: "Isolated match",
+    });
+  });
+
+  it("surfaces non-spoiler story flow when the card supports a match", () => {
+    const game = createCostedBookingGame();
+    const match = game.currentShow[0];
+    const promo = game.currentShow[1];
+    const threadedGame = {
+      ...game,
+      currentShow: [
+        { ...promo, participantIds: match.participantIds },
+        match,
+      ],
+    };
+    const model = buildBookingModel(threadedGame, match.id);
+
+    expect(model.storyFlow.label).toBe("Threaded setup");
+    expect(model.storyFlow.detail).not.toMatch(/\+\d|grade|score|reaction|fallout/i);
   });
 });

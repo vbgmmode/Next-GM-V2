@@ -40,7 +40,7 @@ export type DraftBundleOffer = {
 };
 
 export const tvReadyDraftRosterTarget = 12;
-export const recommendedDraftRosterTarget = 16;
+export const recommendedDraftRosterTarget = 20;
 
 export const draftSortOptions: { label: string; value: DraftSort }[] = [
   { label: "Top 200 Rank", value: "rank" },
@@ -196,7 +196,7 @@ export function getDraftFinanceReadout(wrestlers: Wrestler[], startingBudgetTier
   const rosterValue = Math.max(0, grossRosterValue - bundleDiscountUsd);
   const projectedReserve = startingBudgetAmount - rosterValue;
   const isUnlimitedBudget = startingBudgetTier === "Unlimited";
-  const recommendedReserveTarget = startingBudgetTier === "$2M" ? 450000 : Math.max(250000, Math.round(startingBudgetAmount * 0.15));
+  const recommendedReserveTarget = startingBudgetTier === "$2M" ? 600000 : Math.max(250000, Math.round(startingBudgetAmount * 0.15));
   const pressureLabel: DraftReservePressure = isUnlimitedBudget
     ? "Healthy"
     : projectedReserve < 0

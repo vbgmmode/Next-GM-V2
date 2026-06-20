@@ -33,20 +33,21 @@ function BroadcastHeatGauge({ runtime }: { runtime: BookingViewModel["runtime"] 
 
   return (
     <section aria-label={`Broadcast heat ${runtime.validMinutes} minutes. ${runtime.heatLabel}. ${runtime.heatDetail}`} className="booking-context-heat-gauge">
-      <svg aria-hidden="true" className="booking-heat-gauge" viewBox="0 0 220 132">
-        <path className="booking-heat-gauge-arc" d="M28 110 A82 82 0 0 1 192 110" />
-        {ticks}
-        <line className={`booking-heat-gauge-needle is-${runtime.heatTone}`} transform={`rotate(${needleAngle} 110 104)`} x1="110" x2="110" y1="104" y2="38" />
-        <circle className="booking-heat-gauge-hub" cx="110" cy="104" r="9" />
-      </svg>
-      <div className="booking-heat-gauge-scale" aria-hidden="true">
-        <span>0 mins</span>
-        <span>{runtime.penaltyMinMinutes} mins</span>
+      <div className="booking-context-heat-gauge-visual">
+        <svg aria-hidden="true" className="booking-heat-gauge" viewBox="0 0 220 132">
+          <path className="booking-heat-gauge-arc" d="M28 110 A82 82 0 0 1 192 110" />
+          {ticks}
+          <line className={`booking-heat-gauge-needle is-${runtime.heatTone}`} transform={`rotate(${needleAngle} 110 104)`} x1="110" x2="110" y1="104" y2="38" />
+          <circle className="booking-heat-gauge-hub" cx="110" cy="104" r="9" />
+        </svg>
+        <div className="booking-heat-gauge-scale" aria-hidden="true">
+          <span>0 mins</span>
+          <span>{runtime.penaltyMinMinutes} mins</span>
+        </div>
       </div>
       <div className="booking-context-heat-readout">
         <strong>{runtime.validMinutes} min</strong>
         <span className={`booking-runtime-heat-status is-${runtime.heatTone}`}>{runtime.heatLabel}</span>
-        <em>{runtime.heatDetail}</em>
       </div>
     </section>
   );
@@ -95,22 +96,17 @@ export function BookingContextRail({ model, game }: Props) {
 
               return (
                 <article className={rivalry.onCard ? "booking-coverage-row is-on-card" : "booking-coverage-row is-off-card"} key={rivalry.id}>
-                  <div className="booking-coverage-row-top">
-                    <span className="booking-coverage-pip">{rivalry.onCard ? "ON" : "OFF"}</span>
-                    <strong className={matchupSizeClass} title={rivalry.name}>
-                      {matchupName}
-                    </strong>
+                  <span className="booking-coverage-pip">{rivalry.onCard ? "ON" : "OFF"}</span>
+                  <div className="booking-coverage-portraits">
+                    {left ? <DashboardDynastyPortrait size="sm" wrestler={left} /> : null}
+                    {right ? <DashboardDynastyPortrait size="sm" wrestler={right} /> : null}
                   </div>
-                  <div className="booking-coverage-row-meta">
-                    <div className="booking-coverage-portraits">
-                      {left ? <DashboardDynastyPortrait size="sm" wrestler={left} /> : null}
-                      {right ? <DashboardDynastyPortrait size="sm" wrestler={right} /> : null}
-                    </div>
-                    <div className="booking-coverage-heat-line">
-                      <em>Heat</em>
-                      <RivalryHeatBar tone={heatTone} value={rivalry.intensity} />
-                      <b className={`is-${heatTone}`}>{rivalry.intensity}</b>
-                    </div>
+                  <strong className={matchupSizeClass} title={rivalry.name}>
+                    {matchupName}
+                  </strong>
+                  <div className="booking-coverage-heat-line">
+                    <RivalryHeatBar tone={heatTone} value={rivalry.intensity} />
+                    <b className={`is-${heatTone}`}>{rivalry.intensity}</b>
                   </div>
                 </article>
               );
@@ -124,7 +120,7 @@ export function BookingContextRail({ model, game }: Props) {
       {model.riskRows.length ? (
         <BookingPanel badge={`${model.riskRows.length} Flagged`} className="booking-context-panel booking-risk-panel" kicker="Roster Risk" title="Workload Board">
           <div className="booking-risk-list">
-            {model.riskRows.slice(0, 2).map((row) => (
+            {model.riskRows.slice(0, 3).map((row) => (
               <article key={row.wrestlerId}>
                 <strong>{row.name}</strong>
                 <span>{row.read}</span>

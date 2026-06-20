@@ -2,10 +2,12 @@ import { getRatingsBattleSnapshot } from "../game/cpuRivalLoop";
 import { getRosterPressureTags, getWeeksSinceLastBooked } from "../game/rosterContextReads";
 import { getBestSegment } from "../game/scoring";
 import { getSuperstarMailAction } from "../game/socialInboxActions";
+import { wrestlerFitsChampionshipDivision } from "../game/titleCatalog";
 import type { GameState, RivalBrandWeeklyResult, Rivalry, SegmentResult, ShowResult, SocialCategory, SocialPost, Wrestler } from "../game/types";
 import type {
   IwcMoodSummary,
   IwcMoodTone,
+  IwcTrendingTopic,
   IwcTrendingTopicsSnapshot,
   SocialPostEngagement,
   SuperstarMailItem,
@@ -47,6 +49,29 @@ function hashString(value: string) {
   return hash;
 }
 
+const SOCIAL_AVATAR_COUNT = 100;
+const SOCIAL_AVATAR_BASE_PATH = "/social-avatars";
+const SOCIAL_AUTHOR_AVATAR_INDEX: Record<string, number> = {
+  "@anglewatch": 22,
+  "@bookerbrain": 39,
+  "@clipmachine": 10,
+  "@frontrowfaithful": 41,
+  "@iwceventdesk": 4,
+  "@iwcstorydesk": 9,
+  "@marketwire": 32,
+  "@ratingsdesklive": 58,
+  "@tapetradersweekly": 27,
+  "@titlesceneemergencywire": 13,
+  "@titlescenereport": 12,
+  "@backstagewire": 3,
+  "@gorillapositionanalytics": 54,
+};
+
+function formatSocialAvatarSrc(index: number) {
+  const paddedIndex = String(index).padStart(3, "0");
+  return `${SOCIAL_AVATAR_BASE_PATH}/social-avatar-${paddedIndex}.png`;
+}
+
 export function formatSocialCategory(category: SocialCategory) {
   return category
     .split("_")
@@ -72,6 +97,62 @@ export function formatFanFeedLabel(category: SocialCategory) {
   }
 
   return "Drama";
+}
+
+export function formatSocialPersonaLabel(post: SocialPost) {
+  if (!post.persona) {
+    return formatFanFeedLabel(post.category);
+  }
+
+  const labels: Record<NonNullable<SocialPost["persona"]>, string> = {
+    agenda_pusher: "Agenda",
+    doomposter: "Doompost",
+    fantasy_booker: "Fantasy Booking",
+    workrate_nerd: "Workrate",
+    aura_poster: "Aura",
+    burial_cop: "Burial Watch",
+    let_it_play_out_defender: "Let It Play Out",
+    let_it_play_out_skeptic: "Story Skeptic",
+    dirt_sheet: "Rumor Board",
+    tribalist: "Tribal",
+    continuity_nerd: "Continuity",
+    meme_account: "Meme",
+  };
+
+  return labels[post.persona];
+}
+
+export function formatSocialTriggerLabel(post: SocialPost) {
+  if (!post.triggerType) {
+    return undefined;
+  }
+
+  const labels: Record<NonNullable<SocialPost["triggerType"]>, string> = {
+    big_win: "Big Win",
+    clean_loss: "Clean Loss",
+    upset: "Upset",
+    squash: "Squash",
+    title_change: "Title Change",
+    title_retention: "Title Retention",
+    rivalry_advancement: "Rivalry Advanced",
+    rivalry_stagnation: "Rivalry Stalled",
+    hot_crowd: "Crowd Pop",
+    dead_crowd: "Dead Crowd",
+    high_rated_match: "Match Quality",
+    low_rated_match: "Cold Segment",
+    controversial_finish: "Finish Debate",
+    repeated_booking: "Repeated Booking",
+    underused_star: "Underused Star",
+    overpushed_star: "Overpushed",
+    injury_fatigue_concern: "Workload",
+    morale_issue: "Morale",
+    show_rating_swing: "Show Quality",
+    fan_momentum_swing: "Momentum",
+    long_term_callback: "Callback",
+    market_move: "Market Move",
+  };
+
+  return labels[post.triggerType];
 }
 
 export function getFanFeedPosts(game: GameState) {
@@ -237,6 +318,18 @@ export function getSocialAuthorMeta(author: string) {
   const displayName = trimmed.startsWith("@") ? trimmed.slice(1) : trimmed;
 
   return { displayName, handle };
+}
+
+export function getSocialAuthorAvatarSrc(author: string) {
+  const { handle } = getSocialAuthorMeta(author);
+  const normalizedHandle = handle.toLowerCase();
+  const mappedIndex = SOCIAL_AUTHOR_AVATAR_INDEX[normalizedHandle];
+
+  if (mappedIndex) {
+    return formatSocialAvatarSrc(mappedIndex);
+  }
+
+  return formatSocialAvatarSrc((hashString(normalizedHandle) % SOCIAL_AVATAR_COUNT) + 1);
 }
 
 export function getSocialAuthorInitials(author: string) {
@@ -617,6 +710,28 @@ export function getTrendingTopics(game: GameState, limit = 10) {
   return getWeeklyIwcTrendingTopics(game, limit)?.topics ?? [];
 }
 
+export function getPlayerBrandTrendingTopics(game: GameState, limit = 3): IwcTrendingTopic[] {
+  const latestPost = game.socialPosts.at(-1);
+  const seasonNumber = latestPost?.seasonNumber ?? game.seasonNumber;
+  const weekNumber = latestPost?.weekNumber ?? Math.max(1, game.currentWeek - 1);
+  const weekPosts = game.socialPosts.filter((post) => post.seasonNumber === seasonNumber && post.weekNumber === weekNumber);
+
+  if (!weekPosts.length) {
+    return [];
+  }
+
+  return dedupeTopicCandidates(buildPlayerPostTopics(game, weekPosts))
+    .sort((left, right) => right.heat - left.heat || left.label.localeCompare(right.label))
+    .slice(0, limit)
+    .map((candidate, index) => ({
+      id: candidate.id,
+      rank: index + 1,
+      brandName: candidate.brandName,
+      label: candidate.label,
+      volumeLabel: formatTopicVolume(candidate.postVolume),
+    }));
+}
+
 type WrestlerJabCandidate = WrestlerJabItem & {
   priority: number;
 };
@@ -644,57 +759,38 @@ function buildRivalryJabs(game: GameState, rivalry: Rivalry): WrestlerJabCandida
   const participants = rivalry.participantIds
     .map((id) => findRosterWrestler(game, id))
     .filter((wrestler): wrestler is Wrestler => Boolean(wrestler))
-    .slice(0, 2);
+    .sort((left, right) => right.momentum + right.popularity - (left.momentum + left.popularity) || left.name.localeCompare(right.name));
 
-  if (participants.length < 2) {
+  if (!participants.length) {
     return [];
   }
 
-  const [author, target] = participants;
+  const author = participants[0];
   const tone: WrestlerJabTone = rivalry.stakes === "title" ? "title" : rivalry.heat >= 70 ? "heated" : "challenge";
-  const intentLabel = rivalry.heat >= 75 ? "FEUD SHOT" : "HEAT REPLY";
+  const intentLabel = rivalry.heat >= 75 ? "RIVALRY MOOD" : "STORY READ";
   const priority = 88 + Math.min(rivalry.heat, 12) + (rivalry.status === "rising" ? 8 : 0);
-
-  const authorJab = pickLine(`jab-rivalry-${rivalry.id}-${author.id}`, [
-    `${target.name} really thought last week closed this. cute.`,
-    `hey ${target.name} — still waiting on that follow-up you promised the camera.`,
-    `${target.name} wants smoke? fine. stop posting and walk to the ring.`,
-    rivalry.stakes === "title"
-      ? `${target.name} holding that belt like rent is due tomorrow.`
-      : `${target.name} keeps talking like the receipt wasn't public.`,
-  ]);
-
-  const replyJab = pickLine(`jab-rivalry-reply-${rivalry.id}-${target.id}`, [
-    `${author.name} tweeting through it again instead of showing up.`,
-    `${author.name} wants a rivalry push off one segment. respectfully, no.`,
-    `if ${author.name} needs social media to stay relevant, that tells you everything.`,
-    rivalry.stakes === "title"
-      ? `${author.name} can tweet all week — the belt still isn't yours.`
-      : `${author.name} still mad about a loss that wasn't even close.`,
-  ]);
 
   return [
     {
       id: `jab-rivalry-${rivalry.id}-${author.id}`,
       authorId: author.id,
       authorName: author.name,
-      targetId: target.id,
-      targetName: target.name,
-      jab: authorJab,
+      targetId: rivalry.id,
+      targetName: rivalry.name,
+      contextLabel: "Rivalry mood",
+      jab: pickLine(`jab-rivalry-${rivalry.id}-${author.id}`, [
+        rivalry.stakes === "title"
+          ? `every title story has a point where talking stops mattering. feels like we're there.`
+          : `some stories get loud because the room knows there is unfinished business.`,
+        `people keep calling this tension. i call it a receipt waiting for the right camera.`,
+        `you can feel when a rivalry is starting to own the room. this one is not background noise anymore.`,
+        rivalry.heat >= 80
+          ? `the crowd already picked up on this. now it is on us to make the next beat impossible to ignore.`
+          : `slow weeks do not mean cold story. sometimes the room is just waiting for someone to swing first.`,
+      ]),
       intentLabel,
       tone,
       priority,
-    },
-    {
-      id: `jab-rivalry-reply-${rivalry.id}-${target.id}`,
-      authorId: target.id,
-      authorName: target.name,
-      targetId: author.id,
-      targetName: author.name,
-      jab: replyJab,
-      intentLabel: "HEAT REPLY",
-      tone: tone === "title" ? "title" : "petty",
-      priority: priority - 4,
     },
   ];
 }
@@ -709,55 +805,37 @@ function buildShowSegmentJabs(game: GameState, segment: SegmentResult, result: S
     return [];
   }
 
-  const [first, second] = participants;
-
-  if (pairHasActiveRivalry(game, first.id, second.id)) {
-    return [];
-  }
-
   const winnerId = segment.momentumChanges
     ? Object.entries(segment.momentumChanges).sort((left, right) => right[1] - left[1])[0]?.[0]
     : undefined;
-  const winner = participants.find((wrestler) => wrestler.id === winnerId) ?? first;
-  const loser = participants.find((wrestler) => wrestler.id !== winner.id) ?? second;
+  const author = participants.find((wrestler) => wrestler.id === winnerId) ?? participants[0];
+  const momentumDelta = segment.momentumChanges[author.id] ?? 0;
+  const fatigueDelta = segment.fatigueChanges[author.id] ?? 0;
   const priority = 72 + Math.min(segment.score, 18) + (segment.type === "Match" ? 6 : 0);
-
-  const winnerJab = pickLine(`jab-show-win-${result.id}-${segment.segmentId}-${winner.id}`, [
-    `${loser.name} got a TV slot and still couldn't keep up. run it back.`,
-    `nice moment for ${loser.name}. still wouldn't last five with me.`,
-    `${result.showName} gave ${loser.name} a lane and the timeline is being generous.`,
-    `${loser.name} wants relevance off one segment? say less.`,
-  ]);
-
-  const loserJab = pickLine(`jab-show-loss-${result.id}-${segment.segmentId}-${loser.id}`, [
-    `${winner.name} got the pop and the easy booking. rematch me without the protection.`,
-    `enjoy the mentions, ${winner.name}. that angle didn't settle anything.`,
-    `${winner.name} talking like one segment made them the face of this brand.`,
-    `cool win for ${winner.name}. still see you in the hallway every week.`,
-  ]);
 
   return [
     {
-      id: `jab-show-win-${segment.segmentId}-${winner.id}`,
-      authorId: winner.id,
-      authorName: winner.name,
-      targetId: loser.id,
-      targetName: loser.name,
-      jab: winnerJab,
-      intentLabel: "POST-SHOW SHOT",
-      tone: "challenge",
+      id: `jab-show-state-${segment.segmentId}-${author.id}`,
+      authorId: author.id,
+      authorName: author.name,
+      contextLabel: result.showName,
+      jab: pickLine(`jab-show-state-${result.id}-${segment.segmentId}-${author.id}-${momentumDelta}-${fatigueDelta}`, [
+        momentumDelta > 0
+          ? `felt the room shift tonight. not calling it momentum until i do it again.`
+          : `not every night gives you the clip. still showed up, still working.`,
+        segment.score >= 82
+          ? `when the crowd gives you that kind of noise, you do not waste it.`
+          : `some segments are receipts, some are lessons. tonight gave me both.`,
+        fatigueDelta >= 8
+          ? `body is loud after that one. worth it if the room remembers the moment.`
+          : `the best kind of TV time is the kind that makes next week feel heavier.`,
+        segment.type === "Match"
+          ? `bell to bell, i felt exactly where i stand right now. next week has to build on it.`
+          : `camera time only matters if you make people feel something. that was the assignment.`,
+      ]),
+      intentLabel: momentumDelta > 0 ? "MOMENTUM READ" : "POST-SHOW READ",
+      tone: momentumDelta > 0 ? "mood" : "challenge",
       priority,
-    },
-    {
-      id: `jab-show-loss-${segment.segmentId}-${loser.id}`,
-      authorId: loser.id,
-      authorName: loser.name,
-      targetId: winner.id,
-      targetName: winner.name,
-      jab: loserJab,
-      intentLabel: "RIVALRY BAIT",
-      tone: "heated",
-      priority: priority - 2,
     },
   ];
 }
@@ -773,33 +851,25 @@ function buildChampionJabs(game: GameState): WrestlerJabCandidate[] {
       continue;
     }
 
-    const challengers = game.wrestlers
-      .filter((wrestler) => wrestler.id !== champion.id && wrestler.injuryStatus !== "major")
-      .sort((left, right) => right.momentum - left.momentum || right.popularity - left.popularity)
-      .slice(0, 2);
-
-    for (const challenger of challengers) {
-      if (pairHasActiveRivalry(game, champion.id, challenger.id)) {
-        continue;
-      }
-
-      candidates.push({
-        id: `jab-title-${championship.id}-${challenger.id}`,
-        authorId: challenger.id,
-        authorName: challenger.name,
-        targetId: champion.id,
-        targetName: champion.name,
-        jab: pickLine(`jab-title-${championship.id}-${challenger.id}`, [
-          `${champion.name} holding ${championship.name} like nobody else is on the roster.`,
-          `title scene getting boring. ${champion.name}, pick a real challenger.`,
-          `${champion.name} keeps ducking fresh matchups and calling it reign.`,
-          `everyone wants ${championship.name}. ${champion.name} just posts through it.`,
-        ]),
-        intentLabel: "TITLE BAIT",
-        tone: "title",
-        priority: 78 + Math.min(challenger.momentum, 10),
-      });
-    }
+    candidates.push({
+      id: `jab-title-${championship.id}-${champion.id}`,
+      authorId: champion.id,
+      authorName: champion.name,
+      targetId: championship.id,
+      targetName: championship.name,
+      contextLabel: "Title pressure",
+      jab: pickLine(`jab-title-${championship.id}-${champion.id}-${championship.defenses}`, [
+        `carrying ${championship.name} means every week is a referendum. good. keep watching.`,
+        `${championship.name} does not get lighter when the timeline gets louder.`,
+        `everybody has a title opinion until the lights hit. then the belt tells the truth.`,
+        championship.defenses > 0
+          ? `defending ${championship.name} is not a slogan. it is the part people remember.`
+          : `first week with ${championship.name} is all noise. the reign starts when the next bell rings.`,
+      ]),
+      intentLabel: "TITLE PRESSURE",
+      tone: "title",
+      priority: 78 + Math.min(champion.momentum, 10),
+    });
   }
 
   return candidates;
@@ -822,19 +892,18 @@ function buildRosterTensionJabs(game: GameState, seasonNumber: number, weekNumbe
 
   if (underused && spotlight && underused.id !== spotlight.id && !pairHasActiveRivalry(game, underused.id, spotlight.id)) {
     candidates.push({
-      id: `jab-tv-${underused.id}-${spotlight.id}`,
+      id: `jab-tv-${underused.id}`,
       authorId: underused.id,
       authorName: underused.name,
-      targetId: spotlight.id,
-      targetName: spotlight.name,
-      jab: pickLine(`jab-tv-${underused.id}-${spotlight.id}`, [
-        `${spotlight.name} gets every week and still tweets like they're hungry.`,
-        `creative finds time for ${spotlight.name} every show. funny how that works.`,
-        `${spotlight.name} wants the whole card? come get my spot then.`,
-        `been off TV while ${spotlight.name} collects reps. say that part out loud.`,
+      contextLabel: "TV-time pressure",
+      jab: pickLine(`jab-tv-${underused.id}-${weekNumber}`, [
+        `there is a difference between patience and disappearing. i know which one this is starting to feel like.`,
+        `every week off TV makes the next entrance louder in my head. hope the room is ready for that.`,
+        `not asking for noise. asking for a spot where the work can actually answer.`,
+        `funny how fast people forget what you can do when the camera stops finding you.`,
       ]),
-      intentLabel: "RIVALRY BAIT",
-      tone: "petty",
+      intentLabel: "TV-TIME READ",
+      tone: "pressure",
       priority: 64 + Math.min(getWeeksSinceLastBooked(underused, game.currentWeek), 8),
     });
   }
@@ -843,21 +912,20 @@ function buildRosterTensionJabs(game: GameState, seasonNumber: number, weekNumbe
   const hot = sorted[0];
   const cold = sorted.at(-1);
 
-  if (hot && cold && hot.id !== cold.id && !pairHasActiveRivalry(game, hot.id, cold.id)) {
+  if (hot && cold && hot.id !== cold.id) {
     candidates.push({
-      id: `jab-momentum-${seasonNumber}-${weekNumber}-${hot.id}-${cold.id}`,
+      id: `jab-momentum-${seasonNumber}-${weekNumber}-${hot.id}`,
       authorId: hot.id,
       authorName: hot.name,
-      targetId: cold.id,
-      targetName: cold.name,
-      jab: pickLine(`jab-momentum-${hot.id}-${cold.id}`, [
-        `${cold.name} tweeting like momentum is a group project.`,
-        `${cold.name} wants a push off vibes. i want a reason to answer.`,
-        `timeline sleeping on ${cold.name}? not my problem, but the room hears it.`,
-        `${cold.name} keeps asking for heat without earning the shot.`,
+      contextLabel: "Momentum mood",
+      jab: pickLine(`jab-momentum-${hot.id}-${weekNumber}`, [
+        `momentum is only real if you protect it when everybody starts watching.`,
+        `the room feels different when your name is the one getting louder.`,
+        `not every push is announced. sometimes you hear it in the building before anyone says it.`,
+        `i can feel the week changing around me. that is when the work has to get sharper.`,
       ]),
-      intentLabel: "CALL OUT",
-      tone: "petty",
+      intentLabel: "MOMENTUM READ",
+      tone: "mood",
       priority: 58 + Math.min(hot.momentum - cold.momentum, 12),
     });
   }
@@ -869,7 +937,7 @@ function dedupeJabCandidates(candidates: WrestlerJabCandidate[]) {
   const seen = new Set<string>();
 
   return candidates.filter((candidate) => {
-    const key = `${candidate.authorId}->${candidate.targetId}:${candidate.jab.toLowerCase()}`;
+    const key = `${candidate.authorId}:${candidate.contextLabel ?? candidate.targetId ?? "self"}:${candidate.jab.toLowerCase()}`;
     if (seen.has(key)) {
       return false;
     }
@@ -885,6 +953,19 @@ export function getWrestlerJabFeed(game: GameState, limit = 8): WrestlerJabFeedS
   }
 
   const { seasonNumber, weekNumber } = getResolvedSocialWeek(game);
+  const aiItems = (game.wrestlerSocialPosts ?? [])
+    .filter((post) => post.seasonNumber === seasonNumber && post.weekNumber === weekNumber)
+    .slice(0, limit)
+    .map(({ weekNumber: _weekNumber, seasonNumber: _seasonNumber, showName: _showName, resultId: _resultId, ...item }) => item);
+
+  if (aiItems.length) {
+    return {
+      weekLabel: `Season ${seasonNumber} · Week ${weekNumber}`,
+      detail: "Superstar posts generated from resolved show fallout and current roster state.",
+      items: aiItems,
+    };
+  }
+
   const result = game.showHistory.find((show) => show.seasonNumber === seasonNumber && show.week === weekNumber);
   const candidates = dedupeJabCandidates([
     ...game.rivalries.flatMap((rivalry) => buildRivalryJabs(game, rivalry)),
@@ -903,7 +984,7 @@ export function getWrestlerJabFeed(game: GameState, limit = 8): WrestlerJabFeedS
 
   return {
     weekLabel: `Season ${seasonNumber} · Week ${weekNumber}`,
-    detail: "Roster callouts trying to spark heat. Social shots only — not a booking forecast.",
+    detail: "Superstar posts from current mood, TV-time pressure, title status, rivalries, and post-show receipts.",
     items: items.map(({ priority: _priority, ...item }) => item),
   };
 }
@@ -912,6 +993,123 @@ type SuperstarMailCandidate = SuperstarMailItem & {
   priority: number;
 };
 
+function getRecentSocialResults(game: GameState, weeks = 2) {
+  const latestWeek = game.showHistory.at(-1)?.week ?? Math.max(1, game.currentWeek - 1);
+  return game.showHistory.filter(
+    (result) => result.seasonNumber === game.seasonNumber && result.week >= Math.max(1, latestWeek - weeks + 1),
+  );
+}
+
+function wasWrestlerBookedInResults(wrestlerId: string, game: GameState, weeks = 2) {
+  return getRecentSocialResults(game, weeks).some((result) =>
+    result.segmentResults.some((segment) => segment.participantIds.includes(wrestlerId)),
+  );
+}
+
+function wasChampionshipRepresentedRecently(championshipId: string, game: GameState, weeks = 2) {
+  return getRecentSocialResults(game, weeks).some((result) =>
+    result.segmentResults.some((segment) => segment.championshipId === championshipId),
+  );
+}
+
+function wasRivalryRepresentedRecently(rivalryId: string, game: GameState, weeks = 1) {
+  return getRecentSocialResults(game, weeks).some((result) =>
+    result.segmentResults.some((segment) => segment.rivalryId === rivalryId),
+  );
+}
+
+function getRecentMomentumDelta(wrestlerId: string, game: GameState, weeks = 2) {
+  return getRecentSocialResults(game, weeks).reduce((total, result) => {
+    return (
+      total +
+      result.segmentResults.reduce((segmentTotal, segment) => {
+        return segmentTotal + (segment.momentumChanges?.[wrestlerId] ?? 0);
+      }, 0)
+    );
+  }, 0);
+}
+
+function hasWinningSeasonCase(wrestler: Wrestler) {
+  const record = wrestler.record?.season;
+  return Boolean(record && record.wins + record.tagWins > record.losses + record.tagLosses);
+}
+
+function isHighValueMailTalent(wrestler: Wrestler, game: GameState) {
+  const tier = wrestler.roleTier?.toLowerCase() ?? "";
+  return (
+    tier.includes("main") ||
+    tier.includes("star") ||
+    wrestler.popularity >= 72 ||
+    wrestler.momentum >= 70 ||
+    game.championships.some((championship) => championship.championIds.includes(wrestler.id) || (championship.contenderIds ?? []).includes(wrestler.id)) ||
+    game.rivalries.some((rivalry) => rivalry.participantIds.includes(wrestler.id) && rivalry.heat >= 68 && rivalry.status !== "stale")
+  );
+}
+
+function getStaleChampionTitle(wrestler: Wrestler, game: GameState) {
+  return game.championships.find((championship) => {
+    if (!championship.championIds.includes(wrestler.id)) {
+      return false;
+    }
+
+    const weeksAsChampion = Math.max(0, game.currentWeek - championship.reignStartWeek);
+    return (
+      championship.defenses === 0 ||
+      weeksAsChampion >= (championship.minimumDefenseFrequencyWeeks ?? 4) ||
+      (!wasChampionshipRepresentedRecently(championship.id, game, 2) && !wasWrestlerBookedInResults(wrestler.id, game, 2))
+    );
+  });
+}
+
+function getTitleShotCase(wrestler: Wrestler, game: GameState) {
+  return game.championships.find((championship) => {
+    if (championship.eligibleMatchScope === "tag_team" || championship.division === "Tag Team" || championship.championIds.includes(wrestler.id)) {
+      return false;
+    }
+
+    const listedContender = (championship.contenderIds ?? []).includes(wrestler.id);
+    const statsCase =
+      (wrestler.momentum >= 76 && wrestler.popularity >= 70) ||
+      (wrestler.momentum >= 70 && wrestler.popularity >= 76);
+    const hasCurrentCase = listedContender || hasWinningSeasonCase(wrestler) || getRecentMomentumDelta(wrestler.id, game, 2) >= 4;
+    const recentlyGotTitleMatch = getRecentSocialResults(game, 3).some((result) =>
+      result.segmentResults.some((segment) => segment.championshipId === championship.id && segment.participantIds.includes(wrestler.id)),
+    );
+
+    return (
+      championship.championIds.length === 1 &&
+      wrestlerFitsChampionshipDivision(wrestler, championship, game.wrestlers) &&
+      !recentlyGotTitleMatch &&
+      hasCurrentCase &&
+      (listedContender || statsCase)
+    );
+  });
+}
+
+function getRivalryMailForWrestler(wrestler: Wrestler, game: GameState) {
+  const eligibleRivalries = game.rivalries.filter(
+    (rivalry) =>
+      rivalry.participantIds.includes(wrestler.id) &&
+      rivalry.status !== "stale" &&
+      rivalry.heat >= 72 &&
+      !wasRivalryRepresentedRecently(rivalry.id, game, 1),
+  );
+
+  return eligibleRivalries.find((rivalry) => {
+    const voice = [...rivalry.participantIds]
+      .map((id) => game.wrestlers.find((candidate) => candidate.id === id))
+      .filter((candidate): candidate is Wrestler => Boolean(candidate))
+      .sort(
+        (a, b) =>
+          b.momentum + b.popularity + getRecentMomentumDelta(b.id, game, 2) * 3 -
+            (a.momentum + a.popularity + getRecentMomentumDelta(a.id, game, 2) * 3) ||
+          a.name.localeCompare(b.name),
+      )[0];
+
+    return voice?.id === wrestler.id;
+  });
+}
+
 function buildSuperstarMailCandidate(wrestler: Wrestler, game: GameState): SuperstarMailCandidate | undefined {
   if (wrestler.injuryStatus === "major") {
     return undefined;
@@ -919,10 +1117,9 @@ function buildSuperstarMailCandidate(wrestler: Wrestler, game: GameState): Super
 
   const tags = getRosterPressureTags(wrestler, game.currentWeek);
   const weeksSinceBooked = getWeeksSinceLastBooked(wrestler, game.currentWeek);
-  const activeRivalry = game.rivalries.find(
-    (rivalry) => rivalry.participantIds.includes(wrestler.id) && rivalry.status !== "stale",
-  );
-  const isChampion = game.championships.some((championship) => championship.championIds.includes(wrestler.id));
+  const activeRivalry = getRivalryMailForWrestler(wrestler, game);
+  const staleChampionTitle = getStaleChampionTitle(wrestler, game);
+  const titleShotCase = getTitleShotCase(wrestler, game);
   const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= game.currentWeek && !week.completed);
 
   if (wrestler.injuryStatus === "minor") {
@@ -949,7 +1146,7 @@ function buildSuperstarMailCandidate(wrestler: Wrestler, game: GameState): Super
     );
   }
 
-  if (tags.includes("Underused")) {
+  if (tags.includes("Underused") && weeksSinceBooked >= 3 && isHighValueMailTalent(wrestler, game)) {
     return finalizeSuperstarMail(
       {
         id: `mail-${wrestler.id}-tv`,
@@ -1034,7 +1231,7 @@ function buildSuperstarMailCandidate(wrestler: Wrestler, game: GameState): Super
           "Give me something to believe in next week or the locker room will hear about it.",
         ]),
         askLabel: "Morale",
-        tone: "firm",
+        tone: "urgent",
         priority: 74,
       },
       [
@@ -1045,7 +1242,7 @@ function buildSuperstarMailCandidate(wrestler: Wrestler, game: GameState): Super
     );
   }
 
-  if (activeRivalry && activeRivalry.heat >= 65) {
+  if (activeRivalry) {
     return finalizeSuperstarMail(
       {
         id: `mail-${wrestler.id}-rivalry`,
@@ -1058,7 +1255,7 @@ function buildSuperstarMailCandidate(wrestler: Wrestler, game: GameState): Super
           "I want the next beat in this story to matter, not just fill time.",
         ]),
         askLabel: "Story",
-        tone: activeRivalry.heat >= 80 ? "urgent" : "hopeful",
+        tone: activeRivalry.heat >= 80 ? "urgent" : "firm",
         priority: 70 + Math.min(activeRivalry.heat / 10, 8),
       },
       [
@@ -1069,7 +1266,7 @@ function buildSuperstarMailCandidate(wrestler: Wrestler, game: GameState): Super
     );
   }
 
-  if (isChampion) {
+  if (staleChampionTitle) {
     return finalizeSuperstarMail(
       {
         id: `mail-${wrestler.id}-title`,
@@ -1093,7 +1290,31 @@ function buildSuperstarMailCandidate(wrestler: Wrestler, game: GameState): Super
     );
   }
 
-  if (wrestler.momentum >= 75 && wrestler.popularity >= 65) {
+  if (titleShotCase) {
+    return finalizeSuperstarMail(
+      {
+        id: `mail-${wrestler.id}-title-shot`,
+        wrestlerId: wrestler.id,
+        wrestlerName: wrestler.name,
+        subject: "TITLE SHOT CASE",
+        preview: pickLine(`mail-${wrestler.id}-title-shot`, [
+          "The numbers say I belong in the title scene. Put me in that lane.",
+          "I'm carrying enough heat to chase the belt. Give me the match that proves it.",
+          "If the division is serious, my name should be across from the champion.",
+        ]),
+        askLabel: "Title Shot",
+        tone: wrestler.momentum >= 82 || wrestler.popularity >= 82 ? "urgent" : "firm",
+        priority: 76 + Math.min(12, Math.floor((wrestler.momentum + wrestler.popularity) / 18)),
+      },
+      [
+        "I'm not asking for a random favor — the stats say I'm in the title conversation.",
+        "Put me across from the champion or the right contender and let the card prove where I stand.",
+        "If the division has a lane open, I should be fighting for it now.",
+      ],
+    );
+  }
+
+  if (wrestler.momentum >= 78 && wrestler.popularity >= 72 && getRecentMomentumDelta(wrestler.id, game, 2) >= 4) {
     return finalizeSuperstarMail(
       {
         id: `mail-${wrestler.id}-push`,
@@ -1106,7 +1327,7 @@ function buildSuperstarMailCandidate(wrestler: Wrestler, game: GameState): Super
           "Give me the spot that matches the buzz I'm carrying.",
         ]),
         askLabel: "Push",
-        tone: "hopeful",
+        tone: wrestler.momentum >= 86 || wrestler.popularity >= 82 ? "urgent" : "firm",
         priority: 62 + Math.min(Math.floor(wrestler.momentum / 10), 6),
       },
       [
@@ -1117,7 +1338,13 @@ function buildSuperstarMailCandidate(wrestler: Wrestler, game: GameState): Super
     );
   }
 
-  if (nextPle && nextPle.weekNumber - game.currentWeek <= 2 && wrestler.momentum >= 60) {
+  if (
+    nextPle &&
+    nextPle.weekNumber - game.currentWeek <= 2 &&
+    wrestler.momentum >= 78 &&
+    wrestler.popularity >= 70 &&
+    (activeRivalry || titleShotCase || isHighValueMailTalent(wrestler, game) || getRecentMomentumDelta(wrestler.id, game, 2) >= 4)
+  ) {
     return finalizeSuperstarMail(
       {
         id: `mail-${wrestler.id}-ple`,
@@ -1130,8 +1357,8 @@ function buildSuperstarMailCandidate(wrestler: Wrestler, game: GameState): Super
           "Don't leave me off the major-event board when the timing is this tight.",
         ]),
         askLabel: "PLE Spot",
-        tone: "hopeful",
-        priority: 58,
+        tone: "firm",
+        priority: 68,
       },
       [
         "Major events are where careers move — I want a lane on that card if the story supports it.",
@@ -1144,33 +1371,146 @@ function buildSuperstarMailCandidate(wrestler: Wrestler, game: GameState): Super
   return undefined;
 }
 
-function buildFallbackSuperstarMail(wrestler: Wrestler): SuperstarMailCandidate {
-  return finalizeSuperstarMail(
-    {
-      id: `mail-${wrestler.id}-steady`,
-      wrestlerId: wrestler.id,
-      wrestlerName: wrestler.name,
-      subject: "KEEP ME IN THE PLAN",
-      preview: pickLine(`mail-${wrestler.id}-steady`, [
-        "I just need to stay in the weekly plan with something that matters.",
-        "Book me with intent next week and I'll keep the room steady.",
-        "I'm ready for work. Give me a defined role and I'll deliver.",
-      ]),
-      askLabel: "Role",
-      tone: "neutral",
-      priority: 20,
-    },
-    [
-      "Even a clear mid-card role beats drifting without direction.",
-      "Put me in the plan with purpose and I'll handle the rest.",
-      "I'm not asking for special treatment — just a defined spot on the next card.",
-    ],
-  );
+const SUPERSTAR_MAIL_FIRST_ELIGIBLE_WEEK = 2;
+
+function getSuperstarMailWeekRoll(game: GameState) {
+  return hashString(`superstar-mail-${game.seasonNumber}-${game.currentWeek}-${game.brandName}`) % 100;
 }
 
-export function getSuperstarMailSnapshot(game: GameState, limit = 6): SuperstarMailSnapshot | undefined {
+function getSuperstarMailCandidateRoll(game: GameState, candidate: SuperstarMailCandidate) {
+  return hashString(`superstar-mail-${game.seasonNumber}-${game.currentWeek}-${candidate.id}`) % 100;
+}
+
+function shouldSurfaceAdditionalSuperstarMailCandidate(game: GameState, candidate: SuperstarMailCandidate) {
+  const roll = getSuperstarMailCandidateRoll(game, candidate);
+
+  if (candidate.priority >= 90) {
+    return roll >= 18;
+  }
+
+  if (candidate.tone === "urgent" || candidate.priority >= 78) {
+    return roll >= 38;
+  }
+
+  return roll >= 62;
+}
+
+function getSuperstarMailLimit(candidates: SuperstarMailCandidate[], hardLimit: number, game: GameState) {
+  const urgentCount = candidates.filter((item) => item.tone === "urgent").length;
+  const topPriority = candidates[0]?.priority ?? 0;
+  const weekRoll = getSuperstarMailWeekRoll(game);
+
+  if (!candidates.length) {
+    return 0;
+  }
+
+  if (urgentCount >= 3 && topPriority >= 92 && weekRoll >= 88) {
+    return Math.min(3, hardLimit);
+  }
+
+  if ((urgentCount >= 2 || topPriority >= 90) && weekRoll >= 44) {
+    return Math.min(2, hardLimit);
+  }
+
+  if (urgentCount === 1 || topPriority >= 78) {
+    return weekRoll >= 72 ? Math.min(2, hardLimit) : 1;
+  }
+
+  if (weekRoll >= 58) {
+    return 1;
+  }
+
+  return 0;
+}
+
+function getSurfacedSuperstarMailCandidates(candidates: SuperstarMailCandidate[], game: GameState, hardLimit: number) {
+  const limit = getSuperstarMailLimit(candidates, hardLimit, game);
+
+  if (limit <= 0) {
+    return [];
+  }
+
+  const [topCandidate, ...otherCandidates] = candidates;
+  const surfaced = [
+    topCandidate,
+    ...otherCandidates.filter((candidate) => shouldSurfaceAdditionalSuperstarMailCandidate(game, candidate)),
+  ].filter((candidate): candidate is SuperstarMailCandidate => Boolean(candidate));
+
+  if (limit >= 2 && surfaced.length < 2) {
+    const fallback = otherCandidates.find((candidate) => !surfaced.includes(candidate));
+
+    if (fallback) {
+      surfaced.push(fallback);
+    }
+  }
+
+  if (limit >= 3 && surfaced.length < 3) {
+    const fallback = otherCandidates.find((candidate) => !surfaced.includes(candidate));
+
+    if (fallback) {
+      surfaced.push(fallback);
+    }
+  }
+
+  return surfaced.slice(0, Math.min(limit, hardLimit));
+}
+
+function selectSuperstarMailItems(candidates: SuperstarMailCandidate[], hardLimit: number, game: GameState) {
+  const limitedCandidates = getSurfacedSuperstarMailCandidates(candidates, game, hardLimit);
+  const limit = limitedCandidates.length;
+  const candidatePool = limitedCandidates.length ? limitedCandidates : candidates.slice(0, limit);
+
+  if (!limit) {
+    return [];
+  }
+
+  const selected: SuperstarMailCandidate[] = [];
+  const selectedLabels = new Set<string>();
+
+  for (const candidate of candidatePool) {
+    if (selected.length >= limit) {
+      break;
+    }
+
+    if (selectedLabels.has(candidate.askLabel) && candidatePool.some((item) => !selected.includes(item) && !selectedLabels.has(item.askLabel))) {
+      continue;
+    }
+
+    selected.push(candidate);
+    selectedLabels.add(candidate.askLabel);
+  }
+
+  if (selected.length < limit) {
+    for (const candidate of candidatePool) {
+      if (selected.length >= limit) {
+        break;
+      }
+
+      if (!selected.includes(candidate)) {
+        selected.push(candidate);
+      }
+    }
+  }
+
+  return selected;
+}
+
+function getEmptySuperstarMailSnapshot(game: GameState): SuperstarMailSnapshot {
+  return {
+    weekLabel: `Season ${game.seasonNumber} · Week ${game.currentWeek} · Inbox`,
+    detail: "No active asks. The room is quiet enough that no one needs the GM desk this week.",
+    unreadCount: 0,
+    items: [],
+  };
+}
+
+export function getSuperstarMailSnapshot(game: GameState, limit = 3): SuperstarMailSnapshot | undefined {
   if (!game.wrestlers.length) {
     return undefined;
+  }
+
+  if (game.currentWeek < SUPERSTAR_MAIL_FIRST_ELIGIBLE_WEEK) {
+    return getEmptySuperstarMailSnapshot(game);
   }
 
   const latestResult = game.showHistory.at(-1);
@@ -1181,22 +1521,13 @@ export function getSuperstarMailSnapshot(game: GameState, limit = 6): SuperstarM
     .filter((candidate): candidate is SuperstarMailCandidate => Boolean(candidate))
     .sort((a, b) => b.priority - a.priority || a.wrestlerName.localeCompare(b.wrestlerName));
 
-  const items = prioritized.slice(0, limit);
-
-  if (items.length < Math.min(limit, 3)) {
-    const usedIds = new Set(items.map((item) => item.wrestlerId));
-    const fallback = [...game.wrestlers]
-      .filter((wrestler) => !usedIds.has(wrestler.id) && wrestler.injuryStatus !== "major")
-      .sort((a, b) => b.popularity + b.momentum - (a.popularity + a.momentum))
-      .slice(0, limit - items.length)
-      .map((wrestler) => buildFallbackSuperstarMail(wrestler));
-
-    items.push(...fallback);
-  }
+  const items = selectSuperstarMailItems(prioritized, limit, game);
 
   return {
     weekLabel: `Season ${seasonNumber} · Week ${weekNumber} · Inbox`,
-    detail: "Direct asks from your roster after the latest resolved week. Requests only — nothing is booked for you.",
+    detail: items.length
+      ? "Direct asks from firm or urgent roster pressure. Accepting tracks a promise — nothing is booked for you."
+      : "No active asks. The room is quiet enough that no one needs the GM desk this week.",
     unreadCount: items.length,
     items: items.map(({ priority: _priority, ...item }) => item),
   };

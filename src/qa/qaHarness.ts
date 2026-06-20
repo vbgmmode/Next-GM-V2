@@ -93,14 +93,14 @@ function buildQaTitlePayoffHarnessState(mode: "title-defense-runtime" | "title-c
       return false;
     }
 
-    return fixtureGame.wrestlers.filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship)).length >= 2;
+    return fixtureGame.wrestlers.filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship, fixtureGame.wrestlers)).length >= 2;
   });
 
   if (!title) {
     return buildSavedGameState(fixtureGame, "booking");
   }
 
-  const eligibleWrestlers = fixtureGame.wrestlers.filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, title));
+  const eligibleWrestlers = fixtureGame.wrestlers.filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, title, fixtureGame.wrestlers));
   const champion = eligibleWrestlers[0];
   const challenger = eligibleWrestlers[1];
   const supportIds = fixtureGame.wrestlers
