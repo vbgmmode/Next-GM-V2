@@ -3,10 +3,12 @@ import {
   addBookingSegment,
   removeBookingSegment,
   replaceCurrentShow,
+  setSegmentChampionship,
   toggleSegmentParticipant,
   updateBookingSegment,
 } from "./bookingMutations";
 import { createNewGame } from "./seed";
+import { wrestlerFitsChampionshipDivision } from "./titleCatalog";
 import type { GameState, Segment, SocialInboxRequest } from "./types";
 
 function segment(overrides: Partial<Segment> = {}): Segment {
@@ -25,6 +27,27 @@ function segment(overrides: Partial<Segment> = {}): Segment {
 
 function withCurrentShow(game: GameState, segments: Segment[]) {
   return { ...game, currentShow: segments };
+}
+
+function gameWithSinglesTitle() {
+  const game = createNewGame();
+  const championship = game.championships.find((title) => title.eligibleMatchScope !== "tag_team" && title.division !== "Tag Team");
+
+  expect(championship).toBeDefined();
+
+  const eligible = game.wrestlers.filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship!));
+
+  expect(eligible.length).toBeGreaterThanOrEqual(3);
+
+  const [champion, firstChallenger, secondChallenger] = eligible;
+  const updatedGame = {
+    ...game,
+    championships: game.championships.map((title) =>
+      title.id === championship!.id ? { ...title, championIds: [champion.id], contenderIds: [firstChallenger.id, secondChallenger.id] } : title,
+    ),
+  };
+
+  return { game: updatedGame, championship: updatedGame.championships.find((title) => title.id === championship!.id)!, champion, firstChallenger, secondChallenger };
 }
 
 function restRequest(game: GameState, wrestlerId: string): SocialInboxRequest {
@@ -110,5 +133,29 @@ describe("booking mutations", () => {
     const updated = replaceCurrentShow(game, segments);
 
     expect(updated.currentShow.map((item) => item.id)).toEqual(["second", "first"]);
+  });
+
+  it("strips duplicate championship bookings when replacing the current show", () => {
+    const { game, championship, champion, firstChallenger, secondChallenger } = gameWithSinglesTitle();
+    const updated = replaceCurrentShow(game, [
+      segment({ id: "first-title", participantIds: [champion.id, firstChallenger.id], championshipId: championship.id }),
+      segment({ id: "second-title", participantIds: [champion.id, secondChallenger.id], championshipId: championship.id }),
+    ]);
+
+    expect(updated.currentShow[0].championshipId).toBe(championship.id);
+    expect(updated.currentShow[1].championshipId).toBeUndefined();
+  });
+
+  it("blocks manually attaching a title already booked elsewhere on the card", () => {
+    const { game, championship, champion, firstChallenger, secondChallenger } = gameWithSinglesTitle();
+    const current = withCurrentShow(game, [
+      segment({ id: "first-title", participantIds: [champion.id, firstChallenger.id], championshipId: championship.id }),
+      segment({ id: "second-title", participantIds: [champion.id, secondChallenger.id] }),
+    ]);
+
+    const updated = setSegmentChampionship(current, "second-title", championship.id);
+
+    expect(updated.currentShow[0].championshipId).toBe(championship.id);
+    expect(updated.currentShow[1].championshipId).toBeUndefined();
   });
 });

@@ -51,6 +51,7 @@ The game currently supports:
 - Match Format Metadata Foundation v1 with centralized current segment/match format metadata
 - Match Pacing Context v1 with internal `MatchPacing` support for Sprint/Normal/Epic match-power weighting; Normal is current default behavior and no Booking pacing UI or persistence exists yet
 - Expectation Gap Progression v1 with internal match-ratings progression context comparing resolved match score to average participant base match rating, accelerating positive breakout deltas, and applying bounded disappointment momentum/timing/psychology penalties without UI, persistence, or broader fallout systems
+- Ratings-Aligned Match Score v1 with visible Match/Open Challenge scores anchored by effective match power, bounded star support, upside-only stipulation fit, demand-sensitive fatigue/injury drag, and capped same-card story coherence while preserving manual winner agency and deterministic winner selection
 - Booking Production Rundown / Card Shape v1 with read-only card coverage, broadcast heat, rivalry coverage, and workload context
 - Booking Card Board + Focused Segment Setup v1 with numbered card slots and focused segment setup mode inside Booking
 - Booking Default Board Compression v1 with compact board summary and collapsed Production Details context on Booking
@@ -65,9 +66,11 @@ The game currently supports:
 - Brand Pulse v1 with read-only, non-simulated post-show brand pressure diagnostics derived from player results and static rival brand flavor
 - Non-Blocking Rival Draft Activity v1 with read-only draft-week flavor diagnostics for rival-brand setup context
 - Full CPU Rival System v1 with deterministic parallel rival draft claims, persisted rival rosters, hidden CPU card simulation, CPU titles/rivalries/injuries/finance/free-agent claims, ratings-battle standings, and summarized post-show Results Feed pressure
-- Full Market + Rival Pressure v1 with player free-agent signings, tag/faction bundle signings at a 20% package discount, releases, deterministic trade proposals, contract/payroll pressure, CPU market churn, limited Rival Intelligence, and office mandates that affect money/trust/reputation without firing or progression locks
+- Full Market + Rival Pressure v1 with one-offer weekly free-agent negotiation in a centered deal window, deterministic wrestler negotiation personalities, accepted/declined result animations, tag/faction bundle signings at a 20% package discount, roster renewals/releases handled from superstar/profile flow, deterministic trade proposals with qualitative trade reads and result animations, contract/payroll pressure, CPU market churn, limited Rival Intelligence, and office mandates that affect money/trust/reputation without firing or progression locks
 - Top 200 open draft pool staged from data/rosters and activated through src/game/top200DraftPool.ts
-- 120 source-balanced game-eligible performers available by default in Draft Night from the staged Top 200 roster data, with Madden-like in-game stat distribution applied at export
+- 200 source-balanced game-eligible performers available by default in Draft Night from the staged Top 200 roster data, with stat calibration applied at export
+- Minimal active draft id/name reference available at data/rosters/top_200_superstar_ids.json for portrait and asset sourcing
+- Top 200 superstar portrait assets with 200 sheet-derived square portraits under public/superstars, assigned by wrestler id through src/game/wrestlerPortraits.ts and resolved by the shared SuperstarPortrait component
 - Open Draft Night availability across source brands; player brand selection does not restrict draft availability
 - NXT treated as an equal major brand, not developmental by default
 - Draft night with a 12-wrestler TV-ready guidance target, money-based drafting limit, no hard roster-count cap, and tag/faction bundle picks at a 20% package discount
@@ -76,6 +79,7 @@ The game currently supports:
 - Typed finance catalog parsing, lookup helpers, ID normalization, and Top 200 finance mapping validation through src/game/financeCatalog.ts
 - Setup/Draft finance readout showing starting budget, drafted roster finance value, projected reserve, and reserve pressure
 - Draft finance readout is active; Money Based starts enforce affordability from draft value, CPU rivals draft until no affordable candidate remains, and Unlimited remains sandbox
+- Economy v5 finance calibration maps all 200 active draft superstars to draft values and weekly hire rates, with the standard $2M Money Based start targeting a balanced 20-person roster and healthy operating reserve
 - localStorage career-save persistence
 - Save loading with fallbacks for added career fields
 - Save Migration Hardening v1 with centralized defaults for older localStorage saves
@@ -84,6 +88,8 @@ The game currently supports:
 - Booking production summary with planned cost in the panel header, current runtime, cumulative Match/Promo time share, and roster off-card coverage
 - Booking broadcast heat gauge with semantic runtime zones: green before the minimum live block, yellow from the 90-minute target through 120 minutes, and red only after the 120-minute penalty threshold
 - Booking rivalry coverage panel sized for up to five active rivalries, using compact last-name matchup labels, heat bars, and on-card/off-card state without repeating redundant status text
+- Booking Story Flow read with non-spoiler same-card setup/coherence context for matches, never predicted grades or fallout
+- Generate Booking Control Pass v1 with state-aware Generate Booking: empty cards generate a runnable card, partial cards fill gaps by appending safe segments without replacing player-authored work, and full-card regeneration lives behind an explicit Replace Card confirmation
 - Book Finish creative control with free optional manual winners per match, default simulated winners, tag-side winner selection for tag matches, and Open Challenge pre-show finish control limited to simulate or issuer wins without revealing the hidden opponent
 - Booking Balance Pass v1 with distinct segment scoring, lighter normal fatigue gain, deterministic Open Challenge risk, and tuned rivalry/fallout movement
 - Segment validation and minimum-card requirements
@@ -91,10 +97,11 @@ The game currently supports:
 - Segment-specific scoring and recap notes
 - Championship context on eligible non-match segments without title changes
 - Singles title matches that can change championships
+- Current-show title booking guard: the same championship can be attached to only one segment on the current card; duplicate title attachments are blocked or stripped from later segments
 - Title/Rivalry History v1 with lightweight title changes, defenses, rivalry movement, PLE payoffs, profile context, and season story summaries
 - Rivalry context attached to eligible segments
 - Run Show
-- Results / Show Recap with a viewport-fit top broadcast recap package, first-class segment inspection through a focused Segment Receipt window opened from the broadcast rundown reel, collapsed post-show support rows, and a compact GM Handoff / Next Week band that carries roster fallout, social/rival pressure, next-show pressure, and the Advance Week or Season Review action
+- Results / Show Recap with a viewport-fit top broadcast recap package, a compact two-row broadcast rundown reel with focused Segment Receipt inspection, a fixed Show Fallout Desk band, and a compact GM Handoff footer with roster-wide carry-forward copy plus the Advance Week or Season Review action
 - Old persisted `weekReview` screen state redirects to merged Show Recap/results when a current reviewable result exists
 - TV-time tracking with appearances this season, last booked week, and consecutive weeks booked
 - Open Challenge resolved opponents count as booked after the show
@@ -102,9 +109,9 @@ The game currently supports:
 - Deterministic locker room fallout after shows
 - Injury System v1 with deterministic minor/major injuries from fatigue and overuse, major-injury booking blocks, recovery on Advance Week, and persisted injury state
 - Roster command board with compact wrestler cards, selected-superstar dock, morale trend, injury report, and read-only locker-room reads from existing momentum, morale, fatigue, injury, title, rivalry, sentiment, records, and TV-time state
-- Wrestler Profiles v1 with compact stat rows, audience heat/trust and season/career record splits, expandable local-state detail panels, pressure labels, GM Read, championship/rivalry/social context, and deterministic read-only decision support
-- Championships with a viewport-fit Champion Wall, selected-title command workspace, collapsed committee support strip, contained panel scrolling, title catalog context, vacant-title assignment, champion revocation, player-edited contender order, selected-title contender board, title scene health, and title history for assigned/revoked/resolved title events
-- Rivalries Command Desk with active rivalry rail, selected rivalry spotlight, compact Creative Desk strip, create/end controls, and current-state reads from existing heat, freshness, timing, history, card usage, and PLE context
+- Wrestler Profile Command File v1 with portrait-led talent file, compact default ratings under the portrait, current-role workspace, qualitative pressure report highlight, and focused Ratings Report / Career File / Creative Context / Office File popups while preserving existing contract actions inside the Office File
+- Championships with a viewport-fit Champion Wall, selected-title command workspace, collapsed committee support strip, contained panel scrolling, title catalog context, vacant-title assignment, champion revocation, player-edited contender order, initial title-rank lanes where upper-card singles titles start from the top 3 superstars per gender and mid-card singles titles start from ranks 4-6 per gender when no manual lane is set, selected-title contender board, title scene health, and title history for assigned/revoked/resolved title events
+- Rivalries Command Desk with active rivalry rail, selected rivalry spotlight, compact Creative Desk strip, create/end controls, and current-state reads from existing heat, freshness, timing, history, card usage, and PLE context; new player careers do not auto-create starter rivalries after Draft Night
 - Rivalry structure support for Singles, Tag 2v2, and Multi rivalries, with optional persisted `Rivalry.structure`, legacy saves defaulting to singles, participantIds remaining canonical, and no team records, faction records, rankings, or team-level stats
 - Calendar
 - 50-week season
@@ -113,7 +120,7 @@ The game currently supports:
 - Season Review
 - Mid-Career Draft between Season Review and Start Next Season
 - Start Next Season
-- Social/IWC with existing post feed, filters, and read-only resolved-state IWC mood summary
+- Social/IWC with deterministic post-show fan posts, optional AI-generated fan and superstar posts when DeepSeek or a custom commentary endpoint is configured, read-only resolved-state IWC mood summary, and sparse Superstar Mail direct asks driven by firm/urgent roster pressure
 - Finance & Brand Pressure with active contract/market pressure, GM Office Pressure derived from current money, latest finance report, season finance history, best/worst business weeks, and closed-report show cost context, with finance summary metrics under nav and expandable support panels for talent value, latest report, season reads, and finance history
 - FinanceReport legacy-compatible v2 optional fields for future detailed revenue and expense categories
 - Read-only gameplay context helpers extracted into src/game/gameContextReads.ts for recent derived UI snapshots while React screen components remain in src/App.tsx
@@ -143,11 +150,11 @@ The loop must remain playable after every change.
 - Setup frames the player as a hired GM entering a larger GM universe before Draft Night.
 - Dashboard orients the week through Living World Pressure / Office Pulse, next action, and current brand pressure.
 - Booking is the TV production desk for assembling the current card with context and warnings, not predicted fallout.
-- Results / Show Recap is the resolved broadcast recap, compact broadcast rundown, first-class Segment Receipt window, compact GM handoff, and calendar transition surface.
+- Results / Show Recap is the resolved broadcast recap, compact two-row broadcast rundown, focused Segment Receipt window, Show Fallout Desk, compact GM Handoff footer, and calendar transition surface.
 - Roster is the living locker room and wrestler profile surface.
 - Championships is the prestige, contender, title-history, and division-health surface.
 - Rivalries is the creative/story room for active feud temperature, timing, stakes, and payoff pressure from existing state.
-- Social/IWC is the resolved audience mood and post-show reaction surface.
+- Social/IWC is the resolved audience mood, post-show fan reaction, optional AI superstar mood posts, and sparse direct-roster-ask surface.
 - Finance is the GM office pressure surface for current money, latest closed business result, season trend, and readable report context.
 - Calendar is the season clock, PLE cadence, and upcoming-show context.
 - Season Review is the end-of-season legacy and continuity recap before the Mid-Career Draft.
@@ -171,23 +178,31 @@ The loop must remain playable after every change.
 - A manually booked finish is player-authored intent, not a predicted outcome; Open Challenge finish controls must not reveal the hidden opponent before Run Show.
 - Results should focus on broadcast recap.
 - Results operational fallout should remain quieter support below the broadcast recap, not a second headline recap.
-- The compact GM Handoff inside Results should connect consequences before advancing.
+- The compact GM Handoff footer inside Results should connect roster carry-forward pressure before advancing.
 - Advance Week should happen after the player has seen the week's fallout.
 - The UI can warn, summarize, and provide context, but it should not secretly decide for the player.
 - Big moments deserve stronger presentation.
 - Dashboard should orient the player through Living World Pressure / Office Pulse, and should not restore a separate duplicate bottom footer or "<Brand> Control Room" rail.
 - Booking should feel like a TV production card.
+- Match and Open Challenge scores should read as a composite segment verdict anchored by deep match ratings: in-ring quality breaks ties, popularity supports but does not gate elite scores, stipulation fit adds capped upside without mismatch penalties, and manual winner credibility is handled by fallout rather than score penalties.
+- Generate Booking is a production-assist tool, not a creative override: it must preserve existing card order when filling gaps, never choose winners or finishes, and only use titles through intentional title context such as accepted title-shot requests.
 - Booking Production Rundown / Card Shape is advisory and must not change validation, Run Show enablement, simulation, or no-spoiler boundaries.
-- Booking broadcast heat and production summary are pre-show status tools only. They may show runtime pressure, planned cost, match/promo time share, and roster off-card coverage, but they must not imply predicted audience, finance, title, rivalry, morale, injury, or social fallout.
+- Booking broadcast heat, production summary, and Story Flow are pre-show status tools only. They may show runtime pressure, planned cost, match/promo time share, roster off-card coverage, and current-card story coherence, but they must not imply predicted grades, audience, finance, title, rivalry, morale, injury, Open Challenge opponent identity, or social fallout.
 - Results should feel like a broadcast recap plus consequence screen.
 - Roster should feel like a living locker room.
 - Wrestler profiles should support GM decisions with character context, not become spreadsheet clutter.
 - Championships should feel prestigious.
 - Rivalries should feel elastic and alive.
 - Rivalries should read as a creative story-room surface using existing heat, freshness, timing, card usage, and resolved history; do not imply hidden story simulation.
+- Automatic contender reads may rotate within the initial title-rank lane by title and calendar phase only when no manual lane is set: upper-card singles belts start from ranks 1-3 per gender, mid-card singles belts start from ranks 4-6 per gender, and manual contender order is player-authored and should remain authoritative.
+- Player rivalries should be created by the player or emerge from resolved booking outcomes, not seeded automatically from the initial draft.
 - Championships and rivalries should preserve meaningful history from actual gameplay.
 - History should come from resolved events, not invented offscreen story.
 - Social/IWC should react to actual outcomes.
+- Superstar Mail should be scarce: stable weeks may have no active asks, tense weeks usually have one or two, and three asks should require unusually high pressure.
+- Superstar Mail accept/decline decisions are player-authored office responses. Accepting creates a tracked soft promise with a visible deadline and modest immediate morale/trust lift; declining closes the request for the week with modest immediate morale/trust fallout.
+- Accepted Superstar Mail can influence Generate Booking through existing segment/title/rivalry rules, but should not create new segment types, force invalid bookings, or override player-authored card work.
+- Wrestler profile week-change chips should reflect tracked resolved-show or immediate office-decision stat movement; static attributes such as Ring Skill and Promo Skill stay flat unless a future accepted ticket adds progression for them.
 - Finance should be clear, gamey, and decision-focused.
 - Finance should read current and retrospective business pressure only; active payroll, market transactions, and office mandates are allowed, but do not add forecasts, sponsorships, predictive financial outcomes, firing, or progression locks unless explicitly requested.
 
@@ -276,13 +291,19 @@ Completed stabilization passes:
 - Match Pacing Context v1 (implemented as internal simulation hook only; no Booking pacing UI or persistence)
 - Tag Team Synergy v1 (implemented for M020 deep-ratings tag power; positive synergy defaults to zero until an explicit experience source exists)
 - Expectation Gap Progression v1 (implemented as internal progression hook only; no UI, persistence, or wider fallout systems)
+- Ratings-Aligned Match Score v1 (implemented with effective-match-power scoring, bounded star support, upside-only stipulation fit, demand-sensitive condition drag, capped full-card story coherence, and non-spoiler Booking Story Flow)
 - Vite Large Chunk Remediation / Lazy Screen Extraction v1 (implemented with lightweight title/save entry path, lazy gameplay shell, and extracted Dashboard, Championships, Season Review, and Offseason Draft screen modules)
+- Generate Booking Control Pass v1 (implemented with state-aware Generate Booking, confirmed Replace Card, fill-gaps append behavior, intentional title attachment, one-title-per-current-show guard, and no generated finish selection)
+- Wrestler Profile Command File v1 (implemented with portrait-led default profile, compact visible ratings, severity-based qualitative pressure report, and four focused report windows)
+- Top 200 Superstar Portrait Assignment v1 (implemented with 200 square arcade-style portraits in public/superstars, gold visible frames, bottom name banners, id-based lookup, and no save-data migration)
 
 Upcoming Direction:
 - Keep the Top 200 open draft pool stable as the default draft experience.
-- Keep scout/read-only career-memory features bounded while using the active Market desk for signing, release, trade, and contract pressure.
+- Keep scout/read-only career-memory features bounded while using the active Market desk for free-agent negotiation, trade-wire decisions, and contract pressure; keep roster renewals/releases in the superstar/profile flow unless a future accepted ticket reopens that boundary.
 - Treat season legacy as read-only narrative continuity first; keep the Mid-Career Draft bounded to the current offseason roster-refresh loop.
 - Keep recent context passes read-only and non-predictive: pre-show surfaces may explain existing pressure, but consequences and outcome language stay retrospective after Run Show.
+- Keep wrestler profiles curated by default: identity/status and current role first, stats visible but compact, deeper ratings/history/creative/office context in focused report windows rather than long expandable page stacks.
+- Keep automatic championship contender reads as read-only opening guidance over the initial title-rank lane, not persisted rankings or hard eligibility, and preserve manual contender lanes when the player sets them.
 - Keep rival brands as summarized ratings-battle and market pressure with deterministic internal CPU simulation; do not expand into rival HQ screens, editable CPU booking, progression locks, firing, or career-ending fail states unless a future accepted ticket explicitly asks for it.
 - Use src/game/gameContextReads.ts or another focused read-model module for pure derived gameplay context when a future slice would otherwise add more helper logic to src/GameApp.tsx.
 - Treat src/GameApp.tsx and src/styles.css as high-risk growth areas; preserve the lightweight src/App.tsx title/save entry path and prefer bounded extraction, verification, or small focused UI fixes over broad screen rewrites.
@@ -319,7 +340,7 @@ Unless the active ticket explicitly asks for it, do not add:
 
 Open Draft Rules:
 - Top 200 is the active default draft pool.
-- Game-eligible Top 200 performers are staged for the active draft pool, with source-brand cap and Madden-like stat distribution applied in src/game/top200DraftPool.ts to prevent one source roster from dominating Draft Night or prototype stats from reading too optimistic.
+- Game-eligible Top 200 performers are staged for the active draft pool, with source-balanced selection and stat calibration applied before runtime import.
 - Source/current brand must not restrict draft availability by the player's selected brand.
 - Raw, SmackDown, NXT, and AEW are equal major brands.
 - NXT is not developmental by default.
@@ -330,6 +351,7 @@ Finance Readiness Rules:
 - src/game/financeCatalog.ts owns finance catalog parsing, typed lookups, ID normalization, and Top 200 finance mapping validation.
 - Setup/Draft finance readout is active.
 - Draft Night and Draft Review may show starting budget, drafted roster finance value, projected reserve, and reserve pressure.
+- `data/finance/roster_draft_and_contract_values_top_200_no_bonus_full_season_2026-05-16.csv` should stay aligned to the active 200-person `data/rosters/top_200_draft_pool.generated.json`.
 - Setup budget options are $2M and Unlimited; legacy $1M/$4M saves normalize to $2M.
 - Money Based Draft Night prevents picks the current reserve cannot cover.
 - CPU rival opening draft allocation spends rival draft budgets until no affordable candidate remains.

@@ -1,6 +1,4 @@
-import { getDefaultCatalogOption } from "./matchFormatCatalog";
 import { SEASON_WEEK_COUNT } from "./constants";
-import { createUniqueDomainId } from "./domainIds";
 import type { GameState, Segment, ShowResult, SocialInboxActionType, SocialInboxRequest, SocialInboxState, Wrestler } from "./types";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
@@ -41,8 +39,11 @@ export function normalizeSocialInboxState(value: unknown, wrestlers: Wrestler[] 
           typeof item.mailId !== "string" ||
           typeof item.wrestlerId !== "string" ||
           (wrestlerIds.size > 0 && !wrestlerIds.has(item.wrestlerId)) ||
-          (item.actionType !== "rest" && item.actionType !== "tv_time") ||
-          (item.status !== "accepted" && item.status !== "fulfilled" && item.status !== "broken")
+          (item.actionType !== "rest" &&
+            item.actionType !== "tv_time" &&
+            item.actionType !== "title_shot" &&
+            item.actionType !== "story_spot") ||
+          (item.status !== "accepted" && item.status !== "declined" && item.status !== "fulfilled" && item.status !== "broken")
         ) {
           return undefined;
         }
@@ -73,16 +74,32 @@ export function getSuperstarMailAction(askLabel: string): SocialInboxActionMeta 
   if (askLabel === "Rest" || askLabel === "Protection" || askLabel === "Usage") {
     return {
       type: "rest",
-      label: "Give Week Off",
-      detail: "Removes them from the current card and protects the week as approved rest.",
+      label: "Accept Rest Ask",
+      detail: "Creates a protected rest promise. Booking still runs through the card.",
     };
   }
 
-  if (askLabel === "TV Time" || askLabel === "Role" || askLabel === "Morale" || askLabel === "Push") {
+  if (askLabel === "Title Shot" || askLabel === "Title") {
+    return {
+      type: "title_shot",
+      label: "Accept Title Ask",
+      detail: "Creates a title-scene promise for Generate Matches and your manual card.",
+    };
+  }
+
+  if (askLabel === "Story") {
+    return {
+      type: "story_spot",
+      label: "Accept Story Ask",
+      detail: "Creates a rivalry/story promise. Generate Matches will try to account for it.",
+    };
+  }
+
+  if (askLabel === "TV Time" || askLabel === "Morale" || askLabel === "Push") {
     return {
       type: "tv_time",
-      label: "Give TV Time",
-      detail: "Creates a solo promo on the current card and moves the desk to Booking.",
+      label: "Accept Ask",
+      detail: "Creates a booking promise. Generate Matches will try to account for it.",
     };
   }
 
@@ -92,6 +109,17 @@ export function getSuperstarMailAction(askLabel: string): SocialInboxActionMeta 
 export function getActiveSocialInboxRequest(game: GameState, mailId: string, wrestlerId: string) {
   return game.socialInbox.requests.find(
     (request) => request.mailId === mailId && request.wrestlerId === wrestlerId && request.status === "accepted",
+  );
+}
+
+export function getCurrentSocialInboxRequest(game: GameState, mailId: string, wrestlerId: string) {
+  return game.socialInbox.requests.find(
+    (request) =>
+      request.mailId === mailId &&
+      request.wrestlerId === wrestlerId &&
+      request.createdSeasonNumber === game.seasonNumber &&
+      request.createdWeekNumber === game.currentWeek &&
+      (request.status === "accepted" || request.status === "declined"),
   );
 }
 
@@ -127,13 +155,20 @@ function getRequestDeadline(game: GameState, actionType: SocialInboxActionType) 
     return { deadlineSeasonNumber: game.seasonNumber, deadlineWeekNumber: game.currentWeek };
   }
 
+  if (actionType === "title_shot" || actionType === "story_spot") {
+    const nextPle = game.calendar.find((week) => week.showType === "ple" && week.weekNumber >= game.currentWeek && !week.completed);
+    if (nextPle && nextPle.weekNumber - game.currentWeek <= 3) {
+      return { deadlineSeasonNumber: game.seasonNumber, deadlineWeekNumber: nextPle.weekNumber };
+    }
+  }
+
   return {
     deadlineSeasonNumber: game.seasonNumber,
-    deadlineWeekNumber: Math.min(game.calendar.length || SEASON_WEEK_COUNT, game.currentWeek + tvRequestWindowWeeks),
+    deadlineWeekNumber: Math.min(game.calendar.length || SEASON_WEEK_COUNT, game.currentWeek + (actionType === "tv_time" ? 2 : tvRequestWindowWeeks)),
   };
 }
 
-function upsertAcceptedRequest(game: GameState, item: MailActionInput, actionType: SocialInboxActionType, segmentId?: string): SocialInboxRequest {
+function buildRequest(game: GameState, item: MailActionInput, actionType: SocialInboxActionType, status: "accepted" | "declined", segmentId?: string): SocialInboxRequest {
   const deadline = getRequestDeadline(game, actionType);
 
   return {
@@ -145,30 +180,74 @@ function upsertAcceptedRequest(game: GameState, item: MailActionInput, actionTyp
     askLabel: item.askLabel,
     createdSeasonNumber: game.seasonNumber,
     createdWeekNumber: game.currentWeek,
-    status: "accepted",
+    status,
     segmentId,
+    note: status === "accepted" ? getAcceptedRequestNote(item, actionType, deadline.deadlineWeekNumber) : getDeclinedRequestNote(item),
     ...deadline,
   };
 }
 
-function replaceActiveRequest(requests: SocialInboxRequest[], nextRequest: SocialInboxRequest) {
+function getAcceptedRequestNote(item: MailActionInput, actionType: SocialInboxActionType, deadlineWeekNumber: number) {
+  if (actionType === "rest") {
+    return `${item.wrestlerName} expects a protected week now. Keep them off this week's card.`;
+  }
+
+  if (actionType === "title_shot") {
+    return `${item.wrestlerName} expects title-scene booking by Week ${deadlineWeekNumber}.`;
+  }
+
+  if (actionType === "story_spot") {
+    return `${item.wrestlerName} expects meaningful story attention by Week ${deadlineWeekNumber}.`;
+  }
+
+  return `${item.wrestlerName} expects useful TV time by Week ${deadlineWeekNumber}.`;
+}
+
+function getDeclinedRequestNote(item: MailActionInput) {
+  return `${item.wrestlerName} heard the no. Morale and trust took an immediate hit.`;
+}
+
+function applyInboxDecisionStats(game: GameState, wrestlerId: string, decision: "accepted" | "declined") {
+  const moraleDelta = decision === "accepted" ? 1 : -3;
+  const trustDelta = decision === "accepted" ? 2 : -2;
+
+  return game.wrestlers.map((wrestler) =>
+    wrestler.id === wrestlerId
+      ? {
+          ...wrestler,
+          morale: clamp(wrestler.morale + moraleDelta),
+          trust: clamp((wrestler.trust ?? 50) + trustDelta),
+        }
+      : wrestler,
+  );
+}
+
+function replaceCurrentRequest(requests: SocialInboxRequest[], nextRequest: SocialInboxRequest) {
   return [
     ...requests.filter(
-      (request) =>
-        !(
+      (request) => {
+        const sameAcceptedAction =
           request.status === "accepted" &&
           request.wrestlerId === nextRequest.wrestlerId &&
           request.actionType === nextRequest.actionType &&
           request.createdSeasonNumber === nextRequest.createdSeasonNumber &&
-          request.createdWeekNumber === nextRequest.createdWeekNumber
-        ),
+          request.createdWeekNumber === nextRequest.createdWeekNumber;
+        const sameMailDecision =
+          request.mailId === nextRequest.mailId &&
+          request.wrestlerId === nextRequest.wrestlerId &&
+          request.createdSeasonNumber === nextRequest.createdSeasonNumber &&
+          request.createdWeekNumber === nextRequest.createdWeekNumber &&
+          (request.status === "accepted" || request.status === "declined");
+
+        return !sameAcceptedAction && !sameMailDecision;
+      },
     ),
     nextRequest,
   ];
 }
 
 export function acceptSocialInboxRest(game: GameState, item: MailActionInput): GameState {
-  const request = upsertAcceptedRequest(game, item, "rest");
+  const request = buildRequest(game, item, "rest", "accepted");
   const currentShow = game.currentShow.map((segment) => {
     const participantIds = segment.participantIds.filter((id) => id !== item.wrestlerId);
     return {
@@ -180,36 +259,34 @@ export function acceptSocialInboxRest(game: GameState, item: MailActionInput): G
 
   return {
     ...game,
+    wrestlers: applyInboxDecisionStats(game, item.wrestlerId, "accepted"),
     socialInbox: {
-      requests: replaceActiveRequest(game.socialInbox.requests, request),
+      requests: replaceCurrentRequest(game.socialInbox.requests, request),
     },
     currentShow,
   };
 }
 
-export function acceptSocialInboxTvTime(game: GameState, item: MailActionInput): { game: GameState; segmentId: string } {
-  const option = getDefaultCatalogOption("Promo");
-  const segmentId = createUniqueDomainId("social-tv-segment", [game.seasonNumber, game.currentWeek, game.currentShow.length + 1, item.wrestlerId], game.currentShow.map((segment) => segment.id));
-  const segment: Segment = {
-    id: segmentId,
-    type: "Promo",
-    participantIds: [item.wrestlerId],
-    segmentCatalogId: option?.id,
-    segmentDisplayName: option?.label,
-    durationMinutes: option?.defaultDurationMinutes,
-    participantMin: option?.minParticipants,
-    participantMax: option?.maxParticipants,
-  };
-  const request = upsertAcceptedRequest(game, item, "tv_time", segmentId);
+export function acceptSocialInboxPromise(game: GameState, item: MailActionInput, actionType: Exclude<SocialInboxActionType, "rest">): GameState {
+  const request = buildRequest(game, item, actionType, "accepted");
 
   return {
-    segmentId,
-    game: {
-      ...game,
-      socialInbox: {
-        requests: replaceActiveRequest(game.socialInbox.requests, request),
-      },
-      currentShow: [...game.currentShow, segment],
+    ...game,
+    wrestlers: applyInboxDecisionStats(game, item.wrestlerId, "accepted"),
+    socialInbox: {
+      requests: replaceCurrentRequest(game.socialInbox.requests, request),
+    },
+  };
+}
+
+export function declineSocialInboxRequest(game: GameState, item: MailActionInput, actionType: SocialInboxActionType): GameState {
+  const request = buildRequest(game, item, actionType, "declined");
+
+  return {
+    ...game,
+    wrestlers: applyInboxDecisionStats(game, item.wrestlerId, "declined"),
+    socialInbox: {
+      requests: replaceCurrentRequest(game.socialInbox.requests, request),
     },
   };
 }
@@ -223,9 +300,11 @@ function resolveRequestNote(request: SocialInboxRequest, status: "fulfilled" | "
     return `${request.wrestlerName} got the protected week off they asked for.`;
   }
 
+  const label = request.actionType === "title_shot" ? "title-scene booking" : request.actionType === "story_spot" ? "story attention" : "TV time";
+
   return status === "fulfilled"
-    ? `${request.wrestlerName} got the TV time they asked the office for.`
-    : `${request.wrestlerName} did not get the promised TV time before the window closed.`;
+    ? `${request.wrestlerName} got the promised ${label}.`
+    : `${request.wrestlerName} did not get the promised ${label} before the window closed.`;
 }
 
 export function resolveSocialInboxRequestsAfterShow(game: GameState, result: ShowResult): GameState {
@@ -245,7 +324,21 @@ export function resolveSocialInboxRequestsAfterShow(game: GameState, result: Sho
     const fulfilled =
       request.actionType === "rest"
         ? request.createdSeasonNumber === result.seasonNumber && request.createdWeekNumber === result.week && !bookedIds.has(request.wrestlerId)
-        : bookedIds.has(request.wrestlerId);
+        : result.segmentResults.some((segment) => {
+            if (!segment.participantIds.includes(request.wrestlerId)) {
+              return false;
+            }
+
+            if (request.actionType === "title_shot") {
+              return Boolean(segment.championshipId);
+            }
+
+            if (request.actionType === "story_spot") {
+              return Boolean(segment.rivalryId) || segment.type === "Backstage Angle" || segment.type === "Contract Signing" || segment.type === "Promo";
+            }
+
+            return true;
+          });
     const broken = !fulfilled && request.actionType !== "rest" && isAfterDeadline(game, request);
 
     if (!fulfilled && !broken) {

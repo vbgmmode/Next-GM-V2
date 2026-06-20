@@ -21,7 +21,7 @@ import {
   hasPlePayoff,
 } from "./storyContextReads";
 import { getPrestigeMainEventAnchorSnapshot, getPrestigeMainEventAnchorSnapshotFromResult } from "./championshipPrestigeReads";
-import { getChampionshipDivisionGroup, wrestlerFitsChampionshipDivision } from "./titleCatalog";
+import { getChampionshipDivisionGroup, wrestlerFitsChampionshipDivision, wrestlerFitsInitialTitleRankLane } from "./titleCatalog";
 import { getResolvedShowCauseLinks } from "./causeLinking";
 import type {
   CalendarWeek,
@@ -299,7 +299,7 @@ function doSegmentParticipantsFitChampionship(segment: Segment, championship: Ch
     return true;
   }
 
-  return segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship));
+  return segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship, wrestlers));
 }
 
 function isSinglesTitleContestShape(segment: Segment) {
@@ -377,6 +377,26 @@ export function getTitleSceneTalentScore(wrestler: Wrestler, championship: Champ
 }
 
 
+function hashString(value: string) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(index);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+
+function getContenderRotationScore(wrestler: Wrestler, championship: Championship, rivalries: Rivalry[], currentWeek: number) {
+  const talentScore = getTitleSceneTalentScore(wrestler, championship, rivalries);
+  const rotationPhase = Math.max(1, Math.ceil(currentWeek / 2));
+  const rotationRoll = hashString(`${championship.id}-${rotationPhase}-${wrestler.id}`) % 41;
+  const underuseLift = Math.min(14, Math.max(0, getWeeksSinceLastBooked(wrestler, currentWeek) - 1) * 4);
+
+  return talentScore + rotationRoll + underuseLift;
+}
+
+
 export function getTitleDivisionScene(championship: Championship, wrestlers: Wrestler[], rivalries: Rivalry[] = [], currentWeek = 1, championships: Championship[] = []) {
   const championIds = new Set(championship.championIds);
   const otherChampionIds = new Set(
@@ -385,22 +405,29 @@ export function getTitleDivisionScene(championship: Championship, wrestlers: Wre
   const champions = championship.championIds.map((id) => wrestlers.find((wrestler) => wrestler.id === id)).filter((wrestler): wrestler is Wrestler => Boolean(wrestler));
   const manualContenders = (championship.contenderIds ?? [])
     .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
-    .filter((wrestler): wrestler is Wrestler => Boolean(wrestler && !championIds.has(wrestler.id) && wrestlerFitsChampionshipDivision(wrestler, championship)));
+    .filter((wrestler): wrestler is Wrestler => Boolean(wrestler && !championIds.has(wrestler.id) && wrestlerFitsChampionshipDivision(wrestler, championship, wrestlers)));
   const manualContenderIds = new Set(manualContenders.map((wrestler) => wrestler.id));
   const eligibleRoster = wrestlers
     .filter((wrestler) => !championIds.has(wrestler.id))
     .filter((wrestler) => !otherChampionIds.has(wrestler.id))
-    .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship))
+    .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship, wrestlers))
     .sort((a, b) => getTitleSceneTalentScore(b, championship, rivalries) - getTitleSceneTalentScore(a, championship, rivalries));
-  const derivedTopContenders = eligibleRoster.filter((wrestler) => !manualContenderIds.has(wrestler.id)).slice(0, Math.max(0, 3 - manualContenders.length));
+  const automaticLaneRoster = eligibleRoster.filter((wrestler) => wrestlerFitsInitialTitleRankLane(wrestler, championship, wrestlers));
+  const automaticContenderRoster = automaticLaneRoster.length ? automaticLaneRoster : eligibleRoster;
+  const automaticContenderPoolSize = Math.min(eligibleRoster.length, Math.max(6, Math.ceil(eligibleRoster.length * 0.5)));
+  const derivedTopContenders = automaticContenderRoster
+    .filter((wrestler) => !manualContenderIds.has(wrestler.id))
+    .slice(0, automaticContenderPoolSize)
+    .sort((a, b) => getContenderRotationScore(b, championship, rivalries, currentWeek) - getContenderRotationScore(a, championship, rivalries, currentWeek))
+    .slice(0, Math.max(0, 3 - manualContenders.length));
   const topContenders = championship.contenderIds ? manualContenders : [...manualContenders, ...derivedTopContenders].slice(0, 3);
   const topContenderIds = new Set(topContenders.map((wrestler) => wrestler.id));
   const risingContenders = eligibleRoster
     .filter((wrestler) => !topContenderIds.has(wrestler.id))
     .filter((wrestler) => wrestler.momentum >= 80 || getWeeksSinceLastBooked(wrestler, currentWeek) >= 2)
-    .sort((a, b) => b.momentum - a.momentum || b.popularity - a.popularity)
+    .sort((a, b) => b.momentum - a.momentum || getContenderRotationScore(b, championship, rivalries, currentWeek) - getContenderRotationScore(a, championship, rivalries, currentWeek))
     .slice(0, 3);
-  const outsideDivision = wrestlers.filter((wrestler) => !championIds.has(wrestler.id) && !wrestlerFitsChampionshipDivision(wrestler, championship));
+  const outsideDivision = wrestlers.filter((wrestler) => !championIds.has(wrestler.id) && !wrestlerFitsChampionshipDivision(wrestler, championship, wrestlers));
 
   return {
     champions,
@@ -427,7 +454,7 @@ function getTitleRivalries(championship: Championship, wrestlers: Wrestler[], ri
     const hasChampion = rivalry.participantIds.some((id) => championIds.has(id));
     const hasEligibleChallenger = rivalry.participantIds.some((id) => {
       const wrestler = wrestlers.find((talent) => talent.id === id);
-      return Boolean(wrestler && !championIds.has(id) && wrestlerFitsChampionshipDivision(wrestler, championship));
+      return Boolean(wrestler && !championIds.has(id) && wrestlerFitsChampionshipDivision(wrestler, championship, wrestlers));
     });
 
     return hasChampion && hasEligibleChallenger;

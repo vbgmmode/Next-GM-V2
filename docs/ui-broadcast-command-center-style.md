@@ -349,10 +349,12 @@ Results:
 - Keep the collapsed state viewport-fit on laptop screens: broadcast recap first, then compact expandable rows for Post-Show Cause Ledger, Operational Fallout, and Broadcast Breakdown.
 - Fold title, rivalry, PLE, business, roster, and Open Challenge aftermath into the resolved recap, cause ledger, or operational fallout instead of duplicating standalone fallout panels.
 - Expanded support rows may scroll internally; the collapsed screen should not require page scrolling.
-- Keep segment-by-segment review first-class through a compact broadcast rundown reel that opens a focused Segment Receipt window on selection.
-- Do not reserve permanent page height for the selected segment detail; the main Show Recap page should preserve space for recap, rundown, handoff, and calendar action.
-- Place the compact GM Handoff / Next Week band after segment review so the next step is part of the resolved show handoff, not a detached hero action.
-- Keep the handoff lighter than Results: summarize roster fallout, top social/rival pressure, next-show pressure, and the Advance Week or Season Review action without repeating full Finance, Championship, Brand Pulse, or Post-Show Cause Ledger panels.
+- Keep segment-by-segment review first-class through a compact two-row broadcast rundown reel that opens a focused Segment Receipt window on selection.
+- Do not reserve permanent page height for the selected segment detail; the main Show Recap page should preserve space for recap, rundown, fallout desk, handoff footer, and calendar action.
+- Place the Show Fallout Desk between the rundown and the handoff footer: Headline Beat, 2x2 fallout beats, then a reaction strip for player-brand trending topics and rival ratings pressure.
+- Keep Show Recap body copy all caps for broadcast consistency.
+- Place the compact GM Handoff footer after fallout review so the next step is part of the resolved show handoff, not a detached hero action.
+- Keep the handoff footer lighter than the fallout desk: one roster-wide carry-forward lead plus Calendar Ready / Advance Week. Do not duplicate roster fallout, IWC, or next-show beat cards in the footer when those reads already live above.
 
 Roster / Locker Room:
 
@@ -363,8 +365,11 @@ Roster / Locker Room:
 Wrestler Profile:
 
 - Should support GM decisions with character context.
-- Show TV history, status, championship/rivalry context, social mentions, and a concise GM read.
-- Avoid raw stat dumps without interpretation.
+- Default to a portrait-led talent file: identity/status and current role first, then compact visible ratings/condition rows.
+- Show one qualitative pressure report highlight, chosen from current state, without exposing a severity number.
+- Move deeper ratings, career, creative, and office context into focused report windows instead of long default page stacks.
+- Keep TV history, championship/rivalry context, social mentions, and contract actions available in those focused reports.
+- Avoid raw stat dumps without interpretation, but do not hide core wrestler ratings from the default profile.
 
 Championships:
 
@@ -376,6 +381,7 @@ Championships:
 - Spotlight champion state, vacancy, reign, defenses, current scene pressure, selected-title contenders, division health, and title history.
 - Keep contender boards scoped to the selected title. Do not show every division or every eligible pool when the player is focused on one belt.
 - Contender controls should be direct GM tools: edit, add, remove, and reorder. The game may suggest same-division contenders, but it should not auto-place current champions from other titles into another title's contender lane.
+- Automatic contender suggestions are read-only title-scene guidance for titles without a manually edited lane. Upper-card singles belts should initially draw from ranks 1-3 per gender; mid-card singles belts should initially draw from ranks 4-6 per gender. Suggestions may rotate within that lane by title and calendar phase, but they are not persisted rankings, not hard eligibility, and must not override a manually edited contender lane.
 - Vacant titles should expose assignment as a clear player action. Revocations and assignments should appear in title history.
 - Avoid redundant advisory grids and explanatory copy when the selected title workspace already carries the decision context.
 
@@ -385,6 +391,7 @@ Rivalries:
 - Use a command-desk shape: active rivalry rail on the left, selected rivalry spotlight in the center, rivalry composer on the right, and a compact expandable Creative Desk strip pinned at the bottom.
 - The selected rivalry spotlight should stay current-state only: structure, stakes, participants, heat, freshness, timing, stage, GM read, recent history, and available player actions.
 - Support singles, tag 2v2, and multi-person rivalry presentation without implying team records, faction mechanics, rankings, predicted outcomes, or hidden story simulation.
+- New player careers should not auto-seed starter rivalries from the initial draft; the Rivalries screen should make an empty story room feel actionable rather than broken.
 - Avoid redundant labels such as participant subtitles that repeat the title, "Relationship: Rivals," projected effects, broad template panels, or warning grids when the selected rivalry workspace already carries the decision context.
 
 Calendar:
@@ -397,6 +404,8 @@ Social / IWC:
 
 - Should feel like a reactive wrestling internet feed.
 - Posts should reflect actual outcomes after they happen.
+- Fan posts and Superstars posts stay separate lanes; superstar posts should read as first-person mood/status, not fan discourse.
+- When AI commentary is configured, post-show generation can populate both fan and superstar feeds asynchronously after Run Show.
 - Use source/category labeling and keep spicy copy contained.
 
 Finance:

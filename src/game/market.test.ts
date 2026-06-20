@@ -8,11 +8,15 @@ import {
   getActivePlayerPayroll,
   getExternalMarketOffer,
   getMarketBundleOffers,
+  getMarketNegotiationPersonality,
+  getMarketOfferEvaluation,
+  getPlayerTradeEvaluation,
   proposePlayerTrade,
   releasePlayerWrestler,
   renewPlayerContract,
   signPlayerFreeAgent,
   signPlayerFreeAgentBundle,
+  submitPlayerMarketOffer,
 } from "./market";
 import { migrateSavedGameState } from "./migration";
 import { createNewGame, draftPool } from "./seed";
@@ -105,6 +109,43 @@ function createBundleReadyGame(contractWeeks = 4) {
   return { affiliation: affiliation!, game, memberIds, wrestlers: bundleWrestlers };
 }
 
+function createSingleBoardOfferGame(wrestler: Wrestler, money = 5000000) {
+  const baseGame = createNewGame();
+  const game: GameState = {
+    ...baseGame,
+    money,
+    wrestlers: baseGame.wrestlers.filter((item) => item.id !== wrestler.id),
+    rivalBrands: baseGame.rivalBrands.map((brand) => ({
+      ...brand,
+      rosterWrestlerIds: brand.rosterWrestlerIds.filter((id) => id !== wrestler.id),
+      rosterState: brand.rosterState.filter((member) => member.wrestlerId !== wrestler.id),
+      contracts: brand.contracts.filter((contract) => contract.wrestlerId !== wrestler.id),
+    })),
+    marketState: {
+      ...baseGame.marketState,
+      weeklyBoard: {
+        seasonNumber: baseGame.seasonNumber,
+        weekNumber: baseGame.currentWeek,
+        entries: [
+          {
+            wrestlerId: wrestler.id,
+            status: "available" as const,
+            weeklyAsk: getExternalMarketOffer(wrestler, baseGame.seasonNumber, baseGame.currentWeek, 12).weeklyAsk,
+          },
+        ],
+      },
+    },
+  };
+
+  return game;
+}
+
+function getDraftPoolWrestlerByPersonality(personality: ReturnType<typeof getMarketNegotiationPersonality>) {
+  const wrestler = draftPool.find((candidate) => getMarketNegotiationPersonality(candidate) === personality);
+  expect(wrestler).toBeDefined();
+  return wrestler!;
+}
+
 describe("market ownership invariants", () => {
   it("cleans player title, rivalry, and card references on release", () => {
     const baseGame = createNewGame();
@@ -136,6 +177,20 @@ describe("market ownership invariants", () => {
     expectNoPlayerReferences(updatedGame, outgoingId);
     expect(incomingId && updatedGame.wrestlers.some((wrestler) => wrestler.id === incomingId)).toBe(true);
     expect(updatedGame.rivalBrands.some((brand) => brand.rosterState.some((member) => member.wrestlerId === outgoingId && member.acquisitionSource === "trade"))).toBe(true);
+  });
+
+  it("uses the same deterministic trade read as the player trade resolver", () => {
+    const game = createNewGame();
+    const outgoingId = game.wrestlers[0].id;
+    const targetId = game.rivalBrands.flatMap((brand) => brand.rosterWrestlerIds)[0];
+
+    const evaluation = getPlayerTradeEvaluation(game, outgoingId, targetId, draftPool);
+    const updatedGame = proposePlayerTrade(game, outgoingId, targetId, draftPool);
+
+    expect(evaluation).toBeDefined();
+    expect(updatedGame.marketState.transactions.at(-1)?.accepted).toBe(evaluation?.accepted);
+    expect(evaluation?.read).toMatch(/Rival Wants This|Strong Fit|Workable|Long Shot|No Traction/);
+    expect(evaluation?.contextReads.length).toBeGreaterThan(1);
   });
 
   it("cleans expired player contracts without release fees", () => {
@@ -267,6 +322,84 @@ describe("market ownership invariants", () => {
       paymentModel: "prepaid",
       releasePenalty: 0,
     });
+  });
+
+  it("accepts a strong submitted market offer and signs the wrestler", () => {
+    const wrestler = getDraftPoolWrestlerByPersonality("money_first");
+    const game = createSingleBoardOfferGame(wrestler);
+    const baseline = getExternalMarketOffer(wrestler, game.seasonNumber, game.currentWeek, 52);
+    const weeklySalary = Math.round(baseline.weeklyAsk * 1.8);
+    const updatedGame = submitPlayerMarketOffer(game, wrestler.id, draftPool, 52, weeklySalary);
+
+    expect(updatedGame.money).toBe(game.money - weeklySalary * 52);
+    expect(updatedGame.wrestlers.some((item) => item.id === wrestler.id)).toBe(true);
+    expect(updatedGame.marketState.weeklyBoard?.entries.find((entry) => entry.wrestlerId === wrestler.id)).toMatchObject({
+      status: "player_signed",
+      offer: {
+        outcome: "accepted",
+        weeklySalary,
+        contractWeeks: 52,
+      },
+    });
+    expect(updatedGame.marketState.playerContracts.find((contract) => contract.wrestlerId === wrestler.id)).toMatchObject({
+      weeklySalary,
+      contractWeeksRemaining: 52,
+      paymentModel: "prepaid",
+    });
+  });
+
+  it("declines a weak submitted market offer without charging money or allowing a second offer", () => {
+    const wrestler = getDraftPoolWrestlerByPersonality("security_seeker");
+    const game = createSingleBoardOfferGame(wrestler);
+    const updatedGame = submitPlayerMarketOffer(game, wrestler.id, draftPool, 1, 1000);
+    const secondAttempt = submitPlayerMarketOffer(updatedGame, wrestler.id, draftPool, 52, 100000);
+
+    expect(updatedGame.money).toBe(game.money);
+    expect(updatedGame.wrestlers.some((item) => item.id === wrestler.id)).toBe(false);
+    expect(updatedGame.marketState.weeklyBoard?.entries.find((entry) => entry.wrestlerId === wrestler.id)?.status).toBe("offer_declined");
+    expect(updatedGame.marketState.transactions.at(-1)).toMatchObject({
+      accepted: false,
+      amount: 0,
+      type: "signing",
+    });
+    expect(secondAttempt).toBe(updatedGame);
+  });
+
+  it("resolves the same submitted market offer deterministically", () => {
+    const wrestler = getDraftPoolWrestlerByPersonality("spotlight_driven");
+    const game = createSingleBoardOfferGame(wrestler);
+    const offer = getExternalMarketOffer(wrestler, game.seasonNumber, game.currentWeek, 24);
+    const first = submitPlayerMarketOffer(game, wrestler.id, draftPool, 24, offer.weeklyAsk);
+    const second = submitPlayerMarketOffer(game, wrestler.id, draftPool, 24, offer.weeklyAsk);
+
+    expect(first.money).toBe(second.money);
+    expect(first.marketState.weeklyBoard?.entries.find((entry) => entry.wrestlerId === wrestler.id)).toEqual(
+      second.marketState.weeklyBoard?.entries.find((entry) => entry.wrestlerId === wrestler.id),
+    );
+    expect(first.marketState.transactions.at(-1)?.note).toBe(second.marketState.transactions.at(-1)?.note);
+  });
+
+  it("weights negotiation personalities differently", () => {
+    const game = createNewGame();
+    const moneyFirst = getDraftPoolWrestlerByPersonality("money_first");
+    const securitySeeker = getDraftPoolWrestlerByPersonality("security_seeker");
+    const moneyBaseline = getExternalMarketOffer(moneyFirst, game.seasonNumber, game.currentWeek, 8);
+    const securityBaseline = getExternalMarketOffer(securitySeeker, game.seasonNumber, game.currentWeek, 8);
+    const moneyShortOffer = getMarketOfferEvaluation(game, moneyFirst, { contractWeeks: 8, weeklySalary: Math.round(moneyBaseline.weeklyAsk * 1.5) });
+    const moneyLongOffer = getMarketOfferEvaluation(game, moneyFirst, { contractWeeks: 52, weeklySalary: moneyBaseline.weeklyAsk });
+    const securityShortOffer = getMarketOfferEvaluation(game, securitySeeker, { contractWeeks: 8, weeklySalary: Math.round(securityBaseline.weeklyAsk * 1.5) });
+    const securityLongOffer = getMarketOfferEvaluation(game, securitySeeker, { contractWeeks: 52, weeklySalary: securityBaseline.weeklyAsk });
+
+    expect(moneyShortOffer.baseScore).toBeGreaterThan(moneyLongOffer.baseScore);
+    expect(securityLongOffer.baseScore).toBeGreaterThan(securityShortOffer.baseScore);
+  });
+
+  it("blocks submitted market offers the player cannot afford", () => {
+    const wrestler = getDraftPoolWrestlerByPersonality("momentum_chaser");
+    const game = createSingleBoardOfferGame(wrestler, 1000);
+    const updatedGame = submitPlayerMarketOffer(game, wrestler.id, draftPool, 52, 100000);
+
+    expect(updatedGame).toBe(game);
   });
 
   it("hydrates match ratings when signing from an arbitrary draft pool", () => {

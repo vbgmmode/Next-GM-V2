@@ -585,7 +585,7 @@ export function doSegmentParticipantsFitChampionship(segment: Segment, champions
     return true;
   }
 
-  return segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship));
+  return segment.participantIds.every((id) => wrestlerFitsChampionshipDivision(wrestlers.find((wrestler) => wrestler.id === id), championship, wrestlers));
 }
 
 export function getTagTitleSides(segment: Segment, championship: Championship) {

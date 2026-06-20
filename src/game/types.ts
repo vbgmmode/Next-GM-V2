@@ -89,7 +89,23 @@ export type OfficeMandateStatus = "stable" | "watch" | "critical" | "surging";
 
 export type MarketPaymentModel = "weekly" | "prepaid";
 
-export type WeeklyMarketBoardEntryStatus = "available" | "rival_signed" | "player_signed";
+export type WeeklyMarketBoardEntryStatus = "available" | "rival_signed" | "player_signed" | "offer_declined";
+
+export type MarketNegotiationPersonality = "money_first" | "security_seeker" | "spotlight_driven" | "momentum_chaser" | "rival_leverage";
+
+export type MarketNegotiationInterestRead = "Cold" | "Listening" | "Serious Interest" | "Near Agreement" | "Deal Feels Ready";
+
+export type MarketNegotiationOutcome = "accepted" | "return_next_week" | "cooldown" | "rival_signed";
+
+export type MarketNegotiationOffer = {
+  contractWeeks: number;
+  weeklySalary: number;
+  dueNow: number;
+  interestRead: MarketNegotiationInterestRead;
+  personality: MarketNegotiationPersonality;
+  outcome: MarketNegotiationOutcome;
+  note: string;
+};
 
 export type MarketContract = {
   id: string;
@@ -150,6 +166,7 @@ export type WeeklyMarketBoardEntry = {
   wrestlerId: string;
   status: WeeklyMarketBoardEntryStatus;
   weeklyAsk: number;
+  offer?: MarketNegotiationOffer;
   rivalBrandId?: string;
   rivalBrandName?: string;
   transactionId?: string;
@@ -345,6 +362,53 @@ export type SocialCategory =
   | "ple_reaction";
 
 export type SocialTone = "excited" | "angry" | "skeptical" | "impressed" | "chaotic" | "analytical";
+
+export type SocialReactionPersona =
+  | "agenda_pusher"
+  | "doomposter"
+  | "fantasy_booker"
+  | "workrate_nerd"
+  | "aura_poster"
+  | "burial_cop"
+  | "let_it_play_out_defender"
+  | "let_it_play_out_skeptic"
+  | "dirt_sheet"
+  | "tribalist"
+  | "continuity_nerd"
+  | "meme_account";
+
+export type SocialReactionSentiment = "positive" | "negative" | "mixed" | "chaotic";
+
+export type SocialReactionTriggerType =
+  | "big_win"
+  | "clean_loss"
+  | "upset"
+  | "squash"
+  | "title_change"
+  | "title_retention"
+  | "rivalry_advancement"
+  | "rivalry_stagnation"
+  | "hot_crowd"
+  | "dead_crowd"
+  | "high_rated_match"
+  | "low_rated_match"
+  | "controversial_finish"
+  | "repeated_booking"
+  | "underused_star"
+  | "overpushed_star"
+  | "injury_fatigue_concern"
+  | "morale_issue"
+  | "show_rating_swing"
+  | "fan_momentum_swing"
+  | "long_term_callback"
+  | "market_move";
+
+export type SocialReactionTarget =
+  | { type: "wrestler"; id: string; name: string }
+  | { type: "team"; ids: string[]; name: string }
+  | { type: "title"; id: string; name: string }
+  | { type: "rivalry"; id: string; name: string }
+  | { type: "show"; id: string; name: string };
 
 export type PressureLabel = "Stable" | "Tight" | "Critical" | "Surging";
 
@@ -607,6 +671,42 @@ export type SocialPost = {
   relatedWrestlerIds: string[];
   relatedRivalryIds?: string[];
   relatedChampionshipIds?: string[];
+  persona?: SocialReactionPersona;
+  sentiment?: SocialReactionSentiment;
+  intensity?: 1 | 2 | 3 | 4 | 5;
+  triggerType?: SocialReactionTriggerType;
+  target?: SocialReactionTarget;
+  sourceEventId?: string;
+  sourceResultId?: string;
+  tags?: string[];
+};
+
+export type WrestlerSocialPostTone = "heated" | "petty" | "challenge" | "title" | "mood" | "pressure";
+
+export type WrestlerSocialPost = {
+  id: string;
+  weekNumber: number;
+  seasonNumber: number;
+  showName: string;
+  resultId?: string;
+  authorId: string;
+  authorName: string;
+  targetId?: string;
+  targetName?: string;
+  contextLabel?: string;
+  jab: string;
+  intentLabel: string;
+  tone: WrestlerSocialPostTone;
+};
+
+export type SegmentAiRecap = {
+  id: string;
+  weekNumber: number;
+  seasonNumber: number;
+  showName: string;
+  resultId: string;
+  segmentId: string;
+  text: string;
 };
 
 export type FinanceReportBreakdownItem = {
@@ -740,9 +840,9 @@ export type InjuryRecoveryNote = {
   note: string;
 };
 
-export type SocialInboxActionType = "rest" | "tv_time";
+export type SocialInboxActionType = "rest" | "tv_time" | "title_shot" | "story_spot";
 
-export type SocialInboxRequestStatus = "accepted" | "fulfilled" | "broken";
+export type SocialInboxRequestStatus = "accepted" | "declined" | "fulfilled" | "broken";
 
 export type SocialInboxRequest = {
   id: string;
@@ -861,6 +961,8 @@ export type GameState = {
   rivalryHistory: RivalryHistoryEvent[];
   calendar: CalendarWeek[];
   socialPosts: SocialPost[];
+  wrestlerSocialPosts: WrestlerSocialPost[];
+  segmentAiRecaps: SegmentAiRecap[];
   financeReports: FinanceReport[];
   marketState: MarketState;
   seasonArchives: SeasonArchiveSummary[];

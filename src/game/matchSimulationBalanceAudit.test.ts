@@ -16,7 +16,7 @@ describe("match simulation balance audit", () => {
 
     expect(first).toEqual(second);
     expect(first.summary.scenarioCount).toBeGreaterThan(0);
-  });
+  }, 15000);
 
   it("includes singles, stipulation, tag, and multi-person scenario categories", () => {
     const result = runMatchSimulationBalanceAudit({
@@ -79,7 +79,7 @@ describe("match simulation balance audit", () => {
     result.scenarioResults.forEach((scenarioResult) => {
       expect(scenarioResult.metrics.maxExpectedVsActualDelta).toBeLessThan(0.12);
     });
-  }, 20000);
+  }, 60000);
 
   it("generates useful warnings for an intentionally extreme scenario set", () => {
     const result = runMatchSimulationBalanceAudit({

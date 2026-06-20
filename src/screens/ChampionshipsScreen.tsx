@@ -94,7 +94,7 @@ export function ChampionshipsScreen({
     ? game.wrestlers
         .filter((wrestler) => !selectedChampionIds.has(wrestler.id))
         .filter((wrestler) => !selectedContenderIds.has(wrestler.id))
-        .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, selectedTitleRead.championship))
+        .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, selectedTitleRead.championship, game.wrestlers))
         .sort((a, b) => getTitleSceneTalentScore(b, selectedTitleRead.championship, game.rivalries) - getTitleSceneTalentScore(a, selectedTitleRead.championship, game.rivalries))
         .slice(0, 8)
     : [];
@@ -103,7 +103,7 @@ export function ChampionshipsScreen({
     : [];
   const assignableChampionCandidates = selectedTitleRead
     ? game.wrestlers
-        .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, selectedTitleRead.championship))
+        .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, selectedTitleRead.championship, game.wrestlers))
         .sort((a, b) => getTitleSceneTalentScore(b, selectedTitleRead.championship, game.rivalries) - getTitleSceneTalentScore(a, selectedTitleRead.championship, game.rivalries))
     : [];
   const tagChampionAssignReady =
@@ -566,4 +566,3 @@ export function ChampionshipsScreen({
     </DynastyManagementShell>
   );
 }
-

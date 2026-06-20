@@ -1,8 +1,11 @@
 import { getResolvedSegmentStipulationLabel, getSegmentResultParticipantsLabel } from "../booking/bookingUtils";
+import { getSegmentAiRecapNote } from "../game/aiCommentary";
 import { getRatingsBattleSnapshot } from "../game/cpuRivalLoop";
 import { formatAttendance, formatMoney } from "../game/formatters";
 import { getBestSegment, getShowGrade } from "../game/scoring";
 import type { GameState, SegmentResult, ShowResult, SocialCategory, SocialPost, SocialTone, Wrestler } from "../game/types";
+import { getPlayerBrandTrendingTopics } from "../social/socialReads";
+import type { IwcTrendingTopic } from "../social/socialTypes";
 import { getFinanceReportForResult, getShowTypeLabel } from "./financeScreenReads";
 
 export type SegmentParticipantRead = {
@@ -160,7 +163,7 @@ export function getSegmentOutcomeHeadline(segment: SegmentResult, wrestlers: Wre
   return undefined;
 }
 
-export function buildSegmentBroadcastReads(result: ShowResult, wrestlers: Wrestler[]): SegmentBroadcastRead[] {
+export function buildSegmentBroadcastReads(result: ShowResult, wrestlers: Wrestler[], game: GameState): SegmentBroadcastRead[] {
   return result.segmentResults.map((segment, index) => {
     const isCompetitiveSegment = segment.type === "Match" || segment.type === "Open Challenge";
     const competitiveRead = isCompetitiveSegment ? buildCompetitiveRead(segment, wrestlers) : null;
@@ -191,7 +194,7 @@ export function buildSegmentBroadcastReads(result: ShowResult, wrestlers: Wrestl
       stipulation,
       titleNote: segment.titleNote,
       rivalryNote: segment.rivalryNote,
-      recapNote: segment.recapNote,
+      recapNote: getSegmentAiRecapNote(game, result.id, segment.segmentId) ?? segment.recapNote,
       falloutLine: `Momentum +${momentumTotal} · Fatigue +${fatigueTotal}${segment.overrunAffected ? " · Closing block compressed" : ""}`,
       reelSummary: competitiveRead?.isNoContest
         ? "No Contest"
@@ -209,6 +212,7 @@ export type ResultsRecapBeat = {
   label: string;
   value: string;
   detail: string;
+  topicLines?: string[];
   tone: ResultsRecapTone;
 };
 
@@ -329,7 +333,30 @@ function getRecapToneFromSocial(post: SocialPost): ResultsRecapTone {
   return "steady";
 }
 
+function stripTrendingHashtags(label: string): string {
+  return label.replace(/#\S+/g, "").replace(/\s+/g, " ").trim();
+}
+
+function formatTopTrendingTopicsDetail(topics: IwcTrendingTopic[]): string[] {
+  return topics.slice(0, 3).map((topic, index) => `${index + 1}. ${stripTrendingHashtags(topic.label)}`);
+}
+
 export function buildTopSocialReaction(game: GameState, result: ShowResult): ResultsRecapBeat | undefined {
+  const trendingTopics = getPlayerBrandTrendingTopics(game, 3);
+
+  if (trendingTopics.length) {
+    const topicLines = formatTopTrendingTopicsDetail(trendingTopics);
+
+    return {
+      id: "top-social-reaction",
+      label: "Trending On Your Brand",
+      value: game.brandName,
+      detail: topicLines.join(" "),
+      topicLines,
+      tone: "danger",
+    };
+  }
+
   const post = getTopResolvedSocialPost(game, result);
 
   if (!post) {
@@ -636,7 +663,7 @@ export function buildResultsViewModel(game: GameState, result: ShowResult): Resu
     bestSegmentDetail: getSegmentResultParticipantsLabel(bestSegment, game.wrestlers),
     runtimeLabel: result.actualRuntimeMinutes !== undefined ? `${result.actualRuntimeMinutes} min` : "Legacy",
     runtimeDetail: result.plannedRuntimeMinutes !== undefined ? `Planned ${result.plannedRuntimeMinutes} min` : "No runtime record",
-    segmentReads: buildSegmentBroadcastReads(result, game.wrestlers),
+    segmentReads: buildSegmentBroadcastReads(result, game.wrestlers, game),
   };
 }
 

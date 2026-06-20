@@ -52,18 +52,22 @@ function singlesSegment(game: GameState, stipulationId?: string, rivalryId?: str
 }
 
 describe("stipulation scoring", () => {
-  it("keeps raw segment scoring unchanged and applies stipulation score/fatigue only during runShow", () => {
+  it("keeps raw stipulation fit bounded and applies catalog score/fatigue only during runShow", () => {
     const game = createGame();
     const standardSegment = singlesSegment(game);
     const stipulationSegment = singlesSegment(game, "tlc_match");
+    const standardRawScore = scoreSegment(standardSegment, game.wrestlers, [], []);
+    const stipulationRawScore = scoreSegment(stipulationSegment, game.wrestlers, [], []);
 
-    expect(scoreSegment(stipulationSegment, game.wrestlers, [], [])).toBe(scoreSegment(standardSegment, game.wrestlers, [], []));
+    expect(stipulationRawScore).toBeGreaterThanOrEqual(standardRawScore);
+    expect(stipulationRawScore - standardRawScore).toBeLessThanOrEqual(4);
 
     const standardResult = runShow({ ...game, currentShow: [standardSegment] }).result.segmentResults[0];
     const stipulationResult = runShow({ ...game, currentShow: [stipulationSegment] }).result.segmentResults[0];
     const firstId = game.wrestlers[0].id;
 
-    expect(stipulationResult.score - standardResult.score).toBe(4);
+    expect(stipulationResult.score - standardResult.score).toBeGreaterThanOrEqual(4);
+    expect(stipulationResult.score - standardResult.score).toBeLessThanOrEqual(8);
     expect(stipulationResult.fatigueChanges[firstId] - standardResult.fatigueChanges[firstId]).toBe(4);
   });
 

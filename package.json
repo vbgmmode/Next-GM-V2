@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "test": "vitest",
+    "roster:recalibrate": "node scripts/recalibrateRosterStats.mjs",
+    "roster:recalibrate:partial": "node scripts/recalibrateRosterStats.mjs --allow-partial --input data/rosters/top_200_roster_attributes_2026-05-16.csv",
     "preview": "vite preview"
   },
   "dependencies": {

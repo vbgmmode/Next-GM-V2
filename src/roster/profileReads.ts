@@ -46,7 +46,7 @@ export function formatHistoryStamp(event: Pick<ChampionshipHistoryEvent | Rivalr
 export function getWrestlerTitleSceneRows(wrestler: Wrestler, game: GameState) {
   return game.championships
     .filter((championship) => championship.eligibleMatchScope !== "tag_team")
-    .filter((championship) => wrestlerFitsChampionshipDivision(wrestler, championship) || championship.championIds.includes(wrestler.id))
+    .filter((championship) => wrestlerFitsChampionshipDivision(wrestler, championship, game.wrestlers) || championship.championIds.includes(wrestler.id))
     .map((championship) => {
       const scene = getTitleDivisionScene(championship, game.wrestlers, game.rivalries, game.currentWeek, game.championships);
       const isChampion = championship.championIds.includes(wrestler.id);
@@ -137,7 +137,7 @@ export function getRivalryTitleRelevance(rivalry: Rivalry, championships: Champi
       .filter((id) => id !== championId)
       .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
       .filter((wrestler): wrestler is Wrestler => Boolean(wrestler))
-      .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship));
+      .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship, wrestlers));
 
     if (hasChampion && eligibleChallengers.length) {
       return {

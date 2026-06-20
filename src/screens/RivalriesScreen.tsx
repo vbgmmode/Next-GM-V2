@@ -16,7 +16,6 @@ import {
   formatRivalryStakes,
   formatRivalryStructure,
   getDefaultRivalryComposerParticipantIds,
-  getActiveRivalryParticipantIds,
   getPreferredTagPartnerId,
   getRivalryCreationBlockReason,
   getRivalryParticipants,
@@ -39,6 +38,49 @@ export type RivalryCreateInput = {
   stakes: RivalryStakes;
   storylineId?: string;
 };
+
+function RivalryComposerTalentSlot({
+  index,
+  onChange,
+  slotLabel,
+  value,
+  wrestlers,
+}: {
+  index: number;
+  onChange: (index: number, wrestlerId: string) => void;
+  slotLabel: string;
+  value: string;
+  wrestlers: GameState["wrestlers"];
+}) {
+  const selectedWrestler = value ? wrestlers.find((wrestler) => wrestler.id === value) : undefined;
+
+  return (
+    <label className="rivalry-composer-slot">
+      <div className={`rivalry-composer-slot-card ${selectedWrestler ? "is-filled" : "is-empty"}`.trim()}>
+        <span className="rivalry-composer-slot-label">{slotLabel}</span>
+        <div aria-hidden="true" className="rivalry-composer-slot-portrait">
+          {selectedWrestler ? (
+            <WrestlerPortrait className="rivalry-composer-slot-portrait-image" wrestler={selectedWrestler} />
+          ) : (
+            <span className="rivalry-composer-slot-portrait-placeholder">Select</span>
+          )}
+        </div>
+        <select
+          className="rivalry-desk-select rivalry-composer-slot-select"
+          value={value}
+          onChange={(event) => onChange(index, event.target.value)}
+        >
+          <option value="">Choose wrestler</option>
+          {wrestlers.map((wrestler) => (
+            <option key={wrestler.id} value={wrestler.id}>
+              {wrestler.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    </label>
+  );
+}
 
 function renderFeudRow({
   rivalry,
@@ -102,7 +144,7 @@ export function RivalriesScreen({
   const [stakes, setStakes] = useState<RivalryStakes>("personal");
   const [storylineId, setStorylineId] = useState(getDefaultStorylineIdForStakes("personal"));
   const [storyFilesExpanded, setStoryFilesExpanded] = useState(false);
-  const [feudSuggestionsExpanded, setFeudSuggestionsExpanded] = useState(true);
+  const [feudSuggestionsExpanded, setFeudSuggestionsExpanded] = useState(false);
   const [endDraftOpen, setEndDraftOpen] = useState(false);
   const [endReason, setEndReason] = useState<string>(RIVALRY_END_REASONS[0]);
   const [sparkDeskOpen, setSparkDeskOpen] = useState(false);
@@ -124,11 +166,6 @@ export function RivalriesScreen({
   const selectedGmRead = selectedRivalry ? buildRivalryGmRead(game, selectedRivalry, currentWeek.isGoHome, currentWeek.showType === "ple") : "";
   const wallEntries = rivalrySnapshots.filter(({ rivalry }) => !onClockIds.has(rivalry.id));
   const feudSuggestions = useMemo(() => buildRivalryFeudSuggestions(game, 3), [game]);
-  const activeRivalryParticipantIds = useMemo(() => getActiveRivalryParticipantIds(game.rivalries), [game.rivalries]);
-
-  useEffect(() => {
-    setParticipantIds((current) => current.map((id) => (id && activeRivalryParticipantIds.has(id) ? "" : id)));
-  }, [activeRivalryParticipantIds]);
 
   useEffect(() => {
     if (initialSelectedRivalryId && game.rivalries.some((rivalry) => rivalry.id === initialSelectedRivalryId)) {
@@ -159,7 +196,7 @@ export function RivalriesScreen({
         if (!next[partnerIndex]) {
           const partnerId = getPreferredTagPartnerId(wrestlerId, game.wrestlers, next);
 
-          if (partnerId && !activeRivalryParticipantIds.has(partnerId)) {
+          if (partnerId) {
             next[partnerIndex] = partnerId;
           }
         }
@@ -284,24 +321,19 @@ export function RivalriesScreen({
         ) : null}
       </div>
       <div className="rivalry-composer-body">
-        <div className="rivalry-composer-selects">
+        <div className={`rivalry-composer-selects is-${structure}`}>
           {Array.from({ length: range.max }).map((_, index) => {
             const slotLabel = structure === "tag_team" ? `${index < 2 ? "Team A" : "Team B"} ${(index % 2) + 1}` : `Wrestler ${index + 1}`;
 
             return (
-              <label className="rivalry-composer-slot" key={`composer-slot-${index}`}>
-                <span>{slotLabel}</span>
-                <select className="rivalry-desk-select" value={participantIds[index] ?? ""} onChange={(event) => updateParticipantSlot(index, event.target.value)}>
-                  <option value="">Choose wrestler</option>
-                  {game.wrestlers
-                    .filter((wrestler) => !activeRivalryParticipantIds.has(wrestler.id) || wrestler.id === (participantIds[index] ?? ""))
-                    .map((wrestler) => (
-                      <option key={wrestler.id} value={wrestler.id}>
-                        {wrestler.name}
-                      </option>
-                    ))}
-                </select>
-              </label>
+              <RivalryComposerTalentSlot
+                index={index}
+                key={`composer-slot-${index}`}
+                onChange={updateParticipantSlot}
+                slotLabel={slotLabel}
+                value={participantIds[index] ?? ""}
+                wrestlers={game.wrestlers}
+              />
             );
           })}
         </div>

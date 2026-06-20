@@ -61,7 +61,7 @@ export function assignChampionshipInGame(game: GameState, championshipId: string
 
   const nextChampions = nextChampionIds
     .map((id) => game.wrestlers.find((wrestler) => wrestler.id === id))
-    .filter((wrestler): wrestler is Wrestler => Boolean(wrestler && wrestlerFitsChampionshipDivision(wrestler, championship)));
+    .filter((wrestler): wrestler is Wrestler => Boolean(wrestler && wrestlerFitsChampionshipDivision(wrestler, championship, game.wrestlers)));
 
   if (nextChampions.length !== requiredChampionCount) {
     return game;

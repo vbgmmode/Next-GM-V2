@@ -63,15 +63,44 @@ describe("gameContextReads championship selectors", () => {
   });
 
   it("builds title scenes with manual contenders before derived contenders", () => {
-    const wrestlers = sameDivisionWrestlers(4);
+    const wrestlers = sameDivisionWrestlers(6);
     const championship = {
       ...title("anchored-title", [wrestlers[0].id], 90),
-      contenderIds: [wrestlers[3].id],
+      contenderIds: [wrestlers[5].id],
+      titleLevel: "Top",
     };
     const scene = getTitleDivisionScene(championship, wrestlers, [], 1, [championship]);
 
-    expect(scene.topContenders.map((wrestler) => wrestler.id)).toEqual([wrestlers[3].id]);
+    expect(scene.topContenders.map((wrestler) => wrestler.id)).toEqual([wrestlers[5].id]);
     expect(scene.eligibleRoster.map((wrestler) => wrestler.id)).toContain(wrestlers[1].id);
+  });
+
+  it("uses rank lanes only for automatic contenders when no manual lane is set", () => {
+    const wrestlers = sameDivisionWrestlers(6);
+    const { contenderIds: topContenderIds, ...topTitle } = { ...title("top-title", [], 90), titleLevel: "Top" };
+    const { contenderIds: middleContenderIds, ...middleTitle } = { ...title("middle-title", [], 80), titleLevel: "Middle" };
+    void topContenderIds;
+    void middleContenderIds;
+
+    const topScene = getTitleDivisionScene(topTitle, wrestlers, [], 1, [topTitle]);
+    const middleScene = getTitleDivisionScene(middleTitle, wrestlers, [], 1, [middleTitle]);
+
+    expect(topScene.topContenders.map((wrestler) => wrestler.id).sort()).toEqual(wrestlers.slice(3, 6).map((wrestler) => wrestler.id).sort());
+    expect(middleScene.topContenders.map((wrestler) => wrestler.id).sort()).toEqual(wrestlers.slice(0, 3).map((wrestler) => wrestler.id).sort());
+  });
+
+  it("rotates automatic contender reads by title and calendar phase", () => {
+    const wrestlers = sameDivisionWrestlers(10);
+    const { contenderIds: primaryContenderIds, ...primaryTitle } = title("primary-title", [wrestlers[0].id], 90);
+    const { contenderIds: secondaryContenderIds, ...secondaryTitle } = title("secondary-title", [wrestlers[0].id], 80);
+    void primaryContenderIds;
+    void secondaryContenderIds;
+    const primaryWeekOne = getTitleDivisionScene(primaryTitle, wrestlers, [], 1, [primaryTitle]).topContenders.map((wrestler) => wrestler.id);
+    const secondaryWeekOne = getTitleDivisionScene(secondaryTitle, wrestlers, [], 1, [secondaryTitle]).topContenders.map((wrestler) => wrestler.id);
+    const primaryWeekThree = getTitleDivisionScene(primaryTitle, wrestlers, [], 3, [primaryTitle]).topContenders.map((wrestler) => wrestler.id);
+
+    expect(secondaryWeekOne).not.toEqual(primaryWeekOne);
+    expect(primaryWeekThree).not.toEqual(primaryWeekOne);
   });
 
   it("ranks build-pressure championship snapshots ahead of prestige-only stable scenes", () => {

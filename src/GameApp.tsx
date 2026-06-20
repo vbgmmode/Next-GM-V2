@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { AppBootRequest } from "./appBoot";
 import { syncAppViewportHeight } from "./viewportHeight";
 import { CommandPanel, HeroDecisionPanel, MetricTile, getBroadcastTheme } from "./components/broadcast";
@@ -18,7 +18,8 @@ import {
   updateSaveRecord,
 } from "./gameStorage";
 import { advanceGameWeek } from "./game/advanceWeek";
-import { generateExternalAiSocialCommentary } from "./game/aiCommentary";
+import { generateExternalAiSocialContent } from "./game/aiCommentary";
+import type { ExternalAiSocialContent } from "./game/aiCommentary";
 import { getRosterAffiliations, getWrestlerAffiliations } from "./game/affiliationCatalog";
 import { getFinancePressureLabel } from "./game/finance";
 import { getRosterFinanceValueForWrestler } from "./game/financeCatalog";
@@ -28,8 +29,8 @@ import {
   proposePlayerTrade,
   releasePlayerWrestler,
   renewPlayerContract,
-  signPlayerFreeAgent,
   signPlayerFreeAgentBundle,
+  submitPlayerMarketOffer,
 } from "./game/market";
 import { MARKET_CONTRACT_MAX_WEEKS, PLE_COUNT, PLE_CYCLE_WEEKS, SEASON_WEEK_COUNT } from "./game/constants";
 import {
@@ -109,8 +110,9 @@ import {
 } from "./game/scoring";
 import { getChampionshipArtworkSrc, getTitleCatalogBrand, wrestlerFitsChampionshipDivision } from "./game/titleCatalog";
 import {
+  acceptSocialInboxPromise,
   acceptSocialInboxRest,
-  acceptSocialInboxTvTime,
+  declineSocialInboxRequest,
   getProtectedRestWrestlerIds,
   isWrestlerProtectedRest,
 } from "./game/socialInboxActions";
@@ -178,7 +180,7 @@ import {
 } from "./booking/bookingUtils";
 import { getWrestlerValueProfile } from "./roster/rosterValueReads";
 import type { WrestlerValueProfile } from "./roster/rosterTypes";
-import type { SuperstarMailItem } from "./social/socialTypes";
+import type { SuperstarMailDecision, SuperstarMailItem } from "./social/socialTypes";
 import { buildQaRuntimeHarnessState, getQaHarnessMode } from "./qa/qaHarness";
 import {
   formatDraftGenderReadout,
@@ -1868,7 +1870,7 @@ function getRivalryTitleRelevance(rivalry: Rivalry, championships: Championship[
       .filter((id) => id !== championId)
       .map((id) => wrestlers.find((wrestler) => wrestler.id === id))
       .filter((wrestler): wrestler is Wrestler => Boolean(wrestler))
-      .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship));
+      .filter((wrestler) => wrestlerFitsChampionshipDivision(wrestler, championship, wrestlers));
 
     if (hasChampion && eligibleChallengers.length) {
       return {
@@ -1980,17 +1982,6 @@ function getRivalryCreationBlockReason(
 
   if (new Set(selectedIds).size !== selectedIds.length) {
     return "Each wrestler can only appear once in a rivalry.";
-  }
-
-  const activeRivalryParticipantIds = new Set(rivalries.flatMap((rivalry) => rivalry.participantIds));
-  const busyParticipants = selectedIds.filter((id) => activeRivalryParticipantIds.has(id));
-
-  if (busyParticipants.length) {
-    const busyNames = getWrestlerNames(busyParticipants, wrestlers);
-
-    return busyNames
-      ? `${busyNames} ${busyParticipants.length === 1 ? "is" : "are"} already locked into an active feud.`
-      : "One or more selected wrestlers are already locked into an active feud.";
   }
 
   if (structure === "tag_team" && selectedIds.length !== 4) {
@@ -2524,6 +2515,7 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
   const [bookingFocusSegmentId, setBookingFocusSegmentId] = useState<string | undefined>();
   const [rivalriesFocusId, setRivalriesFocusId] = useState<string | undefined>();
   const [didApplyBootRequest, setDidApplyBootRequest] = useState(bootRequest?.type !== "load-career");
+  const requestedAiRecapBackfills = useRef<Set<string>>(new Set());
   const latestResult = game?.showHistory[game.showHistory.length - 1];
   const hasCurrentPostShow = latestResult ? latestResult.week === game?.currentWeek : false;
   const recentCareer = getMostRecentCareer(careerSaves);
@@ -2545,6 +2537,27 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
 
     setDidApplyBootRequest(true);
   }, [bootRequest, didApplyBootRequest]);
+
+  useEffect(() => {
+    if (screen !== "results" || !game || !latestResult) {
+      return;
+    }
+
+    const resultRecapIds = new Set(
+      game.segmentAiRecaps
+        .filter((recap) => recap.resultId === latestResult.id)
+        .map((recap) => recap.segmentId),
+    );
+    const needsAiRecap = latestResult.segmentResults.some((segment) => !resultRecapIds.has(segment.segmentId));
+    const requestKey = `${latestResult.id}:${latestResult.segmentResults.length}`;
+
+    if (!needsAiRecap || requestedAiRecapBackfills.current.has(requestKey)) {
+      return;
+    }
+
+    requestedAiRecapBackfills.current.add(requestKey);
+    generateAndPersistExternalAiContent(latestResult, game, "results");
+  }, [game, latestResult, screen]);
 
   function refreshCareerSaves() {
     const updatedCareerSaves = loadCareerSaves();
@@ -2579,6 +2592,51 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
     refreshCareerSaves();
     setSavedGame(nextSavedGame);
     return nextSavedGame;
+  }
+
+  function mergeExternalAiSocialContent(current: GameState, content: ExternalAiSocialContent) {
+    const { fanPosts, wrestlerPosts, segmentRecaps } = content;
+
+    if (!fanPosts.length && !wrestlerPosts.length && !segmentRecaps.length) {
+      return current;
+    }
+
+    const existingFanIds = new Set(current.socialPosts.map((post) => post.id));
+    const existingWrestlerIds = new Set(current.wrestlerSocialPosts.map((post) => post.id));
+    const existingRecapIds = new Set(current.segmentAiRecaps.map((recap) => recap.id));
+    const newFanPosts = fanPosts.filter((post) => !existingFanIds.has(post.id));
+    const newWrestlerPosts = wrestlerPosts.filter((post) => !existingWrestlerIds.has(post.id));
+    const newSegmentRecaps = segmentRecaps.filter((recap) => !existingRecapIds.has(recap.id));
+
+    if (!newFanPosts.length && !newWrestlerPosts.length && !newSegmentRecaps.length) {
+      return current;
+    }
+
+    return {
+      ...current,
+      socialPosts: newFanPosts.length ? [...current.socialPosts, ...newFanPosts] : current.socialPosts,
+      wrestlerSocialPosts: newWrestlerPosts.length ? [...current.wrestlerSocialPosts, ...newWrestlerPosts] : current.wrestlerSocialPosts,
+      segmentAiRecaps: newSegmentRecaps.length ? [...current.segmentAiRecaps, ...newSegmentRecaps] : current.segmentAiRecaps,
+    };
+  }
+
+  function generateAndPersistExternalAiContent(result: ShowResult, sourceGame: GameState, nextScreen: SavedGameState["screen"]) {
+    void generateExternalAiSocialContent(result, sourceGame).then((content) => {
+      setGame((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const updatedGame = mergeExternalAiSocialContent(current, content);
+
+        if (updatedGame === current) {
+          return current;
+        }
+
+        persistGameSnapshot(updatedGame, nextScreen);
+        return updatedGame;
+      });
+    });
   }
 
   function startNewGame() {
@@ -2774,8 +2832,9 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
     });
   }
 
-  function handleSuperstarMailAction(item: SuperstarMailItem) {
-    if (!item.action) {
+  function handleSuperstarMailAction(item: SuperstarMailItem, decision: SuperstarMailDecision) {
+    const action = item.action;
+    if (!action) {
       return;
     }
 
@@ -2784,18 +2843,20 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
         return current;
       }
 
-      if (item.action?.type === "rest") {
+      if (decision === "decline") {
+        const updatedGame = declineSocialInboxRequest(current, item, action.type);
+        persistGameSnapshot(updatedGame, "social");
+        return updatedGame;
+      }
+
+      if (action.type === "rest") {
         const updatedGame = acceptSocialInboxRest(current, item);
         persistGameSnapshot(updatedGame, "social");
         return updatedGame;
       }
 
-      const { game: updatedGame, segmentId } = acceptSocialInboxTvTime(current, item);
-      persistGameSnapshot(updatedGame, "booking");
-      setBookingFocusSegmentId(segmentId);
-      setProfileWrestlerId(undefined);
-      setProfileReturnScreen("booking");
-      setScreen("booking");
+      const updatedGame = acceptSocialInboxPromise(current, item, action.type);
+      persistGameSnapshot(updatedGame, "social");
       return updatedGame;
     });
   }
@@ -3007,7 +3068,7 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
             }
 
             const wrestler = current.wrestlers.find((talent) => talent.id === id);
-            return Boolean(wrestler && wrestlerFitsChampionshipDivision(wrestler, championship));
+            return Boolean(wrestler && wrestlerFitsChampionshipDivision(wrestler, championship, current.wrestlers));
           });
           return { ...championship, contenderIds };
         }),
@@ -3210,32 +3271,7 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
     persistGameSnapshot(resolvedShow.game, "results");
     setGame(resolvedShow.game);
     setScreen("results");
-    void generateExternalAiSocialCommentary(resolvedShow.result, resolvedShow.game).then((posts) => {
-      if (!posts.length) {
-        return;
-      }
-
-      setGame((current) => {
-        if (!current) {
-          return current;
-        }
-
-        const existingIds = new Set(current.socialPosts.map((post) => post.id));
-        const newPosts = posts.filter((post) => !existingIds.has(post.id));
-
-        if (!newPosts.length) {
-          return current;
-        }
-
-        const updatedGame = {
-          ...current,
-          socialPosts: [...current.socialPosts, ...newPosts],
-        };
-
-        persistGameSnapshot(updatedGame, "results");
-        return updatedGame;
-      });
-    });
+    generateAndPersistExternalAiContent(resolvedShow.result, resolvedShow.game, "results");
   }
 
   function advanceWeek() {
@@ -3277,7 +3313,7 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
     setScreen("dashboard");
   }
 
-  function signFreeAgent(wrestlerId: string, contractWeeks: number) {
+  function submitMarketOffer(wrestlerId: string, contractWeeks: number, weeklySalary: number) {
     setGame((current) => {
       if (!current) {
         return current;
@@ -3288,7 +3324,7 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
         return current;
       }
 
-      const updatedGame = signPlayerFreeAgent(current, wrestlerId, draftPool, contractWeeks);
+      const updatedGame = submitPlayerMarketOffer(current, wrestlerId, draftPool, contractWeeks, weeklySalary);
       persistGameSnapshot(updatedGame, "market");
       return updatedGame;
     });
@@ -3327,7 +3363,12 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
     });
   }
 
-  function renewContract(wrestlerId: string, contractWeeks: number) {
+  function renewContract(
+    wrestlerId: string,
+    contractWeeks: number,
+    nextScreen: SavedGameState["screen"] = "market",
+    profileState?: Pick<SavedGameState, "profileReturnScreen" | "profileWrestlerId">,
+  ) {
     setGame((current) => {
       if (!current) {
         return current;
@@ -3339,12 +3380,12 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
       }
 
       const updatedGame = renewPlayerContract(current, wrestlerId, contractWeeks);
-      persistGameSnapshot(updatedGame, "market");
+      persistGameSnapshot(updatedGame, nextScreen, profileState);
       return updatedGame;
     });
   }
 
-  function releaseWrestler(wrestlerId: string) {
+  function releaseWrestler(wrestlerId: string, nextScreen: SavedGameState["screen"] = "market") {
     setGame((current) => {
       if (!current) {
         return current;
@@ -3368,7 +3409,7 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
       }
 
       const updatedGame = releasePlayerWrestler(current, wrestlerId);
-      persistGameSnapshot(updatedGame, "market");
+      persistGameSnapshot(updatedGame, nextScreen);
       return updatedGame;
     });
   }
@@ -3483,6 +3524,13 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
         onBackToDashboard={() => closeWrestlerProfile("dashboard")}
         onBackToRoster={() => closeWrestlerProfile("roster")}
         onNavigate={navigateTo}
+        onReleaseWrestler={(wrestlerId) => releaseWrestler(wrestlerId, "roster")}
+        onRenewContract={(wrestlerId, contractWeeks) =>
+          renewContract(wrestlerId, contractWeeks, "profile", {
+            profileReturnScreen,
+            profileWrestlerId: wrestlerId,
+          })
+        }
         onSetAlignment={setWrestlerAlignment}
         returnScreen={profileReturnScreen}
         wrestler={profileWrestler}
@@ -3501,10 +3549,8 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
         latestResult={latestResult}
         onNavigate={navigateTo}
         onProposeTrade={proposeTrade}
-        onReleaseWrestler={releaseWrestler}
-        onRenewContract={renewContract}
         onSignBundle={signFreeAgentBundle}
-        onSignFreeAgent={signFreeAgent}
+        onSubmitMarketOffer={submitMarketOffer}
       />,
     );
   }

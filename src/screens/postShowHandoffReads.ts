@@ -50,6 +50,10 @@ export type PostShowHandoffViewModel = {
   runtimeDetail: string;
   office: PostShowOfficeSnapshot;
   handoff: PostShowHandoffSnapshot;
+  rosterHandoffLead: {
+    headline: string;
+    detail: string;
+  };
   nextWeekName: string;
   nextWeekTypeLabel: string;
   nextPleName: string;
@@ -191,6 +195,67 @@ function buildStoryEvents(game: GameState, result: ShowResult): PostShowHandoffS
   return events;
 }
 
+export function buildRosterHandoffLead(game: GameState, result: ShowResult): { headline: string; detail: string } {
+  const bookedIds = new Set(result.segmentResults.flatMap((segment) => segment.participantIds));
+  const bookedCount = bookedIds.size;
+  const rosterSize = game.wrestlers.length;
+  const offCardCount = Math.max(0, rosterSize - bookedCount);
+  const hotCount = game.wrestlers.filter((wrestler) => wrestler.momentum >= 70).length;
+  const coldCount = game.wrestlers.filter((wrestler) => wrestler.momentum < 45).length;
+  const injuredCount = game.wrestlers.filter((wrestler) => wrestler.injuryStatus !== "healthy").length;
+  const overusedCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Overused")).length;
+  const underusedCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Underused")).length;
+  const moraleRiskCount = game.wrestlers.filter((wrestler) => getRosterPressureTags(wrestler, game.currentWeek).includes("Morale Risk")).length;
+  const fallout = result.lockerRoomFallout;
+  const moraleMoves = (fallout?.moraleBoosts.length ?? 0) + (fallout?.moraleDrops.length ?? 0);
+  const injuryNotes = fallout?.injuryNotes.length ?? 0;
+  const pressureFlags = injuredCount + overusedCount + underusedCount + moraleRiskCount + injuryNotes;
+
+  const headline =
+    injuredCount > 0 || injuryNotes > 0
+      ? "The Locker Room Has Medical Carry-Forward"
+      : pressureFlags >= 3
+        ? "The Roster Enters Next Week Under Pressure"
+        : hotCount >= Math.max(4, Math.ceil(rosterSize * 0.3))
+          ? "The Roster Is Running Hot Into Next Week"
+          : coldCount >= Math.max(4, Math.ceil(rosterSize * 0.25))
+            ? "Parts Of The Roster Need Attention"
+            : "The Locker Room Enters Next Week Level";
+
+  const detailParts: string[] = [
+    bookedCount
+      ? `${bookedCount} of ${rosterSize} wrestlers worked this show${offCardCount ? ` and ${offCardCount} stayed off-card` : ""}.`
+      : `The full ${rosterSize}-wrestler roster carries into the next booking desk.`,
+  ];
+
+  if (moraleMoves) {
+    detailParts.push(`${moraleMoves} morale move${moraleMoves === 1 ? "" : "s"} landed across the locker room after the show.`);
+  }
+
+  if (hotCount) {
+    detailParts.push(`${hotCount} wrestler${hotCount === 1 ? "" : "s"} now sit${hotCount === 1 ? "s" : ""} at 70+ momentum.`);
+  }
+
+  if (coldCount) {
+    detailParts.push(`${coldCount} wrestler${coldCount === 1 ? "" : "s"} sit${coldCount === 1 ? "s" : ""} below 45 momentum.`);
+  }
+
+  if (injuredCount || injuryNotes) {
+    detailParts.push(`${Math.max(injuredCount, injuryNotes)} injury note${Math.max(injuredCount, injuryNotes) === 1 ? "" : "s"} carry into next week's roster planning.`);
+  }
+
+  if (overusedCount || underusedCount || moraleRiskCount) {
+    detailParts.push(
+      `${overusedCount} overuse, ${underusedCount} underuse, and ${moraleRiskCount} morale flag${overusedCount + underusedCount + moraleRiskCount === 1 ? "" : "s"} are visible on the desk.`,
+    );
+  }
+
+  return {
+    headline,
+    detail: detailParts.slice(0, 3).join(" "),
+  };
+}
+
 export function buildPostShowHandoffViewModel(game: GameState, result: ShowResult): PostShowHandoffViewModel {
   const bestSegment = getBestSegment(result);
   const financeReport = getFinanceReportForResult(game, result);
@@ -225,6 +290,7 @@ export function buildPostShowHandoffViewModel(game: GameState, result: ShowResul
     runtimeDetail: result.plannedRuntimeMinutes !== undefined ? `Planned ${result.plannedRuntimeMinutes} min` : "No runtime record",
     office: getPostShowOfficeSnapshot(game, result, financeReport),
     handoff: getPostShowHandoffSnapshot(game, result, financeReport),
+    rosterHandoffLead: buildRosterHandoffLead(game, result),
     nextWeekName: nextWeek ? nextWeek.showName : "Season Review",
     nextWeekTypeLabel: nextWeek ? getShowTypeLabel(nextWeek.showType) : "Review the year",
     nextPleName: nextPle ? nextPle.showName : "None",

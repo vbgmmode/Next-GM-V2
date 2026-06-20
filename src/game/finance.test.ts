@@ -118,38 +118,38 @@ function createFinanceGame(showType: ShowType = "tv", manualWinner = true): { ga
 }
 
 describe("show production finance", () => {
-  it("prices the recommended Medium 16-person draft mix under 1.55M with healthy reserve", () => {
+  it("prices the recommended Medium 20-person draft mix with healthy operating reserve", () => {
     const spend = getRosterSpend([
       ["MainEvent", 2],
-      ["UpperCard", 3],
-      ["Midcard", 7],
-      ["Prospect", 3],
-      ["Enhancement", 1],
+      ["UpperCard", 4],
+      ["Midcard", 8],
+      ["Prospect", 4],
+      ["Enhancement", 2],
     ]);
 
-    expect(spend).toBeLessThanOrEqual(1550000);
-    expect(mediumStartingBudget - spend).toBeGreaterThanOrEqual(450000);
+    expect(spend).toBeLessThanOrEqual(1450000);
+    expect(mediumStartingBudget - spend).toBeGreaterThanOrEqual(550000);
   });
 
-  it("keeps a star-heavy 16-person draft possible but meaningfully tighter", () => {
+  it("keeps a star-heavy 20-person draft possible but meaningfully tighter", () => {
     const recommendedSpend = getRosterSpend([
       ["MainEvent", 2],
-      ["UpperCard", 3],
-      ["Midcard", 7],
-      ["Prospect", 3],
-      ["Enhancement", 1],
+      ["UpperCard", 4],
+      ["Midcard", 8],
+      ["Prospect", 4],
+      ["Enhancement", 2],
     ]);
     const starHeavySpend = getRosterSpend([
-      ["MainEvent", 3],
-      ["UpperCard", 4],
-      ["Midcard", 6],
-      ["Prospect", 2],
+      ["MainEvent", 4],
+      ["UpperCard", 5],
+      ["Midcard", 7],
+      ["Prospect", 3],
       ["Enhancement", 1],
     ]);
 
     expect(starHeavySpend).toBeLessThanOrEqual(mediumStartingBudget);
-    expect(starHeavySpend - recommendedSpend).toBeGreaterThanOrEqual(150000);
-    expect(mediumStartingBudget - starHeavySpend).toBeLessThan(350000);
+    expect(starHeavySpend - recommendedSpend).toBeGreaterThanOrEqual(250000);
+    expect(mediumStartingBudget - starHeavySpend).toBeLessThan(450000);
   });
 
   it("derives default market rates at roughly 115 percent of draft value", () => {
