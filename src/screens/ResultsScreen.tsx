@@ -36,21 +36,30 @@ function RsMetric({ detail, label, value }: { detail?: string; label: string; va
   );
 }
 
+function getFalloutBeatTooltip(beat: ResultsRecapBeat) {
+  return [getFalloutBeatDisplayLabel(beat), beat.value, beat.detail, ...(beat.topicLines ?? [])].filter(Boolean).join("\n");
+}
+
 function RsFalloutCard({ beat, compact = false }: { beat: ResultsRecapBeat; compact?: boolean }) {
+  const tooltip = getFalloutBeatTooltip(beat);
+
   return (
     <article
       className={`rs-fallout-card tone-${beat.tone}${beat.id === "top-social-reaction" ? " is-trending-topics" : ""}${compact ? " is-compact" : ""}`}
+      title={tooltip}
     >
       <span>{getFalloutBeatDisplayLabel(beat)}</span>
       <strong title={beat.value}>{beat.value}</strong>
       {beat.topicLines?.length ? (
         <ul className="rs-fallout-topic-list">
           {beat.topicLines.map((line) => (
-            <li key={line}>{line}</li>
+            <li key={line} title={line}>
+              {line}
+            </li>
           ))}
         </ul>
       ) : (
-        <p>{beat.detail}</p>
+        <p title={beat.detail}>{beat.detail}</p>
       )}
     </article>
   );
@@ -381,10 +390,10 @@ export function ResultsScreen({
           </header>
 
           <div className="rs-fallout-body">
-            <article className={`rs-receipt-headline tone-${model.headlineBeat.tone}`}>
+            <article className={`rs-receipt-headline tone-${model.headlineBeat.tone}`} title={getFalloutBeatTooltip(model.headlineBeat)}>
               <span>Headline Beat</span>
               <strong>{model.headlineBeat.value}</strong>
-              <p>{model.headlineBeat.detail}</p>
+              <p title={model.headlineBeat.detail}>{model.headlineBeat.detail}</p>
             </article>
 
             <div className="rs-fallout-beat-grid">

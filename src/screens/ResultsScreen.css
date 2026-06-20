@@ -18,7 +18,7 @@
     linear-gradient(0deg, rgba(0, 0, 0, 0.38), transparent 28%),
     rgba(4, 5, 8, 0.98);
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 0 326px;
   flex-direction: column;
   gap: 8px;
   min-height: 0;
@@ -277,8 +277,8 @@
   grid-column: 1;
   grid-row: 1;
   height: 100%;
-  min-height: 132px;
-  padding: 10px 12px;
+  min-height: 120px;
+  padding: 8px 10px;
 }
 
 .rs-receipt-headline.tone-title,
@@ -343,13 +343,13 @@
   overflow-wrap: anywhere;
 }
 
-.rs-fallout-command .rs-receipt-headline p,
 .rs-fallout-command .rs-fallout-card p {
   -webkit-line-clamp: 3;
 }
 
-.rs-receipt-headline p {
-  -webkit-line-clamp: 4;
+.rs-fallout-command .rs-receipt-headline p {
+  display: block;
+  overflow: visible;
 }
 
 .rs-fallout-beat-grid,
@@ -400,8 +400,8 @@
   align-content: start;
   gap: 5px;
   height: 100%;
-  min-height: 132px;
-  padding: 10px 12px;
+  min-height: 120px;
+  padding: 8px 10px;
 }
 
 .rs-fallout-command .rs-reaction-strip .rs-fallout-card p {
@@ -493,14 +493,14 @@
   letter-spacing: 0.04em;
 }
 
-/* Score reel — 5 columns per row, second row reserved for segments 6-10 */
+/* Score reel — 5 columns per row, second row reserved for segments 6-10. */
 
 .rs-rundown-board {
   align-content: start;
   display: grid;
   flex: 1 1 auto;
   gap: 4px;
-  grid-template-rows: auto minmax(72px, 1fr);
+  grid-template-rows: auto minmax(76px, 1fr);
   min-height: 0;
   padding: 5px 8px 8px;
 }
@@ -509,7 +509,7 @@
   align-content: start;
   align-items: start;
   display: grid;
-  flex: 0 0 auto;
+  flex: 1 1 0;
   gap: 4px;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   min-width: 0;
@@ -520,7 +520,7 @@
 }
 
 .rs-rundown-reel-overflow {
-  min-height: 72px;
+  min-height: 76px;
 }
 
 .rs-rundown-reel-overflow.is-empty {
@@ -672,16 +672,20 @@
   align-items: center;
   background: rgba(0, 168, 150, 0.1);
   border: 1px solid rgba(0, 168, 150, 0.28);
+  box-sizing: border-box;
   color: #6fe2d4;
-  display: flex;
+  display: inline-flex;
   font-size: 0.52rem;
   font-weight: 900;
   gap: 6px;
+  height: 22px;
   justify-content: space-between;
+  justify-self: center;
   letter-spacing: 0.05em;
   line-height: 1;
   margin-top: 1px;
   padding: 4px 6px;
+  width: 128px;
 }
 
 .rs-reel-chip-cta::after {
@@ -783,9 +787,12 @@
   flex: 0 0 auto;
   gap: 8px;
   grid-template-columns: minmax(220px, 1fr) minmax(142px, auto);
-  min-height: 74px;
+  margin-top: -10px;
+  min-height: 56px;
   min-width: 0;
-  padding: 6px 10px;
+  padding: 4px 10px;
+  position: relative;
+  z-index: 2;
 }
 
 .results-command-shell > .rs-handoff-footer {
@@ -854,9 +861,9 @@
   cursor: pointer;
   display: grid;
   font: inherit;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
-  padding: 8px 12px;
+  padding: 4px 10px;
   text-align: left;
   text-transform: uppercase;
 }
@@ -868,7 +875,7 @@
 .rs-handoff-action strong {
   color: #f4f7fb;
   font-family: var(--font-display);
-  font-size: 0.95rem;
+  font-size: 0.86rem;
   font-weight: 900;
   line-height: 1;
 }
@@ -1513,6 +1520,150 @@
 
   .rs-fallout-command .rs-reaction-strip .rs-fallout-card p {
     -webkit-line-clamp: 3;
+  }
+}
+
+@media (min-width: 1101px) and (max-height: 760px) {
+  .rs-desk-body {
+    flex: 0 0 282px;
+    gap: 6px;
+    overflow: hidden;
+    padding-top: 6px;
+  }
+
+  .rs-hero,
+  .rs-hero.rs-hero-compact {
+    grid-template-columns: minmax(118px, 0.2fr) minmax(0, 1fr) minmax(220px, 0.32fr);
+    padding: 6px 8px;
+  }
+
+  .rs-score-plate,
+  .rs-hero-compact .rs-score-plate,
+  .rs-metric {
+    padding: 5px 6px;
+  }
+
+  .rs-score-line h2,
+  .rs-hero-compact .rs-score-line h2 {
+    font-size: 1.7rem;
+  }
+
+  .rs-hero-copy h3 {
+    font-size: 0.95rem;
+  }
+
+  .rs-desk-body > .rs-rundown {
+    flex: 1 1 auto;
+    min-height: 134px;
+  }
+
+  .rs-rundown-head {
+    gap: 4px;
+    padding: 4px 8px;
+  }
+
+  .rs-rundown-head strong {
+    font-size: 0.86rem;
+  }
+
+  .rs-rundown-head span,
+  .rs-rundown-head-meta em {
+    font-size: 0.5rem;
+  }
+
+  .rs-rundown-head b {
+    font-size: 0.52rem;
+    padding: 3px 6px;
+  }
+
+  .rs-rundown-board {
+    grid-template-rows: auto minmax(58px, 1fr);
+    padding: 4px 6px 5px;
+  }
+
+  .rs-rundown-reel,
+  .rs-rundown-reel-primary,
+  .rs-rundown-reel-overflow.has-segments {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .rs-rundown-reel-overflow {
+    min-height: 58px;
+  }
+
+  .rs-reel-chip {
+    gap: 2px;
+    padding: 4px 6px 3px;
+  }
+
+  .rs-reel-summary {
+    font-size: 0.48rem;
+    line-height: 1;
+  }
+
+  .rs-reel-chip-cta {
+    padding: 3px 5px;
+  }
+
+  .rs-fallout-command {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .rs-fallout-body {
+    gap: 6px;
+    grid-template-columns: minmax(190px, 0.3fr) minmax(0, 1fr) minmax(320px, 0.42fr);
+    grid-template-rows: minmax(0, 1fr);
+    min-height: 0;
+    overflow: hidden;
+    padding: 6px 8px 8px;
+  }
+
+  .rs-fallout-beat-grid {
+    gap: 6px;
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .rs-fallout-command .rs-receipt-headline {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 0;
+    padding: 8px 9px;
+  }
+
+  .rs-reaction-strip {
+    gap: 6px;
+    grid-column: 3;
+    grid-row: 1;
+    grid-template-columns: minmax(0, 1fr) minmax(150px, 190px);
+    height: 100%;
+  }
+
+  .rs-fallout-command .rs-fallout-card,
+  .rs-fallout-command .rs-reaction-strip .rs-fallout-card {
+    min-height: 0;
+    padding: 7px 8px;
+  }
+
+  .rs-fallout-command .rs-fallout-card p,
+  .rs-fallout-command .rs-reaction-strip .rs-fallout-card p {
+    -webkit-line-clamp: 2;
+  }
+
+  .rs-handoff-band {
+    min-height: 64px;
+    padding: 5px 8px;
+  }
+
+  .rs-handoff-lead,
+  .rs-handoff-beats article {
+    padding: 5px 7px;
+  }
+
+  .rs-handoff-action {
+    padding: 7px 10px;
   }
 }
 

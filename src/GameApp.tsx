@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { AppBootRequest } from "./appBoot";
 import { syncAppViewportHeight } from "./viewportHeight";
 import { CommandPanel, HeroDecisionPanel, MetricTile, getBroadcastTheme } from "./components/broadcast";
@@ -19,6 +19,7 @@ import {
 } from "./gameStorage";
 import { advanceGameWeek } from "./game/advanceWeek";
 import { generateExternalAiSocialContent } from "./game/aiCommentary";
+import type { ExternalAiSocialContent } from "./game/aiCommentary";
 import { getRosterAffiliations, getWrestlerAffiliations } from "./game/affiliationCatalog";
 import { getFinancePressureLabel } from "./game/finance";
 import { getRosterFinanceValueForWrestler } from "./game/financeCatalog";
@@ -2514,6 +2515,7 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
   const [bookingFocusSegmentId, setBookingFocusSegmentId] = useState<string | undefined>();
   const [rivalriesFocusId, setRivalriesFocusId] = useState<string | undefined>();
   const [didApplyBootRequest, setDidApplyBootRequest] = useState(bootRequest?.type !== "load-career");
+  const requestedAiRecapBackfills = useRef<Set<string>>(new Set());
   const latestResult = game?.showHistory[game.showHistory.length - 1];
   const hasCurrentPostShow = latestResult ? latestResult.week === game?.currentWeek : false;
   const recentCareer = getMostRecentCareer(careerSaves);
@@ -2535,6 +2537,27 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
 
     setDidApplyBootRequest(true);
   }, [bootRequest, didApplyBootRequest]);
+
+  useEffect(() => {
+    if (screen !== "results" || !game || !latestResult) {
+      return;
+    }
+
+    const resultRecapIds = new Set(
+      game.segmentAiRecaps
+        .filter((recap) => recap.resultId === latestResult.id)
+        .map((recap) => recap.segmentId),
+    );
+    const needsAiRecap = latestResult.segmentResults.some((segment) => !resultRecapIds.has(segment.segmentId));
+    const requestKey = `${latestResult.id}:${latestResult.segmentResults.length}`;
+
+    if (!needsAiRecap || requestedAiRecapBackfills.current.has(requestKey)) {
+      return;
+    }
+
+    requestedAiRecapBackfills.current.add(requestKey);
+    generateAndPersistExternalAiContent(latestResult, game, "results");
+  }, [game, latestResult, screen]);
 
   function refreshCareerSaves() {
     const updatedCareerSaves = loadCareerSaves();
@@ -2569,6 +2592,51 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
     refreshCareerSaves();
     setSavedGame(nextSavedGame);
     return nextSavedGame;
+  }
+
+  function mergeExternalAiSocialContent(current: GameState, content: ExternalAiSocialContent) {
+    const { fanPosts, wrestlerPosts, segmentRecaps } = content;
+
+    if (!fanPosts.length && !wrestlerPosts.length && !segmentRecaps.length) {
+      return current;
+    }
+
+    const existingFanIds = new Set(current.socialPosts.map((post) => post.id));
+    const existingWrestlerIds = new Set(current.wrestlerSocialPosts.map((post) => post.id));
+    const existingRecapIds = new Set(current.segmentAiRecaps.map((recap) => recap.id));
+    const newFanPosts = fanPosts.filter((post) => !existingFanIds.has(post.id));
+    const newWrestlerPosts = wrestlerPosts.filter((post) => !existingWrestlerIds.has(post.id));
+    const newSegmentRecaps = segmentRecaps.filter((recap) => !existingRecapIds.has(recap.id));
+
+    if (!newFanPosts.length && !newWrestlerPosts.length && !newSegmentRecaps.length) {
+      return current;
+    }
+
+    return {
+      ...current,
+      socialPosts: newFanPosts.length ? [...current.socialPosts, ...newFanPosts] : current.socialPosts,
+      wrestlerSocialPosts: newWrestlerPosts.length ? [...current.wrestlerSocialPosts, ...newWrestlerPosts] : current.wrestlerSocialPosts,
+      segmentAiRecaps: newSegmentRecaps.length ? [...current.segmentAiRecaps, ...newSegmentRecaps] : current.segmentAiRecaps,
+    };
+  }
+
+  function generateAndPersistExternalAiContent(result: ShowResult, sourceGame: GameState, nextScreen: SavedGameState["screen"]) {
+    void generateExternalAiSocialContent(result, sourceGame).then((content) => {
+      setGame((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const updatedGame = mergeExternalAiSocialContent(current, content);
+
+        if (updatedGame === current) {
+          return current;
+        }
+
+        persistGameSnapshot(updatedGame, nextScreen);
+        return updatedGame;
+      });
+    });
   }
 
   function startNewGame() {
@@ -3203,40 +3271,7 @@ function App({ bootRequest }: { bootRequest?: AppBootRequest } = {}) {
     persistGameSnapshot(resolvedShow.game, "results");
     setGame(resolvedShow.game);
     setScreen("results");
-    void generateExternalAiSocialContent(resolvedShow.result, resolvedShow.game).then(({ fanPosts, wrestlerPosts, segmentRecaps }) => {
-      if (!fanPosts.length && !wrestlerPosts.length && !segmentRecaps.length) {
-        return;
-      }
-
-      setGame((current) => {
-        if (!current) {
-          return current;
-        }
-
-        const existingFanIds = new Set(current.socialPosts.map((post) => post.id));
-        const existingWrestlerIds = new Set(current.wrestlerSocialPosts.map((post) => post.id));
-        const existingRecapIds = new Set(current.segmentAiRecaps.map((recap) => recap.id));
-        const newFanPosts = fanPosts.filter((post) => !existingFanIds.has(post.id));
-        const newWrestlerPosts = wrestlerPosts.filter((post) => !existingWrestlerIds.has(post.id));
-        const newSegmentRecaps = segmentRecaps.filter((recap) => !existingRecapIds.has(recap.id));
-
-        if (!newFanPosts.length && !newWrestlerPosts.length && !newSegmentRecaps.length) {
-          return current;
-        }
-
-        const updatedGame = {
-          ...current,
-          socialPosts: newFanPosts.length ? [...current.socialPosts, ...newFanPosts] : current.socialPosts,
-          wrestlerSocialPosts: newWrestlerPosts.length
-            ? [...current.wrestlerSocialPosts, ...newWrestlerPosts]
-            : current.wrestlerSocialPosts,
-          segmentAiRecaps: newSegmentRecaps.length ? [...current.segmentAiRecaps, ...newSegmentRecaps] : current.segmentAiRecaps,
-        };
-
-        persistGameSnapshot(updatedGame, "results");
-        return updatedGame;
-      });
-    });
+    generateAndPersistExternalAiContent(resolvedShow.result, resolvedShow.game, "results");
   }
 
   function advanceWeek() {

@@ -1371,36 +1371,108 @@ function buildSuperstarMailCandidate(wrestler: Wrestler, game: GameState): Super
   return undefined;
 }
 
-function getSuperstarMailLimit(candidates: SuperstarMailCandidate[], hardLimit: number) {
+const SUPERSTAR_MAIL_FIRST_ELIGIBLE_WEEK = 2;
+
+function getSuperstarMailWeekRoll(game: GameState) {
+  return hashString(`superstar-mail-${game.seasonNumber}-${game.currentWeek}-${game.brandName}`) % 100;
+}
+
+function getSuperstarMailCandidateRoll(game: GameState, candidate: SuperstarMailCandidate) {
+  return hashString(`superstar-mail-${game.seasonNumber}-${game.currentWeek}-${candidate.id}`) % 100;
+}
+
+function shouldSurfaceAdditionalSuperstarMailCandidate(game: GameState, candidate: SuperstarMailCandidate) {
+  const roll = getSuperstarMailCandidateRoll(game, candidate);
+
+  if (candidate.priority >= 90) {
+    return roll >= 18;
+  }
+
+  if (candidate.tone === "urgent" || candidate.priority >= 78) {
+    return roll >= 38;
+  }
+
+  return roll >= 62;
+}
+
+function getSuperstarMailLimit(candidates: SuperstarMailCandidate[], hardLimit: number, game: GameState) {
   const urgentCount = candidates.filter((item) => item.tone === "urgent").length;
   const topPriority = candidates[0]?.priority ?? 0;
+  const weekRoll = getSuperstarMailWeekRoll(game);
 
   if (!candidates.length) {
     return 0;
   }
 
-  if (urgentCount >= 2 || topPriority >= 90) {
+  if (urgentCount >= 3 && topPriority >= 92 && weekRoll >= 88) {
     return Math.min(3, hardLimit);
   }
 
-  if (urgentCount === 1 || topPriority >= 78) {
+  if ((urgentCount >= 2 || topPriority >= 90) && weekRoll >= 44) {
     return Math.min(2, hardLimit);
   }
 
-  return 1;
+  if (urgentCount === 1 || topPriority >= 78) {
+    return weekRoll >= 72 ? Math.min(2, hardLimit) : 1;
+  }
+
+  if (weekRoll >= 58) {
+    return 1;
+  }
+
+  return 0;
 }
 
-function selectSuperstarMailItems(candidates: SuperstarMailCandidate[], hardLimit: number) {
-  const limit = getSuperstarMailLimit(candidates, hardLimit);
+function getSurfacedSuperstarMailCandidates(candidates: SuperstarMailCandidate[], game: GameState, hardLimit: number) {
+  const limit = getSuperstarMailLimit(candidates, hardLimit, game);
+
+  if (limit <= 0) {
+    return [];
+  }
+
+  const [topCandidate, ...otherCandidates] = candidates;
+  const surfaced = [
+    topCandidate,
+    ...otherCandidates.filter((candidate) => shouldSurfaceAdditionalSuperstarMailCandidate(game, candidate)),
+  ].filter((candidate): candidate is SuperstarMailCandidate => Boolean(candidate));
+
+  if (limit >= 2 && surfaced.length < 2) {
+    const fallback = otherCandidates.find((candidate) => !surfaced.includes(candidate));
+
+    if (fallback) {
+      surfaced.push(fallback);
+    }
+  }
+
+  if (limit >= 3 && surfaced.length < 3) {
+    const fallback = otherCandidates.find((candidate) => !surfaced.includes(candidate));
+
+    if (fallback) {
+      surfaced.push(fallback);
+    }
+  }
+
+  return surfaced.slice(0, Math.min(limit, hardLimit));
+}
+
+function selectSuperstarMailItems(candidates: SuperstarMailCandidate[], hardLimit: number, game: GameState) {
+  const limitedCandidates = getSurfacedSuperstarMailCandidates(candidates, game, hardLimit);
+  const limit = limitedCandidates.length;
+  const candidatePool = limitedCandidates.length ? limitedCandidates : candidates.slice(0, limit);
+
+  if (!limit) {
+    return [];
+  }
+
   const selected: SuperstarMailCandidate[] = [];
   const selectedLabels = new Set<string>();
 
-  for (const candidate of candidates) {
+  for (const candidate of candidatePool) {
     if (selected.length >= limit) {
       break;
     }
 
-    if (selectedLabels.has(candidate.askLabel) && candidates.some((item) => !selected.includes(item) && !selectedLabels.has(item.askLabel))) {
+    if (selectedLabels.has(candidate.askLabel) && candidatePool.some((item) => !selected.includes(item) && !selectedLabels.has(item.askLabel))) {
       continue;
     }
 
@@ -1409,7 +1481,7 @@ function selectSuperstarMailItems(candidates: SuperstarMailCandidate[], hardLimi
   }
 
   if (selected.length < limit) {
-    for (const candidate of candidates) {
+    for (const candidate of candidatePool) {
       if (selected.length >= limit) {
         break;
       }
@@ -1423,9 +1495,22 @@ function selectSuperstarMailItems(candidates: SuperstarMailCandidate[], hardLimi
   return selected;
 }
 
+function getEmptySuperstarMailSnapshot(game: GameState): SuperstarMailSnapshot {
+  return {
+    weekLabel: `Season ${game.seasonNumber} · Week ${game.currentWeek} · Inbox`,
+    detail: "No active asks. The room is quiet enough that no one needs the GM desk this week.",
+    unreadCount: 0,
+    items: [],
+  };
+}
+
 export function getSuperstarMailSnapshot(game: GameState, limit = 3): SuperstarMailSnapshot | undefined {
   if (!game.wrestlers.length) {
     return undefined;
+  }
+
+  if (game.currentWeek < SUPERSTAR_MAIL_FIRST_ELIGIBLE_WEEK) {
+    return getEmptySuperstarMailSnapshot(game);
   }
 
   const latestResult = game.showHistory.at(-1);
@@ -1436,7 +1521,7 @@ export function getSuperstarMailSnapshot(game: GameState, limit = 3): SuperstarM
     .filter((candidate): candidate is SuperstarMailCandidate => Boolean(candidate))
     .sort((a, b) => b.priority - a.priority || a.wrestlerName.localeCompare(b.wrestlerName));
 
-  const items = selectSuperstarMailItems(prioritized, limit);
+  const items = selectSuperstarMailItems(prioritized, limit, game);
 
   return {
     weekLabel: `Season ${seasonNumber} · Week ${weekNumber} · Inbox`,

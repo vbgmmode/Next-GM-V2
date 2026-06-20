@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createNewGame } from "../game/seed";
-import { getSocialAuthorAvatarSrc, getWrestlerJabFeed } from "./socialReads";
+import { getSocialAuthorAvatarSrc, getSuperstarMailSnapshot, getWrestlerJabFeed } from "./socialReads";
 
 describe("social author avatars", () => {
   it("uses fixed avatar assignments for built-in timeline accounts", () => {
@@ -76,5 +76,54 @@ describe("superstar social feed", () => {
     expect(feed?.items).toHaveLength(1);
     expect(feed?.items[0]?.jab).toContain("building felt different");
     expect(feed?.detail).toContain("generated from resolved show fallout");
+  });
+});
+
+describe("superstar mail", () => {
+  it("stays quiet during Week 1 even when opening title or roster context looks urgent", () => {
+    const game = createNewGame();
+    const pressuredWrestlers = game.wrestlers.map((wrestler, index) =>
+      index < 4
+        ? {
+            ...wrestler,
+            fatigue: 95,
+            consecutiveWeeksBooked: 4,
+            momentum: 88,
+            popularity: 88,
+          }
+        : wrestler,
+    );
+
+    const snapshot = getSuperstarMailSnapshot({
+      ...game,
+      currentWeek: 1,
+      wrestlers: pressuredWrestlers,
+    });
+
+    expect(snapshot?.items).toHaveLength(0);
+    expect(snapshot?.detail).toContain("No active asks");
+  });
+
+  it("does not stack three direct asks from ordinary urgent pressure", () => {
+    const game = createNewGame();
+    const pressuredWrestlers = game.wrestlers.map((wrestler, index) =>
+      index < 4
+        ? {
+            ...wrestler,
+            fatigue: 95,
+            consecutiveWeeksBooked: 4,
+            momentum: 88,
+            popularity: 88,
+          }
+        : wrestler,
+    );
+
+    const snapshot = getSuperstarMailSnapshot({
+      ...game,
+      currentWeek: 2,
+      wrestlers: pressuredWrestlers,
+    });
+
+    expect(snapshot?.items.length ?? 0).toBeLessThanOrEqual(2);
   });
 });
